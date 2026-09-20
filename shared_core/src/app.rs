@@ -1,5 +1,4 @@
-use crux_core::render::Render;
-use crux_core::App;
+use crux_core::{render::{self, RenderOperation}, App, macros::effect, Command};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -18,27 +17,27 @@ pub struct ViewModel {
     pub display_status: String,
 }
 
-pub struct LogNApp;
-
-impl Default for LogNApp {
-    fn default() -> Self {
-        Self
-    }
+#[effect]
+pub enum Effect {
+    Render(RenderOperation),
 }
+
+#[derive(Default)]
+pub struct LogNApp;
 
 impl App for LogNApp {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
-    type Capabilities = crux_core::render::Render<Event>;
+    type Effect = Effect;
 
-    fn update(&self, event: Self::Event, model: &mut Self::Model, caps: &Self::Capabilities) {
+    fn update(&self, event: Self::Event, model: &mut Self::Model) -> Command<Self::Effect, Self::Event> {
         match event {
             Event::Ping => {
                 model.status = "Pong received!".to_string();
-                caps.render();
+                render::render()
             }
-            Event::Pong => {}
+            Event::Pong => Command::done(),
         }
     }
 

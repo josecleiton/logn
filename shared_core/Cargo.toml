@@ -7,11 +7,13 @@ edition = "2021"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
-crux_core = "0.3"
-crux_http = "0.3"
-crux_macros = "0.3"
+crux_core = "0.20.0"
+crux_http = "0.20.0"
+crux_macros = "0.10.1"
 serde = { version = "1.0", features = ["derive"] }
-uniffi = "0.27"
+uniffi = { version = "0.27", features = ["cli"] }
 
-[build-dependencies]
-uniffi = { version = "0.27", features = ["build"] }
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "uniffi-bindgen.rs"
