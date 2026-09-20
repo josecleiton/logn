@@ -1,0 +1,15 @@
+# Mac
+.DS_Store
+
+# Go
+/backend/bin/
+/backend/tmp/
+
+# Rust
+/shared_core/target/
+
+# iOS
+/ios/build/
+/ios/DerivedData/
+*.xcworkspace
+xcuserdata/
