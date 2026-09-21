@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use facet::Facet;
 use facet_generate_attrs as fg;
 use crux_http::protocol::{HttpRequest, HttpResult};
-use crate::domain::{GameEvent, SyncPayload};
+use crate::domain::{GameEvent, SyncPayload, Challenge};
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
 #[repr(C)]
@@ -11,6 +11,8 @@ use crate::domain::{GameEvent, SyncPayload};
 pub enum Event {
     Ping,
     Pong,
+    FetchChallenges,
+    ChallengesFetched(HttpResult),
     RegisterAction {
         action_id: String,
         action_type: String,
@@ -25,9 +27,11 @@ pub enum Event {
 pub struct Model {
     pub status: String,
     pub pending_events: Vec<GameEvent>,
+    pub challenges: Vec<Challenge>,
     pub last_hash: String,
     pub user_id: String,
     pub is_syncing: bool,
+    pub is_fetching: bool,
 }
 
 #[derive(Facet, Serialize, Deserialize, Default, Clone)]
@@ -36,6 +40,8 @@ pub struct ViewModel {
     pub display_status: String,
     pub pending_sync_count: u32,
     pub is_syncing: bool,
+    pub is_fetching: bool,
+    pub challenges: Vec<Challenge>,
 }
 
 #[effect(facet_typegen)]
@@ -61,6 +67,44 @@ impl App for LogNApp {
                 render::render()
             }
             Event::Pong => Command::done(),
+            Event::FetchChallenges => {
+                if model.is_fetching {
+                    return Command::done();
+                }
+                model.is_fetching = true;
+                model.status = "Fetching challenges...".to_string();
+
+                let request = HttpRequest {
+                    method: "GET".to_string(),
+                    url: "http://localhost:8080/api/v1/challenges".to_string(),
+                    headers: vec![],
+                    body: vec![],
+                };
+
+                Command::request_from_shell(request)
+                    .then_send(Event::ChallengesFetched)
+            }
+            Event::ChallengesFetched(result) => {
+                model.is_fetching = false;
+                match result {
+                    HttpResult::Ok(response) => {
+                        if response.status == 200 {
+                            if let Ok(challenges) = serde_json::from_slice::<Vec<Challenge>>(&response.body) {
+                                model.challenges = challenges;
+                                model.status = "Challenges loaded".to_string();
+                            } else {
+                                model.status = "Failed to parse challenges".to_string();
+                            }
+                        } else {
+                            model.status = format!("Failed to fetch: HTTP {}", response.status);
+                        }
+                    }
+                    HttpResult::Err(_) => {
+                        model.status = "Network Error loading challenges".to_string();
+                    }
+                }
+                render::render()
+            }
             Event::RegisterAction { action_id, action_type, payload_json, timestamp } => {
                 let previous_hash = if model.last_hash.is_empty() {
                     "0000000000000000000000000000000000000000000000000000000000000000".to_string()
@@ -123,7 +167,6 @@ impl App for LogNApp {
                             model.pending_events.clear();
                         } else if response.status == 409 {
                             model.status = "Sync Conflict - Rebase Required".to_string();
-                            // Here we would implement rebase logic fetching the server state
                         } else {
                             model.status = format!("Sync Failed: HTTP {}", response.status);
                         }
@@ -142,6 +185,8 @@ impl App for LogNApp {
             display_status: model.status.clone(),
             pending_sync_count: model.pending_events.len() as u32,
             is_syncing: model.is_syncing,
+            is_fetching: model.is_fetching,
+            challenges: model.challenges.clone(),
         }
     }
 }

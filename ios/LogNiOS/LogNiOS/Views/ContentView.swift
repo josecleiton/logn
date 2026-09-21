@@ -3,7 +3,6 @@ import App
 
 struct ContentView: View {
     @StateObject private var core = CoreWrapper()
-    @State private var showingGame = false
     
     var body: some View {
         NavigationView {
@@ -30,7 +29,7 @@ struct ContentView: View {
                                 .font(LognFont.label)
                                 .foregroundColor(LognDark.textSecondary)
                             
-                            if core.viewModel.isSyncing {
+                            if core.viewModel.isSyncing || core.viewModel.isFetching {
                                 ProgressView()
                                     .progressViewStyle(CircularProgressViewStyle(tint: LognDark.accent))
                                     .padding(.leading, Space.sm)
@@ -60,43 +59,77 @@ struct ContentView: View {
                         }
                         .disabled(core.viewModel.isSyncing)
                         
-                        NavigationLink(destination: SpotTheBugView(
-                            title: "C · Soma de Dois Números",
-                            codeLines: [
-                                "int l = 0, r = n - 1;",
-                                "while (l <= r) {",
-                                "    int mid = l + (r - l) / 2;",
-                                "    if (a == b) return a;",
-                                "    if (a < b) a = a + 1;",
-                                "    else b = b - 1;",
-                                "}",
-                                "return -1;"
-                            ],
-                            balloonColor: Balloon.of("C", isLight: false),
-                            onSubmit: { line in
-                                let payload = "{\"selected_line\": \(line)}"
-                                let timestamp = Int64(Date().timeIntervalSince1970)
-                                core.dispatch(event: .registerAction(actionId: UUID().uuidString, actionType: "SPOT_THE_BUG", payloadJson: payload, timestamp: timestamp))
-                            }
-                        )) {
-                            Text("Play 'Spot the Bug'")
+                        Button(action: {
+                            core.dispatch(event: .fetchChallenges)
+                        }) {
+                            Text("Load Challenges (HTTP GET)")
                                 .font(LognFont.titleMedium)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, Space.md)
-                                .background(LognDark.surface)
-                                .foregroundColor(LognDark.textPrimary)
+                                .background(core.viewModel.isFetching ? LognDark.buttonDisabled : LognDark.info)
+                                .foregroundColor(core.viewModel.isFetching ? LognDark.textMuted : LognDark.surface)
                                 .cornerRadius(Radius.sm)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: Radius.sm)
-                                        .stroke(LognDark.lineStrong, lineWidth: 1)
-                                )
                         }
+                        .disabled(core.viewModel.isFetching)
                     }
                     .padding(.horizontal, Space.screenMargin)
+                    
+                    // Lista Dinamica
+                    ScrollView {
+                        VStack(spacing: Space.md) {
+                            ForEach(core.viewModel.challenges, id: \.id) { challenge in
+                                if challenge.templateType == "SPOT_THE_BUG" {
+                                    NavigationLink(destination: SpotTheBugView(
+                                        title: challenge.payload.content.title,
+                                        codeLines: challenge.payload.content.codeLines,
+                                        balloonColor: Balloon.of(challenge.payload.content.title.first ?? "A", isLight: false),
+                                        onSubmit: { line in
+                                            let payload = "{\"selected_line\": \(line)}"
+                                            let timestamp = Int64(Date().timeIntervalSince1970)
+                                            core.dispatch(event: .registerAction(actionId: UUID().uuidString, actionType: "SPOT_THE_BUG", payloadJson: payload, timestamp: timestamp))
+                                        }
+                                    )) {
+                                        ChallengeRow(challenge: challenge)
+                                    }
+                                } else {
+                                    // Fallback UI for other types
+                                    ChallengeRow(challenge: challenge)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, Space.screenMargin)
+                    }
                 }
-                .padding()
+                .padding(.top)
             }
             .colorScheme(.dark)
         }
+    }
+}
+
+struct ChallengeRow: View {
+    let challenge: Challenge
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: Space.xs) {
+                Text(challenge.payload.content.title)
+                    .font(LognFont.titleMedium)
+                    .foregroundColor(LognDark.textPrimary)
+                Text(challenge.templateType)
+                    .font(LognFont.label)
+                    .foregroundColor(LognDark.textSecondary)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .foregroundColor(LognDark.lineDim)
+        }
+        .padding(Space.md)
+        .background(LognDark.surface)
+        .cornerRadius(Radius.md)
+        .overlay(
+            RoundedRectangle(cornerRadius: Radius.md)
+                .stroke(LognDark.rowLine, lineWidth: 1)
+        )
     }
 }

@@ -47,7 +47,7 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if err.Error() == "force_rebase" {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusConflict) // 409 Conflict trigger rebase
+			w.WriteHeader(http.StatusConflict)
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"status":         "rebase_required",
 				"server_top":     serverLastHash,
@@ -65,7 +65,6 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Insere no banco os eventos e atualiza a hash
 	if len(payload.Events) > 0 {
 		newTop := payload.Events[len(payload.Events)-1].CurrentHash
 		if err := s.repo.InsertSyncEvents(ctx, payload, newTop); err != nil {
@@ -78,8 +77,25 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":         "success",
 		"events_applied": len(payload.Events),
-		"new_top":        serverLastHash, // será atualizado na próxima linha caso tenha eventos
+		"new_top":        serverLastHash,
 	})
+}
+
+func (s *Server) challengesHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ctx := context.Background()
+	challenges, err := s.repo.GetChallenges(ctx)
+	if err != nil {
+		http.Error(w, "Failed to get challenges: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(challenges)
 }
 
 func main() {
@@ -100,6 +116,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /ping", server.pingHandler)
 	mux.HandleFunc("POST /api/v1/sync", server.syncHandler)
+	mux.HandleFunc("GET /api/v1/challenges", server.challengesHandler)
 
 	log.Println("Server starting on :8080...")
 	if err := http.ListenAndServe(":8080", mux); err != nil {

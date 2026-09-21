@@ -59,3 +59,22 @@ func (r *Repository) GetUserLastHash(ctx context.Context, userID string) (string
 	}
 	return hash, nil
 }
+
+func (r *Repository) GetChallenges(ctx context.Context) ([]Challenge, error) {
+	query := `SELECT id, chapter, template_type, version, payload FROM challenges ORDER BY id ASC`
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var challenges []Challenge
+	for rows.Next() {
+		var ch Challenge
+		if err := rows.Scan(&ch.ID, &ch.Chapter, &ch.TemplateType, &ch.Version, &ch.Payload); err != nil {
+			return nil, err
+		}
+		challenges = append(challenges, ch)
+	}
+	return challenges, nil
+}

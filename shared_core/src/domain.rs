@@ -70,3 +70,38 @@ mod tests {
         assert_eq!(event.current_hash.len(), 64); // SHA-256 len
     }
 }
+
+
+#[derive(Facet, Serialize, Deserialize, Clone, Debug)]
+#[facet(fg::namespace = "LogN")]
+pub struct ChallengeValidation {
+    #[serde(rename = "type")]
+    pub validation_type: String, // "LINE_MATCH" or "EXACT_MATCH"
+    pub correct_line: Option<i32>,
+    pub expected_string: Option<String>,
+}
+
+#[derive(Facet, Serialize, Deserialize, Clone, Debug)]
+#[facet(fg::namespace = "LogN")]
+pub struct ChallengeContent {
+    pub title: String,
+    pub description: String,
+    pub code_lines: Vec<String>,
+}
+
+#[derive(Facet, Serialize, Deserialize, Clone, Debug)]
+#[facet(fg::namespace = "LogN")]
+pub struct ChallengePayload {
+    pub content: ChallengeContent,
+    pub validation: ChallengeValidation,
+}
+
+#[derive(Facet, Serialize, Deserialize, Clone, Debug)]
+#[facet(fg::namespace = "LogN")]
+pub struct Challenge {
+    pub id: String,
+    pub chapter: String,
+    pub template_type: String,
+    pub version: i32,
+    pub payload: ChallengePayload, // Typed for Facet
+}
