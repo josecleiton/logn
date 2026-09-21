@@ -1,0 +1,24 @@
+# LogN - Agent Context & Guidelines
+
+Este arquivo contém as diretrizes e regras arquiteturais do projeto **LogN**, servindo de contexto para agentes de IA que auxiliam no desenvolvimento.
+
+## 📚 Documentação e Referências
+- **Design System:** Localizado em `docs/design_system/`. Contém todas as especificações de UI/UX, cores, semântica e exportações de tokens (`tokens/`).
+- **Decisões Arquiteturais (ADRs):** Localizadas em `docs/architecture/decisions/`. Antes de alterar paradigmas do sistema, leia as ADRs para entender o contexto das decisões passadas.
+
+## 🏗️ Arquitetura do Sistema
+O LogN adota um padrão de **Monorepo** com separação clara de responsabilidades:
+1. **Backend (Go):** Responsável pela validação do Sync, Auth e persistência. Focado em escalabilidade (concorrência em Go). Usa PostgreSQL com suporte a JSONB.
+2. **Shared Core (Rust/Crux):** A "Mente" do cliente. Contém *toda* a lógica de negócios, regras de estado (Model) e o motor offline-first (Mini-Git). **Não usa UniFFI**. Usa uma ponte FFI nativa via `boltffi` e `bincode`, com tipagem gerada via `facet_typegen`.
+3. **Clients (SwiftUI / Kotlin):** Camadas "burras" de renderização. Elas enviam eventos para o Core (`Event`) e recebem o modelo de visualização purificado (`ViewModel`).
+
+## 🚨 Regras Rígidas de Implementação
+1. **Zero Colisão de Nomes no Crux:** Qualquer novo tipo (Model, Event, ViewModel) adicionado em Rust deve possuir a anotação `#[derive(Facet)]` e `#[facet(fg::namespace = "LogN")]` para o *typegen* respeitar o namespace no iOS/Android.
+2. **Offline-First via Cryptographic Chaining:** Todo evento do usuário de jogo deve possuir um Hash de integridade (`SHA-256(Hash(N-1) + Payload + Timestamp)`). O Go Backend deve apenas validar esse hash, nunca recalculá-lo para reescrever o histórico.
+3. **Persistência de Desafios:** Desafios são armazenados no PostgreSQL em Go através de uma coluna polimórfica `JSONB`. Mutações no schema de desafios devem refletir no `init.sql` os `CHECK CONSTRAINTS` de validação da estrutura JSON.
+4. **Dependências Crux FFI:** Manter o padrão de FFI nativa deste repositório: a comunicação Rust <-> Swift é trafegada *exclusivamente* via bytes `[u8]` (Bincode) passando pelas funções exportadas em `boltffi::export`. 
+
+## 🔄 Fluxo de Trabalho do Agente
+1. Ao iniciar, revise sempre se as dependências do `Crux` e o pacote `boltffi` exigem recompilação (`cargo build --features codegen`).
+2. Atualize o `codegen` e rode-o se você tocar nas definições de tipagem (`shared_core/src/bin/codegen.rs`).
+3. Gere e atualize ADRs em `docs/architecture/decisions/` ao introduzir novas bibliotecas centrais (ex: Lib de Auth) ou mudar arquitetura.
