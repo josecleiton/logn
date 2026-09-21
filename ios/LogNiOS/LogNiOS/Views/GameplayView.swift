@@ -50,10 +50,11 @@ struct GameplayView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(Array(challenge.payload.content.codeLines.enumerated()), id: \.offset) { index, line in
                             let isSelected = selectedLine == index
+                            let isInteractive = challenge.payload.validation.validationType != "CONSOLE_OUTPUT"
                             
                             HStack(alignment: .top, spacing: Space.md) {
                                 // Line number
-                                Text("\\(index + 1)")
+                                Text("\(index + 1)")
                                     .font(LognFont.code)
                                     .foregroundColor(isSelected ? LognDark.accent : LognDark.textDim)
                                     .frame(width: 24, alignment: .trailing)
@@ -69,7 +70,6 @@ struct GameplayView: View {
                                         .padding(.horizontal, Space.xs)
                                         .background(LognDark.surfaceRaised)
                                         .cornerRadius(Radius.sm)
-                                        // Focus handling omitted for brevity, but should be auto-focused
                                 } else {
                                     SyntaxTextView(text: line)
                                         .font(LognFont.code)
@@ -85,7 +85,9 @@ struct GameplayView: View {
                             .background(isSelected ? LognDark.accent.opacity(0.1) : Color.clear)
                             .contentShape(Rectangle())
                             .onTapGesture {
-                                selectLine(index: index, lineText: line)
+                                if isInteractive {
+                                    selectLine(index: index, lineText: line)
+                                }
                             }
                         }
                     }
@@ -93,6 +95,36 @@ struct GameplayView: View {
                     .background(LognDark.surface)
                     .cornerRadius(Radius.md)
                     .padding(.horizontal, Space.screenMargin)
+                }
+                
+                // Terminal / Console output for DRY_RUN
+                if challenge.payload.validation.validationType == "CONSOLE_OUTPUT" {
+                    VStack(alignment: .leading, spacing: Space.xs) {
+                        Text("Terminal Output")
+                            .font(LognFont.label)
+                            .foregroundColor(LognDark.textMuted)
+                            .padding(.horizontal, Space.screenMargin)
+                        
+                        HStack {
+                            Text(">_")
+                                .font(LognFont.code)
+                                .foregroundColor(LognDark.accent)
+                            
+                            TextField("Digite a saída esperada...", text: $inlineText)
+                                .font(LognFont.code)
+                                .foregroundColor(LognDark.textPrimary)
+                                .autocapitalization(.none)
+                                .disableAutocorrection(true)
+                        }
+                        .padding()
+                        .background(LognDark.surfaceRaised)
+                        .cornerRadius(Radius.sm)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Radius.sm)
+                                .stroke(LognDark.lineDim, lineWidth: 1)
+                        )
+                        .padding(.horizontal, Space.screenMargin)
+                    }
                 }
                 
                 Spacer()
@@ -135,8 +167,12 @@ struct GameplayView: View {
     }
     
     private var canSubmit: Bool {
+        let valType = challenge.payload.validation.validationType
+        if valType == "CONSOLE_OUTPUT" {
+            return !inlineText.isEmpty
+        }
         if selectedLine == nil { return false }
-        if challenge.payload.validation.validationType == "EXACT_MATCH" && inlineText.isEmpty { return false }
+        if valType == "EXACT_MATCH" && inlineText.isEmpty { return false }
         return true
     }
     
@@ -149,27 +185,39 @@ struct GameplayView: View {
     }
     
     private func submitAnswer() {
-        guard let lineIdx = selectedLine else { return }
-        
-        // Validação local imediata conforme a spec
         let validation = challenge.payload.validation
         
-        if validation.validationType == "LINE_MATCH" {
-            if let expected = validation.correctLine, Int(expected) == lineIdx {
+        if validation.validationType == "CONSOLE_OUTPUT" {
+            let expected = (validation.expectedString ?? "").replacingOccurrences(of: " ", with: "")
+            let userAns = inlineText.replacingOccurrences(of: " ", with: "")
+            
+            if expected == userAns {
                 isCorrect = true
-                explanation = "Excelente! Você identificou a linha problemática que causa o bug."
+                explanation = "Excelente! Seu trace mental do algoritmo foi perfeito."
             } else {
                 isCorrect = false
-                explanation = "Incorreto. O erro de lógica não está nessa linha. Volte aos estudos do nó e tente novamente."
+                explanation = "Incorreto. A saída esperada era \(validation.expectedString ?? ""). Verifique as iterações e tente de novo."
             }
         } else {
-            // EXACT_MATCH
-            if let expectedStr = validation.expectedString, inlineText.trimmingCharacters(in: .whitespaces) == expectedStr {
-                isCorrect = true
-                explanation = "Excelente! A correção de sintaxe/lógica foi perfeita."
+            guard let lineIdx = selectedLine else { return }
+            
+            if validation.validationType == "LINE_MATCH" {
+                if let expected = validation.correctLine, Int(expected) == lineIdx {
+                    isCorrect = true
+                    explanation = "Excelente! Você identificou a linha problemática que causa o bug."
+                } else {
+                    isCorrect = false
+                    explanation = "Incorreto. O erro de lógica não está nessa linha. Volte aos estudos do nó e tente novamente."
+                }
             } else {
-                isCorrect = false
-                explanation = "Incorreto. A correção não gera o comportamento esperado. Esperado: \\(validation.expectedString ?? "")"
+                // EXACT_MATCH
+                if let expectedStr = validation.expectedString, inlineText.trimmingCharacters(in: .whitespaces) == expectedStr {
+                    isCorrect = true
+                    explanation = "Excelente! A correção de sintaxe/lógica foi perfeita."
+                } else {
+                    isCorrect = false
+                    explanation = "Incorreto. A correção não gera o comportamento esperado. Esperado: \(validation.expectedString ?? "")"
+                }
             }
         }
         
