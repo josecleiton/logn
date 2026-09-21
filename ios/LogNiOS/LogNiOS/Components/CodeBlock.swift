@@ -26,34 +26,28 @@ struct CodeBlock: View {
         VStack(spacing: 0) {
             ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
                 HStack(spacing: 0) {
-                    // Barra lateral de seleção (2dp)
-                    Rectangle()
-                        .fill(index == selectedLine ? highlightColor : .clear)
-                        .frame(width: 2)
+                    
 
                     // Número de linha
                     Text("\(index + 1)")
                         .font(.custom("IBMPlexMono-Regular", size: 13))
                         .foregroundColor(index == selectedLine ? highlightColor : LognDark.textMuted)
                         .frame(width: 32, alignment: .trailing)
-                        .padding(.trailing, 12)
+                        .padding(.trailing, 16)
 
                     // Código com syntax highlighting
                     SyntaxHighlightedText(code: line)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.vertical, 4)
-                .frame(minHeight: 34) // DS: 34dp visíveis + folga até 56dp de alvo de toque
+                .padding(.vertical, 8)
+                .frame(minHeight: 34) 
                 .background(index == selectedLine ? highlightColor.opacity(0.14) : .clear)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     onSelectLine?(index)
                 }
 
-                if index < lines.count - 1 {
-                    Divider()
-                        .background(LognDark.rowLine)
-                }
+                
             }
         }
         .padding(.vertical, 8)
@@ -82,30 +76,32 @@ struct SyntaxHighlightedText: View {
     ]
 
     var body: some View {
-        coloredCode
-            .font(.custom("IBMPlexMono-Regular", size: 13))
-    }
-
-    private var coloredCode: Text {
-        let tokens = tokenize(code)
-        var result = Text("")
-        for token in tokens {
-            switch token.kind {
-            case .keyword:
-                result = result + Text(token.text).foregroundColor(LognDark.synKeyword)
-            case .function:
-                result = result + Text(token.text).foregroundColor(LognDark.synFunction)
-            case .number:
-                result = result + Text(token.text).foregroundColor(LognDark.warn)
-            case .placeholder:
-                result = result + Text(token.text)
-                    .foregroundColor(LognDark.accent)
-                    .underline()
-            default:
-                result = result + Text(token.text).foregroundColor(LognDark.textSecondary)
+        HStack(spacing: 0) {
+            ForEach(Array(tokenize(code).enumerated()), id: \.offset) { _, token in
+                switch token.kind {
+                case .keyword:
+                    Text(token.text).foregroundColor(LognDark.synKeyword)
+                case .function:
+                    Text(token.text).foregroundColor(LognDark.synFunction)
+                case .number:
+                    Text(token.text).foregroundColor(LognDark.warn)
+                case .placeholder:
+                    // DS: dashed box for placeholder
+                    Text("____")
+                        .foregroundColor(.clear)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 2)
+                                .stroke(LognDark.accent, style: StrokeStyle(lineWidth: 1, dash: [3]))
+                        )
+                default:
+                    // Fix spaces rendering correctly in HStack by preserving them
+                    Text(token.text).foregroundColor(LognDark.textSecondary)
+                }
             }
         }
-        return result
+        .font(.custom("IBMPlexMono-Regular", size: 13))
     }
 
     private enum TokenKind {

@@ -15,6 +15,12 @@ struct MatchView: View {
         core.viewModel.matchView
     }
     
+    private var formattedTime: String {
+        let m = mv.questionSeconds / 60
+        let s = mv.questionSeconds % 60
+        return String(format: "%02d:%02d", m, s)
+    }
+    
     var body: some View {
         ZStack {
             LognDark.canvas.ignoresSafeArea()
@@ -24,21 +30,50 @@ struct MatchView: View {
                 MatchReportView(onDismiss: { dismiss() })
             } else {
                 VStack(spacing: 0) {
-                    // Header de Partida Fixo
-                    MatchHeader(
-                        sessionLabel: "ARENA • PROBLEM \(mv.currentLetter)",
-                        remainingSeconds: Int(mv.questionSeconds),
-                        isFrozen: mv.isFrozen,
-                        lives: Int(mv.lives),
-                        balloonStates: mv.balloonStates.map { ($0.letter.first ?? "?", $0.isAccepted) }
+                    // Header de Partida Fixo (DS Simples)
+                    HStack {
+                        HStack(spacing: 8) {
+                            BalloonShape(
+                                color: BalloonColor.forLetter(mv.currentLetter.first ?? "A"),
+                                state: .filled,
+                                bodySize: 18,
+                                showString: true,
+                                showHighlight: true
+                            )
+                            .offset(y: 4) // Ajuste para a cordinha não empurrar demais
+                            
+                            Text("PROBLEM \(mv.currentLetter)")
+                                .font(LognFont.label)
+                                .foregroundColor(LognDark.textSecondary)
+                        }
+                        
+                        Spacer()
+                        
+                        if mv.currentTemplateType == "SPOT_THE_BUG" {
+                            Text(formattedTime)
+                                .font(.custom("IBMPlexMono-Medium", size: 14))
+                                .foregroundColor(LognDark.warn)
+                                .monospacedDigit()
+                        } else {
+                            LifeBar(lives: Int(mv.lives))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    .background(LognDark.canvas)
+                    .overlay(
+                        Rectangle()
+                            .frame(height: 1)
+                            .foregroundColor(LognDark.line),
+                        alignment: .bottom
                     )
                     
                     ScrollView {
                         VStack(alignment: .leading, spacing: Space.lg) {
                             // Título da questão
                             Text(mv.currentTitle)
-                                .font(LognFont.headlineMedium)
-                                .foregroundColor(LognDark.textPrimary)
+                                .font(.custom("IBMPlexSans-SemiBold", size: 18))
+                                .foregroundColor(.white)
                                 .padding(.top, Space.lg)
                             
                             // Enunciado

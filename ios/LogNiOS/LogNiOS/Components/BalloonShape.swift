@@ -60,7 +60,8 @@ struct BalloonShape: View {
             case .active:
                 context.fill(bodyPath, with: .color(LognDark.accent))
             case .outline:
-                context.stroke(bodyPath, with: .color(LognDark.lineStrong.opacity(0.55)), lineWidth: 4 * s)
+                // DS: br: t.line2 (we map line2 to lineStrong or line), op: 0.55 is applied on the container
+                context.stroke(bodyPath, with: .color(LognDark.lineStrong), lineWidth: 4 * s)
             case .locked:
                 context.stroke(bodyPath, with: .color(LognDark.lineDim), style: StrokeStyle(lineWidth: 3 * s, dash: [5 * s, 4 * s]))
             }
@@ -90,7 +91,7 @@ struct BalloonShape: View {
             case .active:
                 context.fill(knotPath, with: .color(LognDark.accent))
             case .outline:
-                context.stroke(knotPath, with: .color(LognDark.lineStrong.opacity(0.55)), lineWidth: 2 * s)
+                context.stroke(knotPath, with: .color(LognDark.lineStrong), lineWidth: 2 * s)
             case .locked:
                 context.stroke(knotPath, with: .color(LognDark.lineDim), style: StrokeStyle(lineWidth: 2 * s, dash: [5 * s, 4 * s]))
             }
@@ -106,7 +107,7 @@ struct BalloonShape: View {
                     switch state {
                     case .filled: return color
                     case .active: return LognDark.accent
-                    case .outline: return LognDark.lineStrong.opacity(0.55)
+                    case .outline: return LognDark.lineStrong
                     case .locked: return LognDark.lineDim
                     }
                 }()

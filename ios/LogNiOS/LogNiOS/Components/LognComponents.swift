@@ -249,7 +249,7 @@ struct MatchHeader: View {
                             showString: true,
                             showHighlight: false
                         )
-                        .opacity(isAccepted ? 1.0 : 0.4)
+                        .opacity(isAccepted ? 1.0 : 0.55)
                         
                         Text(String(letter))
                             .font(.custom("IBMPlexMono-SemiBold", size: 8))
