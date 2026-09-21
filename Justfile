@@ -29,6 +29,14 @@ test-backend:
 test-core:
 	cd shared_core && cargo test
 
+# --- Ambientes e Shells ---
+
+# Sincroniza as chaves do .env raiz para o formato consumível das shells nativas
+sync-env:
+	@echo "// Generated auto-magically from .env by Justfile" > ios/LogNiOS/Local.xcconfig
+	@sed -e 's/#.*//g' -e '/^$$/d' .env >> ios/LogNiOS/Local.xcconfig
+	@echo "Local.xcconfig synced from .env!"
+
 # --- iOS (Swift) ---
 
 # Gera a ponte FFI em Swift (Facet + Bincode) e joga na pasta do iOS
@@ -36,7 +44,7 @@ codegen:
 	cd shared_core && cargo run --bin codegen --features codegen -- --language swift --output-dir ../ios/SharedCore
 
 # Gera o projeto Xcode (.xcodeproj) usando o XcodeGen
-xcode: codegen
+xcode: sync-env codegen
 	cd ios/LogNiOS && xcodegen generate
 
 # Abre o projeto no Xcode

@@ -37,6 +37,7 @@ targets:
         UILaunchScreen: {}
         LogNApiBaseURL: ${API_BASE_URL}
         LogNTelemetryKey: ${TELEMETRY_KEY}
+        LogNPostHogHost: ${POSTHOG_HOST}
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - logn
