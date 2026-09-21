@@ -20,7 +20,32 @@ struct SkillTreeView: View {
                     EmptyView()
                 }
                 
-                ScrollView {
+                VStack(spacing: 0) {
+                    // Top Header
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("LogN App")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(LognDark.textPrimary)
+                            Text("7 balões no ar · 1200 XP")
+                                .font(.system(size: 14))
+                                .foregroundColor(LognDark.textSecondary)
+                        }
+                        Spacer()
+                        Circle()
+                            .fill(LognDark.surface)
+                            .frame(width: 40, height: 40)
+                            .overlay(
+                                Image(systemName: "person.crop.circle")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(LognDark.textSecondary)
+                            )
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    .padding(.bottom, 10)
+                    
+                    ScrollView {
                 ZStack {
                     // Desenhar conexões primeiro (Arestas)
                     Canvas { context, size in
@@ -42,7 +67,9 @@ struct SkillTreeView: View {
                                     
                                     var path = Path()
                                     path.move(to: startPoint)
-                                    path.addLine(to: endPoint)
+                                    let cp1 = CGPoint(x: startPoint.x, y: startPoint.y + (rowHeight / 2))
+                                    let cp2 = CGPoint(x: endPoint.x, y: endPoint.y - (rowHeight / 2))
+                                    path.addCurve(to: endPoint, control1: cp1, control2: cp2)
                                     
                                     // Cor da aresta baseada no status
                                     // Aresta Percorrida: ambos completed
@@ -83,6 +110,19 @@ struct SkillTreeView: View {
                 // Altura total baseada na maior linha
                 .frame(height: CGFloat((nodes.map { Int($0.row) }.max() ?? 0) + 1) * rowHeight + 100)
                 }
+                    
+                    // Footer Legend
+                    HStack {
+                        Spacer()
+                        Text("CORDINHA TRACEJADA = ARESTA FECHADA")
+                            .font(.custom("IBMPlexMono-Regular", size: 10))
+                            .tracking(0.14 * 10)
+                            .foregroundColor(LognDark.textDim)
+                        Spacer()
+                    }
+                    .padding(.vertical, 12)
+                    .background(LognDark.canvas)
+                }
                 .sheet(item: $selectedNode) { node in
                     NodeSheetView(node: node, onStartMatch: {
                         selectedNode = node
@@ -122,14 +162,47 @@ struct SkillNodeView: View {
                     }
                 }
             
-            // Texto do Nó
-            Text(node.name)
-                .font(LognFont.label)
-                .foregroundColor(node.status == .locked ? LognDark.textDim : LognDark.textPrimary)
-                .lineLimit(1)
-                .frame(width: 80)
+            // Texto do Nó -> NodeTag
+            VStack(spacing: 4) {
+                Text(node.name)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(node.status == .locked ? LognDark.textDim : LognDark.textPrimary)
+                    .lineLimit(1)
+                
+                if node.status == .active {
+                    Text("INFLANDO · 0/5")
+                        .font(.custom("IBMPlexMono-Regular", size: 10))
+                        .foregroundColor(LognDark.accent)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(LognDark.accent, lineWidth: 1)
+                        )
+                }
+            }
+            .frame(width: 120)
         }
         .opacity(node.status == .locked ? 0.6 : 1.0)
+        .overlay(
+            Group {
+                if node.prerequisites.count >= 2 {
+                    Circle()
+                        .fill(LognDark.canvas)
+                        .frame(width: 22, height: 22)
+                        .overlay(
+                            Circle()
+                                .stroke(LognDark.line, lineWidth: 1)
+                        )
+                        .overlay(
+                            Text("\(node.prerequisites.count)")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(LognDark.textSecondary)
+                        )
+                        .offset(x: 28, y: -20)
+                }
+            }
+        )
     }
     
         
