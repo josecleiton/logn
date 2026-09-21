@@ -86,7 +86,20 @@ struct ContentView: View {
                                         onSubmit: { line in
                                             let payload = "{\"selected_line\": \(line)}"
                                             let timestamp = Int64(Date().timeIntervalSince1970)
-                                            core.dispatch(event: .registerAction(actionId: UUID().uuidString, actionType: "SPOT_THE_BUG", payloadJson: payload, timestamp: timestamp))
+                                            core.dispatch(event: .submitChallengeAnswer(actionId: UUID().uuidString, challengeId: challenge.id, answerJson: payload, timestamp: timestamp))
+                                        }
+                                    )) {
+                                        ChallengeRow(challenge: challenge)
+                                    }
+                                } else if challenge.templateType == "FILL_IN_THE_BLANK" {
+                                    NavigationLink(destination: FillInTheBlankView(
+                                        title: challenge.payload.content.title,
+                                        codeLines: challenge.payload.content.codeLines,
+                                        balloonColor: Balloon.of(challenge.payload.content.title.first ?? "A", isLight: false),
+                                        onSubmit: { answer in
+                                            let payload = "{\"answer_string\": \"\(answer)\"}"
+                                            let timestamp = Int64(Date().timeIntervalSince1970)
+                                            core.dispatch(event: .submitChallengeAnswer(actionId: UUID().uuidString, challengeId: challenge.id, answerJson: payload, timestamp: timestamp))
                                         }
                                     )) {
                                         ChallengeRow(challenge: challenge)

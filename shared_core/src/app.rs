@@ -21,6 +21,11 @@ pub enum Event {
     },
     SyncNow,
     SyncCompleted(HttpResult),
+    SubmitChallengeAnswer { action_id: String, 
+        challenge_id: String, 
+        answer_json: String, 
+        timestamp: i64, 
+    },
 }
 
 #[derive(Default, Clone)]
@@ -67,6 +72,55 @@ impl App for LogNApp {
                 render::render()
             }
             Event::Pong => Command::done(),
+            Event::SubmitChallengeAnswer { action_id, challenge_id, answer_json, timestamp } => {
+                let challenge = model.challenges.iter().find(|c| c.id == challenge_id);
+                if let Some(ch) = challenge {
+                    let is_correct = if ch.template_type == "SPOT_THE_BUG" {
+                        if let Some(ref correct_line) = ch.payload.validation.correct_line {
+                            answer_json.contains(&format!("\"selected_line\": {}", correct_line)) ||
+                            answer_json.contains(&format!("\"selected_line\":{}", correct_line))
+                        } else {
+                            false
+                        }
+                    } else if ch.template_type == "FILL_IN_THE_BLANK" {
+                        if let Some(ref expected) = ch.payload.validation.expected_string {
+                            answer_json.contains(&format!("\"answer_string\": \"{}\"", expected)) ||
+                            answer_json.contains(&format!("\"answer_string\":\"{}\"", expected))
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    };
+
+                    let status_str = if is_correct { "Correct!" } else { "Incorrect!" };
+                    model.status = format!("Challenge {}: {}", challenge_id, status_str);
+
+                    let mut enriched_payload = answer_json.clone();
+                    enriched_payload.pop(); // Remove closing brace
+                    enriched_payload.push_str(&format!(", \"is_correct\": {}}}", is_correct));
+
+                    let previous_hash = if model.last_hash.is_empty() {
+                        "0000000000000000000000000000000000000000000000000000000000000000".to_string()
+                    } else {
+                        model.last_hash.clone()
+                    };
+
+                    let game_event = GameEvent::new(
+                        action_id,
+                        "CHALLENGE_ANSWER".to_string(),
+                        enriched_payload,
+                        timestamp,
+                        previous_hash,
+                    );
+
+                    model.last_hash = game_event.current_hash.clone();
+                    model.pending_events.push(game_event);
+                } else {
+                    model.status = "Challenge not found!".to_string();
+                }
+                render::render()
+            }
             Event::FetchChallenges => {
                 if model.is_fetching {
                     return Command::done();
