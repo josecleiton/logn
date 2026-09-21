@@ -595,6 +595,67 @@ Event::FetchChallenges => {
 mod tests {
     use super::*;
 
+
+    #[test]
+    fn test_otp_flow() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+
+        // 1. Request OTP
+        let mut cmd = app.update(Event::RequestOTP { 
+            email: "test@example.com".into(), 
+            purpose: "verify_email".into() 
+        }, &mut model);
+        
+        assert_eq!(model.otp_email, "test@example.com");
+        assert!(model.is_authenticating);
+        
+        let http_req = cmd.expect_one_effect();
+        if let Effect::Http(r) = http_req {
+            assert_eq!(r.operation.url, "http://localhost:8080/api/v1/auth/request-otp");
+        } else {
+            panic!("Expected Http effect");
+        }
+
+        // 2. OTP Requested Success
+        let resp = crux_http::protocol::HttpResponse {
+            status: 200,
+            body: b"{}".to_vec(),
+            headers: vec![],
+        };
+        let _ = app.update(Event::OTPRequested(HttpResult::Ok(resp)), &mut model);
+        assert!(!model.is_authenticating);
+        assert_eq!(model.status, "Code sent! Check your e-mail.");
+
+        // 3. Verify OTP
+        let mut cmd = app.update(Event::VerifyOTP { 
+            email: "test@example.com".into(), 
+            code: "123456".into(), 
+            purpose: "verify_email".into() 
+        }, &mut model);
+        
+        assert!(model.is_authenticating);
+        
+        let http_req = cmd.expect_one_effect();
+        if let Effect::Http(r) = http_req {
+            assert_eq!(r.operation.url, "http://localhost:8080/api/v1/auth/verify-otp");
+            assert!(String::from_utf8_lossy(&r.operation.body).contains("123456"));
+        } else {
+            panic!("Expected Http effect");
+        }
+
+        // 4. OTP Verified Success
+        let resp = crux_http::protocol::HttpResponse {
+            status: 200,
+            body: b"{}".to_vec(),
+            headers: vec![],
+        };
+        let _ = app.update(Event::OTPVerified(HttpResult::Ok(resp)), &mut model);
+        assert!(!model.is_authenticating);
+        assert!(model.otp_verified);
+        assert_eq!(model.status, "E-mail verified!");
+    }
+
     #[test]
     fn test_login_flow() {
         let app = LogNApp::default();
