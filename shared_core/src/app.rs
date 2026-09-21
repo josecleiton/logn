@@ -87,3 +87,37 @@ impl App for LogNApp {
         }
     }
 }
+
+#[cfg(test)]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_register_action_chaining() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+
+        let _cmd1 = app.update(Event::RegisterAction {
+            action_id: "evt1".to_string(),
+            action_type: "SOLVE".to_string(),
+            payload_json: "{}".to_string(),
+            timestamp: 1600,
+        }, &mut model);
+
+        assert_eq!(model.pending_events.len(), 1);
+        let first_hash = model.last_hash.clone();
+        assert!(!first_hash.is_empty());
+
+        let _cmd2 = app.update(Event::RegisterAction {
+            action_id: "evt2".to_string(),
+            action_type: "SKIP".to_string(),
+            payload_json: "{}".to_string(),
+            timestamp: 1605,
+        }, &mut model);
+
+        assert_eq!(model.pending_events.len(), 2);
+        assert_eq!(model.pending_events[1].previous_hash, first_hash);
+        assert_ne!(model.last_hash, first_hash);
+    }
+}

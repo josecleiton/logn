@@ -1,0 +1,11 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: logn
+      POSTGRES_PASSWORD: lognpassword
+      POSTGRES_DB: logndb
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./backend/schema/init.sql:/docker-entrypoint-initdb.d/init.sql

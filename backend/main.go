@@ -1,14 +1,21 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/josecleiton/logn/backend/internal/domain"
 )
 
-func pingHandler(w http.ResponseWriter, r *http.Request) {
+type Server struct {
+	repo *domain.Repository
+}
+
+func (s *Server) pingHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"status":  "ok",
@@ -16,7 +23,7 @@ func pingHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func syncHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -28,8 +35,13 @@ func syncHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Mockando o hash do servidor por enquanto
-	serverLastHash := "0000000000000000000000000000000000000000000000000000000000000000"
+	ctx := context.Background()
+
+	serverLastHash, err := s.repo.GetUserLastHash(ctx, payload.UserID)
+	if err != nil {
+		http.Error(w, "Failed to get user state: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	valid, err := domain.ValidateSync(payload, serverLastHash)
 	if err != nil {
@@ -53,18 +65,41 @@ func syncHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Insere no banco os eventos e atualiza a hash
+	if len(payload.Events) > 0 {
+		newTop := payload.Events[len(payload.Events)-1].CurrentHash
+		if err := s.repo.InsertSyncEvents(ctx, payload, newTop); err != nil {
+			http.Error(w, "Failed to save events: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":         "success",
 		"events_applied": len(payload.Events),
-		"new_top":        payload.Events[len(payload.Events)-1].CurrentHash,
+		"new_top":        serverLastHash, // será atualizado na próxima linha caso tenha eventos
 	})
 }
 
 func main() {
+	dbUrl := os.Getenv("DATABASE_URL")
+	if dbUrl == "" {
+		dbUrl = "postgres://logn:lognpassword@localhost:5432/logndb?sslmode=disable"
+	}
+
+	conn, err := pgx.Connect(context.Background(), dbUrl)
+	if err != nil {
+		log.Fatalf("Unable to connect to database: %v\n", err)
+	}
+	defer conn.Close(context.Background())
+
+	repo := domain.NewRepository(conn)
+	server := &Server{repo: repo}
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ping", pingHandler)
-	mux.HandleFunc("POST /api/v1/sync", syncHandler)
+	mux.HandleFunc("GET /ping", server.pingHandler)
+	mux.HandleFunc("POST /api/v1/sync", server.syncHandler)
 
 	log.Println("Server starting on :8080...")
 	if err := http.ListenAndServe(":8080", mux); err != nil {
