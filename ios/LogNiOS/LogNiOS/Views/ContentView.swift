@@ -5,6 +5,7 @@ import App
 struct ContentView: View {
     @EnvironmentObject var core: CoreWrapper
     @State private var selectedTab = 0
+    @AppStorage("isDarkMode") private var isDarkMode = true
     
     init() {
         // Setup TabBar Appearance for LogN Dark mode
@@ -65,7 +66,7 @@ struct ContentView: View {
             .tag(2)
         }
         .accentColor(LognDark.accent)
-        .colorScheme(.dark)
+        .preferredColorScheme(isDarkMode ? .dark : .light)
     }
 }
 

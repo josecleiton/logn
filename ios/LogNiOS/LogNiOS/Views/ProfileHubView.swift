@@ -6,6 +6,7 @@ struct ProfileHubView: View {
     @EnvironmentObject var core: CoreWrapper
     @Environment(\.dismiss) var dismiss
     @State private var showLogoutWarning = false
+    @State private var showSettings = false
     
     var body: some View {
         ZStack {
@@ -25,7 +26,7 @@ struct ProfileHubView: View {
                         .foregroundColor(LognDark.textMuted)
                     Spacer()
                     Button(action: {
-                        // Navegar para Settings (Gerenciar Conta)
+                        showSettings = true
                     }) {
                         Image(systemName: "gearshape.fill")
                             .font(.system(size: 20))
@@ -170,6 +171,9 @@ struct ProfileHubView: View {
                 },
                 secondaryButton: .cancel(Text("Cancelar"))
             )
+        }
+        .fullScreenCover(isPresented: $showSettings) {
+            SettingsView().environmentObject(core)
         }
     }
 }
