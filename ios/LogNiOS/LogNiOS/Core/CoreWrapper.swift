@@ -1,4 +1,6 @@
 import Foundation
+import Security
+
 import LogNCoreFFI
 import App
 import PostHog
