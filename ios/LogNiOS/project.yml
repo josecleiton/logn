@@ -28,3 +28,8 @@ targets:
       path: LogNiOS/Info.plist
       properties:
         UILaunchScreen: {}
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - logn
+            CFBundleURLName: sh.logn.app
+
