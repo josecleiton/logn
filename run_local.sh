@@ -2,7 +2,7 @@
 set -e
 
 echo "Starting Docker containers (PostgreSQL and Mailpit)..."
-docker-compose up -d
+docker compose up -d
 
 echo "Waiting for PostgreSQL to be ready..."
 sleep 3
