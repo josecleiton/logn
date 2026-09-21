@@ -122,11 +122,23 @@ pub struct SkillNode {
 pub enum TelemetryOperation {
     Identify { user_id: String },
     Track { event: String, properties: std::collections::HashMap<String, String> },
+
+}
+
+impl crux_core::capability::Operation for TelemetryOperation {
+    type Output = ();
+}
+
+
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[facet(fg::namespace = "LogN")]
+#[repr(C)]
+pub enum MonitoringOperation {
     LogError { message: String, details: String },
     StartSpan { name: String },
     EndSpan { name: String },
 }
 
-impl crux_core::capability::Operation for TelemetryOperation {
+impl crux_core::capability::Operation for MonitoringOperation {
     type Output = ();
 }

@@ -57,10 +57,32 @@ public class CoreWrapper: ObservableObject {
                 handleSecureStore(id: request.id, operation: operation)
             case .telemetry(let operation):
                 handleTelemetry(operation: operation)
+            case .monitoring(let operation):
+                handleMonitoring(operation: operation)
             }
         }
     }
     
+    private func handleMonitoring(operation: MonitoringOperation) {
+        switch operation {
+        case .logError(let message, let details):
+            // TODO: Replace with Sentry/Datadog integration
+            print("MONITORING ERROR: \(message) - \(details)")
+            PostHogSDK.shared.capture("error", properties: [
+                "message": message,
+                "details": details
+            ])
+        case .startSpan(let name):
+            // TODO: Replace with Sentry Span Start
+            print("MONITORING SPAN START: \(name)")
+            PostHogSDK.shared.capture("span_started", properties: ["span_name": name])
+        case .endSpan(let name):
+            // TODO: Replace with Sentry Span End
+            print("MONITORING SPAN END: \(name)")
+            PostHogSDK.shared.capture("span_ended", properties: ["span_name": name])
+        }
+    }
+
     private func handleSecureStore(id: UInt32, operation: LogN.KeyValueOperation) {
         let result: LogN.KeyValueResult
         
@@ -196,16 +218,7 @@ public class CoreWrapper: ObservableObject {
             PostHogSDK.shared.identify(userId)
         case .track(let event, let properties):
             PostHogSDK.shared.capture(event, properties: properties)
-        case .logError(let message, let details):
-            PostHogSDK.shared.capture("error", properties: [
-                "message": message,
-                "details": details
-            ])
-        case .startSpan(let name):
-            // Fallback since PostHog doesn't have native spans
-            PostHogSDK.shared.capture("span_started", properties: ["span_name": name])
-        case .endSpan(let name):
-            PostHogSDK.shared.capture("span_ended", properties: ["span_name": name])
+
 
         }
     }

@@ -4,7 +4,7 @@ use facet::Facet;
 use facet_generate_attrs as fg;
 use crux_http::protocol::{HttpRequest, HttpResult};
 use crux_kv::{KeyValueOperation, KeyValueResult, KeyValueResponse};
-use crate::domain::{GameEvent, SyncPayload, Challenge, TelemetryOperation};
+use crate::domain::{GameEvent, SyncPayload, Challenge, TelemetryOperation, MonitoringOperation};
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
 #[repr(C)]
@@ -98,6 +98,7 @@ pub enum Effect {
     Http(HttpRequest),
     SecureStore(KeyValueOperation),
     Telemetry(crate::domain::TelemetryOperation),
+    Monitoring(crate::domain::MonitoringOperation),
 }
 
 #[derive(Default)]
@@ -300,7 +301,7 @@ impl App for LogNApp {
                     }
                     HttpResult::Err(e) => {
                         model.status = "Network Error".to_string();
-                        Command::request_from_shell(crate::domain::TelemetryOperation::LogError { 
+                        Command::request_from_shell(crate::domain::MonitoringOperation::LogError { 
                             message: "FetchNodes Failed".to_string(), 
                             details: format!("{:?}", e) 
                         }).then_send(|_| Event::TelemetrySent)
