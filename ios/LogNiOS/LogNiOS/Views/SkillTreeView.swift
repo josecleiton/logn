@@ -239,6 +239,6 @@ struct SkillNodeView: View {
     }
 }
 
-extension LogN.SkillNode: Identifiable {
+extension LogN.SkillNode: @retroactive Identifiable {
     // A propriedade `id` já existe na struct gerada.
 }

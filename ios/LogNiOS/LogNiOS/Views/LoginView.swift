@@ -4,6 +4,12 @@ import LogN
 struct LoginView: View {
     @EnvironmentObject var core: CoreWrapper
     
+    private let ssoData: [SSOProvider] = [
+        SSOProvider(id: "Apple", title: "Continuar com a Apple", isApple: true),
+        SSOProvider(id: "GoogleIcon", title: "Continuar com o Google", isApple: false),
+        SSOProvider(id: "GitHubIcon", title: "Continuar com o GitHub", isApple: false)
+    ]
+    
     @State private var email = ""
     @State private var password = ""
     
@@ -73,41 +79,57 @@ struct LoginView: View {
                 
                 // Content
                 VStack(spacing: Space.sm) {
-                    // SSO Placeholders (Apple, Google, GitHub)
-                    let ssoData = [
-                        ("Apple", "Continuar com a Apple", true),
-                        ("GoogleIcon", "Continuar com o Google", false),
-                        ("GitHubIcon", "Continuar com o GitHub", false)
-                    ]
-                    
-                    ForEach(ssoData, id: \.1) { item in
-                        Button(action: {}) {
-                            HStack(spacing: 12) {
-                                if item.2 {
-                                    Image(systemName: "applelogo")
-                                        .font(.system(size: 20))
-                                        .foregroundColor(.black)
-                                } else {
-                                    Image(item.0)
-                                        .renderingMode(.alwaysOriginal)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 20, height: 20)
-                                }
-                                
-                                Text(item.1)
-                                    .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(item.2 ? .black : LognDark.textPrimary)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 52)
-                            .background(item.2 ? Color.white : LognDark.surface)
-                            .cornerRadius(Radius.sm)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Radius.sm)
-                                    .stroke(item.2 ? Color.clear : LognDark.line, lineWidth: 1)
-                            )
+                    // SSO (Apple, Google, GitHub)
+                    Button(action: {}) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "applelogo")
+                                .font(.system(size: 20))
+                                .foregroundColor(.black)
+                            Text("Continuar com a Apple")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(.black)
                         }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(Color.white)
+                        .cornerRadius(Radius.sm)
+                        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(Color.clear, lineWidth: 1))
+                    }
+                    
+                    Button(action: {}) {
+                        HStack(spacing: 12) {
+                            Image("GoogleIcon")
+                                .renderingMode(.original)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 20, height: 20)
+                            Text("Continuar com o Google")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(LognDark.textPrimary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(LognDark.surface)
+                        .cornerRadius(Radius.sm)
+                        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+                    }
+                    
+                    Button(action: {}) {
+                        HStack(spacing: 12) {
+                            Image("GitHubIcon")
+                                .renderingMode(.original)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 20, height: 20)
+                            Text("Continuar com o GitHub")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundColor(LognDark.textPrimary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(LognDark.surface)
+                        .cornerRadius(Radius.sm)
+                        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
                     }
                     
                     // Divider
@@ -234,4 +256,10 @@ struct LoginView: View {
         }
         .navigationBarHidden(true)
     }
+}
+
+struct SSOProvider: Identifiable {
+    let id: String
+    let title: String
+    let isApple: Bool
 }
