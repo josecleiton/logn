@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"log"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"os"
 	"time"
-	"logn/internal/domain"
+	"github.com/josecleiton/logn/backend/internal/domain"
 )
 
 func main() {
@@ -20,31 +19,31 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	pool, err := pgxpool.New(ctx, dbUrl)
+	conn, err := pgx.Connect(ctx, dbUrl)
 	if err != nil {
 		log.Fatalf("Failed to connect to db: %v", err)
 	}
-	defer pool.Close()
+	defer conn.Close(ctx)
 
-	repo := domain.NewRepository(pool)
+	repo := domain.NewRepository(conn)
 	userID := "00000000-0000-0000-0000-000000000001" // Mock user ID created by init.sql
 
 	// Check initial stats
 	var globalXP, bugsFound, dryRuns int
-	err = pool.QueryRow(ctx, "SELECT global_xp, bugs_found, dry_runs_completed FROM users WHERE id = $1", userID).Scan(&globalXP, &bugsFound, &dryRuns)
+	err = conn.QueryRow(ctx, "SELECT global_xp, bugs_found, dry_runs_completed FROM users WHERE id = $1", userID).Scan(&globalXP, &bugsFound, &dryRuns)
 	if err != nil {
 		log.Fatalf("Failed to read user stats: %v", err)
 	}
 	fmt.Printf("Initial Stats - XP: %d, Bugs: %d, DryRuns: %d\n", globalXP, bugsFound, dryRuns)
 
 	// Simulate sync MATCH_ANSWER
-	tx, err := pool.Begin(ctx)
+	tx, err := conn.Begin(ctx)
 	if err != nil {
 		log.Fatalf("Failed to start tx: %v", err)
 	}
 
 	event1 := domain.GameEvent{
-		ActionID:    "evt_1",
+		ID:          "evt_1",
 		EventType:   "MATCH_ANSWER",
 		PayloadJSON: `{"is_correct": true, "template_type": "SPOT_THE_BUG"}`,
 	}
@@ -53,7 +52,7 @@ func main() {
 	}
 
 	event2 := domain.GameEvent{
-		ActionID:    "evt_2",
+		ID:          "evt_2",
 		EventType:   "MATCH_ANSWER",
 		PayloadJSON: `{"is_correct": true, "template_type": "FILL_IN_THE_BLANK"}`,
 	}
@@ -62,7 +61,7 @@ func main() {
 	}
 
 	event3 := domain.GameEvent{
-		ActionID:    "evt_3",
+		ID:          "evt_3",
 		EventType:   "MATCH_END",
 		PayloadJSON: `{"solved": 2}`,
 	}
@@ -75,7 +74,7 @@ func main() {
 	}
 
 	// Check final stats
-	err = pool.QueryRow(ctx, "SELECT global_xp, bugs_found, dry_runs_completed FROM users WHERE id = $1", userID).Scan(&globalXP, &bugsFound, &dryRuns)
+	err = conn.QueryRow(ctx, "SELECT global_xp, bugs_found, dry_runs_completed FROM users WHERE id = $1", userID).Scan(&globalXP, &bugsFound, &dryRuns)
 	if err != nil {
 		log.Fatalf("Failed to read user stats after sync: %v", err)
 	}
