@@ -8,6 +8,8 @@ struct MatchView: View {
     let nodeId: String
     @Environment(\.dismiss) var dismiss
     
+    @State private var shakeTrigger: CGFloat = 0
+    
     // We observe matchView from the ViewModel
     var mv: LogN.MatchViewModel {
         core.viewModel.matchView

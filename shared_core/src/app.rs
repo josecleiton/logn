@@ -217,6 +217,9 @@ impl App for LogNApp {
 
             Event::ContinueAsGuest => {
                 model.is_guest = true;
+                model.nodes = crate::mock_data::get_mock_nodes();
+                model.challenges = crate::mock_data::get_mock_challenges();
+                model.status = "Modo Visitante: Dados locais carregados".to_string();
                 render::render()
             }
 
@@ -325,7 +328,7 @@ impl App for LogNApp {
                             } else {
                                 model.status = "Failed to parse nodes".to_string();
                             }
-                            render::render()
+                            return self.update(Event::FetchChallenges, model);
                         } else if response.status == 401 {
                             model.pending_retry_event = Some(Event::FetchNodes);
                             Command::request_from_shell(KeyValueOperation::Get { key: "refresh_token".into() }).then_send(Event::TokenRead)
@@ -337,6 +340,7 @@ impl App for LogNApp {
                     HttpResult::Err(_) => {
                         model.status = "Offline Mode: Using Local Mock Data".to_string();
                         model.nodes = crate::mock_data::get_mock_nodes();
+                        model.challenges = crate::mock_data::get_mock_challenges();
                         render::render()
                     }
                 }

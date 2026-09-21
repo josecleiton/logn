@@ -226,18 +226,22 @@ struct MatchHeader: View {
 
             // Fileira de balões A—M
             HStack(spacing: 7) {
-                ForEach(balloonStates, id: \.0) { letter, accepted in
+                let letters: [Character] = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
+                ForEach(letters, id: \.self) { letter in
+                    let isAccepted = balloonStates.contains(where: { $0.0 == letter && $0.1 == true })
                     VStack(spacing: 2) {
                         BalloonShape(
                             color: BalloonColor.forLetter(letter),
-                            state: accepted ? .filled : .outline,
+                            state: isAccepted ? .filled : .outline,
                             bodySize: 11,
                             showString: false,
                             showHighlight: false
                         )
+                        .opacity(isAccepted ? 1.0 : 0.4)
+                        
                         Text(String(letter))
                             .font(.custom("IBMPlexMono-SemiBold", size: 8))
-                            .foregroundColor(LognDark.textMuted)
+                            .foregroundColor(isAccepted ? BalloonColor.forLetter(letter) : LognDark.textMuted)
                     }
                 }
             }
@@ -252,5 +256,25 @@ struct MatchHeader: View {
                 .foregroundColor(LognDark.line),
             alignment: .bottom
         )
+    }
+}
+import SwiftUI
+
+/// Um modificador que aplica um efeito de shake (tremor lateral) quando o trigger for incrementado.
+struct ShakeEffect: GeometryEffect {
+    var amount: CGFloat = 5
+    var shakesPerUnit = 4
+    var animatableData: CGFloat
+    
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        ProjectionTransform(CGAffineTransform(translationX:
+            amount * sin(animatableData * .pi * CGFloat(shakesPerUnit)),
+            y: 0))
+    }
+}
+
+extension View {
+    func shake(animatableData: CGFloat) -> some View {
+        self.modifier(ShakeEffect(animatableData: animatableData))
     }
 }
