@@ -123,3 +123,56 @@ func (r *Repository) GetRefreshToken(ctx context.Context, tokenHash string) (*Re
 	}
 	return &t, nil
 }
+
+type SkillNode struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	OrderIndex  int    `json:"order_index"`
+	RequiredXP  int    `json:"required_xp"`
+}
+
+type UserProgress struct {
+	NodeID      string     `json:"node_id"`
+	CurrentXP   int        `json:"current_xp"`
+	Unlocked    bool       `json:"unlocked"`
+	CompletedAt *time.Time `json:"completed_at,omitempty"`
+}
+
+func (r *Repository) GetSkillNodes(ctx context.Context) ([]SkillNode, error) {
+	query := `SELECT id, name, description, order_index, required_xp FROM skill_nodes ORDER BY order_index ASC`
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var nodes []SkillNode
+	for rows.Next() {
+		var n SkillNode
+		if err := rows.Scan(&n.ID, &n.Name, &n.Description, &n.OrderIndex, &n.RequiredXP); err != nil {
+			return nil, err
+		}
+		nodes = append(nodes, n)
+	}
+	return nodes, nil
+}
+
+func (r *Repository) GetUserProgress(ctx context.Context, userID string) ([]UserProgress, error) {
+	query := `SELECT node_id, current_xp, unlocked, completed_at FROM user_progress WHERE user_id = $1`
+	rows, err := r.db.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var progress []UserProgress
+	for rows.Next() {
+		var p UserProgress
+		if err := rows.Scan(&p.NodeID, &p.CurrentXP, &p.Unlocked, &p.CompletedAt); err != nil {
+			return nil, err
+		}
+		progress = append(progress, p)
+	}
+	return progress, nil
+}
