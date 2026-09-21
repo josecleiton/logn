@@ -19,6 +19,28 @@ struct RegisterView: View {
             LognDark.canvas.ignoresSafeArea()
             
             VStack(spacing: Space.xl) {
+                // Mini Balloons Row
+                HStack(spacing: 7) {
+                    let colors: [Color] = [
+                        Color(hex: "E4572E"), Color(hex: "F5C451"), Color(hex: "3DB2FF"),
+                        Color(hex: "6BCB77"), Color(hex: "C77DFF"), Color(hex: "FF6FB5"),
+                        Color(hex: "4ECDC4"), Color(hex: "F4A261"), Color(hex: "9BC53D"),
+                        Color(hex: "D64550"), Color(hex: "7C8BFF"), Color(hex: "D8DEE4"),
+                        Color(hex: "00B894")
+                    ]
+                    ForEach(0..<13) { i in
+                        BalloonShape(
+                            color: colors[i],
+                            state: i < 5 ? .filled : .outline,
+                            bodySize: 9,
+                            showString: false,
+                            showHighlight: false
+                        )
+                    }
+                }
+                .opacity(0.5)
+                .padding(.top, 14)
+                
                 // Header
                 HStack(alignment: .center, spacing: 12) {
                     BalloonShape(

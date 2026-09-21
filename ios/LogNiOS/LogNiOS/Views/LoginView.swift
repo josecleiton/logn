@@ -12,7 +12,37 @@ struct LoginView: View {
             LognDark.canvas.ignoresSafeArea()
             
             VStack(spacing: 0) {
-                Spacer().frame(height: 60)
+                // Mini Balloons Row
+                HStack(spacing: 7) {
+                    let colors: [Color] = [
+                        Color(hex: "E4572E"), // A
+                        Color(hex: "F5C451"), // B
+                        Color(hex: "3DB2FF"), // C
+                        Color(hex: "6BCB77"), // D
+                        Color(hex: "C77DFF"), // E
+                        Color(hex: "FF6FB5"), // F
+                        Color(hex: "4ECDC4"), // G
+                        Color(hex: "F4A261"), // H
+                        Color(hex: "9BC53D"), // I
+                        Color(hex: "D64550"), // J
+                        Color(hex: "7C8BFF"), // K
+                        Color(hex: "D8DEE4"), // L
+                        Color(hex: "00B894")  // M
+                    ]
+                    ForEach(0..<13) { i in
+                        BalloonShape(
+                            color: colors[i],
+                            state: i < 5 ? .filled : .outline,
+                            bodySize: 9,
+                            showString: false,
+                            showHighlight: false
+                        )
+                    }
+                }
+                .opacity(0.5)
+                .padding(.top, 14)
+                
+                Spacer().frame(height: 35)
                 
                 // Brand Header
                 VStack(spacing: 12) {
