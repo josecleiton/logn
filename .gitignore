@@ -13,3 +13,6 @@
 /ios/DerivedData/
 *.xcworkspace
 xcuserdata/
+
+ios/LogNCoreFFI/*.xcframework
+ios/LogNCoreFFI/*.zip

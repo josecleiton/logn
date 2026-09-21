@@ -1,0 +1,22 @@
+[package]
+name = "shared_core"
+
+[targets.apple]
+enabled = true
+output = "../ios/LogNCoreFFI"
+deployment_target = "16.0"
+include_macos = false
+
+[targets.apple.swift]
+module_name = "LogNCoreFFI"
+tools_version = "5.9"
+error_style = "throwing"
+
+[targets.apple.spm]
+distribution = "local"
+layout = "ffi-only"
+
+[targets.android]
+enabled = false
+[targets.wasm]
+enabled = false
