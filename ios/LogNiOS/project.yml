@@ -2,24 +2,26 @@ name: LogNiOS
 options:
   bundleIdPrefix: com.josecleiton
   deploymentTarget:
-    iOS: "16.0"
-
+    iOS: '16.0'
 packages:
   LogNCoreFFI:
     path: ../LogNCoreFFI
   App:
     path: ../SharedCore/App
-
+  PostHog:
+    url: https://github.com/PostHog/posthog-ios.git
+    from: 3.0.0
 targets:
   LogNiOS:
     type: application
     platform: iOS
-    deploymentTarget: "16.0"
+    deploymentTarget: '16.0'
     sources:
-      - path: LogNiOS
+    - path: LogNiOS
     dependencies:
-      - package: LogNCoreFFI
-      - package: App
+    - package: LogNCoreFFI
+    - package: App
+    - package: PostHog
     info:
       path: LogNiOS/Info.plist
       properties:

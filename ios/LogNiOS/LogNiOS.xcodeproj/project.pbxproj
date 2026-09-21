@@ -8,22 +8,42 @@
 
 /* Begin PBXBuildFile section */
 		03E8A94FF11F486216CC13B1 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D4982DBEFBD646B4F5FD62 /* ContentView.swift */; };
+		0B24F964C6C184D6E7B671B8 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3479CDAF7B4103E414DAC3 /* LoginView.swift */; };
 		0D1298B1A212D2DC271F95DA /* LognDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFC409C250EFC18B48AF0021 /* LognDesignSystem.swift */; };
+		113A7C042597592AB08772A7 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 052D097253B21873566489C9 /* InfoPlist.strings */; };
+		2F7173374C70B98EECB2E04A /* Strings.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF70445FC4588B69074A5843 /* Strings.swift */; };
+		4DEA72E488BD4E013F10A268 /* SpotTheBugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 178E6C5FA5D98E9E9CB943F3 /* SpotTheBugView.swift */; };
 		5B28C2226E5C4917A2F15B4E /* CoreWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C915F676CBB9F04656C255 /* CoreWrapper.swift */; };
 		936B6709633ADF906CB1E02F /* LogNiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80804A0792E45E01C5BE3D0B /* LogNiOSApp.swift */; };
+		B118212843B83D5CB04DFAE9 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */; };
 		B25F010AFF41794BFC439A02 /* LogNCoreFFI in Frameworks */ = {isa = PBXBuildFile; productRef = 13135BDC590A9C01156FE7B3 /* LogNCoreFFI */; };
+		BF1371254EE520E551FC2D6F /* NodeChallengesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB79DA23F81A184D6406E1A /* NodeChallengesView.swift */; };
+		C1C10995476705C547B2E3F3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F486C5E97DFDCE2C80818FB7 /* Assets.xcassets */; };
 		CF0A1EB4CE4E50CC539A134C /* App in Frameworks */ = {isa = PBXBuildFile; productRef = DD2764DB02225A48407F7CA7 /* App */; };
+		EA1F6042A86DDF791B09AB41 /* StringsMappers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D238C31B32D323BF620359D /* StringsMappers.swift */; };
+		FBB822FFB68E1D690E79EB10 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 6CFC8719D13EE3EF51651524 /* PostHog */; };
+		FC356990E98518934B5A17B9 /* FillInTheBlankView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55B3E8E57827B8D99B38AF1A /* FillInTheBlankView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		178E6C5FA5D98E9E9CB943F3 /* SpotTheBugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotTheBugView.swift; sourceTree = "<group>"; };
+		28351D90B42E5417571B1A37 /* pt-BR */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "pt-BR"; path = "pt-BR.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		36CC53FEE4EF414C2FFE69AB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		39639030FF1ABF8B56AB4F26 /* LogNCoreFFI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LogNCoreFFI; path = ../LogNCoreFFI; sourceTree = SOURCE_ROOT; };
+		3C3479CDAF7B4103E414DAC3 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		42D4982DBEFBD646B4F5FD62 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		4CB79DA23F81A184D6406E1A /* NodeChallengesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeChallengesView.swift; sourceTree = "<group>"; };
+		55B3E8E57827B8D99B38AF1A /* FillInTheBlankView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FillInTheBlankView.swift; sourceTree = "<group>"; };
 		72C915F676CBB9F04656C255 /* CoreWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreWrapper.swift; sourceTree = "<group>"; };
 		80804A0792E45E01C5BE3D0B /* LogNiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogNiOSApp.swift; sourceTree = "<group>"; };
+		98613207977B12CB7500F98C /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		9D1A761B4BB79672516BF045 /* LogNiOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LogNiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9D238C31B32D323BF620359D /* StringsMappers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringsMappers.swift; sourceTree = "<group>"; };
+		CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		DDFF15C0C673EF7D549B36D0 /* App */ = {isa = PBXFileReference; lastKnownFileType = folder; name = App; path = ../SharedCore/App; sourceTree = SOURCE_ROOT; };
+		DF70445FC4588B69074A5843 /* Strings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Strings.swift; sourceTree = "<group>"; };
 		DFC409C250EFC18B48AF0021 /* LognDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LognDesignSystem.swift; sourceTree = "<group>"; };
+		F486C5E97DFDCE2C80818FB7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -33,12 +53,21 @@
 			files = (
 				B25F010AFF41794BFC439A02 /* LogNCoreFFI in Frameworks */,
 				CF0A1EB4CE4E50CC539A134C /* App in Frameworks */,
+				FBB822FFB68E1D690E79EB10 /* PostHog in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		1562414396442F18EFB11F52 /* InfoPlist */ = {
+			isa = PBXGroup;
+			children = (
+				052D097253B21873566489C9 /* InfoPlist.strings */,
+			);
+			path = InfoPlist;
+			sourceTree = "<group>";
+		};
 		4D5F1268255946B4C54BC27F = {
 			isa = PBXGroup;
 			children = (
@@ -68,6 +97,10 @@
 			isa = PBXGroup;
 			children = (
 				42D4982DBEFBD646B4F5FD62 /* ContentView.swift */,
+				55B3E8E57827B8D99B38AF1A /* FillInTheBlankView.swift */,
+				3C3479CDAF7B4103E414DAC3 /* LoginView.swift */,
+				4CB79DA23F81A184D6406E1A /* NodeChallengesView.swift */,
+				178E6C5FA5D98E9E9CB943F3 /* SpotTheBugView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -75,6 +108,7 @@
 		A941EF7BAA6199B90C91DCCB /* LogNiOS */ = {
 			isa = PBXGroup;
 			children = (
+				F486C5E97DFDCE2C80818FB7 /* Assets.xcassets */,
 				36CC53FEE4EF414C2FFE69AB /* Info.plist */,
 				80804A0792E45E01C5BE3D0B /* LogNiOSApp.swift */,
 				4DA05EDD2970433B4DA72D53 /* Core */,
@@ -96,7 +130,11 @@
 		E4C57CC21C8B47F8AE6859FE /* DesignSystem */ = {
 			isa = PBXGroup;
 			children = (
+				CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */,
 				DFC409C250EFC18B48AF0021 /* LognDesignSystem.swift */,
+				DF70445FC4588B69074A5843 /* Strings.swift */,
+				9D238C31B32D323BF620359D /* StringsMappers.swift */,
+				1562414396442F18EFB11F52 /* InfoPlist */,
 			);
 			path = DesignSystem;
 			sourceTree = "<group>";
@@ -109,6 +147,7 @@
 			buildConfigurationList = 82DC412DD596E39AC07038A4 /* Build configuration list for PBXNativeTarget "LogNiOS" */;
 			buildPhases = (
 				1160493A5B46955E16CC4448 /* Sources */,
+				F1AF6F89DCD2FFD2640B221F /* Resources */,
 				E558A5755FBA2E2E30A5FBC7 /* Frameworks */,
 			);
 			buildRules = (
@@ -119,6 +158,7 @@
 			packageProductDependencies = (
 				13135BDC590A9C01156FE7B3 /* LogNCoreFFI */,
 				DD2764DB02225A48407F7CA7 /* App */,
+				6CFC8719D13EE3EF51651524 /* PostHog */,
 			);
 			productName = LogNiOS;
 			productReference = 9D1A761B4BB79672516BF045 /* LogNiOS.app */;
@@ -141,10 +181,12 @@
 			knownRegions = (
 				Base,
 				en,
+				"pt-BR",
 			);
 			mainGroup = 4D5F1268255946B4C54BC27F;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				82BBFE6DA8C6F0D163CF59EA /* XCRemoteSwiftPackageReference "posthog-ios" */,
 				5F97853FCE9AE8E9167B7203 /* XCLocalSwiftPackageReference "../SharedCore/App" */,
 				2F1A4366EF6C4E77585CB8D4 /* XCLocalSwiftPackageReference "../LogNCoreFFI" */,
 			);
@@ -158,6 +200,19 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		F1AF6F89DCD2FFD2640B221F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C1C10995476705C547B2E3F3 /* Assets.xcassets in Resources */,
+				113A7C042597592AB08772A7 /* InfoPlist.strings in Resources */,
+				B118212843B83D5CB04DFAE9 /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		1160493A5B46955E16CC4448 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -165,12 +220,30 @@
 			files = (
 				03E8A94FF11F486216CC13B1 /* ContentView.swift in Sources */,
 				5B28C2226E5C4917A2F15B4E /* CoreWrapper.swift in Sources */,
+				FC356990E98518934B5A17B9 /* FillInTheBlankView.swift in Sources */,
 				936B6709633ADF906CB1E02F /* LogNiOSApp.swift in Sources */,
+				0B24F964C6C184D6E7B671B8 /* LoginView.swift in Sources */,
 				0D1298B1A212D2DC271F95DA /* LognDesignSystem.swift in Sources */,
+				BF1371254EE520E551FC2D6F /* NodeChallengesView.swift in Sources */,
+				4DEA72E488BD4E013F10A268 /* SpotTheBugView.swift in Sources */,
+				2F7173374C70B98EECB2E04A /* Strings.swift in Sources */,
+				EA1F6042A86DDF791B09AB41 /* StringsMappers.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		052D097253B21873566489C9 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				98613207977B12CB7500F98C /* en */,
+				28351D90B42E5417571B1A37 /* pt-BR */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		2777EF593D58D37536149714 /* Release */ = {
@@ -360,10 +433,26 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		82BBFE6DA8C6F0D163CF59EA /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		13135BDC590A9C01156FE7B3 /* LogNCoreFFI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LogNCoreFFI;
+		};
+		6CFC8719D13EE3EF51651524 /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 82BBFE6DA8C6F0D163CF59EA /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
 		};
 		DD2764DB02225A48407F7CA7 /* App */ = {
 			isa = XCSwiftPackageProductDependency;

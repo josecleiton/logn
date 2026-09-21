@@ -10,6 +10,7 @@ use crate::domain::{GameEvent, SyncPayload, Challenge};
 #[repr(C)]
 #[facet(fg::namespace = "LogN")]
 pub enum Event {
+    TelemetrySent,
     Ping,
     Pong,
     Login { email: String, password_hash: String },
@@ -75,6 +76,7 @@ pub enum Effect {
     Render(RenderOperation),
     Http(HttpRequest),
     SecureStore(KeyValueOperation),
+    Telemetry(crate::domain::TelemetryOperation),
 }
 
 #[derive(Default)]
@@ -105,6 +107,10 @@ impl App for LogNApp {
 
     fn update(&self, event: Self::Event, model: &mut Self::Model) -> Command<Self::Effect, Self::Event> {
         match event {
+
+            Event::TelemetrySent => {
+                render::render()
+            }
             Event::Ping => {
                 model.status = "Pong received!".to_string();
                 render::render()
@@ -170,9 +176,11 @@ impl App for LogNApp {
                 model.is_guest = true;
                 render::render()
             }
+
             Event::TokenStored(_) => {
                 model.is_authenticating = false;
-                render::render()
+                Command::request_from_shell(crate::domain::TelemetryOperation::Identify { user_id: model.user_id.clone() })
+                    .then_send(|_| Event::TelemetrySent)
             }
 
             Event::AttemptRefresh => {
@@ -267,9 +275,12 @@ impl App for LogNApp {
                             render::render()
                         }
                     }
-                    HttpResult::Err(_) => {
+                    HttpResult::Err(e) => {
                         model.status = "Network Error".to_string();
-                        render::render()
+                        Command::request_from_shell(crate::domain::TelemetryOperation::LogError { 
+                            message: "FetchNodes Failed".to_string(), 
+                            details: format!("{:?}", e) 
+                        }).then_send(|_| Event::TelemetrySent)
                     }
                 }
             }
@@ -359,6 +370,15 @@ Event::FetchChallenges => {
 
                     model.last_hash = game_event.current_hash.clone();
                     model.pending_events.push(game_event);
+                    
+                    let mut props = std::collections::HashMap::new();
+                    props.insert("challenge_id".to_string(), challenge_id.clone());
+                    props.insert("is_correct".to_string(), is_correct.to_string());
+                    
+                    return Command::request_from_shell(crate::domain::TelemetryOperation::Track { 
+                        event: "Challenge Answered".to_string(), 
+                        properties: props 
+                    }).then_send(|_| Event::TelemetrySent);
                 } else {
                     model.status = "Challenge not found!".to_string();
                 }

@@ -1,6 +1,7 @@
 import Foundation
 import LogNCoreFFI
 import App
+import PostHog
 
 public class CoreWrapper: ObservableObject {
     private let coreFFI = CoreFFI()
@@ -47,6 +48,8 @@ public class CoreWrapper: ObservableObject {
                 handleHttp(id: request.id, request: httpRequest)
             case .secureStore(let operation):
                 handleSecureStore(id: request.id, operation: operation)
+            case .telemetry(let operation):
+                handleTelemetry(operation: operation)
             }
         }
     }
@@ -162,3 +165,17 @@ public class CoreWrapper: ObservableObject {
         }
     }
 }
+    
+    private func handleTelemetry(operation: TelemetryOperation) {
+        switch operation {
+        case .identify(let userId):
+            PostHogSDK.shared.identify(userId)
+        case .track(let event, let properties):
+            PostHogSDK.shared.capture(event, properties: properties)
+        case .logError(let message, let details):
+            PostHogSDK.shared.capture("error", properties: [
+                "message": message,
+                "details": details
+            ])
+        }
+    }
