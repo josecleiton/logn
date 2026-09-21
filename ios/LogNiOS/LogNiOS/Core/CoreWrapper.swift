@@ -66,18 +66,15 @@ public class CoreWrapper: ObservableObject {
     private func handleMonitoring(operation: MonitoringOperation) {
         switch operation {
         case .logError(let message, let details):
-            // TODO: Replace with Sentry/Datadog integration
             print("MONITORING ERROR: \(message) - \(details)")
             PostHogSDK.shared.capture("error", properties: [
                 "message": message,
                 "details": details
             ])
         case .startSpan(let name):
-            // TODO: Replace with Sentry Span Start
             print("MONITORING SPAN START: \(name)")
             PostHogSDK.shared.capture("span_started", properties: ["span_name": name])
         case .endSpan(let name):
-            // TODO: Replace with Sentry Span End
             print("MONITORING SPAN END: \(name)")
             PostHogSDK.shared.capture("span_ended", properties: ["span_name": name])
         }
