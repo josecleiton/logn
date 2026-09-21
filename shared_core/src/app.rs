@@ -334,7 +334,7 @@ impl App for LogNApp {
                             render::render()
                         }
                     }
-                    HttpResult::Err(e) => {
+                    HttpResult::Err(_) => {
                         model.status = "Offline Mode: Using Local Mock Data".to_string();
                         model.nodes = crate::mock_data::get_mock_nodes();
                         render::render()
@@ -832,7 +832,7 @@ Event::FetchChallenges => {
 
                     let payload = format!(r#"{{"letter":"{}","is_correct":{}}}"#, letter, is_correct);
                     let action_id = format!("match_{}", timestamp);
-                    let mut game_event = GameEvent::new(action_id.clone(), "MATCH_ANSWER".into(), payload, timestamp, previous_hash.clone());
+                    let game_event = GameEvent::new(action_id.clone(), "MATCH_ANSWER".into(), payload, timestamp, previous_hash.clone());
                     model.last_hash = game_event.current_hash.clone();
                     model.pending_events.push(game_event);
 
