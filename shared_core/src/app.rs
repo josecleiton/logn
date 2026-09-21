@@ -38,6 +38,12 @@ pub enum Event {
         answer_json: String, 
         timestamp: i64, 
     },
+    RequestOTP { email: String, purpose: String },
+    OTPRequested(HttpResult),
+    VerifyOTP { email: String, code: String, purpose: String },
+    OTPVerified(HttpResult),
+    Register { email: String, password: String, otp: String },
+    RegisterCompleted(HttpResult),
 }
 
 #[derive(Default, Clone)]
@@ -54,6 +60,8 @@ pub struct Model {
     pub is_authenticating: bool,
     pub is_guest: bool,
     pub pending_retry_event: Option<Event>, // Para o interceptor 401
+    pub otp_email: String,
+    pub otp_verified: bool,
 }
 
 #[derive(Facet, Serialize, Deserialize, Default, Clone)]
@@ -68,6 +76,8 @@ pub struct ViewModel {
     pub is_guest: bool,
     pub challenges: Vec<Challenge>,
     pub nodes: Vec<crate::domain::SkillNode>,
+    pub otp_email: String,
+    pub otp_verified: bool,
 }
 
 #[effect(facet_typegen)]
@@ -405,6 +415,108 @@ Event::FetchChallenges => {
 
                 render::render()
             }
+            Event::RequestOTP { email, purpose } => {
+                model.is_authenticating = true;
+                model.otp_email = email.clone();
+                model.status = "Sending verification code...".to_string();
+
+                let body = serde_json::json!({ "email": email, "purpose": purpose });
+                let request = HttpRequest {
+                    method: "POST".to_string(),
+                    url: "http://localhost:8080/api/v1/auth/request-otp".to_string(),
+                    headers: vec![crux_http::protocol::HttpHeader {
+                        name: "Content-Type".to_string(),
+                        value: "application/json".to_string(),
+                    }],
+                    body: body.to_string().into_bytes(),
+                };
+                Command::request_from_shell(request).then_send(Event::OTPRequested)
+            }
+            Event::OTPRequested(result) => {
+                model.is_authenticating = false;
+                match result {
+                    HttpResult::Ok(response) if response.status == 200 => {
+                        model.status = "Code sent! Check your e-mail.".to_string();
+                    }
+                    _ => {
+                        model.status = "Failed to send code.".to_string();
+                    }
+                }
+                render::render()
+            }
+            Event::VerifyOTP { email, code, purpose } => {
+                model.is_authenticating = true;
+                model.status = "Verifying code...".to_string();
+
+                let body = serde_json::json!({ "email": email, "code": code, "purpose": purpose });
+                let request = HttpRequest {
+                    method: "POST".to_string(),
+                    url: "http://localhost:8080/api/v1/auth/verify-otp".to_string(),
+                    headers: vec![crux_http::protocol::HttpHeader {
+                        name: "Content-Type".to_string(),
+                        value: "application/json".to_string(),
+                    }],
+                    body: body.to_string().into_bytes(),
+                };
+                Command::request_from_shell(request).then_send(Event::OTPVerified)
+            }
+            Event::OTPVerified(result) => {
+                model.is_authenticating = false;
+                match result {
+                    HttpResult::Ok(response) if response.status == 200 => {
+                        model.otp_verified = true;
+                        model.status = "E-mail verified!".to_string();
+                    }
+                    _ => {
+                        model.otp_verified = false;
+                        model.status = "Invalid or expired code.".to_string();
+                    }
+                }
+                render::render()
+            }
+            Event::Register { email, password, otp } => {
+                model.is_authenticating = true;
+                model.status = "Creating account...".to_string();
+
+                let body = serde_json::json!({ "email": email, "password": password, "otp": otp });
+                let request = HttpRequest {
+                    method: "POST".to_string(),
+                    url: "http://localhost:8080/api/v1/auth/register".to_string(),
+                    headers: vec![crux_http::protocol::HttpHeader {
+                        name: "Content-Type".to_string(),
+                        value: "application/json".to_string(),
+                    }],
+                    body: body.to_string().into_bytes(),
+                };
+                Command::request_from_shell(request).then_send(Event::RegisterCompleted)
+            }
+            Event::RegisterCompleted(result) => {
+                model.is_authenticating = false;
+                match result {
+                    HttpResult::Ok(response) if response.status == 200 => {
+                        #[derive(Deserialize)]
+                        struct AuthResp { access_token: String, refresh_token: String }
+
+                        if let Ok(data) = serde_json::from_slice::<AuthResp>(&response.body) {
+                            model.access_token = Some(data.access_token);
+                            model.is_guest = false;
+                            model.otp_verified = false;
+                            model.otp_email = String::new();
+                            model.status = "Account created!".to_string();
+
+                            return Command::request_from_shell(KeyValueOperation::Set {
+                                key: "refresh_token".to_string(),
+                                value: data.refresh_token.into_bytes(),
+                            }).then_send(Event::TokenStored);
+                        }
+                        model.status = "Failed to parse response".to_string();
+                    }
+                    _ => {
+                        model.status = "Registration failed.".to_string();
+                    }
+                }
+                render::render()
+            }
             Event::SyncNow => {
                 if model.is_guest && model.access_token.is_none() {
                     model.status = "Sign in to sync your progress!".to_string();
@@ -473,6 +585,8 @@ Event::FetchChallenges => {
             is_guest: model.is_guest,
             challenges: model.challenges.clone(),
             nodes: model.nodes.clone(),
+            otp_email: model.otp_email.clone(),
+            otp_verified: model.otp_verified,
         }
     }
 }

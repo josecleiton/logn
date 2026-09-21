@@ -128,8 +128,40 @@ struct LoginView: View {
                         }
                         .disabled(core.viewModel.isAuthenticating || email.isEmpty || password.isEmpty)
                         
+                        NavigationLink(destination: RegisterView()) {
+                            Text("Create Account")
+                                .font(LognFont.titleMedium)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, Space.md)
+                                .background(LognDark.surface)
+                                .foregroundColor(LognDark.info)
+                                .cornerRadius(Radius.sm)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: Radius.sm)
+                                        .stroke(LognDark.info, lineWidth: 1)
+                                )
+                        }
+                        
+                        Button(action: {
+                            if !email.isEmpty {
+                                core.dispatch(event: .requestOTP(email: email, purpose: "reset_password"))
+                            }
+                        }) {
+                            Text("Forgot Password?")
+                                .font(LognFont.label)
+                                .foregroundColor(LognDark.textMuted)
+                                .underline()
+                        }
+                        
                         // Status Box just to show the login status
                         if !core.viewModel.displayStatus.isEmpty {
+                            Text(core.viewModel.displayStatus)
+                                .font(LognFont.label)
+                                .foregroundColor(LognDark.info)
+                                .multilineTextAlignment(.center)
+                                .padding(.top, Space.sm)
+                        }
+                        
                         Button(action: {
                             core.dispatch(event: .continueAsGuest)
                         }) {
@@ -138,12 +170,6 @@ struct LoginView: View {
                                 .foregroundColor(LognDark.textSecondary)
                                 .padding(.top, Space.sm)
                                 .underline()
-                        }
-                            Text(core.viewModel.displayStatus)
-                                .font(LognFont.label)
-                                .foregroundColor(LognDark.info)
-                                .multilineTextAlignment(.center)
-                                .padding(.top, Space.sm)
                         }
                     }
                     .padding(.horizontal, Space.screenMargin)

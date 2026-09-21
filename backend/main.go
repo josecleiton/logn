@@ -9,10 +9,12 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/josecleiton/logn/backend/internal/domain"
+	"github.com/josecleiton/logn/backend/internal/infrastructure/email"
 )
 
 type Server struct {
-	repo *domain.Repository
+	repo   *domain.Repository
+	mailer *email.Mailer
 }
 
 func (s *Server) pingHandler(w http.ResponseWriter, r *http.Request) {
@@ -111,7 +113,8 @@ func main() {
 	defer conn.Close(context.Background())
 
 	repo := domain.NewRepository(conn)
-	server := &Server{repo: repo}
+	mailer := email.NewMailer()
+	server := &Server{repo: repo, mailer: mailer}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /ping", server.pingHandler)
@@ -119,6 +122,8 @@ func main() {
 	mux.HandleFunc("GET /api/v1/challenges", server.challengesHandler)
 	mux.HandleFunc("POST /api/v1/auth/login", server.loginHandler)
 	mux.HandleFunc("POST /api/v1/auth/refresh", server.refreshHandler)
+	mux.HandleFunc("POST /api/v1/auth/request-otp", server.requestOTPHandler)
+	mux.HandleFunc("POST /api/v1/auth/verify-otp", server.verifyOTPHandler)
 	mux.HandleFunc("GET /api/v1/nodes", server.getNodesHandler)
 	mux.HandleFunc("GET /api/v1/progress", server.getUserProgressHandler)
 

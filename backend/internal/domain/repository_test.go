@@ -51,7 +51,7 @@ func TestRepository_InsertChallenge(t *testing.T) {
 	}`)
 	ch1 := Challenge{
 		ID:           "test_bug_1",
-		Chapter:      "Basics",
+		NodeID:      "Basics",
 		TemplateType: "SPOT_THE_BUG",
 		Version:      1,
 		Payload:      validPayload,
@@ -69,7 +69,7 @@ func TestRepository_InsertChallenge(t *testing.T) {
 	}`)
 	ch2 := Challenge{
 		ID:           "test_bug_2",
-		Chapter:      "Basics",
+		NodeID:      "Basics",
 		TemplateType: "SPOT_THE_BUG",
 		Version:      1,
 		Payload:      invalidPayload,

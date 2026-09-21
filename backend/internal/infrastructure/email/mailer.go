@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"strconv"
 
 	"gopkg.in/gomail.v2"
 )
