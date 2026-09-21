@@ -47,13 +47,13 @@ func TestOTPRepository(t *testing.T) {
 	}
 
 	// Test Verify success
-	valid, err := repo.VerifyOTP(ctx, email, "123456", purpose)
+	valid, err := repo.ConsumeOTP(ctx, email, "123456", purpose)
 	if err != nil || !valid {
 		t.Errorf("Expected valid OTP, got false or err: %v", err)
 	}
 
 	// Test Single-use (should be deleted after first verification)
-	valid, _ = repo.VerifyOTP(ctx, email, "123456", purpose)
+	valid, _ = repo.ConsumeOTP(ctx, email, "123456", purpose)
 	if valid {
 		t.Errorf("Expected OTP to be invalid after first use")
 	}
@@ -64,7 +64,7 @@ func TestOTPRepository(t *testing.T) {
 		t.Errorf("Failed to save expired OTP: %v", err)
 	}
 	
-	valid, _ = repo.VerifyOTP(ctx, email, "999999", purpose)
+	valid, _ = repo.ConsumeOTP(ctx, email, "999999", purpose)
 	if valid {
 		t.Errorf("Expected expired OTP to be invalid")
 	}
