@@ -34,7 +34,7 @@ test-core:
 # Sincroniza as chaves do .env raiz para o formato consumível das shells nativas
 sync-env:
 	@echo "// Generated auto-magically from .env by Justfile" > ios/LogNiOS/Local.xcconfig
-	@sed -e 's/#.*//g' -e '/^$$/d' .env >> ios/LogNiOS/Local.xcconfig
+	@sed -e 's/#.*//g' -e '/^$$/d' -e 's/\/\//\/\$()\//g' .env >> ios/LogNiOS/Local.xcconfig
 	@echo "Local.xcconfig synced from .env!"
 
 

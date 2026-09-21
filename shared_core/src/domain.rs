@@ -123,6 +123,8 @@ pub enum TelemetryOperation {
     Identify { user_id: String },
     Track { event: String, properties: std::collections::HashMap<String, String> },
     LogError { message: String, details: String },
+    StartSpan { name: String },
+    EndSpan { name: String },
 }
 
 impl crux_core::capability::Operation for TelemetryOperation {

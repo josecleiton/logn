@@ -201,5 +201,11 @@ public class CoreWrapper: ObservableObject {
                 "message": message,
                 "details": details
             ])
+        case .startSpan(let name):
+            // Fallback since PostHog doesn't have native spans
+            PostHogSDK.shared.capture("span_started", properties: ["span_name": name])
+        case .endSpan(let name):
+            PostHogSDK.shared.capture("span_ended", properties: ["span_name": name])
+
         }
     }
