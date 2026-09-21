@@ -8,12 +8,19 @@ struct SkillTreeView: View {
     let rowHeight: CGFloat = 110
     let colWidth: CGFloat = 100 // Distância do centro
     
+    @EnvironmentObject var core: CoreWrapper
     @State private var selectedNode: SkillNode? = nil
     @State private var navigateToMatch: Bool = false
     
     var body: some View {
         GeometryReader { geometry in
-            ScrollView {
+            ZStack {
+                // Hidden navigation link outside ScrollView
+                NavigationLink(destination: MatchView(nodeId: selectedNode?.id ?? "").environmentObject(core), isActive: $navigateToMatch) {
+                    EmptyView()
+                }
+                
+                ScrollView {
                 ZStack {
                     // Desenhar conexões primeiro (Arestas)
                     Canvas { context, size in
@@ -72,19 +79,16 @@ struct SkillTreeView: View {
                             }
                     }
                     
-                    // Hidden navigation link
-                    NavigationLink(destination: MatchView(nodeId: selectedNode?.id ?? ""), isActive: $navigateToMatch) {
-                        EmptyView()
-                    }
                 }
                 // Altura total baseada na maior linha
                 .frame(height: CGFloat((nodes.map { Int($0.row) }.max() ?? 0) + 1) * rowHeight + 100)
-            }
-            .sheet(item: $selectedNode) { node in
-                NodeSheetView(node: node, onStartMatch: {
-                    selectedNode = node
-                    navigateToMatch = true
-                })
+                }
+                .sheet(item: $selectedNode) { node in
+                    NodeSheetView(node: node, onStartMatch: {
+                        selectedNode = node
+                        navigateToMatch = true
+                    })
+                }
             }
         }
     }
