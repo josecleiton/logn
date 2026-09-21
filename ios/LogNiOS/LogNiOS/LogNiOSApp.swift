@@ -1,4 +1,5 @@
 import SwiftUI
+import LogN
 import PostHog
 
 @main
@@ -7,8 +8,7 @@ struct LogNiOSApp: App {
     
     init() {
         if let key = Bundle.main.object(forInfoDictionaryKey: "LogNTelemetryKey") as? String, !key.isEmpty {
-            let config = PostHogConfig(apiKey: key)
-            config.host = "https://app.posthog.com"
+            let config = PostHogConfig(apiKey: key, host: "https://app.posthog.com")
             config.captureApplicationLifecycleEvents = true
             PostHogSDK.shared.setup(config)
         } else {
@@ -60,7 +60,7 @@ struct LogNiOSApp: App {
         
         if host == "verify" {
             if !code.isEmpty && !email.isEmpty {
-                core.dispatch(event: .verifyOTP(email: email, code: code, purpose: purpose))
+                core.dispatch(event: LogN.Event.verifyOtp(email: email, code: code, purpose: purpose))
             }
         } else if host == "reset-password" {
             if !code.isEmpty && !email.isEmpty {

@@ -1,4 +1,5 @@
 import SwiftUI
+import LogN
 import App
 
 struct RegisterView: View {
@@ -83,7 +84,7 @@ struct RegisterView: View {
                 )
             
             Button(action: {
-                core.dispatch(event: .requestOTP(email: email, purpose: "verify_email"))
+                core.dispatch(event: LogN.Event.requestOtp(email: email, purpose: "verify_email"))
                 step = .otp
             }) {
                 Text("Send Verification Code")
@@ -136,7 +137,7 @@ struct RegisterView: View {
                     .font(LognFont.titleMedium)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Space.md)
-                    .background(canRegister ? LognDark.success : LognDark.buttonDisabled)
+                    .background(canRegister ? LognDark.correct : LognDark.buttonDisabled)
                     .foregroundColor(LognDark.surface)
                     .cornerRadius(Radius.sm)
             }

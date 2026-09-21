@@ -19,7 +19,11 @@ public class CoreWrapper: ObservableObject {
             isFetching: false,
             isAuthenticating: false,
             hasAccessToken: false,
-            challenges: []
+            isGuest: false,
+            challenges: [],
+            nodes: [],
+            otpEmail: "",
+            otpVerified: false
         )
         updateViewModel()
         // Auto-login on init
@@ -57,17 +61,17 @@ public class CoreWrapper: ObservableObject {
         }
     }
     
-    private func handleSecureStore(id: UInt32, operation: KeyValueOperation) {
-        let result: KeyValueResult
+    private func handleSecureStore(id: UInt32, operation: LogN.KeyValueOperation) {
+        let result: LogN.KeyValueResult
         
         // Simulating Secure Vault with UserDefaults for MVP
         switch operation {
         case .get(let key):
             if let strValue = UserDefaults.standard.string(forKey: key) {
                 let bytes = Array(strValue.utf8)
-                result = .ok(KeyValueResponse.get(Value.bytes(bytes)))
+                result = .ok(response: LogN.KeyValueResponse.get(value: LogN.Value.bytes(bytes)))
             } else {
-                result = .ok(KeyValueResponse.get(Value.none))
+                result = .ok(response: LogN.KeyValueResponse.get(value: LogN.Value.none))
             }
         case .set(let key, let valueBytes):
             let valueStr = String(bytes: valueBytes, encoding: .utf8) ?? ""
@@ -76,22 +80,24 @@ public class CoreWrapper: ObservableObject {
             UserDefaults.standard.set(valueStr, forKey: key)
             
             if let prev = previousStr {
-                result = .ok(KeyValueResponse.set(Value.bytes(Array(prev.utf8))))
+                result = .ok(response: LogN.KeyValueResponse.set(previous: LogN.Value.bytes(Array(prev.utf8))))
             } else {
-                result = .ok(KeyValueResponse.set(Value.none))
+                result = .ok(response: LogN.KeyValueResponse.set(previous: LogN.Value.none))
             }
         case .delete(let key):
             let previousStr = UserDefaults.standard.string(forKey: key)
             UserDefaults.standard.removeObject(forKey: key)
             
             if let prev = previousStr {
-                result = .ok(KeyValueResponse.delete(Value.bytes(Array(prev.utf8))))
+                result = .ok(response: LogN.KeyValueResponse.delete(previous: LogN.Value.bytes(Array(prev.utf8))))
             } else {
-                result = .ok(KeyValueResponse.delete(Value.none))
+                result = .ok(response: LogN.KeyValueResponse.delete(previous: LogN.Value.none))
             }
+        case .listKeys(_, _):
+            result = .err(error: LogN.KeyValueError.io(message: "listKeys unsupported"))
         case .exists(let key):
             let exists = UserDefaults.standard.object(forKey: key) != nil
-            result = .ok(KeyValueResponse.exists(exists))
+            result = .ok(response: LogN.KeyValueResponse.exists(isPresent: exists))
         }
         
         DispatchQueue.main.async {
@@ -108,7 +114,7 @@ public class CoreWrapper: ObservableObject {
         return URL(string: value)
     }
 
-    private func handleHttp(id: UInt32, request: HttpRequest) {
+    private func handleHttp(id: UInt32, request: LogN.HttpRequest) {
         guard let base = getBaseURL() else {
             print("HTTP Request blocked: No API_BASE_URL configured in environment")
             resolveHttpEffect(id: id, result: .err(HttpError.io("No API base URL configured")))
@@ -129,12 +135,12 @@ public class CoreWrapper: ObservableObject {
         }
         
         URLSession.shared.dataTask(with: urlRequest) { data, response, error in
-            let result: HttpResult
+            let result: LogN.HttpResult
             
             if let error = error {
                 result = .err(HttpError.io(error.localizedDescription))
             } else if let httpResponse = response as? HTTPURLResponse {
-                let res = HttpResponse(
+                let res = LogN.HttpResponse(
                     status: UInt16(httpResponse.statusCode),
                     headers: [],
                     body: data.map { [UInt8]($0) } ?? []
@@ -150,7 +156,7 @@ public class CoreWrapper: ObservableObject {
         }.resume()
     }
     
-    private func resolveHttpEffect(id: UInt32, result: HttpResult) {
+    private func resolveHttpEffect(id: UInt32, result: LogN.HttpResult) {
         do {
             let resultBytes = try result.bincodeSerialize()
             let nextEffectsBytes = coreFFI.resolve(id: id, data: Data(resultBytes))
@@ -161,7 +167,7 @@ public class CoreWrapper: ObservableObject {
         }
     }
     
-    private func resolveSecureStore(id: UInt32, result: KeyValueResult) {
+    private func resolveSecureStore(id: UInt32, result: LogN.KeyValueResult) {
         do {
             let resultBytes = try result.bincodeSerialize()
             let nextEffectsBytes = coreFFI.resolve(id: id, data: Data(resultBytes))

@@ -1,4 +1,5 @@
 import SwiftUI
+import LogN
 import AuthenticationServices
 import App
 
@@ -144,7 +145,7 @@ struct LoginView: View {
                         
                         Button(action: {
                             if !email.isEmpty {
-                                core.dispatch(event: .requestOTP(email: email, purpose: "reset_password"))
+                                core.dispatch(event: LogN.Event.requestOtp(email: email, purpose: "reset_password"))
                             }
                         }) {
                             Text("Forgot Password?")

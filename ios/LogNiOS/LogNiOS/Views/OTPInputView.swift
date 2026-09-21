@@ -1,4 +1,5 @@
 import SwiftUI
+import LogN
 import App
 
 struct OTPInputView: View {
@@ -85,7 +86,7 @@ struct OTPInputView: View {
                         .font(LognFont.titleMedium)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, Space.md)
-                        .background(otpCode.count == 6 ? LognDark.success : LognDark.buttonDisabled)
+                        .background(otpCode.count == 6 ? LognDark.correct : LognDark.buttonDisabled)
                         .foregroundColor(LognDark.surface)
                         .cornerRadius(Radius.sm)
                 }
@@ -93,7 +94,7 @@ struct OTPInputView: View {
                 
                 // Resend
                 Button(action: {
-                    core.dispatch(event: .requestOTP(email: email, purpose: purpose))
+                    core.dispatch(event: LogN.Event.requestOtp(email: email, purpose: purpose))
                 }) {
                     Text("Resend code")
                         .font(LognFont.bodyLarge)
@@ -104,7 +105,7 @@ struct OTPInputView: View {
                 if !core.viewModel.displayStatus.isEmpty {
                     Text(core.viewModel.displayStatus)
                         .font(LognFont.label)
-                        .foregroundColor(core.viewModel.otpVerified ? LognDark.success : LognDark.warn)
+                        .foregroundColor(core.viewModel.otpVerified ? LognDark.correct : LognDark.warn)
                         .padding(.top, Space.sm)
                 }
             }
@@ -116,6 +117,6 @@ struct OTPInputView: View {
     }
     
     private func submitOTP() {
-        core.dispatch(event: .verifyOTP(email: email, code: otpCode, purpose: purpose))
+        core.dispatch(event: LogN.Event.verifyOtp(email: email, code: otpCode, purpose: purpose))
     }
 }
