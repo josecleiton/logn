@@ -106,6 +106,14 @@ func main() {
 		dbUrl = "postgres://logn:lognpassword@localhost:5432/logndb?sslmode=disable"
 	}
 
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Println("WARNING: JWT_SECRET is not set. Using insecure default for development.")
+		domain.JwtSecretKey = []byte("my-super-secret-logn-key-for-dev")
+	} else {
+		domain.JwtSecretKey = []byte(jwtSecret)
+	}
+
 	conn, err := pgx.Connect(context.Background(), dbUrl)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)

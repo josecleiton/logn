@@ -91,7 +91,7 @@ func ComparePasswordAndHash(password, encodedHash string) (bool, error) {
 }
 
 // JWT Generation
-var JwtSecretKey = []byte("my-super-secret-logn-key-for-dev")
+var JwtSecretKey []byte
 
 func GenerateAccessToken(userID string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
