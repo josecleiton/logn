@@ -19,3 +19,8 @@ ios/LogNCoreFFI/*.zip
 tools_i18n/target/
 
 backend/logn-backend
+
+# Configs & Secrets
+.env
+*.xcconfig
+!*.xcconfig.example

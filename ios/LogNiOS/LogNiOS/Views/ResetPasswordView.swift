@@ -62,7 +62,7 @@ struct ResetPasswordView: View {
                             .font(LognFont.titleMedium)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, Space.md)
-                            .background(canSubmit ? LognDark.success : LognDark.buttonDisabled)
+                            .background(canSubmit ? LognDark.correct : LognDark.buttonDisabled)
                             .foregroundColor(LognDark.surface)
                             .cornerRadius(Radius.sm)
                     }
