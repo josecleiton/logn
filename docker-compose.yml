@@ -1,11 +1,21 @@
+version: '3.8'
 services:
   db:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: logn
-      POSTGRES_PASSWORD: lognpassword
-      POSTGRES_DB: logndb
+      POSTGRES_USER: logn_user
+      POSTGRES_PASSWORD: logn_password
+      POSTGRES_DB: logn_db
     ports:
       - "5432:5432"
     volumes:
       - ./backend/schema/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: logn_mailpit
+    ports:
+      - "8025:8025" # Interface Web (Acesse no navegador localhost:8025)
+      - "1025:1025" # Servidor SMTP Fake
+    restart: unless-stopped
