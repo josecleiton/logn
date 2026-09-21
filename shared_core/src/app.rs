@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use facet::Facet;
 use facet_generate_attrs as fg;
 use crux_http::protocol::{HttpRequest, HttpResult};
-use crux_kv::{KeyValueOperation, KeyValueResult, KeyValueResponse, KeyValueError};
+use crux_kv::{KeyValueOperation, KeyValueResult, KeyValueResponse};
 use crate::domain::{GameEvent, SyncPayload, Challenge, TelemetryOperation};
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
