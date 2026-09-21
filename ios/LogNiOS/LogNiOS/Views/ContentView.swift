@@ -79,12 +79,51 @@ struct ContentView: View {
                                 .cornerRadius(Radius.sm)
                         }
                         .disabled(core.viewModel.isFetching)
+                        
+                        Button(action: {
+                            core.dispatch(event: .fetchNodes)
+                        }) {
+                            Text("Load Skill Tree")
+                                .font(LognFont.titleMedium)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, Space.md)
+                                .background(core.viewModel.isFetching ? LognDark.buttonDisabled : LognDark.info)
+                                .foregroundColor(core.viewModel.isFetching ? LognDark.textMuted : LognDark.surface)
+                                .cornerRadius(Radius.sm)
+                        }
+                        .disabled(core.viewModel.isFetching)
                     }
                     .padding(.horizontal, Space.screenMargin)
                     
                     // Lista Dinamica
                     ScrollView {
                         VStack(spacing: Space.md) {
+                            if !core.viewModel.nodes.isEmpty {
+                                Text("Skill Tree")
+                                    .font(LognFont.headlineMedium)
+                                    .foregroundColor(LognDark.textPrimary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.top, Space.md)
+                                
+                                ForEach(core.viewModel.nodes, id: \.id) { node in
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: Space.xs) {
+                                            Text(node.name)
+                                                .font(LognFont.titleMedium)
+                                                .foregroundColor(LognDark.textPrimary)
+                                            Text("\(node.requiredXp) XP Required")
+                                                .font(LognFont.label)
+                                                .foregroundColor(LognDark.textSecondary)
+                                        }
+                                        Spacer()
+                                        Image(systemName: "lock.open.fill")
+                                            .foregroundColor(LognDark.success)
+                                    }
+                                    .padding(Space.md)
+                                    .background(LognDark.surface)
+                                    .cornerRadius(Radius.md)
+                                }
+                            }
                             ForEach(core.viewModel.challenges, id: \.id) { challenge in
                                 if challenge.templateType == "SPOT_THE_BUG" {
                                     NavigationLink(destination: SpotTheBugView(

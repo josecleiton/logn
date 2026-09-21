@@ -20,6 +20,8 @@ pub enum Event {
     TokenRead(KeyValueResult),
     RefreshCompleted(HttpResult),
     FetchChallenges,
+    FetchNodes,
+    NodesFetched(HttpResult),
     ChallengesFetched(HttpResult),
     RegisterAction {
         action_id: String,
@@ -42,6 +44,7 @@ pub struct Model {
     pub status: String,
     pub pending_events: Vec<GameEvent>,
     pub challenges: Vec<Challenge>,
+    pub nodes: Vec<crate::domain::SkillNode>,
     pub last_hash: String,
     pub user_id: String,
     pub access_token: Option<String>,
@@ -63,6 +66,7 @@ pub struct ViewModel {
     pub has_access_token: bool,
     pub is_guest: bool,
     pub challenges: Vec<Challenge>,
+    pub nodes: Vec<crate::domain::SkillNode>,
 }
 
 #[effect(facet_typegen)]
@@ -227,7 +231,49 @@ impl App for LogNApp {
                 render::render()
             }
 
-            Event::FetchChallenges => {
+
+            
+            Event::FetchNodes => {
+                model.is_fetching = true;
+                model.status = "Fetching skill tree...".to_string();
+                
+                let request = HttpRequest {
+                    method: "GET".to_string(),
+                    url: "http://localhost:8080/api/v1/nodes".to_string(),
+                    headers: auth_headers(&model.access_token),
+                    body: vec![],
+                };
+                
+                
+                Command::request_from_shell(request).then_send(Event::NodesFetched)
+            }
+            Event::NodesFetched(result) => {
+                model.is_fetching = false;
+                match result {
+                    HttpResult::Ok(response) => {
+                        if response.status == 200 {
+                            if let Ok(nodes) = serde_json::from_slice::<Vec<crate::domain::SkillNode>>(&response.body) {
+                                model.nodes = nodes;
+                                model.status = "Skill tree loaded".to_string();
+                            } else {
+                                model.status = "Failed to parse nodes".to_string();
+                            }
+                            render::render()
+                        } else if response.status == 401 {
+                            model.pending_retry_event = Some(Event::FetchNodes);
+                            Command::request_from_shell(KeyValueOperation::Get { key: "refresh_token".into() }).then_send(Event::TokenRead)
+                        } else {
+                            model.status = format!("Error: {}", response.status);
+                            render::render()
+                        }
+                    }
+                    HttpResult::Err(_) => {
+                        model.status = "Network Error".to_string();
+                        render::render()
+                    }
+                }
+            }
+Event::FetchChallenges => {
                 if model.is_fetching {
                     return Command::done();
                 }
@@ -406,6 +452,7 @@ impl App for LogNApp {
             has_access_token: model.access_token.is_some(),
             is_guest: model.is_guest,
             challenges: model.challenges.clone(),
+            nodes: model.nodes.clone(),
         }
     }
 }

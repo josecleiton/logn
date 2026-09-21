@@ -100,8 +100,18 @@ pub struct ChallengePayload {
 #[facet(fg::namespace = "LogN")]
 pub struct Challenge {
     pub id: String,
-    pub chapter: String,
+    pub node_id: String,
     pub template_type: String,
     pub version: i32,
     pub payload: ChallengePayload, // Typed for Facet
+}
+
+#[derive(Facet, Serialize, Deserialize, Clone, Debug)]
+#[facet(fg::namespace = "LogN")]
+pub struct SkillNode {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub order_index: i32,
+    pub required_xp: i32,
 }

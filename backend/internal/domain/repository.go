@@ -17,7 +17,7 @@ func NewRepository(db *pgx.Conn) *Repository {
 }
 
 func (r *Repository) InsertChallenge(ctx context.Context, ch Challenge) error {
-	query := `INSERT INTO challenges (id, chapter, template_type, version, payload)
+	query := `INSERT INTO challenges (id, node_id, template_type, version, payload)
 			  VALUES ($1, $2, $3, $4, $5)`
 	_, err := r.db.Exec(ctx, query, ch.ID, ch.Chapter, ch.TemplateType, ch.Version, ch.Payload)
 	return err

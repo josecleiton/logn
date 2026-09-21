@@ -11,7 +11,7 @@ import (
 
 type Challenge struct {
 	ID           string          `json:"id" db:"id"`
-	Chapter      string          `json:"chapter" db:"chapter"`
+	NodeID       string          `json:"node_id" db:"node_id"`
 	TemplateType string          `json:"template_type" db:"template_type"`
 	Version      int             `json:"version" db:"version"`
 	Payload      json.RawMessage `json:"payload" db:"payload"`
