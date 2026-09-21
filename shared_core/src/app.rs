@@ -4,7 +4,7 @@ use facet::Facet;
 use facet_generate_attrs as fg;
 use crux_http::protocol::{HttpRequest, HttpResult};
 use crux_kv::{KeyValueOperation, KeyValueResult, KeyValueResponse, KeyValueError};
-use crate::domain::{GameEvent, SyncPayload, Challenge};
+use crate::domain::{GameEvent, SyncPayload, Challenge, TelemetryOperation};
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
 #[repr(C)]
@@ -46,6 +46,7 @@ pub enum Event {
     RegisterCompleted(HttpResult),
     ResetPassword { email: String, new_password: String, otp: String },
     ResetPasswordCompleted(HttpResult),
+    ChallengeAnswered { challenge_id: String, node_id: String, is_correct: bool },
 }
 
 #[derive(Default, Clone)]
@@ -615,6 +616,17 @@ Event::FetchChallenges => {
                     }
                 }
                 render::render()
+            }
+            Event::ChallengeAnswered { challenge_id, node_id, is_correct } => {
+                let telemetry_event = if is_correct { "challenge_correct" } else { "challenge_incorrect" };
+                
+                Command::request_from_shell(TelemetryOperation::Track {
+                    event: telemetry_event.to_string(),
+                    properties: std::collections::HashMap::from([
+                        ("challenge_id".to_string(), challenge_id),
+                        ("node_id".to_string(), node_id),
+                    ])
+                }).then_send(|_| Event::SyncNow)
             }
         }
     }
