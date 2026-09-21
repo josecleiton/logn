@@ -10,13 +10,14 @@ struct SkillTreeView: View {
     
     @EnvironmentObject var core: CoreWrapper
     @State private var selectedNode: SkillNode? = nil
+    @State private var matchNodeId: String = ""
     @State private var navigateToMatch: Bool = false
     
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 // Hidden navigation link outside ScrollView
-                NavigationLink(destination: MatchView(nodeId: selectedNode?.id ?? "").environmentObject(core), isActive: $navigateToMatch) {
+                NavigationLink(destination: MatchView(nodeId: matchNodeId).environmentObject(core), isActive: $navigateToMatch) {
                     EmptyView()
                 }
                 
@@ -54,7 +55,7 @@ struct SkillTreeView: View {
                         for node in nodes {
                             let endPoint = CGPoint(
                                 x: centerX + CGFloat(node.column) * colWidth,
-                                y: CGFloat(node.row) * rowHeight + (rowHeight / 2)
+                                y: CGFloat(node.row) * rowHeight + (rowHeight / 2) + 30
                             )
                             
                             // Desenhar linhas para cada pré-requisito
@@ -62,7 +63,7 @@ struct SkillTreeView: View {
                                 if let parent = nodes.first(where: { $0.id == prereqId }) {
                                     let startPoint = CGPoint(
                                         x: centerX + CGFloat(parent.column) * colWidth,
-                                        y: CGFloat(parent.row) * rowHeight + (rowHeight / 2)
+                                        y: CGFloat(parent.row) * rowHeight + (rowHeight / 2) + 30
                                     )
                                     
                                     var path = Path()
@@ -97,7 +98,7 @@ struct SkillTreeView: View {
                         SkillNodeView(node: node)
                             .position(
                                 x: geometry.size.width / 2 + CGFloat(node.column) * colWidth,
-                                y: CGFloat(node.row) * rowHeight + (rowHeight / 2)
+                                y: CGFloat(node.row) * rowHeight + (rowHeight / 2) + 30
                             )
                             .onTapGesture {
                                 if node.status != .locked {
@@ -108,7 +109,7 @@ struct SkillTreeView: View {
                     
                 }
                 // Altura total baseada na maior linha
-                .frame(height: CGFloat((nodes.map { Int($0.row) }.max() ?? 0) + 1) * rowHeight + 100)
+                .frame(height: CGFloat((nodes.map { Int($0.row) }.max() ?? 0) + 1) * rowHeight + 130)
                 }
                     
                     // Footer Legend
@@ -125,7 +126,7 @@ struct SkillTreeView: View {
                 }
                 .sheet(item: $selectedNode) { node in
                     NodeSheetView(node: node, onStartMatch: {
-                        selectedNode = node
+                        matchNodeId = node.id
                         navigateToMatch = true
                     })
                 }

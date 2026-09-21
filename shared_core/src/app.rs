@@ -266,8 +266,8 @@ impl App for LogNApp {
                         };
                         return Command::request_from_shell(request).then_send(Event::RefreshCompleted);
                     }
-                }
-                model.status = "Session expired. Please login again.".to_string();
+                // Instead of showing an error on the login screen, we just remain silent
+                model.status = "".to_string();
                 model.access_token = None;
                 model.is_authenticating = false;
                 render::render()
