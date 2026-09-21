@@ -3,6 +3,7 @@ import Security
 
 import LogNCoreFFI
 import App
+import LogN
 import PostHog
 
 public class CoreWrapper: ObservableObject {

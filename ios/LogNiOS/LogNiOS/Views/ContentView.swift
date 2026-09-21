@@ -1,4 +1,5 @@
 import SwiftUI
+import LogN
 import App
 
 struct ContentView: View {
