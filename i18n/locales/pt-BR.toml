@@ -1,6 +1,6 @@
 [app]
 name = "LogN"
-subtitle = "Domine algoritmos mordida por mordida"
+subtitle = "Domine a tecnologia bit a bit"
 
 [login]
 sign_in_apple = "Entrar com a Apple"

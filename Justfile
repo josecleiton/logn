@@ -37,6 +37,11 @@ sync-env:
 	@sed -e 's/#.*//g' -e '/^$$/d' .env >> ios/LogNiOS/Local.xcconfig
 	@echo "Local.xcconfig synced from .env!"
 
+
+# Gera as strings de internacionalização (i18n) para Swift (e futuramente Kotlin)
+i18n:
+	cargo run --manifest-path tools_i18n/Cargo.toml -- --language swift --output-dir ios/LogNiOS/LogNiOS/DesignSystem
+
 # --- iOS (Swift) ---
 
 # Gera a ponte FFI em Swift (Facet + Bincode) e joga na pasta do iOS
@@ -44,7 +49,7 @@ codegen:
 	cd shared_core && cargo run --bin codegen --features codegen -- --language swift --output-dir ../ios/SharedCore
 
 # Gera o projeto Xcode (.xcodeproj) usando o XcodeGen
-xcode: sync-env codegen
+xcode: sync-env codegen i18n
 	cd ios/LogNiOS && xcodegen generate
 
 # Abre o projeto no Xcode
