@@ -1,23 +1,30 @@
 use crux_core::{render::{self, RenderOperation}, App, macros::effect, Command};
 use serde::{Deserialize, Serialize};
+use facet::Facet;
+use facet_generate_attrs as fg;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug)]
+#[facet(fg::namespace = "LogN")]
+#[repr(C)]
 pub enum Event {
     Ping,
     Pong,
 }
 
-#[derive(Serialize, Deserialize, Default, Clone)]
+#[derive(Facet, Serialize, Deserialize, Default, Clone)]
+#[facet(fg::namespace = "LogN")]
 pub struct Model {
     pub status: String,
 }
 
-#[derive(Serialize, Deserialize, Default, Clone)]
+#[derive(Facet, Serialize, Deserialize, Default, Clone)]
+#[facet(fg::namespace = "LogN")]
 pub struct ViewModel {
     pub display_status: String,
 }
 
-#[effect]
+#[effect(facet_typegen)]
+#[facet(fg::namespace = "LogN")]
 pub enum Effect {
     Render(RenderOperation),
 }
