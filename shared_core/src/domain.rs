@@ -87,6 +87,8 @@ pub struct ChallengeContent {
     pub title: String,
     pub description: String,
     pub code_lines: Vec<String>,
+    pub options: Option<Vec<String>>,
+    pub correct_options: Option<Vec<String>>,
 }
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]

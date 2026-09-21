@@ -315,11 +315,9 @@ impl App for LogNApp {
                         }
                     }
                     HttpResult::Err(e) => {
-                        model.status = "Network Error".to_string();
-                        Command::request_from_shell(crate::domain::MonitoringOperation::LogError { 
-                            message: "FetchNodes Failed".to_string(), 
-                            details: format!("{:?}", e) 
-                        }).then_send(|_| Event::TelemetrySent)
+                        model.status = "Offline Mode: Using Local Mock Data".to_string();
+                        model.nodes = crate::mock_data::get_mock_nodes();
+                        render::render()
                     }
                 }
             }
@@ -360,7 +358,8 @@ Event::FetchChallenges => {
                         }
                     }
                     HttpResult::Err(_) => {
-                        model.status = "Network Error loading challenges".to_string();
+                        model.status = "Offline Mode: Loaded Mock Challenges".to_string();
+                        model.challenges = crate::mock_data::get_mock_challenges();
                     }
                 }
                 render::render()
@@ -724,9 +723,9 @@ Event::FetchChallenges => {
                             code_lines: c.payload.content.code_lines.clone(),
                             correct_line: c.payload.validation.correct_line,
                             expected_string: c.payload.validation.expected_string.clone(),
-                            options: vec![],
-                            correct_options: vec![],
-                            max_selections: 1,
+                            options: c.payload.content.options.clone().unwrap_or_default(),
+                            correct_options: c.payload.content.correct_options.clone().unwrap_or_default(),
+                            max_selections: if c.template_type == "TAG_THE_PATTERN" { c.payload.content.correct_options.as_ref().map_or(1, |o| o.len() as i32) } else { 1 },
                         }
                     })
                     .collect();
