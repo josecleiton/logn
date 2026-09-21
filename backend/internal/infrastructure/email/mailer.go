@@ -5,27 +5,29 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
-	"net/smtp"
+	"io"
+	"strconv"
+
+	"gopkg.in/gomail.v2"
 )
 
-//go:embed templates/*.html
+//go:embed templates/*.html templates/assets/*
 var templatesFS embed.FS
 
 type Mailer struct {
 	templates *template.Template
 	host      string
-	port      string
+	port      int
 	from      string
 }
 
 func NewMailer() *Mailer {
-	// Parse of all embedded templates
 	tmpl := template.Must(template.ParseFS(templatesFS, "templates/*.html"))
 
 	return &Mailer{
 		templates: tmpl,
-		host:      "localhost", // Use "mailpit" se rodando via docker bridge, mas se o app rodar hosteado usa localhost
-		port:      "1025",
+		host:      "localhost", // Use "mailpit" no docker-compose
+		port:      1025,
 		from:      "LogN <noreply@logn.sh>",
 	}
 }
@@ -59,22 +61,30 @@ func (m *Mailer) SendWelcome(toEmail string) error {
 
 func (m *Mailer) send(to, subject, templateName string, data interface{}) error {
 	var body bytes.Buffer
-	
-	// Cabeçalhos essenciais para e-mail HTML
-	body.Write([]byte(fmt.Sprintf("From: %s\r\n", m.from)))
-	body.Write([]byte(fmt.Sprintf("To: %s\r\n", to)))
-	body.Write([]byte(fmt.Sprintf("Subject: %s\r\n", subject)))
-	body.Write([]byte("MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"))
 
 	if err := m.templates.ExecuteTemplate(&body, templateName, data); err != nil {
 		return fmt.Errorf("falha ao renderizar template %s: %w", templateName, err)
 	}
 
-	// No Mailpit local, não precisamos de autenticação (PlainAuth).
-	// Se for mandar pra AWS SES, precisará configurar smtp.PlainAuth
-	addr := fmt.Sprintf("%s:%s", m.host, m.port)
-	err := smtp.SendMail(addr, nil, m.from, []string{to}, body.Bytes())
-	if err != nil {
+	msg := gomail.NewMessage()
+	msg.SetHeader("From", m.from)
+	msg.SetHeader("To", to)
+	msg.SetHeader("Subject", subject)
+
+	// Anexando a imagem inline via CID
+	msg.Embed("logo.jpg", gomail.SetCopyFunc(func(w io.Writer) error {
+		fileBytes, err := templatesFS.ReadFile("templates/assets/logo.jpg")
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(fileBytes)
+		return err
+	}))
+
+	msg.SetBody("text/html", body.String())
+
+	dialer := gomail.Dialer{Host: m.host, Port: m.port}
+	if err := dialer.DialAndSend(msg); err != nil {
 		return fmt.Errorf("falha ao enviar e-mail smtp: %w", err)
 	}
 	return nil
