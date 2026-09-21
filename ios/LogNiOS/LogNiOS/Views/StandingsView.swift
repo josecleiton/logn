@@ -80,6 +80,17 @@ struct StandingsView: View {
                             Divider().background(LognDark.line)
                         }
                     }
+                    
+                    NavigationLink(destination: ScoreboardView()) {
+                        Text("VER TELÃO COMPLETO (ICPC)")
+                            .font(LognFont.label)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, Space.md)
+                            .background(LognDark.surfaceRaised)
+                            .foregroundColor(LognDark.accent)
+                            .cornerRadius(Radius.sm)
+                    }
+                    .padding(Space.lg)
                 }
             }
         }

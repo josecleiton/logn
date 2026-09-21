@@ -207,20 +207,120 @@ struct MatchReportView: View {
     @EnvironmentObject var core: CoreWrapper
     
     var body: some View {
-        VStack(spacing: Space.lg) {
-            Text("CONTEST ENCERRADO")
-                .font(LognFont.label)
-                .foregroundColor(LognDark.textMuted)
+        ZStack {
+            LognDark.canvas.ignoresSafeArea()
             
-            Text("\(core.viewModel.matchView.solvedCount) / \(core.viewModel.matchView.totalProblems) aceitos")
-                .font(.custom("IBMPlexMono-Regular", size: 15))
-                .foregroundColor(LognDark.textPrimary)
-            
-            LognButton(title: "Voltar para Skill Tree", variant: .primary) {
-                dismiss()
+            VStack(spacing: 0) {
+                // Cabecalho
+                VStack(spacing: Space.md) {
+                    Text("CONTEST ENCERRADO")
+                        .font(LognFont.label)
+                        .foregroundColor(LognDark.textMuted)
+                    
+                    Text("\(core.viewModel.matchView.solvedCount) / \(core.viewModel.matchView.totalProblems) aceitos")
+                        .font(.custom("IBMPlexMono-Medium", size: 48))
+                        .foregroundColor(LognDark.textPrimary)
+                    
+                    // Fila de Balões Conquistados
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: Space.sm) {
+                            ForEach(0..<Int(core.viewModel.matchView.totalProblems), id: \.self) { idx in
+                                let letter = String(Character(UnicodeScalar(65 + idx)!))
+                                // Gambiarra provisória, precisariamos do dicionário real de verdicts no viewmodel
+                                let isSolved = idx < Int(core.viewModel.matchView.solvedCount)
+                                
+                                BalloonShape(
+                                    color: isSolved ? LognDark.correct : LognDark.surface,
+                                    state: isSolved ? .filled : .locked,
+                                    bodySize: 32,
+                                    showString: false,
+                                    showHighlight: isSolved
+                                )
+                                .overlay(
+                                    Text(letter)
+                                        .font(.custom("IBMPlexMono-Medium", size: 12))
+                                        .foregroundColor(isSolved ? LognDark.surface : LognDark.textDim)
+                                )
+                            }
+                        }
+                        .padding(.horizontal, Space.screenMargin)
+                    }
+                    .padding(.vertical, Space.md)
+                }
+                .padding(.top, Space.xl)
+                .padding(.bottom, Space.lg)
+                .background(LognDark.surfaceRaised)
+                
+                // Content
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Space.lg) {
+                        Text("REVISÃO DE ERROS")
+                            .font(LognFont.label)
+                            .foregroundColor(LognDark.textMuted)
+                            .padding(.horizontal, Space.screenMargin)
+                            .padding(.top, Space.lg)
+                        
+                        // Fake Error Card for now
+                        if core.viewModel.matchView.lives < core.viewModel.matchView.maxLives {
+                            ErrorReviewCard(
+                                letter: "A",
+                                title: "Complexidade Subótima",
+                                desc: "Você usou O(N^2) mas era possível usar O(N log N)."
+                            )
+                        } else {
+                            Text("Nenhum erro cometido! Perfect clear.")
+                                .font(LognFont.bodyLarge)
+                                .foregroundColor(LognDark.correct)
+                                .padding(.horizontal, Space.screenMargin)
+                        }
+                    }
+                }
+                
+                // Footer
+                VStack {
+                    LognButton(title: "Voltar para a Skill Tree", variant: .primary) {
+                        dismiss()
+                    }
+                }
+                .padding(.horizontal, Space.screenMargin)
+                .padding(.bottom, Space.xl)
+                .padding(.top, Space.md)
+                .background(LognDark.canvas)
             }
-            .padding(.horizontal, Space.xl)
         }
+    }
+}
+
+struct ErrorReviewCard: View {
+    let letter: String
+    let title: String
+    let desc: String
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: Space.md) {
+            BalloonShape(color: LognDark.wrong, state: .filled, bodySize: 24, showString: false, showHighlight: false)
+                .overlay(
+                    Text(letter)
+                        .font(.custom("IBMPlexMono-Medium", size: 10))
+                        .foregroundColor(LognDark.surface)
+                )
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(LognFont.titleMedium)
+                    .foregroundColor(LognDark.textPrimary)
+                
+                Text(desc)
+                    .font(LognFont.bodyLarge)
+                    .foregroundColor(LognDark.textSecondary)
+            }
+            Spacer()
+        }
+        .padding(Space.md)
+        .background(LognDark.surface)
+        .cornerRadius(Radius.md)
+        .overlay(RoundedRectangle(cornerRadius: Radius.md).stroke(LognDark.line, lineWidth: 1))
+        .padding(.horizontal, Space.screenMargin)
     }
 }
 

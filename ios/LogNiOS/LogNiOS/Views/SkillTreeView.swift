@@ -8,6 +8,9 @@ struct SkillTreeView: View {
     let rowHeight: CGFloat = 110
     let colWidth: CGFloat = 100 // Distância do centro
     
+    @State private var selectedNode: SkillNode? = nil
+    @State private var navigateToMatch: Bool = false
+    
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
@@ -62,10 +65,26 @@ struct SkillTreeView: View {
                                 x: geometry.size.width / 2 + CGFloat(node.column) * colWidth,
                                 y: CGFloat(node.row) * rowHeight + (rowHeight / 2)
                             )
+                            .onTapGesture {
+                                if node.status != .locked {
+                                    selectedNode = node
+                                }
+                            }
+                    }
+                    
+                    // Hidden navigation link
+                    NavigationLink(destination: MatchView(nodeId: selectedNode?.id ?? ""), isActive: $navigateToMatch) {
+                        EmptyView()
                     }
                 }
                 // Altura total baseada na maior linha
                 .frame(height: CGFloat((nodes.map { Int($0.row) }.max() ?? 0) + 1) * rowHeight + 100)
+            }
+            .sheet(item: $selectedNode) { node in
+                NodeSheetView(node: node, onStartMatch: {
+                    selectedNode = node
+                    navigateToMatch = true
+                })
             }
         }
     }
@@ -76,39 +95,37 @@ struct SkillNodeView: View {
     @State private var isPulsing = false
     
     var body: some View {
-        NavigationLink(destination: MatchView(nodeId: node.id)) {
-            VStack(spacing: 6) {
-                // Balão
-                BalloonShape(
-                    color: node.status == .completed ? LognDark.info : LognDark.textDim,
-                    state: balloonState,
-                    bodySize: balloonSize,
-                    showString: false,
-                    showHighlight: true
-                )
-                .overlay(
-                    Text("\(node.requiredXp)")
-                        .font(LognFont.label)
-                        .foregroundColor(node.status == .locked ? LognDark.textDim : LognDark.surface)
-                        .offset(y: -4) // Center vertically inside the balloon body
-                )
-                    .scaleEffect(node.status == .active ? (isPulsing ? 1.08 : 1.0) : 1.0)
-                    .animation(node.status == .active ? Animation.easeInOut(duration: 1.0).repeatForever(autoreverses: true) : .default, value: isPulsing)
-                    .onAppear {
-                        if node.status == .active {
-                            isPulsing = true
-                        }
-                    }
-                
-                // Texto do Nó
-                Text(node.name)
+        VStack(spacing: 6) {
+            // Balão
+            BalloonShape(
+                color: node.status == .completed ? LognDark.info : LognDark.textDim,
+                state: balloonState,
+                bodySize: balloonSize,
+                showString: false,
+                showHighlight: true
+            )
+            .overlay(
+                Text("\(node.requiredXp)")
                     .font(LognFont.label)
-                    .foregroundColor(node.status == .locked ? LognDark.textDim : LognDark.textPrimary)
-                    .lineLimit(1)
-                    .frame(width: 80)
-            }
+                    .foregroundColor(node.status == .locked ? LognDark.textDim : LognDark.surface)
+                    .offset(y: -4) // Center vertically inside the balloon body
+            )
+                .scaleEffect(node.status == .active ? (isPulsing ? 1.08 : 1.0) : 1.0)
+                .animation(node.status == .active ? Animation.easeInOut(duration: 1.0).repeatForever(autoreverses: true) : .default, value: isPulsing)
+                .onAppear {
+                    if node.status == .active {
+                        isPulsing = true
+                    }
+                }
+            
+            // Texto do Nó
+            Text(node.name)
+                .font(LognFont.label)
+                .foregroundColor(node.status == .locked ? LognDark.textDim : LognDark.textPrimary)
+                .lineLimit(1)
+                .frame(width: 80)
         }
-        .disabled(node.status == .locked)
+        .opacity(node.status == .locked ? 0.6 : 1.0)
     }
     
         
@@ -143,4 +160,8 @@ struct SkillNodeView: View {
         case .completed: return LognDark.info
         }
     }
+}
+
+extension LogN.SkillNode: Identifiable {
+    // A propriedade `id` já existe na struct gerada.
 }
