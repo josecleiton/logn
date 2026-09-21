@@ -107,7 +107,7 @@ struct SkillNodeView: View {
             .overlay(
                 Text("\(node.requiredXp)")
                     .font(LognFont.label)
-                    .foregroundColor(node.status == .locked ? LognDark.textDim : LognDark.surface)
+                    .foregroundColor(node.status == .locked ? LognDark.textDim : (node.status == .active ? LognDark.textPrimary : LognDark.surface))
                     .offset(y: -4) // Center vertically inside the balloon body
             )
                 .scaleEffect(node.status == .active ? (isPulsing ? 1.08 : 1.0) : 1.0)
