@@ -19,7 +19,7 @@ func NewRepository(db *pgx.Conn) *Repository {
 func (r *Repository) InsertChallenge(ctx context.Context, ch Challenge) error {
 	query := `INSERT INTO challenges (id, node_id, template_type, version, payload)
 			  VALUES ($1, $2, $3, $4, $5)`
-	_, err := r.db.Exec(ctx, query, ch.ID, ch.Chapter, ch.TemplateType, ch.Version, ch.Payload)
+	_, err := r.db.Exec(ctx, query, ch.ID, ch.NodeID, ch.TemplateType, ch.Version, ch.Payload)
 	return err
 }
 
@@ -40,6 +40,10 @@ func (r *Repository) InsertSyncEvents(ctx context.Context, payload SyncPayload, 
 	for _, event := range payload.Events {
 		query := `INSERT INTO game_events (id, user_id, event_type, payload_json, timestamp, previous_hash, current_hash)
 				  VALUES ($1, $2, $3, $4, $5, $6, $7)`
+		if err := r.ProcessEventXP(ctx, tx, payload.UserID, event); err != nil {
+			return fmt.Errorf("failed to process XP for event %s: %w", event.ID, err)
+		}
+
 		if _, err := tx.Exec(ctx, query, event.ID, payload.UserID, event.EventType, event.PayloadJSON, event.Timestamp, event.PreviousHash, event.CurrentHash); err != nil {
 			return fmt.Errorf("failed to insert event %s: %w", event.ID, err)
 		}
@@ -72,7 +76,7 @@ func (r *Repository) GetChallenges(ctx context.Context) ([]Challenge, error) {
 	var challenges []Challenge
 	for rows.Next() {
 		var ch Challenge
-		if err := rows.Scan(&ch.ID, &ch.Chapter, &ch.TemplateType, &ch.Version, &ch.Payload); err != nil {
+		if err := rows.Scan(&ch.ID, &ch.NodeID, &ch.TemplateType, &ch.Version, &ch.Payload); err != nil {
 			return nil, err
 		}
 		challenges = append(challenges, ch)

@@ -106,56 +106,32 @@ struct ContentView: View {
                                     .padding(.top, Space.md)
                                 
                                 ForEach(core.viewModel.nodes, id: \.id) { node in
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: Space.xs) {
-                                            Text(node.name)
-                                                .font(LognFont.titleMedium)
-                                                .foregroundColor(LognDark.textPrimary)
-                                            Text("\(node.requiredXp) XP Required")
-                                                .font(LognFont.label)
-                                                .foregroundColor(LognDark.textSecondary)
+                                    NavigationLink(destination: NodeChallengesView(node: node)) {
+                                        HStack {
+                                            VStack(alignment: .leading, spacing: Space.xs) {
+                                                Text(node.name)
+                                                    .font(LognFont.titleMedium)
+                                                    .foregroundColor(LognDark.textPrimary)
+                                                Text("\(node.requiredXp) XP Required")
+                                                    .font(LognFont.label)
+                                                    .foregroundColor(LognDark.textSecondary)
+                                            }
+                                            Spacer()
+                                            Image(systemName: "chevron.right")
+                                                .foregroundColor(LognDark.lineDim)
                                         }
-                                        Spacer()
-                                        Image(systemName: "lock.open.fill")
-                                            .foregroundColor(LognDark.success)
+                                        .padding(Space.md)
+                                        .background(LognDark.surface)
+                                        .cornerRadius(Radius.md)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: Radius.md)
+                                                .stroke(LognDark.rowLine, lineWidth: 1)
+                                        )
                                     }
-                                    .padding(Space.md)
-                                    .background(LognDark.surface)
-                                    .cornerRadius(Radius.md)
+                                    .buttonStyle(PlainButtonStyle())
                                 }
                             }
-                            ForEach(core.viewModel.challenges, id: \.id) { challenge in
-                                if challenge.templateType == "SPOT_THE_BUG" {
-                                    NavigationLink(destination: SpotTheBugView(
-                                        title: challenge.payload.content.title,
-                                        codeLines: challenge.payload.content.codeLines,
-                                        balloonColor: Balloon.of(challenge.payload.content.title.first ?? "A", isLight: false),
-                                        onSubmit: { line in
-                                            let payload = "{\"selected_line\": \(line)}"
-                                            let timestamp = Int64(Date().timeIntervalSince1970)
-                                            core.dispatch(event: .submitChallengeAnswer(actionId: UUID().uuidString, challengeId: challenge.id, answerJson: payload, timestamp: timestamp))
-                                        }
-                                    )) {
-                                        ChallengeRow(challenge: challenge)
-                                    }
-                                } else if challenge.templateType == "FILL_IN_THE_BLANK" {
-                                    NavigationLink(destination: FillInTheBlankView(
-                                        title: challenge.payload.content.title,
-                                        codeLines: challenge.payload.content.codeLines,
-                                        balloonColor: Balloon.of(challenge.payload.content.title.first ?? "A", isLight: false),
-                                        onSubmit: { answer in
-                                            let payload = "{\"answer_string\": \"\(answer)\"}"
-                                            let timestamp = Int64(Date().timeIntervalSince1970)
-                                            core.dispatch(event: .submitChallengeAnswer(actionId: UUID().uuidString, challengeId: challenge.id, answerJson: payload, timestamp: timestamp))
-                                        }
-                                    )) {
-                                        ChallengeRow(challenge: challenge)
-                                    }
-                                } else {
-                                    // Fallback UI for other types
-                                    ChallengeRow(challenge: challenge)
-                                }
-                            }
+                            
                         }
                         .padding(.horizontal, Space.screenMargin)
                     }

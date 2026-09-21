@@ -341,7 +341,7 @@ Event::FetchChallenges => {
 
                     let mut enriched_payload = answer_json.clone();
                     enriched_payload.pop(); // Remove closing brace
-                    enriched_payload.push_str(&format!(", \"is_correct\": {}}}", is_correct));
+                    enriched_payload.push_str(&format!(", \"is_correct\": {}, \"challenge_id\": \"{}\", \"node_id\": \"{}\"}}", is_correct, challenge_id, ch.node_id));
 
                     let previous_hash = if model.last_hash.is_empty() {
                         "0000000000000000000000000000000000000000000000000000000000000000".to_string()
