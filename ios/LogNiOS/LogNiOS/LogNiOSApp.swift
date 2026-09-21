@@ -8,7 +8,7 @@ struct LogNiOSApp: App {
     
     init() {
         if let key = Bundle.main.object(forInfoDictionaryKey: "LogNTelemetryKey") as? String, !key.isEmpty {
-            let config = PostHogConfig(apiKey: key, host: "https://app.posthog.com")
+            let config = PostHogConfig(apiKey: key, host: "https://us.i.posthog.com")
             config.captureApplicationLifecycleEvents = true
             PostHogSDK.shared.setup(config)
         } else {
