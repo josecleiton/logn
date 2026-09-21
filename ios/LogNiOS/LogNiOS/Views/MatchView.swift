@@ -215,6 +215,7 @@ struct MatchView: View {
             }
         }
         .navigationBarHidden(true)
+        .toolbar(.hidden, for: .tabBar)
         .onAppear {
             core.dispatch(event: .startMatch(nodeId: nodeId))
             startTimer()
