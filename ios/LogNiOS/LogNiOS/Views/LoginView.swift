@@ -55,7 +55,10 @@ struct LoginView: View {
                             // TODO: Trigger native Google SDK
                         }) {
                             HStack {
-                                Image(systemName: "g.circle.fill")
+                                Image("GoogleIcon")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 24, height: 24)
                                 Text(Str.Login.sign_in_google)
                             }
                             .font(.system(size: 18, weight: .semibold))
@@ -70,7 +73,10 @@ struct LoginView: View {
                             // TODO: Trigger Github custom tab
                         }) {
                             HStack {
-                                Image(systemName: "apple.terminal.fill")
+                                Image("GitHubIcon")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 24, height: 24)
                                 Text(Str.Login.sign_in_github)
                             }
                             .font(.system(size: 18, weight: .semibold))
