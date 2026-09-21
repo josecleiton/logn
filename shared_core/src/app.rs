@@ -830,7 +830,7 @@ Event::FetchChallenges => {
                         model.last_hash.clone()
                     };
 
-                    let payload = format!(r#"{{"letter":"{}","is_correct":{}}}"#, letter, is_correct);
+                    let payload = format!(r#"{{"letter":"{}","is_correct":{},"template_type":"{}"}}"#, letter, is_correct, template);
                     let action_id = format!("match_{}", timestamp);
                     let game_event = GameEvent::new(action_id.clone(), "MATCH_ANSWER".into(), payload, timestamp, previous_hash.clone());
                     model.last_hash = game_event.current_hash.clone();
