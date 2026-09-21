@@ -53,9 +53,9 @@ struct NodeSheetView: View {
                             .font(.custom("IBMPlexMono-Medium", size: 10))
                             .foregroundColor(LognDark.textMuted)
                         
-                        Text(node.status == .completed ? "CONCLUÍDO" : "ATIVO")
+                        Text(node.status == .completed ? "CONCLUÍDO" : (node.status == .locked ? "BLOQUEADO" : "ATIVO"))
                             .font(LognFont.titleMedium)
-                            .foregroundColor(node.status == .completed ? LognDark.info : LognDark.accent)
+                            .foregroundColor(node.status == .completed ? LognDark.info : (node.status == .locked ? LognDark.wrong : LognDark.accent))
                     }
                 }
                 .padding(.vertical, Space.md)
@@ -67,15 +67,21 @@ struct NodeSheetView: View {
                 Spacer()
                 
                 // Start Button
-                LognButton(title: "JOGAR AGORA", variant: .primary) {
-                    dismiss()
-                    // Small delay to allow sheet to dismiss before pushing navigation
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        onStartMatch()
+                if node.status == .locked {
+                    LognButton(title: "BLOQUEADO (XP INSUFICIENTE)", variant: .secondary, isDisabled: true) {}
+                        .padding(.horizontal, Space.screenMargin)
+                        .padding(.bottom, Space.xl)
+                } else {
+                    LognButton(title: "JOGAR AGORA", variant: .primary) {
+                        dismiss()
+                        // Small delay to allow sheet to dismiss before pushing navigation
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            onStartMatch()
+                        }
                     }
+                    .padding(.horizontal, Space.screenMargin)
+                    .padding(.bottom, Space.xl)
                 }
-                .padding(.horizontal, Space.screenMargin)
-                .padding(.bottom, Space.xl)
             }
         }
     }

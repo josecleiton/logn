@@ -756,6 +756,7 @@ Event::FetchChallenges => {
                     .collect();
 
                 if problems.is_empty() {
+                    model.match_state = None; // clear previous state
                     model.status = "No challenges for this node".to_string();
                     return render::render();
                 }
