@@ -266,6 +266,7 @@ impl App for LogNApp {
                         };
                         return Command::request_from_shell(request).then_send(Event::RefreshCompleted);
                     }
+                }
                 // Instead of showing an error on the login screen, we just remain silent
                 model.status = "".to_string();
                 model.access_token = None;
@@ -866,6 +867,12 @@ Event::FetchChallenges => {
                         if ms.contest_seconds_remaining > 0 {
                             ms.contest_seconds_remaining -= 1;
                         }
+                        
+                        // If question timer hits 0, it's a TLE (Time Limit Exceeded)
+                        if ms.question_seconds_remaining == 0 {
+                            ms.submit_tle();
+                        }
+                        
                         if ms.contest_seconds_remaining <= 0 {
                             ms.is_active = false;
                             model.status = "Time's up!".to_string();

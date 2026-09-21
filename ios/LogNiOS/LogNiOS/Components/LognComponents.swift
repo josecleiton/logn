@@ -84,57 +84,59 @@ struct ContestClock: View {
     let isFrozen: Bool
 
     var body: some View {
-        VStack(spacing: 2) {
-            Text(clockLabel)
-                .font(.custom("IBMPlexMono-Medium", size: 10.5))
-                .tracking(1.6)
-                .textCase(.uppercase)
-                .foregroundColor(LognDark.textMuted)
+        if isCritical {
+            HStack(alignment: .lastTextBaseline, spacing: 10) {
+                Text(formattedTime)
+                    .font(.custom("IBMPlexMono-Medium", size: 28))
+                    .fontWeight(.semibold)
+                    .monospacedDigit()
+                    .foregroundColor(LognDark.wrong)
+                
+                Text("RELÓGIO DA QUESTÃO · CRÍTICO")
+                    .font(.custom("IBMPlexMono-Regular", size: 11))
+                    .tracking(1.1)
+                    .textCase(.uppercase)
+                    .foregroundColor(LognDark.wrong)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(isFrozen ? "PLACAR CONGELADO" : "TEMPO RESTANTE")
+                    .font(.custom("IBMPlexMono-Regular", size: 10.5))
+                    .tracking(1.6)
+                    .textCase(.uppercase)
+                    .foregroundColor(isFrozen ? LognDark.warn : LognDark.textMuted)
 
-            Text(formattedTime)
-                .font(.custom("IBMPlexMono-Medium", size: isCritical ? 28 : 38))
-                .monospacedDigit()
-                .foregroundColor(textColor)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(backgroundColor)
-                .cornerRadius(Radius.sm)
-                .overlay(
-                    RoundedRectangle(cornerRadius: Radius.sm)
-                        .stroke(borderColor, lineWidth: 1)
-                )
+                Text(formattedTime)
+                    .font(.custom("IBMPlexMono-Medium", size: 38))
+                    .fontWeight(.medium)
+                    .tracking(-0.02 * 38)
+                    .monospacedDigit()
+                    .foregroundColor(isFrozen ? LognDark.warn : LognDark.textPrimary)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
+            .background(isFrozen ? LognDark.tintWarn : LognDark.canvas)
+            .cornerRadius(4)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(isFrozen ? LognDark.warn : LognDark.line, lineWidth: 1)
+            )
         }
     }
 
     private var isCritical: Bool { remainingSeconds <= 15 && !isFrozen }
 
-    private var clockLabel: String {
-        if isFrozen { return "CONGELADO" }
-        if isCritical { return "TEMPO CRÍTICO" }
-        return "CONTEST"
-    }
-
-    private var textColor: Color {
-        if isCritical { return LognDark.wrong }
-        if isFrozen { return LognDark.warn }
-        return LognDark.textPrimary
-    }
-
-    private var backgroundColor: Color {
-        if isFrozen { return LognDark.tintWarn }
-        return LognDark.canvas
-    }
-
-    private var borderColor: Color {
-        if isCritical { return LognDark.wrong }
-        if isFrozen { return LognDark.warn }
-        return LognDark.line
-    }
-
     private var formattedTime: String {
-        let m = remainingSeconds / 60
-        let s = remainingSeconds % 60
-        return String(format: "%d:%02d", m, s)
+        if remainingSeconds > 3600 {
+            let h = remainingSeconds / 3600
+            let m = (remainingSeconds % 3600) / 60
+            let s = remainingSeconds % 60
+            return String(format: "%02d:%02d:%02d", h, m, s)
+        } else {
+            let m = remainingSeconds / 60
+            let s = remainingSeconds % 60
+            return String(format: "%02d:%02d", m, s)
+        }
     }
 }
 
@@ -208,6 +210,12 @@ struct MatchHeader: View {
     let lives: Int
     let balloonStates: [(Character, Bool)] // (letter, isAccepted)
 
+    private var formattedTime: String {
+        let m = remainingSeconds / 60
+        let s = remainingSeconds % 60
+        return String(format: "%02d:%02d", m, s)
+    }
+
     var body: some View {
         VStack(spacing: 8) {
             HStack {
@@ -217,7 +225,11 @@ struct MatchHeader: View {
 
                 Spacer()
 
-                ContestClock(remainingSeconds: remainingSeconds, isFrozen: isFrozen)
+                // Small inline timer for MatchHeader
+                Text(formattedTime)
+                    .font(.custom("IBMPlexMono-Medium", size: 13))
+                    .foregroundColor(remainingSeconds <= 15 ? LognDark.wrong : (isFrozen ? LognDark.warn : LognDark.textPrimary))
+                    .monospacedDigit()
 
                 Spacer()
 
@@ -233,8 +245,8 @@ struct MatchHeader: View {
                         BalloonShape(
                             color: BalloonColor.forLetter(letter),
                             state: isAccepted ? .filled : .outline,
-                            bodySize: 11,
-                            showString: false,
+                            bodySize: 13,
+                            showString: true,
                             showHighlight: false
                         )
                         .opacity(isAccepted ? 1.0 : 0.4)
@@ -246,16 +258,17 @@ struct MatchHeader: View {
                 }
             }
         }
-        .padding(.horizontal, Space.screenMargin)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
         .frame(height: 84)
         .background(LognDark.canvas)
+        .cornerRadius(4)
         .overlay(
-            Rectangle()
-                .frame(height: 1)
-                .foregroundColor(LognDark.line),
-            alignment: .bottom
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(LognDark.line, lineWidth: 1)
         )
+        .padding(.horizontal, Space.screenMargin)
+        .padding(.top, 10)
     }
 }
 import SwiftUI

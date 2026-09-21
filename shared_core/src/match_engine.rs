@@ -218,6 +218,33 @@ impl MatchState {
         verdict
     }
 
+    pub fn submit_tle(&mut self) -> VerdictCode {
+        let problem = match self.problems.get(self.current_index) {
+            Some(p) => p.clone(),
+            None => return VerdictCode::WrongAnswer,
+        };
+
+        let letter = problem.letter.chars().next().unwrap_or('?');
+        *self.attempts.entry(letter).or_insert(0) += 1;
+
+        let verdict = VerdictCode::TimeLimitExceeded;
+        self.verdicts.insert(letter, verdict.clone());
+
+        self.lives -= 1;
+        self.penalty_minutes += 20;
+        self.selection = MatchSelection::default();
+
+        if self.lives > 0 {
+            self.advance();
+        }
+
+        if self.lives <= 0 || self.all_solved() || self.current_index >= self.problems.len() {
+            self.is_active = false;
+        }
+
+        verdict
+    }
+
     fn advance(&mut self) {
         let start = self.current_index;
         loop {
