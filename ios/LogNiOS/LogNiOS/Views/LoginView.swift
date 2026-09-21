@@ -86,9 +86,10 @@ struct LoginView: View {
                                 if item.2 {
                                     Image(systemName: "applelogo")
                                         .font(.system(size: 20))
-                                        .foregroundColor(LognDark.textPrimary)
+                                        .foregroundColor(.black)
                                 } else {
                                     Image(item.0)
+                                        .renderingMode(.alwaysOriginal)
                                         .resizable()
                                         .scaledToFit()
                                         .frame(width: 20, height: 20)
@@ -96,13 +97,16 @@ struct LoginView: View {
                                 
                                 Text(item.1)
                                     .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(LognDark.textPrimary)
+                                    .foregroundColor(item.2 ? .black : LognDark.textPrimary)
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 52)
-                            .background(LognDark.surface)
+                            .background(item.2 ? Color.white : LognDark.surface)
                             .cornerRadius(Radius.sm)
-                            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Radius.sm)
+                                    .stroke(item.2 ? Color.clear : LognDark.line, lineWidth: 1)
+                            )
                         }
                     }
                     
