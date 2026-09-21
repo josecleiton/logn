@@ -233,6 +233,13 @@ impl MatchState {
         self.lives -= 1;
         self.penalty_minutes += 20;
         self.selection = MatchSelection::default();
+        
+        self.trap = Some(TrapInfo {
+            name: "Time Limit Exceeded".into(),
+            category: "TIME LIMIT EXCEEDED".into(),
+            title: "O Tempo Esgotou!".into(),
+            explanation: "Você demorou mais de 60 segundos nesta questão e perdeu uma vida. A ICPC penaliza a lentidão. Tente ser mais rápido na próxima!".into(),
+        });
 
         if self.lives > 0 {
             self.advance();
