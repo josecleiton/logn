@@ -106,14 +106,26 @@ pub struct Challenge {
     pub payload: ChallengePayload, // Typed for Facet
 }
 
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum NodeStatus {
+    Locked,
+    Active,
+    Completed,
+}
+
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
 #[facet(fg::namespace = "LogN")]
 pub struct SkillNode {
     pub id: String,
     pub name: String,
     pub description: String,
-    pub order_index: i32,
+    pub row: i32,
+    pub column: i32,
     pub required_xp: i32,
+    pub prerequisites: Vec<String>,
+    pub status: NodeStatus,
 }
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]

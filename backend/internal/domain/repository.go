@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 	"fmt"
 
@@ -129,11 +130,13 @@ func (r *Repository) GetRefreshToken(ctx context.Context, tokenHash string) (*Re
 }
 
 type SkillNode struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	OrderIndex  int    `json:"order_index"`
-	RequiredXP  int    `json:"required_xp"`
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Description   string   `json:"description"`
+	Row           int      `json:"row"`
+	Column        int      `json:"column"`
+	RequiredXP    int      `json:"required_xp"`
+	Prerequisites []string `json:"prerequisites"`
 }
 
 type UserProgress struct {
@@ -144,7 +147,7 @@ type UserProgress struct {
 }
 
 func (r *Repository) GetSkillNodes(ctx context.Context) ([]SkillNode, error) {
-	query := `SELECT id, name, description, order_index, required_xp FROM skill_nodes ORDER BY order_index ASC`
+	query := `SELECT id, name, description, row_idx, col_idx, required_xp, prerequisites FROM skill_nodes ORDER BY row_idx ASC`
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
@@ -154,8 +157,13 @@ func (r *Repository) GetSkillNodes(ctx context.Context) ([]SkillNode, error) {
 	var nodes []SkillNode
 	for rows.Next() {
 		var n SkillNode
-		if err := rows.Scan(&n.ID, &n.Name, &n.Description, &n.OrderIndex, &n.RequiredXP); err != nil {
+		var prereqsJSON []byte
+		if err := rows.Scan(&n.ID, &n.Name, &n.Description, &n.Row, &n.Column, &n.RequiredXP, &prereqsJSON); err != nil {
 			return nil, err
+		}
+		json.Unmarshal(prereqsJSON, &n.Prerequisites)
+		if n.Prerequisites == nil {
+			n.Prerequisites = []string{}
 		}
 		nodes = append(nodes, n)
 	}

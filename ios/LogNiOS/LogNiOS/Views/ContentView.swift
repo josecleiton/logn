@@ -96,45 +96,9 @@ struct ContentView: View {
                     }
                     .padding(.horizontal, Space.screenMargin)
                     
-                    // Lista Dinamica
-                    ScrollView {
-                        VStack(spacing: Space.md) {
-                            if !core.viewModel.nodes.isEmpty {
-                                Text("Skill Tree")
-                                    .font(LognFont.headlineMedium)
-                                    .foregroundColor(LognDark.textPrimary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.top, Space.md)
-                                
-                                ForEach(core.viewModel.nodes, id: \.id) { node in
-                                    NavigationLink(destination: NodeChallengesView(node: node)) {
-                                        HStack {
-                                            VStack(alignment: .leading, spacing: Space.xs) {
-                                                Text(node.name)
-                                                    .font(LognFont.titleMedium)
-                                                    .foregroundColor(LognDark.textPrimary)
-                                                Text("\(node.requiredXp) XP Required")
-                                                    .font(LognFont.label)
-                                                    .foregroundColor(LognDark.textSecondary)
-                                            }
-                                            Spacer()
-                                            Image(systemName: "chevron.right")
-                                                .foregroundColor(LognDark.lineDim)
-                                        }
-                                        .padding(Space.md)
-                                        .background(LognDark.surface)
-                                        .cornerRadius(Radius.md)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: Radius.md)
-                                                .stroke(LognDark.rowLine, lineWidth: 1)
-                                        )
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
-                                }
-                            }
-                            
-                        }
-                        .padding(.horizontal, Space.screenMargin)
+                    // Skill Tree Dinâmica (DAG)
+                    if !core.viewModel.nodes.isEmpty {
+                        SkillTreeView(nodes: core.viewModel.nodes)
                     }
                 }
                 .padding(.top)

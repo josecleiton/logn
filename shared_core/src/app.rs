@@ -73,6 +73,7 @@ pub struct Model {
     pub pending_retry_event: Option<Event>, // Para o interceptor 401
     pub otp_email: String,
     pub otp_verified: bool,
+    pub global_xp: i32,
 }
 
 #[derive(Facet, Serialize, Deserialize, Default, Clone)]
@@ -89,6 +90,7 @@ pub struct ViewModel {
     pub nodes: Vec<crate::domain::SkillNode>,
     pub otp_email: String,
     pub otp_verified: bool,
+    pub global_xp: i32,
 }
 
 #[effect(facet_typegen)]
@@ -695,7 +697,36 @@ Event::FetchChallenges => {
         }
     }
 
-    fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        let mut computed_nodes = model.nodes.clone();
+        
+        // Calculate DAG status
+        for i in 0..computed_nodes.len() {
+            let req_xp = computed_nodes[i].required_xp;
+            let id = computed_nodes[i].id.clone();
+            
+            if model.global_xp < req_xp {
+                computed_nodes[i].status = crate::domain::NodeStatus::Locked;
+            } else {
+                // It is at least Active. Is it Completed?
+                // A node is completed if ANY of its children (nodes that have it as prerequisite)
+                // are UNLOCKED (meaning user's global_xp >= child.required_xp).
+                let mut has_unlocked_child = false;
+                for child in &model.nodes {
+                    if child.prerequisites.contains(&id) && model.global_xp >= child.required_xp {
+                        has_unlocked_child = true;
+                        break;
+                    }
+                }
+                
+                if has_unlocked_child {
+                    computed_nodes[i].status = crate::domain::NodeStatus::Completed;
+                } else {
+                    computed_nodes[i].status = crate::domain::NodeStatus::Active;
+                }
+            }
+        }
+
         ViewModel {
             display_status: model.status.clone(),
             pending_sync_count: model.pending_events.len() as u32,
@@ -705,9 +736,10 @@ Event::FetchChallenges => {
             has_access_token: model.access_token.is_some(),
             is_guest: model.is_guest,
             challenges: model.challenges.clone(),
-            nodes: model.nodes.clone(),
+            nodes: computed_nodes,
             otp_email: model.otp_email.clone(),
             otp_verified: model.otp_verified,
+            global_xp: model.global_xp,
         }
     }
 }
