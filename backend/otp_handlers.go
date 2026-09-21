@@ -74,7 +74,7 @@ func (s *Server) verifyOTPHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	valid, err := s.repo.VerifyOTP(ctx, payload.Email, payload.Code, payload.Purpose)
+	valid, err := s.repo.CheckOTP(ctx, payload.Email, payload.Code, payload.Purpose)
 	if err != nil || !valid {
 		http.Error(w, "Invalid or expired OTP", http.StatusUnauthorized)
 		return

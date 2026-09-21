@@ -16,6 +16,10 @@ struct LogNiOSApp: App {
         }
     }
     
+    @State private var resetPasswordEmail: String?
+    @State private var resetPasswordCode: String?
+    @State private var showResetPassword = false
+    
     var body: some Scene {
         WindowGroup {
             Group {
@@ -30,6 +34,17 @@ struct LogNiOSApp: App {
             .onOpenURL { url in
                 handleIncomingURL(url)
             }
+            .sheet(isPresented: $showResetPassword) {
+                if let email = resetPasswordEmail, let code = resetPasswordCode {
+                    ResetPasswordView(email: email, otp: code)
+                        .environmentObject(core)
+                }
+            }
+            .onChange(of: core.viewModel.hasAccessToken) { hasToken in
+                if hasToken {
+                    showResetPassword = false
+                }
+            }
         }
     }
     
@@ -43,9 +58,16 @@ struct LogNiOSApp: App {
         let email = queryItems.first(where: { $0.name == "email" })?.value ?? ""
         let purpose = queryItems.first(where: { $0.name == "purpose" })?.value ?? "verify_email"
         
-        if host == "verify" || host == "reset-password" {
+        if host == "verify" {
             if !code.isEmpty && !email.isEmpty {
                 core.dispatch(event: .verifyOTP(email: email, code: code, purpose: purpose))
+            }
+        } else if host == "reset-password" {
+            if !code.isEmpty && !email.isEmpty {
+                // Ao invés de apenas validar, já subimos a tela para o usuário digitar a nova senha
+                resetPasswordEmail = email
+                resetPasswordCode = code
+                showResetPassword = true
             }
         }
     }

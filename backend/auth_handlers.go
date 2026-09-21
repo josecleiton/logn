@@ -141,7 +141,7 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
 	// 1. Verify OTP
-	valid, err := s.repo.VerifyOTP(ctx, req.Email, req.OTP, "verify_email")
+	valid, err := s.repo.ConsumeOTP(ctx, req.Email, req.OTP, "verify_email")
 	if err != nil || !valid {
 		http.Error(w, "Invalid or expired OTP", http.StatusUnauthorized)
 		return
@@ -183,6 +183,68 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(AuthResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	})
+}
+
+type ResetPasswordRequest struct {
+	Email    string `json:"email"`
+	OTP      string `json:"otp"`
+	Password string `json:"password"`
+}
+
+func (s *Server) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req ResetPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+
+	// 1. Consume OTP
+	valid, err := s.repo.ConsumeOTP(ctx, req.Email, req.OTP, "reset_password")
+	if err != nil || !valid {
+		http.Error(w, "Invalid or expired OTP", http.StatusUnauthorized)
+		return
+	}
+
+	// 2. Hash New Password
+	hashedPassword, err := domain.HashPassword(req.Password)
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	// 3. Update User Password
+	err = s.repo.UpdateUserPassword(ctx, req.Email, hashedPassword)
+	if err != nil {
+		http.Error(w, "Error updating password", http.StatusInternalServerError)
+		return
+	}
+
+	// 4. (Optional) Auto-login the user after reset
+	user, err := s.repo.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		http.Error(w, "Internal error fetching user", http.StatusInternalServerError)
+		return
+	}
+
+	accessToken, _ := domain.GenerateAccessToken(user.ID)
+	refreshToken, _ := domain.GenerateRefreshToken()
+	
+	hash := sha256.Sum256([]byte(refreshToken))
+	tokenHash := hex.EncodeToString(hash[:])
+	_ = s.repo.CreateRefreshToken(ctx, user.ID, tokenHash, time.Now().Add(30*24*time.Hour))
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(AuthResponse{

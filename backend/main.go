@@ -133,6 +133,8 @@ func main() {
 	mux.HandleFunc("POST /api/v1/auth/request-otp", server.requestOTPHandler)
 	mux.HandleFunc("POST /api/v1/auth/verify-otp", server.verifyOTPHandler)
 	mux.HandleFunc("POST /api/v1/auth/register", server.registerHandler)
+	mux.HandleFunc("POST /api/v1/auth/reset-password", server.resetPasswordHandler)
+
 
 	mux.HandleFunc("GET /api/v1/nodes", server.getNodesHandler)
 	mux.HandleFunc("GET /api/v1/progress", server.getUserProgressHandler)

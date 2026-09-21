@@ -191,3 +191,9 @@ func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string)
 	err := r.db.QueryRow(ctx, query, email, passwordHash).Scan(&id)
 	return id, err
 }
+
+func (r *Repository) UpdateUserPassword(ctx context.Context, email, passwordHash string) error {
+	query := `UPDATE users SET password_hash = $1 WHERE email = $2`
+	_, err := r.db.Exec(ctx, query, passwordHash, email)
+	return err
+}

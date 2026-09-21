@@ -25,7 +25,7 @@ func (r *Repository) SaveOTP(ctx context.Context, email, code, purpose string, d
 	return err
 }
 
-func (r *Repository) VerifyOTP(ctx context.Context, email, code, purpose string) (bool, error) {
+func (r *Repository) CheckOTP(ctx context.Context, email, code, purpose string) (bool, error) {
 	query := `
 		SELECT otp_code, expires_at FROM otps 
 		WHERE email = $1 AND purpose = $2
@@ -40,6 +40,15 @@ func (r *Repository) VerifyOTP(ctx context.Context, email, code, purpose string)
 
 	if dbCode != code || time.Now().After(expiresAt) {
 		return false, nil
+	}
+	
+	return true, nil
+}
+
+func (r *Repository) ConsumeOTP(ctx context.Context, email, code, purpose string) (bool, error) {
+	valid, err := r.CheckOTP(ctx, email, code, purpose)
+	if err != nil || !valid {
+		return false, err
 	}
 
 	// Delete after successful use

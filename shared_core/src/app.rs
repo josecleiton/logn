@@ -44,6 +44,8 @@ pub enum Event {
     OTPVerified(HttpResult),
     Register { email: String, password: String, otp: String },
     RegisterCompleted(HttpResult),
+    ResetPassword { email: String, new_password: String, otp: String },
+    ResetPasswordCompleted(HttpResult),
 }
 
 #[derive(Default, Clone)]
@@ -513,6 +515,49 @@ Event::FetchChallenges => {
                     }
                     _ => {
                         model.status = "Registration failed.".to_string();
+                    }
+                }
+                render::render()
+            }
+            Event::ResetPassword { email, new_password, otp } => {
+                model.is_authenticating = true;
+                model.status = "Resetting password...".to_string();
+
+                let body = serde_json::json!({ "email": email, "password": new_password, "otp": otp });
+                let request = HttpRequest {
+                    method: "POST".to_string(),
+                    url: "/api/v1/auth/reset-password".to_string(),
+                    headers: vec![crux_http::protocol::HttpHeader {
+                        name: "Content-Type".to_string(),
+                        value: "application/json".to_string(),
+                    }],
+                    body: body.to_string().into_bytes(),
+                };
+                Command::request_from_shell(request).then_send(Event::ResetPasswordCompleted)
+            }
+            Event::ResetPasswordCompleted(result) => {
+                model.is_authenticating = false;
+                match result {
+                    HttpResult::Ok(response) if response.status == 200 => {
+                        #[derive(Deserialize)]
+                        struct AuthResp { access_token: String, refresh_token: String }
+
+                        if let Ok(data) = serde_json::from_slice::<AuthResp>(&response.body) {
+                            model.access_token = Some(data.access_token);
+                            model.is_guest = false;
+                            model.otp_verified = false;
+                            model.otp_email = String::new();
+                            model.status = "Password updated!".to_string();
+
+                            return Command::request_from_shell(KeyValueOperation::Set {
+                                key: "refresh_token".to_string(),
+                                value: data.refresh_token.into_bytes(),
+                            }).then_send(Event::TokenStored);
+                        }
+                        model.status = "Failed to parse response".to_string();
+                    }
+                    _ => {
+                        model.status = "Failed to reset password.".to_string();
                     }
                 }
                 render::render()
