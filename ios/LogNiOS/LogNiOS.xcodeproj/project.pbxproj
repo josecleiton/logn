@@ -14,6 +14,7 @@
 		2F7173374C70B98EECB2E04A /* Strings.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF70445FC4588B69074A5843 /* Strings.swift */; };
 		367A11F1AABAF76BBEC5269D /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4DB2DC21E3986A71469A3AA /* RegisterView.swift */; };
 		4DEA72E488BD4E013F10A268 /* SpotTheBugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 178E6C5FA5D98E9E9CB943F3 /* SpotTheBugView.swift */; };
+		567C1D15944B685B8204F3ED /* ResetPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B2B5EA563D4C0A69035BF3 /* ResetPasswordView.swift */; };
 		5B28C2226E5C4917A2F15B4E /* CoreWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C915F676CBB9F04656C255 /* CoreWrapper.swift */; };
 		936B6709633ADF906CB1E02F /* LogNiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80804A0792E45E01C5BE3D0B /* LogNiOSApp.swift */; };
 		B118212843B83D5CB04DFAE9 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */; };
@@ -44,6 +45,7 @@
 		9D1A761B4BB79672516BF045 /* LogNiOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LogNiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D238C31B32D323BF620359D /* StringsMappers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringsMappers.swift; sourceTree = "<group>"; };
 		C4DB2DC21E3986A71469A3AA /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
+		C5B2B5EA563D4C0A69035BF3 /* ResetPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetPasswordView.swift; sourceTree = "<group>"; };
 		CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		DDFF15C0C673EF7D549B36D0 /* App */ = {isa = PBXFileReference; lastKnownFileType = folder; name = App; path = ../SharedCore/App; sourceTree = SOURCE_ROOT; };
 		DF70445FC4588B69074A5843 /* Strings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Strings.swift; sourceTree = "<group>"; };
@@ -117,6 +119,7 @@
 				4CB79DA23F81A184D6406E1A /* NodeChallengesView.swift */,
 				48659346006694BF96682CBE /* OTPInputView.swift */,
 				C4DB2DC21E3986A71469A3AA /* RegisterView.swift */,
+				C5B2B5EA563D4C0A69035BF3 /* ResetPasswordView.swift */,
 				178E6C5FA5D98E9E9CB943F3 /* SpotTheBugView.swift */,
 			);
 			path = Views;
@@ -244,6 +247,7 @@
 				BF1371254EE520E551FC2D6F /* NodeChallengesView.swift in Sources */,
 				F78BA7613AF912F27820D2ED /* OTPInputView.swift in Sources */,
 				367A11F1AABAF76BBEC5269D /* RegisterView.swift in Sources */,
+				567C1D15944B685B8204F3ED /* ResetPasswordView.swift in Sources */,
 				4DEA72E488BD4E013F10A268 /* SpotTheBugView.swift in Sources */,
 				2F7173374C70B98EECB2E04A /* Strings.swift in Sources */,
 				EA1F6042A86DDF791B09AB41 /* StringsMappers.swift in Sources */,

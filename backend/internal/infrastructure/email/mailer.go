@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"time"
 
 	"gopkg.in/gomail.v2"
 )
@@ -25,36 +26,66 @@ func NewMailer() *Mailer {
 
 	return &Mailer{
 		templates: tmpl,
-		host:      "localhost", // Use "mailpit" no docker-compose
+		host:      "localhost",
 		port:      1025,
 		from:      "LogN <noreply@logn.sh>",
 	}
 }
 
+type OTPData struct {
+	Email       string
+	Code        string
+	CodeSpaced  string
+	D1, D2, D3, D4, D5, D6 string
+	Purpose     string
+	RequestMeta string
+}
+
+func newOTPData(email, code, purpose string) OTPData {
+	spaced := ""
+	for i, c := range code {
+		if i > 0 {
+			spaced += " "
+		}
+		spaced += string(c)
+	}
+
+	digits := make([]string, 6)
+	for i := 0; i < 6 && i < len(code); i++ {
+		digits[i] = string(code[i])
+	}
+
+	meta := fmt.Sprintf("%s · LogN App", time.Now().Format("02 Jan 2006, 15:04"))
+
+	return OTPData{
+		Email:       email,
+		Code:        code,
+		CodeSpaced:  spaced,
+		D1: digits[0], D2: digits[1], D3: digits[2],
+		D4: digits[3], D5: digits[4], D6: digits[5],
+		Purpose:     purpose,
+		RequestMeta: meta,
+	}
+}
+
 func (m *Mailer) SendOTP(toEmail, purpose, code string) error {
-	subjectStr := "Código de Verificação"
+	data := newOTPData(toEmail, code, purpose)
+
+	templateName := "otp.html"
+	subject := "Seu código de verificação — LogN"
+
 	if purpose == "reset_password" {
-		subjectStr = "Recuperação de Senha"
+		templateName = "reset_password.html"
+		subject = "Redefinição de senha — LogN"
 	}
 
-	data := struct {
-		Subject string
-		Code    string
-	}{
-		Subject: subjectStr,
-		Code:    code,
-	}
-
-	return m.send(toEmail, subjectStr, "otp.html", data)
+	return m.send(toEmail, subject, templateName, data)
 }
 
 func (m *Mailer) SendWelcome(toEmail string) error {
-	data := struct {
-		Email string
-	}{
-		Email: toEmail,
-	}
-
+	// welcome.html from Claude Design — static, no dynamic fields needed
+	// We still render it via template in case future fields are added
+	data := struct{ Email string }{Email: toEmail}
 	return m.send(toEmail, "Bem-vindo ao LogN!", "welcome.html", data)
 }
 
@@ -70,7 +101,7 @@ func (m *Mailer) send(to, subject, templateName string, data interface{}) error 
 	msg.SetHeader("To", to)
 	msg.SetHeader("Subject", subject)
 
-	// Anexando a imagem inline via CID
+	// Embed logo via CID
 	msg.Embed("logo.jpg", gomail.SetCopyFunc(func(w io.Writer) error {
 		fileBytes, err := templatesFS.ReadFile("templates/assets/logo.jpg")
 		if err != nil {
