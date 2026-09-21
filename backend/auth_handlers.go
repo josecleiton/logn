@@ -35,13 +35,20 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 	user, err := s.repo.GetUserByEmail(ctx, req.Email)
+	
+	// Dummy hash to prevent user enumeration via timing attacks
+	// This hash was generated with the same argon2 parameters used by the app.
+	dummyHash := "$argon2id$v=19$m=65536,t=1,p=4$+WHflVRpX7CuqjkDl22cPw$63wNww35x7RbA11BqOCScXPk3AbIRru3IuzuOJ1vimA"
+	
+	var hashToCompare string
 	if err != nil {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
-		return
+		hashToCompare = dummyHash
+	} else {
+		hashToCompare = user.PasswordHash
 	}
 
-	match, err := domain.ComparePasswordAndHash(req.Password, user.PasswordHash)
-	if err != nil || !match {
+	match, compareErr := domain.ComparePasswordAndHash(req.Password, hashToCompare)
+	if err != nil || compareErr != nil || !match {
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
