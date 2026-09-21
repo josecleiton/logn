@@ -21,7 +21,7 @@ struct MatchView: View {
             
             if !mv.isActive {
                 // Fim de partida (Match Over)
-                MatchReportView()
+                MatchReportView(onDismiss: { dismiss() })
             } else {
                 VStack(spacing: 0) {
                     // Header de Partida Fixo
@@ -241,7 +241,7 @@ struct MatchView: View {
 
 // Relatório Pós-Jogo (Mock temporário para o fim da partida)
 struct MatchReportView: View {
-    @Environment(\.dismiss) var dismiss
+    let onDismiss: () -> Void
     @EnvironmentObject var core: CoreWrapper
     
     var body: some View {
@@ -317,7 +317,7 @@ struct MatchReportView: View {
                 // Footer
                 VStack {
                     LognButton(title: "Voltar para a Skill Tree", variant: .primary) {
-                        dismiss()
+                        onDismiss()
                     }
                 }
                 .padding(.horizontal, Space.screenMargin)
