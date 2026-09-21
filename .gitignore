@@ -16,3 +16,4 @@ xcuserdata/
 
 ios/LogNCoreFFI/*.xcframework
 ios/LogNCoreFFI/*.zip
+tools_i18n/target/
