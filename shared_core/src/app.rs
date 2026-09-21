@@ -87,6 +87,8 @@ pub struct Model {
     pub otp_email: String,
     pub otp_verified: bool,
     pub global_xp: i32,
+    pub bugs_found: i32,
+    pub dry_runs_completed: i32,
     pub match_state: Option<match_engine::MatchState>,
 }
 
@@ -105,6 +107,8 @@ pub struct ViewModel {
     pub otp_email: String,
     pub otp_verified: bool,
     pub global_xp: i32,
+    pub bugs_found: i32,
+    pub dry_runs_completed: i32,
     pub match_view: match_engine::MatchViewModel,
 }
 
@@ -800,14 +804,22 @@ Event::FetchChallenges => {
                     let verdict = ms.submit();
                     let is_correct = verdict == match_engine::VerdictCode::Accepted;
 
+                    let template = ms.current_template_type().to_string();
                     if is_correct {
                         model.global_xp += 50;
+                        if template == "SPOT_THE_BUG" {
+                            model.bugs_found += 1;
+                        }
                     }
 
+                    let mut match_ended = false;
+                    let mut solved = 0;
                     if !ms.is_active {
                         // Match ended
-                        let solved = ms.solved_count();
+                        model.dry_runs_completed += 1;
+                        solved = ms.solved_count();
                         model.status = format!("Match over! {} solved", solved);
+                        match_ended = true;
                     }
 
                     // Register game event for offline sync
@@ -820,9 +832,16 @@ Event::FetchChallenges => {
 
                     let payload = format!(r#"{{"letter":"{}","is_correct":{}}}"#, letter, is_correct);
                     let action_id = format!("match_{}", timestamp);
-                    let game_event = GameEvent::new(action_id, "MATCH_ANSWER".into(), payload, timestamp, previous_hash);
+                    let mut game_event = GameEvent::new(action_id.clone(), "MATCH_ANSWER".into(), payload, timestamp, previous_hash.clone());
                     model.last_hash = game_event.current_hash.clone();
                     model.pending_events.push(game_event);
+
+                    if match_ended {
+                        let end_payload = format!(r#"{{"solved":{}}}"#, solved);
+                        let end_event = GameEvent::new(format!("{}_end", action_id), "MATCH_END".into(), end_payload, timestamp, model.last_hash.clone());
+                        model.last_hash = end_event.current_hash.clone();
+                        model.pending_events.push(end_event);
+                    }
                 }
                 render::render()
             }

@@ -25,6 +25,8 @@ public class CoreWrapper: ObservableObject {
             otpEmail: "",
             otpVerified: false,
             globalXp: 0,
+            bugsFound: 0,
+            dryRunsCompleted: 0,
             matchView: MatchViewModel(
                 isActive: false, currentLetter: "", currentTitle: "", currentDescription: "",
                 currentTemplateType: "", currentCodeLines: [], currentOptions: [],

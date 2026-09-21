@@ -99,7 +99,7 @@ struct ProfileHubView: View {
                         HStack(spacing: Space.md) {
                             StatBox(title: "XP TOTAL", value: "\(xp)")
                             StatBox(title: "BUGS", value: "0") // TODO: ViewModels stats
-                            StatBox(title: "DRY RUNS", value: "0")
+                            StatBox(title: "DRY RUNS", value: "\(core.viewModel.dryRunsCompleted)")
                         }
                         .padding(.horizontal, Space.screenMargin)
                         
