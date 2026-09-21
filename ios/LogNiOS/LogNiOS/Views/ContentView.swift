@@ -27,6 +27,12 @@ struct ContentView: View {
                         Text("\(core.viewModel.pendingSyncCount) pending syncs")
                             .font(LognFont.label)
                             .foregroundColor(LognDark.textSecondary)
+                        
+                        if core.viewModel.isSyncing {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: LognDark.accent))
+                                .padding(.leading, Space.sm)
+                        }
                     }
                 }
                 .padding(Space.lg)
@@ -63,10 +69,27 @@ struct ContentView: View {
                             .font(LognFont.titleMedium)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, Space.md)
-                            .background(LognDark.accent)
-                            .foregroundColor(LognDark.onAccent)
+                            .background(LognDark.surface)
+                            .foregroundColor(LognDark.textPrimary)
+                            .cornerRadius(Radius.sm)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Radius.sm)
+                                    .stroke(LognDark.lineStrong, lineWidth: 1)
+                            )
+                    }
+                    
+                    Button(action: {
+                        core.dispatch(event: .syncNow)
+                    }) {
+                        Text("Sync Now (HTTP POST)")
+                            .font(LognFont.titleMedium)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, Space.md)
+                            .background(core.viewModel.isSyncing ? LognDark.buttonDisabled : LognDark.accent)
+                            .foregroundColor(core.viewModel.isSyncing ? LognDark.textMuted : LognDark.onAccent)
                             .cornerRadius(Radius.sm)
                     }
+                    .disabled(core.viewModel.isSyncing)
                 }
                 .padding(.horizontal, Space.screenMargin)
             }

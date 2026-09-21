@@ -2,7 +2,8 @@ use crux_core::{render::{self, RenderOperation}, App, macros::effect, Command};
 use serde::{Deserialize, Serialize};
 use facet::Facet;
 use facet_generate_attrs as fg;
-use crate::domain::GameEvent;
+use crux_http::protocol::{HttpRequest, HttpResult};
+use crate::domain::{GameEvent, SyncPayload};
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
 #[repr(C)]
@@ -16,14 +17,17 @@ pub enum Event {
         payload_json: String,
         timestamp: i64,
     },
+    SyncNow,
+    SyncCompleted(HttpResult),
 }
 
-#[derive(Facet, Serialize, Deserialize, Default, Clone)]
-#[facet(fg::namespace = "LogN")]
+#[derive(Default, Clone)]
 pub struct Model {
     pub status: String,
     pub pending_events: Vec<GameEvent>,
     pub last_hash: String,
+    pub user_id: String,
+    pub is_syncing: bool,
 }
 
 #[derive(Facet, Serialize, Deserialize, Default, Clone)]
@@ -31,13 +35,14 @@ pub struct Model {
 pub struct ViewModel {
     pub display_status: String,
     pub pending_sync_count: u32,
+    pub is_syncing: bool,
 }
 
 #[effect(facet_typegen)]
 #[facet(fg::namespace = "LogN")]
 pub enum Effect {
     Render(RenderOperation),
-    // Http(crux_http::HttpOperation) will be added here
+    Http(HttpRequest),
 }
 
 #[derive(Default)]
@@ -77,6 +82,58 @@ impl App for LogNApp {
 
                 render::render()
             }
+            Event::SyncNow => {
+                if model.is_syncing || model.pending_events.is_empty() {
+                    return Command::done();
+                }
+                
+                model.is_syncing = true;
+                model.status = "Syncing...".to_string();
+                
+                let user_id = if model.user_id.is_empty() { "user_1".to_string() } else { model.user_id.clone() };
+                
+                let payload = SyncPayload {
+                    user_id,
+                    events: model.pending_events.clone(),
+                };
+                
+                let body_bytes = serde_json::to_vec(&payload).unwrap_or_default();
+                
+                let request = HttpRequest {
+                    method: "POST".to_string(),
+                    url: "http://localhost:8080/api/v1/sync".to_string(),
+                    headers: vec![
+                        crux_http::protocol::HttpHeader {
+                            name: "Content-Type".to_string(),
+                            value: "application/json".to_string(),
+                        }
+                    ],
+                    body: body_bytes,
+                };
+                
+                Command::request_from_shell(request)
+                    .then_send(Event::SyncCompleted)
+            }
+            Event::SyncCompleted(result) => {
+                model.is_syncing = false;
+                match result {
+                    HttpResult::Ok(response) => {
+                        if response.status == 200 {
+                            model.status = "Sync Successful".to_string();
+                            model.pending_events.clear();
+                        } else if response.status == 409 {
+                            model.status = "Sync Conflict - Rebase Required".to_string();
+                            // Here we would implement rebase logic fetching the server state
+                        } else {
+                            model.status = format!("Sync Failed: HTTP {}", response.status);
+                        }
+                    }
+                    HttpResult::Err(_err) => {
+                        model.status = "Sync Failed: Network Error".to_string();
+                    }
+                }
+                render::render()
+            }
         }
     }
 
@@ -84,11 +141,11 @@ impl App for LogNApp {
         ViewModel {
             display_status: model.status.clone(),
             pending_sync_count: model.pending_events.len() as u32,
+            is_syncing: model.is_syncing,
         }
     }
 }
 
-#[cfg(test)]
 #[cfg(test)]
 mod tests {
     use super::*;
