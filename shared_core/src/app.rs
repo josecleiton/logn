@@ -230,6 +230,7 @@ impl App for LogNApp {
                 }
                 model.status = "Session expired. Please login again.".to_string();
                 model.access_token = None;
+                model.is_authenticating = false;
                 render::render()
             }
 
@@ -255,6 +256,7 @@ impl App for LogNApp {
                     _ => {
                         model.status = "Session expired. Please login again.".to_string();
                         model.access_token = None;
+                model.is_authenticating = false;
                     }
                 }
                 render::render()
