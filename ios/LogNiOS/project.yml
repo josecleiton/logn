@@ -34,6 +34,7 @@ targets:
     info:
       path: LogNiOS/Info.plist
       properties:
+        CFBundleDisplayName: LogN
         UILaunchScreen: {}
         UIRequiresFullScreen: true
         UISupportedInterfaceOrientations:
