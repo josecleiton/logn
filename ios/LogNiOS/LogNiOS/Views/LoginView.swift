@@ -33,7 +33,7 @@ struct LoginView: View {
                             .foregroundColor(LognDark.textPrimary)
                     }
                     
-                    Text("REDUZA A COMPLEXIDADE DAS SUAS SOLUÇÕES")
+                    Text("REDUCE THE COMPLEXITY OF YOUR SOLUTIONS")
                         .font(.custom("IBMPlexMono-Regular", size: 11))
                         .tracking(0.16 * 11) // letter-spacing: 0.16em
                         .foregroundColor(LognDark.textSecondary)
