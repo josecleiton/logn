@@ -196,6 +196,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					C366FB4150EB67CDF722514F = {
+						DevelopmentTeam = $(DEVELOPMENT_TEAM);
+					};
 				};
 			};
 			buildConfigurationList = 541C597A1B1F21F11A3996CA /* Build configuration list for PBXProject "LogNiOS" */;
@@ -335,7 +338,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = $(DEVELOPMENT_TEAM);
 				INFOPLIST_FILE = LogNiOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LogN;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.educational-games";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -416,7 +422,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = $(DEVELOPMENT_TEAM);
 				INFOPLIST_FILE = LogNiOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LogN;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.educational-games";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

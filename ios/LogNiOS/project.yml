@@ -27,6 +27,10 @@ targets:
     - package: LogNCoreFFI
     - package: App
     - package: PostHog
+    settings:
+      DEVELOPMENT_TEAM: $(DEVELOPMENT_TEAM)
+      INFOPLIST_KEY_CFBundleDisplayName: LogN
+      INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.educational-games"
     info:
       path: LogNiOS/Info.plist
       properties:
