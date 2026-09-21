@@ -33,7 +33,7 @@ struct LoginView: View {
                             .foregroundColor(LognDark.textPrimary)
                     }
                     
-                    Text("MASTERING TECHNOLOGY BIT-BY-BIT")
+                    Text("REDUZA A COMPLEXIDADE DAS SUAS SOLUÇÕES")
                         .font(.custom("IBMPlexMono-Regular", size: 11))
                         .tracking(0.16 * 11) // letter-spacing: 0.16em
                         .foregroundColor(LognDark.textSecondary)
