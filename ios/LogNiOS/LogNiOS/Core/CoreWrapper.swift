@@ -23,7 +23,8 @@ public class CoreWrapper: ObservableObject {
             challenges: [],
             nodes: [],
             otpEmail: "",
-            otpVerified: false
+            otpVerified: false,
+            globalXp: 0
         )
         updateViewModel()
         // Auto-login on init
