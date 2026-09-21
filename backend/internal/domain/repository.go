@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"time"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -77,4 +78,48 @@ func (r *Repository) GetChallenges(ctx context.Context) ([]Challenge, error) {
 		challenges = append(challenges, ch)
 	}
 	return challenges, nil
+}
+
+type User struct {
+	ID           string
+	Email        string
+	PasswordHash string
+}
+
+type RefreshToken struct {
+	ID        string
+	UserID    string
+	TokenHash string
+	Revoked   bool
+	ExpiresAt time.Time
+}
+
+func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*User, error) {
+	query := `SELECT id, email, password_hash FROM users WHERE email = $1`
+	var u User
+	var pwHash *string
+	err := r.db.QueryRow(ctx, query, email).Scan(&u.ID, &u.Email, &pwHash)
+	if err != nil {
+		return nil, err
+	}
+	if pwHash != nil {
+		u.PasswordHash = *pwHash
+	}
+	return &u, nil
+}
+
+func (r *Repository) CreateRefreshToken(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error {
+	query := `INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)`
+	_, err := r.db.Exec(ctx, query, userID, tokenHash, expiresAt)
+	return err
+}
+
+func (r *Repository) GetRefreshToken(ctx context.Context, tokenHash string) (*RefreshToken, error) {
+	query := `SELECT id, user_id, token_hash, revoked, expires_at FROM refresh_tokens WHERE token_hash = $1`
+	var t RefreshToken
+	err := r.db.QueryRow(ctx, query, tokenHash).Scan(&t.ID, &t.UserID, &t.TokenHash, &t.Revoked, &t.ExpiresAt)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
 }

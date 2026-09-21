@@ -117,6 +117,8 @@ func main() {
 	mux.HandleFunc("GET /ping", server.pingHandler)
 	mux.HandleFunc("POST /api/v1/sync", server.syncHandler)
 	mux.HandleFunc("GET /api/v1/challenges", server.challengesHandler)
+	mux.HandleFunc("POST /api/v1/auth/login", server.loginHandler)
+	mux.HandleFunc("POST /api/v1/auth/refresh", server.refreshHandler)
 
 	log.Println("Server starting on :8080...")
 	if err := http.ListenAndServe(":8080", mux); err != nil {

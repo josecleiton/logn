@@ -54,6 +54,7 @@ pub struct ViewModel {
 pub enum Effect {
     Render(RenderOperation),
     Http(HttpRequest),
+    SecureStore(crux_kv::KeyValueOperation),
 }
 
 #[derive(Default)]
