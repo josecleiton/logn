@@ -4,133 +4,191 @@ import App
 
 struct ContentView: View {
     @EnvironmentObject var core: CoreWrapper
+    @State private var selectedTab = 0
+    
+    init() {
+        // Setup TabBar Appearance for LogN Dark mode
+        let appearance = UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(LognDark.surfaceRaised)
+        
+        // Font setup will fallback to system if IBM Plex is not bundled yet
+        let font = UIFont(name: "IBMPlexSans-Medium", size: 10) ?? UIFont.systemFont(ofSize: 10, weight: .medium)
+        
+        let itemAppearance = UITabBarItemAppearance()
+        itemAppearance.normal.iconColor = UIColor(LognDark.textMuted)
+        itemAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor(LognDark.textMuted), .font: font]
+        
+        itemAppearance.selected.iconColor = UIColor(LognDark.accent)
+        itemAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor(LognDark.accent), .font: font]
+        
+        appearance.stackedLayoutAppearance = itemAppearance
+        appearance.inlineLayoutAppearance = itemAppearance
+        appearance.compactInlineLayoutAppearance = itemAppearance
+        
+        UITabBar.appearance().standardAppearance = appearance
+        if #available(iOS 15.0, *) {
+            UITabBar.appearance().scrollEdgeAppearance = appearance
+        }
+    }
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                LognDark.canvas.ignoresSafeArea()
-                
-                VStack(spacing: Space.xl) {
-                if core.viewModel.isGuest {
-                    Text(Str.Dashboard.sync_guest_warning)
-                        .font(LognFont.label)
-                        .foregroundColor(LognDark.onAccent)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, Space.sm)
-                        .background(LognDark.warn)
-                }
-                    // Cabecalho
-                    Text("LogN App")
-                        .font(LognFont.headlineMedium)
-                        .foregroundColor(LognDark.textPrimary)
-                    
-                    // Status Box
-                    VStack(spacing: Space.md) {
-                        Text(core.viewModel.displayStatus)
-                            .font(LognFont.bodyLarge)
-                            .foregroundColor(LognDark.info)
-                            .multilineTextAlignment(.center)
-                        
-                        HStack {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                                .foregroundColor(core.viewModel.pendingSyncCount > 0 ? LognDark.warn : LognDark.textMuted)
-                            Text("\(core.viewModel.pendingSyncCount) pending syncs")
-                                .font(LognFont.label)
-                                .foregroundColor(LognDark.textSecondary)
-                            
-                            if core.viewModel.isSyncing || core.viewModel.isFetching {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: LognDark.accent))
-                                    .padding(.leading, Space.sm)
-                            }
-                        }
-                    }
-                    .padding(Space.lg)
-                    .background(LognDark.surfaceRaised)
-                    .cornerRadius(Radius.md)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Radius.md)
-                            .stroke(LognDark.line, lineWidth: 1)
-                    )
-                    
-                    // Botoes Crux
-                    VStack(spacing: Space.md) {
-                        Button(action: {
-                            core.dispatch(event: .syncNow)
-                        }) {
-                            Text("Sync Now (HTTP POST)")
-                                .font(LognFont.titleMedium)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, Space.md)
-                                .background(core.viewModel.isSyncing ? LognDark.buttonDisabled : LognDark.accent)
-                                .foregroundColor(core.viewModel.isSyncing ? LognDark.textMuted : LognDark.onAccent)
-                                .cornerRadius(Radius.sm)
-                        }
-                        .disabled(core.viewModel.isSyncing)
-                        
-                        Button(action: {
-                            core.dispatch(event: .fetchChallenges)
-                        }) {
-                            Text("Load Challenges (HTTP GET)")
-                                .font(LognFont.titleMedium)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, Space.md)
-                                .background(core.viewModel.isFetching ? LognDark.buttonDisabled : LognDark.info)
-                                .foregroundColor(core.viewModel.isFetching ? LognDark.textMuted : LognDark.surface)
-                                .cornerRadius(Radius.sm)
-                        }
-                        .disabled(core.viewModel.isFetching)
-                        
-                        Button(action: {
-                            core.dispatch(event: .fetchNodes)
-                        }) {
-                            Text("Load Skill Tree")
-                                .font(LognFont.titleMedium)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, Space.md)
-                                .background(core.viewModel.isFetching ? LognDark.buttonDisabled : LognDark.info)
-                                .foregroundColor(core.viewModel.isFetching ? LognDark.textMuted : LognDark.surface)
-                                .cornerRadius(Radius.sm)
-                        }
-                        .disabled(core.viewModel.isFetching)
-                    }
-                    .padding(.horizontal, Space.screenMargin)
-                    
-                    // Skill Tree Dinâmica (DAG)
-                    if !core.viewModel.nodes.isEmpty {
-                        SkillTreeView(nodes: core.viewModel.nodes)
-                    }
-                }
-                .padding(.top)
+        TabView(selection: $selectedTab) {
+            NavigationView {
+                SkillTreeHostView()
+                    .environmentObject(core)
             }
-            .colorScheme(.dark)
+            .tabItem {
+                Image(systemName: "point.3.connected.trianglepath.dotted")
+                Text("TRILHAS")
+            }
+            .tag(0)
+            
+            NavigationView {
+                ArenaHostView()
+                    .environmentObject(core)
+            }
+            .tabItem {
+                Image(systemName: "gamecontroller.fill")
+                Text("ARENA")
+            }
+            .tag(1)
+            
+            NavigationView {
+                StandingsHostView()
+                    .environmentObject(core)
+            }
+            .tabItem {
+                Image(systemName: "list.number")
+                Text("PLACAR")
+            }
+            .tag(2)
         }
+        .accentColor(LognDark.accent)
+        .colorScheme(.dark)
     }
 }
 
-struct ChallengeRow: View {
-    let challenge: Challenge
+// MARK: - Trilhas
+struct SkillTreeHostView: View {
+    @EnvironmentObject var core: CoreWrapper
     
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: Space.xs) {
-                Text(challenge.payload.content.title)
-                    .font(LognFont.titleMedium)
-                    .foregroundColor(LognDark.textPrimary)
-                Text(challenge.templateType)
-                    .font(LognFont.label)
-                    .foregroundColor(LognDark.textSecondary)
+        ZStack {
+            LognDark.canvas.ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Header (Mockup)
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("LogN")
+                            .font(LognFont.headlineMedium)
+                            .foregroundColor(LognDark.textPrimary)
+                        Text(core.viewModel.isFetching ? "Atualizando mapa..." : "7 balões no ar")
+                            .font(LognFont.label)
+                            .foregroundColor(LognDark.textSecondary)
+                    }
+                    Spacer()
+                    
+                    // Profile Hub Trigger
+                    NavigationLink(destination: ProfileHubView().environmentObject(core)) {
+                        Circle()
+                            .fill(LognDark.surfaceRaised)
+                            .frame(width: 40, height: 40)
+                            .overlay(
+                                Image(systemName: "person.fill")
+                                    .foregroundColor(LognDark.textSecondary)
+                            )
+                            .overlay(
+                                Circle()
+                                    .stroke(LognDark.line, lineWidth: 1)
+                            )
+                            .overlay(
+                                // Sync indicator
+                                Circle()
+                                    .fill(core.viewModel.pendingSyncCount > 0 ? LognDark.warn : Color.clear)
+                                    .frame(width: 10, height: 10)
+                                    .offset(x: 12, y: -12),
+                                alignment: .center
+                            )
+                    }
+                }
+                .padding(.horizontal, Space.screenMargin)
+                .padding(.vertical, Space.md)
+                .background(LognDark.surface)
+                
+                // Guest Warning
+                if core.viewModel.isGuest {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                        Text(Str.Dashboard.sync_guest_warning)
+                            .font(LognFont.label)
+                    }
+                    .foregroundColor(LognDark.onAccent)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Space.sm)
+                    .background(LognDark.warn)
+                }
+                
+                // DAG View
+                if core.viewModel.nodes.isEmpty {
+                    Spacer()
+                    VStack(spacing: 16) {
+                        ProgressView().progressViewStyle(CircularProgressViewStyle(tint: LognDark.accent))
+                        Text(core.viewModel.displayStatus)
+                            .font(LognFont.bodyLarge)
+                            .foregroundColor(LognDark.textSecondary)
+                        
+                        LognButton(title: "Tentar Novamente", variant: .secondary) {
+                            core.dispatch(event: .fetchNodes)
+                        }
+                    }
+                    Spacer()
+                } else {
+                    SkillTreeView(nodes: core.viewModel.nodes)
+                }
             }
-            Spacer()
-            Image(systemName: "chevron.right")
-                .foregroundColor(LognDark.lineDim)
         }
-        .padding(Space.md)
-        .background(LognDark.surface)
-        .cornerRadius(Radius.md)
-        .overlay(
-            RoundedRectangle(cornerRadius: Radius.md)
-                .stroke(LognDark.rowLine, lineWidth: 1)
-        )
+        .navigationBarHidden(true)
+    }
+}
+
+// MARK: - Arena Placeholder
+struct ArenaHostView: View {
+    @EnvironmentObject var core: CoreWrapper
+    var body: some View {
+        ZStack {
+            LognDark.canvas.ignoresSafeArea()
+            VStack(spacing: Space.lg) {
+                Image(systemName: "flag.checkered.2.crossed")
+                    .font(.system(size: 48))
+                    .foregroundColor(LognDark.textDim)
+                Text("ARENA LOGN")
+                    .font(LognFont.headlineMedium)
+                    .foregroundColor(LognDark.textPrimary)
+                Text("Simulações de Maratona ICPC cronometradas ficarão disponíveis aqui.")
+                    .font(LognFont.bodyLarge)
+                    .foregroundColor(LognDark.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
+        }
+        .navigationBarHidden(true)
+    }
+}
+
+// MARK: - Placar Placeholder
+struct StandingsHostView: View {
+    @EnvironmentObject var core: CoreWrapper
+    var body: some View {
+        ZStack {
+            LognDark.canvas.ignoresSafeArea()
+            VStack {
+                Text("PLACAR (WIP)")
+                    .font(LognFont.headlineMedium)
+                    .foregroundColor(LognDark.textPrimary)
+            }
+        }
+        .navigationBarHidden(true)
     }
 }

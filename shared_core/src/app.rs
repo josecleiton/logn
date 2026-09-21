@@ -20,7 +20,9 @@ pub enum Event {
     TokenStored(KeyValueResult),
     AttemptRefresh,
     TokenRead(KeyValueResult),
+    TokenCleared(KeyValueResult),
     RefreshCompleted(HttpResult),
+    Logout,
     FetchChallenges,
     FetchNodes,
     NodesFetched(HttpResult),
@@ -218,6 +220,20 @@ impl App for LogNApp {
                 model.is_authenticating = false;
                 Command::request_from_shell(crate::domain::TelemetryOperation::Identify { user_id: model.user_id.clone() })
                     .then_send(|_| Event::TelemetrySent)
+            }
+
+            Event::Logout => {
+                model.status = "Logging out...".to_string();
+                Command::request_from_shell(KeyValueOperation::Delete { key: "refresh_token".into() }).then_send(Event::TokenCleared)
+            }
+            Event::TokenCleared(_) => {
+                model.is_guest = false;
+                model.access_token = None;
+                model.nodes = vec![];
+                model.challenges = vec![];
+                model.pending_events = vec![];
+                model.status = "Logged out successfully".to_string();
+                render::render()
             }
 
             Event::AttemptRefresh => {
