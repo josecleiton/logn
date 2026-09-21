@@ -8,8 +8,10 @@ sign_in_google = "Entrar com o Google"
 sign_in_github = "Entrar com o GitHub"
 action_sign_in = "Entrar"
 or_separator = "ou"
+continue_as_guest = "Jogar como Visitante"
 
 [dashboard]
 fetching = "Buscando desafios..."
 syncing = "Sincronizando..."
 loaded = "Desafios carregados"
+sync_guest_warning = "Faça login para salvar seu progresso!"

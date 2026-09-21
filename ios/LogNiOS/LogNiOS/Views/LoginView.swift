@@ -130,6 +130,15 @@ struct LoginView: View {
                         
                         // Status Box just to show the login status
                         if !core.viewModel.displayStatus.isEmpty {
+                        Button(action: {
+                            core.dispatch(event: .continueAsGuest)
+                        }) {
+                            Text(Str.Login.continue_as_guest)
+                                .font(LognFont.bodyLarge)
+                                .foregroundColor(LognDark.textSecondary)
+                                .padding(.top, Space.sm)
+                                .underline()
+                        }
                             Text(core.viewModel.displayStatus)
                                 .font(LognFont.label)
                                 .foregroundColor(LognDark.info)

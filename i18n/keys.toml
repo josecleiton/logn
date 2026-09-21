@@ -10,8 +10,10 @@ sign_in_google = {}
 sign_in_github = {}
 action_sign_in = {}
 or_separator = {}
+continue_as_guest = {}
 
 [groups.dashboard.keys]
 fetching = {}
 syncing = {}
 loaded = {}
+sync_guest_warning = {}

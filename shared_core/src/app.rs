@@ -14,6 +14,7 @@ pub enum Event {
     Pong,
     Login { email: String, password_hash: String },
     LoginCompleted(HttpResult),
+    ContinueAsGuest,
     TokenStored(KeyValueResult),
     AttemptRefresh,
     TokenRead(KeyValueResult),
@@ -47,6 +48,7 @@ pub struct Model {
     pub is_syncing: bool,
     pub is_fetching: bool,
     pub is_authenticating: bool,
+    pub is_guest: bool,
     pub pending_retry_event: Option<Event>, // Para o interceptor 401
 }
 
@@ -59,6 +61,7 @@ pub struct ViewModel {
     pub is_fetching: bool,
     pub is_authenticating: bool,
     pub has_access_token: bool,
+    pub is_guest: bool,
     pub challenges: Vec<Challenge>,
 }
 
@@ -134,6 +137,7 @@ impl App for LogNApp {
                         
                         if let Ok(data) = serde_json::from_slice::<AuthResp>(&response.body) {
                             model.access_token = Some(data.access_token);
+                            model.is_guest = false;
                             model.status = "Login successful!".to_string();
                             
                             // Salva refresh token no Keychain
@@ -158,6 +162,10 @@ impl App for LogNApp {
                 render::render()
             }
 
+            Event::ContinueAsGuest => {
+                model.is_guest = true;
+                render::render()
+            }
             Event::TokenStored(_) => {
                 model.is_authenticating = false;
                 render::render()
@@ -200,6 +208,7 @@ impl App for LogNApp {
                         
                         if let Ok(data) = serde_json::from_slice::<RefreshResp>(&response.body) {
                             model.access_token = Some(data.access_token);
+                            model.is_guest = false;
                             model.status = "Session refreshed!".to_string();
                             
                             // Re-trigger pending event if any
@@ -331,6 +340,10 @@ impl App for LogNApp {
                 render::render()
             }
             Event::SyncNow => {
+                if model.is_guest && model.access_token.is_none() {
+                    model.status = "Sign in to sync your progress!".to_string();
+                    return Command::done();
+                }
                 if model.is_syncing || model.pending_events.is_empty() {
                     return Command::done();
                 }
@@ -391,6 +404,7 @@ impl App for LogNApp {
             is_fetching: model.is_fetching,
             is_authenticating: model.is_authenticating,
             has_access_token: model.access_token.is_some(),
+            is_guest: model.is_guest,
             challenges: model.challenges.clone(),
         }
     }

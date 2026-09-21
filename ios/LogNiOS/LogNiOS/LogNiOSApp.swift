@@ -6,7 +6,7 @@ struct LogNiOSApp: App {
     
     var body: some Scene {
         WindowGroup {
-            if core.viewModel.hasAccessToken {
+            if core.viewModel.hasAccessToken || core.viewModel.isGuest {
                 ContentView()
                     .environmentObject(core)
             } else {

@@ -8,8 +8,10 @@ sign_in_google = "Sign in with Google"
 sign_in_github = "Sign in with GitHub"
 action_sign_in = "Sign In"
 or_separator = "or"
+continue_as_guest = "Play as Guest"
 
 [dashboard]
 fetching = "Fetching challenges..."
 syncing = "Syncing..."
 loaded = "Challenges loaded"
+sync_guest_warning = "Sign in to sync your progress!"

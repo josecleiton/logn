@@ -10,6 +10,14 @@ struct ContentView: View {
                 LognDark.canvas.ignoresSafeArea()
                 
                 VStack(spacing: Space.xl) {
+                if core.viewModel.isGuest {
+                    Text(Str.Dashboard.sync_guest_warning)
+                        .font(LognFont.label)
+                        .foregroundColor(LognDark.onAccent)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, Space.sm)
+                        .background(LognDark.warn)
+                }
                     // Cabecalho
                     Text("LogN App")
                         .font(LognFont.headlineMedium)
