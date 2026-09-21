@@ -44,15 +44,25 @@ struct LoginView: View {
                 // Content
                 VStack(spacing: Space.sm) {
                     // SSO Placeholders (Apple, Google, GitHub)
-                    ForEach(["applelogo", "g.circle.fill", "curlybraces"], id: \.self) { icon in
+                    let ssoData = [
+                        ("applelogo", "Continuar com a Apple"),
+                        ("g.circle.fill", "Continuar com o Google"),
+                        ("curlybraces", "Continuar com o GitHub")
+                    ]
+                    
+                    ForEach(ssoData, id: \.0) { item in
                         Button(action: {}) {
-                            HStack {
-                                Spacer()
-                                Image(systemName: icon)
+                            HStack(spacing: 12) {
+                                Image(systemName: item.0)
+                                    .font(.system(size: 20))
                                     .foregroundColor(LognDark.textPrimary)
-                                Spacer()
+                                
+                                Text(item.1)
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(LognDark.textPrimary)
                             }
-                            .frame(height: 50)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
                             .background(LognDark.surface)
                             .cornerRadius(Radius.sm)
                             .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
