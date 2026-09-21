@@ -12,6 +12,7 @@
 		0D1298B1A212D2DC271F95DA /* LognDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFC409C250EFC18B48AF0021 /* LognDesignSystem.swift */; };
 		113A7C042597592AB08772A7 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 052D097253B21873566489C9 /* InfoPlist.strings */; };
 		2F7173374C70B98EECB2E04A /* Strings.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF70445FC4588B69074A5843 /* Strings.swift */; };
+		367A11F1AABAF76BBEC5269D /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4DB2DC21E3986A71469A3AA /* RegisterView.swift */; };
 		4DEA72E488BD4E013F10A268 /* SpotTheBugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 178E6C5FA5D98E9E9CB943F3 /* SpotTheBugView.swift */; };
 		5B28C2226E5C4917A2F15B4E /* CoreWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C915F676CBB9F04656C255 /* CoreWrapper.swift */; };
 		936B6709633ADF906CB1E02F /* LogNiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80804A0792E45E01C5BE3D0B /* LogNiOSApp.swift */; };
@@ -21,6 +22,7 @@
 		C1C10995476705C547B2E3F3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F486C5E97DFDCE2C80818FB7 /* Assets.xcassets */; };
 		CF0A1EB4CE4E50CC539A134C /* App in Frameworks */ = {isa = PBXBuildFile; productRef = DD2764DB02225A48407F7CA7 /* App */; };
 		EA1F6042A86DDF791B09AB41 /* StringsMappers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D238C31B32D323BF620359D /* StringsMappers.swift */; };
+		F78BA7613AF912F27820D2ED /* OTPInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48659346006694BF96682CBE /* OTPInputView.swift */; };
 		FBB822FFB68E1D690E79EB10 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 6CFC8719D13EE3EF51651524 /* PostHog */; };
 		FC356990E98518934B5A17B9 /* FillInTheBlankView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55B3E8E57827B8D99B38AF1A /* FillInTheBlankView.swift */; };
 /* End PBXBuildFile section */
@@ -32,6 +34,7 @@
 		39639030FF1ABF8B56AB4F26 /* LogNCoreFFI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LogNCoreFFI; path = ../LogNCoreFFI; sourceTree = SOURCE_ROOT; };
 		3C3479CDAF7B4103E414DAC3 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		42D4982DBEFBD646B4F5FD62 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		48659346006694BF96682CBE /* OTPInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTPInputView.swift; sourceTree = "<group>"; };
 		4CB79DA23F81A184D6406E1A /* NodeChallengesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeChallengesView.swift; sourceTree = "<group>"; };
 		55B3E8E57827B8D99B38AF1A /* FillInTheBlankView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FillInTheBlankView.swift; sourceTree = "<group>"; };
 		72C915F676CBB9F04656C255 /* CoreWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreWrapper.swift; sourceTree = "<group>"; };
@@ -39,6 +42,7 @@
 		98613207977B12CB7500F98C /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		9D1A761B4BB79672516BF045 /* LogNiOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LogNiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D238C31B32D323BF620359D /* StringsMappers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringsMappers.swift; sourceTree = "<group>"; };
+		C4DB2DC21E3986A71469A3AA /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
 		CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		DDFF15C0C673EF7D549B36D0 /* App */ = {isa = PBXFileReference; lastKnownFileType = folder; name = App; path = ../SharedCore/App; sourceTree = SOURCE_ROOT; };
 		DF70445FC4588B69074A5843 /* Strings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Strings.swift; sourceTree = "<group>"; };
@@ -100,6 +104,8 @@
 				55B3E8E57827B8D99B38AF1A /* FillInTheBlankView.swift */,
 				3C3479CDAF7B4103E414DAC3 /* LoginView.swift */,
 				4CB79DA23F81A184D6406E1A /* NodeChallengesView.swift */,
+				48659346006694BF96682CBE /* OTPInputView.swift */,
+				C4DB2DC21E3986A71469A3AA /* RegisterView.swift */,
 				178E6C5FA5D98E9E9CB943F3 /* SpotTheBugView.swift */,
 			);
 			path = Views;
@@ -225,6 +231,8 @@
 				0B24F964C6C184D6E7B671B8 /* LoginView.swift in Sources */,
 				0D1298B1A212D2DC271F95DA /* LognDesignSystem.swift in Sources */,
 				BF1371254EE520E551FC2D6F /* NodeChallengesView.swift in Sources */,
+				F78BA7613AF912F27820D2ED /* OTPInputView.swift in Sources */,
+				367A11F1AABAF76BBEC5269D /* RegisterView.swift in Sources */,
 				4DEA72E488BD4E013F10A268 /* SpotTheBugView.swift in Sources */,
 				2F7173374C70B98EECB2E04A /* Strings.swift in Sources */,
 				EA1F6042A86DDF791B09AB41 /* StringsMappers.swift in Sources */,
@@ -313,7 +321,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.josecleiton.LogNiOS;
+				PRODUCT_BUNDLE_IDENTIFIER = sh.logn.LogNiOS;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -393,7 +401,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.josecleiton.LogNiOS;
+				PRODUCT_BUNDLE_IDENTIFIER = sh.logn.LogNiOS;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

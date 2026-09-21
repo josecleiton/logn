@@ -1,6 +1,6 @@
 name: LogNiOS
 options:
-  bundleIdPrefix: com.josecleiton
+  bundleIdPrefix: sh.logn
   deploymentTarget:
     iOS: '16.0'
 packages:
@@ -16,6 +16,8 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: '16.0'
+    bundleId: sh.logn.app
+
     sources:
     - path: LogNiOS
     dependencies:
