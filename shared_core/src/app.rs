@@ -916,6 +916,8 @@ Event::FetchChallenges => {
             otp_email: model.otp_email.clone(),
             otp_verified: model.otp_verified,
             global_xp: model.global_xp,
+            bugs_found: model.bugs_found,
+            dry_runs_completed: model.dry_runs_completed,
             match_view: model.match_state.as_ref()
                 .map(|ms| ms.to_view_model())
                 .unwrap_or_default(),

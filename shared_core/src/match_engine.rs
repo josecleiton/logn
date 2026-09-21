@@ -147,6 +147,12 @@ impl MatchState {
             .unwrap_or('?')
     }
 
+    pub fn current_template_type(&self) -> &str {
+        self.current_problem()
+            .map(|p| p.template_type.as_str())
+            .unwrap_or("")
+    }
+
     /// Submete a resposta do problema atual. Retorna o veredito.
     pub fn submit(&mut self) -> VerdictCode {
         let problem = match self.problems.get(self.current_index) {
