@@ -5,6 +5,7 @@ use facet_generate_attrs as fg;
 use crux_http::protocol::{HttpRequest, HttpResult};
 use crux_kv::{KeyValueOperation, KeyValueResult, KeyValueResponse};
 use crate::domain::{GameEvent, SyncPayload, Challenge, TelemetryOperation};
+use crate::match_engine;
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
 #[repr(C)]
@@ -55,6 +56,16 @@ pub enum Event {
         result: KeyValueResult,
     },
     QueueSavedForSync(KeyValueResult),
+    // Match Events
+    StartMatch { node_id: String },
+    MatchSelectLine { line: i32 },
+    MatchSetAnswer { answer: String },
+    MatchSetDropTime { value: String },
+    MatchSetDropSpace { value: String },
+    MatchToggleTag { tag: String },
+    MatchSubmit { timestamp: i64 },
+    MatchDismissTrap,
+    MatchTimerTick,
 }
 
 #[derive(Default, Clone)]
@@ -74,6 +85,7 @@ pub struct Model {
     pub otp_email: String,
     pub otp_verified: bool,
     pub global_xp: i32,
+    pub match_state: Option<match_engine::MatchState>,
 }
 
 #[derive(Facet, Serialize, Deserialize, Default, Clone)]
@@ -91,6 +103,7 @@ pub struct ViewModel {
     pub otp_email: String,
     pub otp_verified: bool,
     pub global_xp: i32,
+    pub match_view: match_engine::MatchViewModel,
 }
 
 #[effect(facet_typegen)]
@@ -694,6 +707,135 @@ Event::FetchChallenges => {
                 }
                 render::render()
             }
+
+            // ── Match Events ──────────────────────────────────
+            Event::StartMatch { node_id } => {
+                let problems: Vec<match_engine::MatchProblem> = model.challenges.iter()
+                    .filter(|c| c.node_id == node_id)
+                    .enumerate()
+                    .map(|(i, c)| {
+                        let letter = (b'A' + i as u8) as char;
+                        match_engine::MatchProblem {
+                            letter: letter.to_string(),
+                            challenge_id: c.id.clone(),
+                            template_type: c.template_type.clone(),
+                            title: format!("{} · {}", letter, c.payload.content.title),
+                            description: c.payload.content.description.clone(),
+                            code_lines: c.payload.content.code_lines.clone(),
+                            correct_line: c.payload.validation.correct_line,
+                            expected_string: c.payload.validation.expected_string.clone(),
+                            options: vec![],
+                            correct_options: vec![],
+                            max_selections: 1,
+                        }
+                    })
+                    .collect();
+
+                if problems.is_empty() {
+                    model.status = "No challenges for this node".to_string();
+                    return render::render();
+                }
+
+                model.match_state = Some(match_engine::MatchState::new(problems));
+                model.status = "Match started!".to_string();
+                render::render()
+            }
+
+            Event::MatchSelectLine { line } => {
+                if let Some(ref mut ms) = model.match_state {
+                    ms.selection.selected_line = Some(line);
+                }
+                render::render()
+            }
+
+            Event::MatchSetAnswer { answer } => {
+                if let Some(ref mut ms) = model.match_state {
+                    ms.selection.answer_string = Some(answer);
+                }
+                render::render()
+            }
+
+            Event::MatchSetDropTime { value } => {
+                if let Some(ref mut ms) = model.match_state {
+                    ms.selection.drop_time = Some(value);
+                }
+                render::render()
+            }
+
+            Event::MatchSetDropSpace { value } => {
+                if let Some(ref mut ms) = model.match_state {
+                    ms.selection.drop_space = Some(value);
+                }
+                render::render()
+            }
+
+            Event::MatchToggleTag { tag } => {
+                if let Some(ref mut ms) = model.match_state {
+                    if let Some(pos) = ms.selection.selected_tags.iter().position(|t| *t == tag) {
+                        ms.selection.selected_tags.remove(pos);
+                    } else {
+                        ms.selection.selected_tags.push(tag);
+                    }
+                }
+                render::render()
+            }
+
+            Event::MatchSubmit { timestamp } => {
+                if let Some(ref mut ms) = model.match_state {
+                    let verdict = ms.submit();
+                    let is_correct = verdict == match_engine::VerdictCode::Accepted;
+
+                    if is_correct {
+                        model.global_xp += 50;
+                    }
+
+                    if !ms.is_active {
+                        // Match ended
+                        let solved = ms.solved_count();
+                        model.status = format!("Match over! {} solved", solved);
+                    }
+
+                    // Register game event for offline sync
+                    let letter = ms.current_letter().to_string();
+                    let previous_hash = if model.last_hash.is_empty() {
+                        "0000000000000000000000000000000000000000000000000000000000000000".to_string()
+                    } else {
+                        model.last_hash.clone()
+                    };
+
+                    let payload = format!(r#"{{"letter":"{}","is_correct":{}}}"#, letter, is_correct);
+                    let action_id = format!("match_{}", timestamp);
+                    let game_event = GameEvent::new(action_id, "MATCH_ANSWER".into(), payload, timestamp, previous_hash);
+                    model.last_hash = game_event.current_hash.clone();
+                    model.pending_events.push(game_event);
+                }
+                render::render()
+            }
+
+            Event::MatchDismissTrap => {
+                if let Some(ref mut ms) = model.match_state {
+                    ms.trap = None;
+                }
+                render::render()
+            }
+
+            Event::MatchTimerTick => {
+                if let Some(ref mut ms) = model.match_state {
+                    if ms.is_active {
+                        if ms.question_seconds_remaining > 0 {
+                            ms.question_seconds_remaining -= 1;
+                        }
+                        if ms.contest_seconds_remaining > 0 {
+                            ms.contest_seconds_remaining -= 1;
+                        }
+                        if ms.contest_seconds_remaining <= 0 {
+                            ms.is_active = false;
+                            model.status = "Time's up!".to_string();
+                        }
+                    }
+                }
+                render::render()
+            }
         }
     }
 
@@ -740,6 +882,9 @@ Event::FetchChallenges => {
             otp_email: model.otp_email.clone(),
             otp_verified: model.otp_verified,
             global_xp: model.global_xp,
+            match_view: model.match_state.as_ref()
+                .map(|ms| ms.to_view_model())
+                .unwrap_or_default(),
         }
     }
 }

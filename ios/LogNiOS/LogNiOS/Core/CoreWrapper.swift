@@ -24,7 +24,17 @@ public class CoreWrapper: ObservableObject {
             nodes: [],
             otpEmail: "",
             otpVerified: false,
-            globalXp: 0
+            globalXp: 0,
+            matchView: MatchViewModel(
+                isActive: false, currentLetter: "", currentTitle: "", currentDescription: "",
+                currentTemplateType: "", currentCodeLines: [], currentOptions: [],
+                maxSelections: 0, lives: 0, maxLives: 0, penaltyMinutes: 0,
+                contestSeconds: 0, questionSeconds: 0, isFrozen: false,
+                totalProblems: 0, solvedCount: 0, balloonStates: [],
+                selectedLine: -1, answerString: "", dropTime: "", dropSpace: "",
+                selectedTags: [], lastVerdict: "", hasTrap: false, trapCategory: "",
+                trapTitle: "", trapExplanation: ""
+            )
         )
         updateViewModel()
         // Auto-login on init

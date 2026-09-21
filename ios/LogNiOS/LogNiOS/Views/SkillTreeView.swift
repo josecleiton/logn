@@ -76,20 +76,22 @@ struct SkillNodeView: View {
     @State private var isPulsing = false
     
     var body: some View {
-        NavigationLink(destination: NodeChallengesView(node: node)) {
+        NavigationLink(destination: MatchView(nodeId: node.id)) {
             VStack(spacing: 6) {
                 // Balão
-                Circle()
-                    .fill(fillColor)
-                    .frame(width: 44, height: 44)
-                    .overlay(
-                        Circle().stroke(strokeColor, lineWidth: 2)
-                    )
-                    .overlay(
-                        Text("\(node.requiredXp)")
-                            .font(LognFont.label)
-                            .foregroundColor(node.status == .locked ? LognDark.textDim : LognDark.surface)
-                    )
+                BalloonShape(
+                    color: node.status == .completed ? LognDark.info : LognDark.textDim,
+                    state: balloonState,
+                    bodySize: balloonSize,
+                    showString: false,
+                    showHighlight: true
+                )
+                .overlay(
+                    Text("\(node.requiredXp)")
+                        .font(LognFont.label)
+                        .foregroundColor(node.status == .locked ? LognDark.textDim : LognDark.surface)
+                        .offset(y: -4) // Center vertically inside the balloon body
+                )
                     .scaleEffect(node.status == .active ? (isPulsing ? 1.08 : 1.0) : 1.0)
                     .animation(node.status == .active ? Animation.easeInOut(duration: 1.0).repeatForever(autoreverses: true) : .default, value: isPulsing)
                     .onAppear {
@@ -109,6 +111,25 @@ struct SkillNodeView: View {
         .disabled(node.status == .locked)
     }
     
+        
+    var balloonState: BalloonShape.BalloonState {
+        switch node.status {
+        case .locked: return .locked
+        case .active: return .active
+        case .completed: return .filled
+        default: return .locked
+        }
+    }
+    
+    var balloonSize: CGFloat {
+        switch node.status {
+        case .locked: return 54
+        case .active: return 70
+        case .completed: return 56
+        default: return 54
+        }
+    }
+
     var fillColor: Color {
         switch node.status {
         case .locked: return LognDark.surface
