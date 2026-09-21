@@ -17,7 +17,7 @@ db-down:
 
 # Roda o servidor Go localmente na porta 8080 (Lembre-se de ter o .env)
 run-backend: db-up
-	cd backend && go run main.go
+	cd backend && go run .
 
 # Roda todos os testes do Backend
 test-backend:
@@ -48,8 +48,19 @@ i18n:
 codegen:
 	cd shared_core && cargo run --bin codegen --features codegen -- --language swift --output-dir ../ios/SharedCore
 
+# Compila as bibliotecas estáticas (Rust) para iOS e empacota no XCFramework
+build-ios-ffi: codegen
+	cd shared_core && rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
+	cd shared_core && cargo build --target aarch64-apple-ios --release
+	cd shared_core && cargo build --target aarch64-apple-ios-sim --release
+	cd shared_core && cargo build --target x86_64-apple-ios --release
+	mkdir -p shared_core/target/universal-sim
+	lipo -create -output shared_core/target/universal-sim/libshared_core.a shared_core/target/aarch64-apple-ios-sim/release/libshared_core.a shared_core/target/x86_64-apple-ios/release/libshared_core.a
+	cp shared_core/target/aarch64-apple-ios/release/libshared_core.a ios/LogNCoreFFI/LogNCoreFFI.xcframework/ios-arm64/libshared_core.a
+	cp shared_core/target/universal-sim/libshared_core.a ios/LogNCoreFFI/LogNCoreFFI.xcframework/ios-arm64_x86_64-simulator/libshared_core.a
+
 # Gera o projeto Xcode (.xcodeproj) usando o XcodeGen
-xcode: sync-env codegen i18n
+xcode: sync-env build-ios-ffi i18n
 	cd ios/LogNiOS && xcodegen generate
 
 # Abre o projeto no Xcode
