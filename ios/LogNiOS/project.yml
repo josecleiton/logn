@@ -35,6 +35,9 @@ targets:
       path: LogNiOS/Info.plist
       properties:
         UILaunchScreen: {}
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
         LogNApiBaseURL: ${API_BASE_URL}
         LogNTelemetryKey: ${TELEMETRY_KEY}
         LogNPostHogHost: ${POSTHOG_HOST}

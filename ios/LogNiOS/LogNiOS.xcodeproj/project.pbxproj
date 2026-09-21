@@ -13,39 +13,43 @@
 		113A7C042597592AB08772A7 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 052D097253B21873566489C9 /* InfoPlist.strings */; };
 		2F7173374C70B98EECB2E04A /* Strings.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF70445FC4588B69074A5843 /* Strings.swift */; };
 		367A11F1AABAF76BBEC5269D /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4DB2DC21E3986A71469A3AA /* RegisterView.swift */; };
-		4DEA72E488BD4E013F10A268 /* SpotTheBugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 178E6C5FA5D98E9E9CB943F3 /* SpotTheBugView.swift */; };
 		567C1D15944B685B8204F3ED /* ResetPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B2B5EA563D4C0A69035BF3 /* ResetPasswordView.swift */; };
 		5B28C2226E5C4917A2F15B4E /* CoreWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C915F676CBB9F04656C255 /* CoreWrapper.swift */; };
-		7931A0F38E8463C7B58D21AA /* GameplayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4427F1B2ACE8682E6B4ED9F4 /* GameplayView.swift */; };
+		92CE64A8F39A3BACBDFA7E2D /* ViewExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DA78EDFD4661B922FE1E389 /* ViewExtensions.swift */; };
 		936B6709633ADF906CB1E02F /* LogNiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80804A0792E45E01C5BE3D0B /* LogNiOSApp.swift */; };
+		9B73D9EDD483D4291A531CE4 /* CodeBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8EF036E181D0306E94D226 /* CodeBlock.swift */; };
 		B118212843B83D5CB04DFAE9 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */; };
 		B25F010AFF41794BFC439A02 /* LogNCoreFFI in Frameworks */ = {isa = PBXBuildFile; productRef = 13135BDC590A9C01156FE7B3 /* LogNCoreFFI */; };
-		BF1371254EE520E551FC2D6F /* NodeChallengesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB79DA23F81A184D6406E1A /* NodeChallengesView.swift */; };
 		C1C10995476705C547B2E3F3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F486C5E97DFDCE2C80818FB7 /* Assets.xcassets */; };
+		C878D3C2E023BF3402DA39A2 /* SkillTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CEDA9E40AF59358F4F00143 /* SkillTreeView.swift */; };
 		CF0A1EB4CE4E50CC539A134C /* App in Frameworks */ = {isa = PBXBuildFile; productRef = DD2764DB02225A48407F7CA7 /* App */; };
+		E618B59B0A839990BDA626EA /* MatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BCAD3D7D269E2D03F55181F /* MatchView.swift */; };
+		E73189436712870098DA5F1C /* LognComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C234F5143F4791D66EF36E0 /* LognComponents.swift */; };
 		EA1F6042A86DDF791B09AB41 /* StringsMappers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D238C31B32D323BF620359D /* StringsMappers.swift */; };
 		F78BA7613AF912F27820D2ED /* OTPInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48659346006694BF96682CBE /* OTPInputView.swift */; };
+		FA39E591FFCF6E0D9F6EABC6 /* BalloonShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = 911B685B7906CC9801E098A1 /* BalloonShape.swift */; };
 		FBB822FFB68E1D690E79EB10 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 6CFC8719D13EE3EF51651524 /* PostHog */; };
-		FC356990E98518934B5A17B9 /* FillInTheBlankView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55B3E8E57827B8D99B38AF1A /* FillInTheBlankView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		178E6C5FA5D98E9E9CB943F3 /* SpotTheBugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotTheBugView.swift; sourceTree = "<group>"; };
 		28351D90B42E5417571B1A37 /* pt-BR */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "pt-BR"; path = "pt-BR.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		2CEDA9E40AF59358F4F00143 /* SkillTreeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillTreeView.swift; sourceTree = "<group>"; };
 		36CC53FEE4EF414C2FFE69AB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		39639030FF1ABF8B56AB4F26 /* LogNCoreFFI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LogNCoreFFI; path = ../LogNCoreFFI; sourceTree = SOURCE_ROOT; };
+		3C234F5143F4791D66EF36E0 /* LognComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LognComponents.swift; sourceTree = "<group>"; };
 		3C3479CDAF7B4103E414DAC3 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		42D4982DBEFBD646B4F5FD62 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		4427F1B2ACE8682E6B4ED9F4 /* GameplayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameplayView.swift; sourceTree = "<group>"; };
 		48659346006694BF96682CBE /* OTPInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTPInputView.swift; sourceTree = "<group>"; };
-		4CB79DA23F81A184D6406E1A /* NodeChallengesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeChallengesView.swift; sourceTree = "<group>"; };
-		55B3E8E57827B8D99B38AF1A /* FillInTheBlankView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FillInTheBlankView.swift; sourceTree = "<group>"; };
 		72C915F676CBB9F04656C255 /* CoreWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreWrapper.swift; sourceTree = "<group>"; };
 		7670411FB487991006E4DE02 /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
 		80804A0792E45E01C5BE3D0B /* LogNiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogNiOSApp.swift; sourceTree = "<group>"; };
+		8BCAD3D7D269E2D03F55181F /* MatchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchView.swift; sourceTree = "<group>"; };
+		8DA78EDFD4661B922FE1E389 /* ViewExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewExtensions.swift; sourceTree = "<group>"; };
+		911B685B7906CC9801E098A1 /* BalloonShape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalloonShape.swift; sourceTree = "<group>"; };
 		98613207977B12CB7500F98C /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		9D1A761B4BB79672516BF045 /* LogNiOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LogNiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D238C31B32D323BF620359D /* StringsMappers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringsMappers.swift; sourceTree = "<group>"; };
+		9D8EF036E181D0306E94D226 /* CodeBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeBlock.swift; sourceTree = "<group>"; };
 		C4DB2DC21E3986A71469A3AA /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
 		C5B2B5EA563D4C0A69035BF3 /* ResetPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetPasswordView.swift; sourceTree = "<group>"; };
 		CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
@@ -112,18 +116,27 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		856EBED95C7BAADCCD7D633E /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				911B685B7906CC9801E098A1 /* BalloonShape.swift */,
+				9D8EF036E181D0306E94D226 /* CodeBlock.swift */,
+				3C234F5143F4791D66EF36E0 /* LognComponents.swift */,
+				8DA78EDFD4661B922FE1E389 /* ViewExtensions.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
 		8A706ECEAA021B704E9D9935 /* Views */ = {
 			isa = PBXGroup;
 			children = (
 				42D4982DBEFBD646B4F5FD62 /* ContentView.swift */,
-				55B3E8E57827B8D99B38AF1A /* FillInTheBlankView.swift */,
-				4427F1B2ACE8682E6B4ED9F4 /* GameplayView.swift */,
 				3C3479CDAF7B4103E414DAC3 /* LoginView.swift */,
-				4CB79DA23F81A184D6406E1A /* NodeChallengesView.swift */,
+				8BCAD3D7D269E2D03F55181F /* MatchView.swift */,
 				48659346006694BF96682CBE /* OTPInputView.swift */,
 				C4DB2DC21E3986A71469A3AA /* RegisterView.swift */,
 				C5B2B5EA563D4C0A69035BF3 /* ResetPasswordView.swift */,
-				178E6C5FA5D98E9E9CB943F3 /* SpotTheBugView.swift */,
+				2CEDA9E40AF59358F4F00143 /* SkillTreeView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -134,6 +147,7 @@
 				F486C5E97DFDCE2C80818FB7 /* Assets.xcassets */,
 				36CC53FEE4EF414C2FFE69AB /* Info.plist */,
 				80804A0792E45E01C5BE3D0B /* LogNiOSApp.swift */,
+				856EBED95C7BAADCCD7D633E /* Components */,
 				4DA05EDD2970433B4DA72D53 /* Core */,
 				E4C57CC21C8B47F8AE6859FE /* DesignSystem */,
 				8A706ECEAA021B704E9D9935 /* Views */,
@@ -244,20 +258,22 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FA39E591FFCF6E0D9F6EABC6 /* BalloonShape.swift in Sources */,
+				9B73D9EDD483D4291A531CE4 /* CodeBlock.swift in Sources */,
 				03E8A94FF11F486216CC13B1 /* ContentView.swift in Sources */,
 				5B28C2226E5C4917A2F15B4E /* CoreWrapper.swift in Sources */,
-				FC356990E98518934B5A17B9 /* FillInTheBlankView.swift in Sources */,
-				7931A0F38E8463C7B58D21AA /* GameplayView.swift in Sources */,
 				936B6709633ADF906CB1E02F /* LogNiOSApp.swift in Sources */,
 				0B24F964C6C184D6E7B671B8 /* LoginView.swift in Sources */,
+				E73189436712870098DA5F1C /* LognComponents.swift in Sources */,
 				0D1298B1A212D2DC271F95DA /* LognDesignSystem.swift in Sources */,
-				BF1371254EE520E551FC2D6F /* NodeChallengesView.swift in Sources */,
+				E618B59B0A839990BDA626EA /* MatchView.swift in Sources */,
 				F78BA7613AF912F27820D2ED /* OTPInputView.swift in Sources */,
 				367A11F1AABAF76BBEC5269D /* RegisterView.swift in Sources */,
 				567C1D15944B685B8204F3ED /* ResetPasswordView.swift in Sources */,
-				4DEA72E488BD4E013F10A268 /* SpotTheBugView.swift in Sources */,
+				C878D3C2E023BF3402DA39A2 /* SkillTreeView.swift in Sources */,
 				2F7173374C70B98EECB2E04A /* Strings.swift in Sources */,
 				EA1F6042A86DDF791B09AB41 /* StringsMappers.swift in Sources */,
+				92CE64A8F39A3BACBDFA7E2D /* ViewExtensions.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

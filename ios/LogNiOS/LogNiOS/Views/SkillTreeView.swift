@@ -117,7 +117,6 @@ struct SkillNodeView: View {
         case .locked: return .locked
         case .active: return .active
         case .completed: return .filled
-        default: return .locked
         }
     }
     
@@ -126,7 +125,6 @@ struct SkillNodeView: View {
         case .locked: return 54
         case .active: return 70
         case .completed: return 56
-        default: return 54
         }
     }
 
@@ -135,7 +133,6 @@ struct SkillNodeView: View {
         case .locked: return LognDark.surface
         case .active: return LognDark.accent
         case .completed: return LognDark.info
-        default: return LognDark.surface
         }
     }
     
@@ -144,7 +141,6 @@ struct SkillNodeView: View {
         case .locked: return LognDark.lineDim
         case .active: return LognDark.accent
         case .completed: return LognDark.info
-        default: return LognDark.lineDim
         }
     }
 }
