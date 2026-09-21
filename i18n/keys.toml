@@ -1,0 +1,17 @@
+source_language = "en"
+
+[groups.app.keys]
+name = {}
+subtitle = {}
+
+[groups.login.keys]
+sign_in_apple = {}
+sign_in_google = {}
+sign_in_github = {}
+action_sign_in = {}
+or_separator = {}
+
+[groups.dashboard.keys]
+fetching = {}
+syncing = {}
+loaded = {}

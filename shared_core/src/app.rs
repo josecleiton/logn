@@ -395,3 +395,97 @@ impl App for LogNApp {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_login_flow() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+
+        let mut cmd = app.update(Event::Login { email: "test@x.com".into(), password_hash: "hash".into() }, &mut model);
+        assert!(model.is_authenticating);
+        
+        let req = cmd.expect_one_effect();
+        if let Effect::Http(http_req) = req {
+            assert_eq!(http_req.operation.url, "http://localhost:8080/api/v1/auth/login");
+        } else {
+            panic!("Expected Http effect");
+        }
+
+        let body = serde_json::to_vec(&serde_json::json!({
+            "access_token": "acc_tok",
+            "refresh_token": "ref_tok"
+        })).unwrap();
+        
+        let result = HttpResult::Ok(crux_http::protocol::HttpResponse { status: 200, headers: vec![], body });
+        let mut cmd = app.update(Event::LoginCompleted(result), &mut model);
+        
+        assert_eq!(model.access_token, Some("acc_tok".into()));
+        
+        let kv_req = cmd.expect_one_effect();
+        if let Effect::SecureStore(r) = kv_req {
+            if let KeyValueOperation::Set { key, value } = r.operation {
+                assert_eq!(key, "refresh_token");
+                assert_eq!(String::from_utf8(value).unwrap(), "ref_tok");
+            } else {
+                panic!("Expected Set operation");
+            }
+        } else {
+            panic!("Expected SecureStore effect");
+        }
+    }
+
+    #[test]
+    fn test_401_interceptor_flow() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        
+        model.access_token = Some("old_tok".into());
+        
+        let result = HttpResult::Ok(crux_http::protocol::HttpResponse { status: 401, headers: vec![], body: vec![] });
+        let mut cmd = app.update(Event::ChallengesFetched(result), &mut model);
+        
+        assert!(matches!(model.pending_retry_event, Some(Event::FetchChallenges)));
+        
+        let kv_req = cmd.expect_one_effect();
+        if let Effect::SecureStore(r) = kv_req {
+            if let KeyValueOperation::Get { key } = r.operation {
+                assert_eq!(key, "refresh_token");
+            } else {
+                panic!("Expected Get operation");
+            }
+        } else {
+            panic!("Expected SecureStore effect");
+        }
+        
+        let kv_result = KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes("ref_tok".into()) } };
+        let mut cmd = app.update(Event::TokenRead(kv_result), &mut model);
+        
+        let http_req = cmd.expect_one_effect();
+        if let Effect::Http(r) = http_req {
+            assert_eq!(r.operation.url, "http://localhost:8080/api/v1/auth/refresh");
+        } else {
+            panic!("Expected Http effect");
+        }
+        
+        let body = serde_json::to_vec(&serde_json::json!({
+            "access_token": "new_tok"
+        })).unwrap();
+        let result = HttpResult::Ok(crux_http::protocol::HttpResponse { status: 200, headers: vec![], body });
+        let mut cmd = app.update(Event::RefreshCompleted(result), &mut model);
+        
+        assert_eq!(model.access_token, Some("new_tok".into()));
+        assert!(model.pending_retry_event.is_none());
+        
+        let http_req = cmd.expect_one_effect();
+        if let Effect::Http(r) = http_req {
+            assert_eq!(r.operation.url, "http://localhost:8080/api/v1/challenges");
+            assert_eq!(r.operation.headers[1].value, "Bearer new_tok");
+        } else {
+            panic!("Expected Http effect re-emitting original request");
+        }
+    }
+}

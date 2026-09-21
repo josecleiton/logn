@@ -15,11 +15,11 @@ struct LoginView: View {
                 VStack(spacing: Space.xl) {
                     Spacer()
                     
-                    Text("LogN")
+                    Text(Str.App.name)
                         .font(.system(size: 48, weight: .bold, design: .monospaced))
                         .foregroundColor(LognDark.textPrimary)
                     
-                    Text("Master algorithms bite by bite")
+                    Text(Str.App.subtitle)
                         .font(LognFont.bodyLarge)
                         .foregroundColor(LognDark.textSecondary)
                     
@@ -55,7 +55,7 @@ struct LoginView: View {
                         }) {
                             HStack {
                                 Image(systemName: "g.circle.fill")
-                                Text("Sign in with Google")
+                                Text(Str.Login.sign_in_google)
                             }
                             .font(.system(size: 18, weight: .semibold))
                             .frame(maxWidth: .infinity)
@@ -70,7 +70,7 @@ struct LoginView: View {
                         }) {
                             HStack {
                                 Image(systemName: "apple.terminal.fill")
-                                Text("Sign in with GitHub")
+                                Text(Str.Login.sign_in_github)
                             }
                             .font(.system(size: 18, weight: .semibold))
                             .frame(maxWidth: .infinity)
@@ -84,7 +84,7 @@ struct LoginView: View {
                     
                     HStack {
                         VStack { Divider().background(LognDark.line) }
-                        Text("or")
+                        Text(Str.Login.or_separator)
                             .font(LognFont.label)
                             .foregroundColor(LognDark.textMuted)
                         VStack { Divider().background(LognDark.line) }
@@ -117,7 +117,7 @@ struct LoginView: View {
                                     .background(LognDark.accent)
                                     .cornerRadius(Radius.sm)
                             } else {
-                                Text("Sign In")
+                                Text(Str.Login.action_sign_in)
                                     .font(LognFont.titleMedium)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, Space.md)
