@@ -370,29 +370,34 @@ struct ErrorReviewCard: View {
     let desc: String
     
     var body: some View {
-        HStack(alignment: .top, spacing: Space.md) {
-            BalloonShape(color: LognDark.wrong, state: .filled, bodySize: 24, showString: false, showHighlight: false)
-                .overlay(
-                    Text(letter)
-                        .font(.custom("IBMPlexMono-Medium", size: 10))
-                        .foregroundColor(LognDark.surface)
-                )
-            
-            VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top) {
                 Text(title)
-                    .font(LognFont.titleMedium)
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(LognDark.textPrimary)
                 
-                Text(desc)
-                    .font(LognFont.bodyLarge)
-                    .foregroundColor(LognDark.textSecondary)
+                Spacer()
+                
+                Text("WA")
+                    .font(.custom("IBMPlexMono-Medium", size: 11))
+                    .foregroundColor(LognDark.wrong)
             }
-            Spacer()
+            
+            Text("sua resposta: incorreta")
+                .font(.custom("IBMPlexMono-Medium", size: 12))
+                .foregroundColor(LognDark.textSecondary)
+                .padding(.top, 6)
+            
+            Text(desc)
+                .font(.system(size: 13))
+                .lineSpacing(4) // approximate line-height 1.5
+                .foregroundColor(Color(hex: "99A0A7"))
+                .padding(.top, 8)
         }
-        .padding(Space.md)
+        .padding(14)
         .background(LognDark.surface)
-        .cornerRadius(Radius.md)
-        .overlay(RoundedRectangle(cornerRadius: Radius.md).stroke(LognDark.line, lineWidth: 1))
+        .cornerRadius(4)
+        .overlay(RoundedRectangle(cornerRadius: 4).stroke(LognDark.line, lineWidth: 1))
         .padding(.horizontal, Space.screenMargin)
     }
 }
@@ -418,16 +423,18 @@ struct TrapSheet: View {
                 }
                 
                 Text(category)
-                    .font(LognFont.label)
+                    .font(.custom("IBMPlexMono-Medium", size: 11))
                     .foregroundColor(LognDark.wrong)
                 
                 Text(title)
-                    .font(LognFont.headlineMedium)
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(LognDark.textPrimary)
+                    .lineSpacing(5) // approx 1.3 line-height
                 
                 Text(explanation)
-                    .font(LognFont.bodyLarge)
-                    .foregroundColor(LognDark.textSecondary)
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(hex: "99A0A7"))
+                    .lineSpacing(7) // approx 1.5 line-height
                 
                 HStack(spacing: 12) {
                     LognButton(title: "Ler explicação", variant: .secondary) {

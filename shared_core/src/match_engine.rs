@@ -200,6 +200,14 @@ impl MatchState {
         if !is_correct {
             self.lives -= 1;
             self.penalty_minutes += 20;
+            
+            // Exibir TrapSheet para Wrong Answer
+            self.trap = Some(TrapInfo {
+                name: "Wrong Answer".into(),
+                category: "TRAP CLÁSSICA".into(),
+                title: problem.title.replace("A · ", "").replace("B · ", "").replace("C · ", "").into(),
+                explanation: "Sua resposta foi incorreta. A estratégia escolhida não funciona para todos os casos. Tente revisar a complexidade ou os edge cases!".into(),
+            });
         }
 
         // Limpa seleção e avança
