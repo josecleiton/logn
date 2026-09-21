@@ -75,17 +75,24 @@ struct LoginView: View {
                 VStack(spacing: Space.sm) {
                     // SSO Placeholders (Apple, Google, GitHub)
                     let ssoData = [
-                        ("applelogo", "Continuar com a Apple"),
-                        ("g.circle.fill", "Continuar com o Google"),
-                        ("curlybraces", "Continuar com o GitHub")
+                        ("Apple", "Continuar com a Apple", true),
+                        ("GoogleIcon", "Continuar com o Google", false),
+                        ("GitHubIcon", "Continuar com o GitHub", false)
                     ]
                     
-                    ForEach(ssoData, id: \.0) { item in
+                    ForEach(ssoData, id: \.1) { item in
                         Button(action: {}) {
                             HStack(spacing: 12) {
-                                Image(systemName: item.0)
-                                    .font(.system(size: 20))
-                                    .foregroundColor(LognDark.textPrimary)
+                                if item.2 {
+                                    Image(systemName: "applelogo")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(LognDark.textPrimary)
+                                } else {
+                                    Image(item.0)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 20, height: 20)
+                                }
                                 
                                 Text(item.1)
                                     .font(.system(size: 15, weight: .medium))
@@ -111,7 +118,7 @@ struct LoginView: View {
                     .padding(.vertical, 8)
                     
                     // E-mail field
-                    TextField("e-mail", text: $email)
+                    TextField("", text: $email, prompt: Text("e-mail").foregroundColor(LognDark.textDim))
                         .font(.custom("IBMPlexMono-Regular", size: 14))
                         .padding(.horizontal, 14)
                         .frame(height: 52)
@@ -123,7 +130,7 @@ struct LoginView: View {
                         .keyboardType(.emailAddress)
                         
                     // Password field
-                    SecureField("senha", text: $password)
+                    SecureField("", text: $password, prompt: Text("senha").foregroundColor(LognDark.textDim))
                         .font(.custom("IBMPlexMono-Regular", size: 14))
                         .padding(.horizontal, 14)
                         .frame(height: 52)
@@ -180,25 +187,42 @@ struct LoginView: View {
                 
                 Spacer()
                 
-                // Guest Button
+                // Guest Button & Core Status
                 VStack(spacing: Space.md) {
                     Rectangle().fill(LognDark.line).frame(height: 1)
                     
                     Button(action: {
                         core.dispatch(event: .continueAsGuest)
                     }) {
-                        Text("Jogar como visitante")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(LognDark.textPrimary)
-                            .frame(height: 46)
-                            .frame(maxWidth: .infinity)
-                            .background(LognDark.canvas)
-                            .cornerRadius(Radius.sm)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Radius.sm)
-                                    .stroke(LognDark.line, style: StrokeStyle(lineWidth: 1, dash: [4]))
-                            )
+                        VStack(spacing: 2) {
+                            Text("Jogar como visitante")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(LognDark.textPrimary)
+                            Text("sem salvar")
+                                .font(.custom("IBMPlexMono-Regular", size: 10.5))
+                                .foregroundColor(LognDark.textDim)
+                        }
+                        .frame(height: 46)
+                        .frame(maxWidth: .infinity)
+                        .background(LognDark.canvas)
+                        .cornerRadius(Radius.sm)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Radius.sm)
+                                .stroke(LognDark.line, style: StrokeStyle(lineWidth: 1, dash: [4]))
+                        )
                     }
+                    
+                    // Core Status
+                    HStack(spacing: 7) {
+                        Circle()
+                            .fill(LognDark.correct) // 3DD68C
+                            .frame(width: 6, height: 6)
+                        Text("CORE PRONTO")
+                            .font(.custom("IBMPlexMono-Regular", size: 10))
+                            .tracking(0.1 * 10)
+                            .foregroundColor(LognDark.textDim)
+                    }
+                    .padding(.top, 4)
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
