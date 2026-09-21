@@ -182,14 +182,8 @@ struct ArenaHostView: View {
 struct StandingsHostView: View {
     @EnvironmentObject var core: CoreWrapper
     var body: some View {
-        ZStack {
-            LognDark.canvas.ignoresSafeArea()
-            VStack {
-                Text("PLACAR (WIP)")
-                    .font(LognFont.headlineMedium)
-                    .foregroundColor(LognDark.textPrimary)
-            }
-        }
-        .navigationBarHidden(true)
+        StandingsView()
+            .environmentObject(core)
+            .navigationBarHidden(true)
     }
 }

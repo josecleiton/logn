@@ -137,6 +137,7 @@ struct SkillTreeView: View {
 
 struct SkillNodeView: View {
     let node: SkillNode
+    @State private var isPulsing = false
     
     var body: some View {
         VStack(spacing: 6) {
@@ -154,7 +155,13 @@ struct SkillNodeView: View {
                     .foregroundColor(node.status == .locked ? LognDark.textDim : (node.status == .active ? LognDark.textPrimary : LognDark.surface))
                     .offset(y: -4) // Center vertically inside the balloon body
             )
-                .scaleEffect(node.status == .active ? 1.08 : 1.0, anchor: .bottom)
+                .scaleEffect(node.status == .active ? (isPulsing ? 1.08 : 1.0) : 1.0, anchor: .bottom)
+                .animation(node.status == .active ? Animation.easeInOut(duration: 1.5).repeatForever(autoreverses: true) : .default, value: isPulsing)
+                .onAppear {
+                    if node.status == .active {
+                        isPulsing = true
+                    }
+                }
             
             // Texto do Nó -> NodeTag
             VStack(spacing: 4) {
