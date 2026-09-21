@@ -1,196 +1,169 @@
 import SwiftUI
 import LogN
-import AuthenticationServices
-import App
 
 struct LoginView: View {
     @EnvironmentObject var core: CoreWrapper
+    
     @State private var email = ""
     @State private var password = ""
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                LognDark.canvas.ignoresSafeArea()
+        ZStack {
+            LognDark.canvas.ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                Spacer().frame(height: 60)
                 
-                VStack(spacing: Space.xl) {
-                    Spacer()
+                // Brand Header
+                VStack(spacing: 12) {
+                    HStack(alignment: .center, spacing: 12) {
+                        // Symbol
+                        BalloonShape(
+                            color: LognDark.accent,
+                            state: .filled,
+                            bodySize: 20,
+                            showString: true,
+                            showHighlight: true
+                        )
+                        .frame(width: 34, height: 43)
+                        
+                        Text("LogN")
+                            .font(.system(size: 40, weight: .semibold))
+                            .tracking(-0.04 * 40) // letter-spacing: -0.04em
+                            .foregroundColor(LognDark.textPrimary)
+                    }
                     
-                    Text(Str.App.name)
-                        .font(.system(size: 48, weight: .bold, design: .monospaced))
+                    Text("O(LOG N) PARA APRENDER")
+                        .font(.custom("IBMPlexMono-Regular", size: 11))
+                        .tracking(0.16 * 11) // letter-spacing: 0.16em
+                        .foregroundColor(LognDark.textSecondary)
+                }
+                
+                Spacer().frame(height: 40)
+                
+                // Content
+                VStack(spacing: Space.sm) {
+                    // SSO Placeholders (Apple, Google, GitHub)
+                    ForEach(["applelogo", "g.circle.fill", "curlybraces"], id: \.self) { icon in
+                        Button(action: {}) {
+                            HStack {
+                                Spacer()
+                                Image(systemName: icon)
+                                    .foregroundColor(LognDark.textPrimary)
+                                Spacer()
+                            }
+                            .frame(height: 50)
+                            .background(LognDark.surface)
+                            .cornerRadius(Radius.sm)
+                            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+                        }
+                    }
+                    
+                    // Divider
+                    HStack(spacing: 12) {
+                        Rectangle().fill(LognDark.line).frame(height: 1)
+                        Text("OU COM E-MAIL")
+                            .font(.custom("IBMPlexMono-Regular", size: 10))
+                            .tracking(0.14 * 10)
+                            .foregroundColor(LognDark.textMuted)
+                        Rectangle().fill(LognDark.line).frame(height: 1)
+                    }
+                    .padding(.vertical, 8)
+                    
+                    // E-mail field
+                    TextField("e-mail", text: $email)
+                        .font(.custom("IBMPlexMono-Regular", size: 14))
+                        .padding(.horizontal, 14)
+                        .frame(height: 52)
+                        .background(LognDark.surface)
+                        .cornerRadius(Radius.sm)
+                        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+                        .foregroundColor(LognDark.textPrimary)
+                        .autocapitalization(.none)
+                        .keyboardType(.emailAddress)
+                        
+                    // Password field
+                    SecureField("senha", text: $password)
+                        .font(.custom("IBMPlexMono-Regular", size: 14))
+                        .padding(.horizontal, 14)
+                        .frame(height: 52)
+                        .background(LognDark.surface)
+                        .cornerRadius(Radius.sm)
+                        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
                         .foregroundColor(LognDark.textPrimary)
                     
-                    Text(Str.App.subtitle)
-                        .font(LognFont.bodyLarge)
-                        .foregroundColor(LognDark.textSecondary)
-                    
-                    Spacer()
-                    
-                    VStack(spacing: Space.md) {
-                        // Native Apple Sign In Button
-                        SignInWithAppleButton(
-                            .signIn,
-                            onRequest: { request in
-                                request.requestedScopes = [.fullName, .email]
-                            },
-                            onCompletion: { result in
-                                switch result {
-                                case .success(let authorization):
-                                    if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential,
-                                       let identityToken = appleIDCredential.identityToken,
-                                       let tokenString = String(data: identityToken, encoding: .utf8) {
-                                        // TODO: Pass native provider token to Crux/Go
-                                        print("Apple Sign In Success! Token: \(tokenString.prefix(10))...")
-                                    }
-                                case .failure(let error):
-                                    print("Apple Sign In Failed: \(error.localizedDescription)")
-                                }
-                            }
-                        )
-                        .signInWithAppleButtonStyle(.white) // Strict Apple requirement for Dark Mode backgrounds
-                        .frame(height: 50)
-                        .cornerRadius(Radius.sm)
-                        
-                        Button(action: {
-                            // TODO: Trigger native Google SDK
-                        }) {
-                            HStack {
-                                Image("GoogleIcon")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 24, height: 24)
-                                Text(Str.Login.sign_in_google)
-                            }
-                            .font(.system(size: 18, weight: .semibold))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(Color.white)
-                            .foregroundColor(Color.black)
-                            .cornerRadius(Radius.sm)
-                        }
-                        
-                        Button(action: {
-                            // TODO: Trigger Github custom tab
-                        }) {
-                            HStack {
-                                Image("GitHubIcon")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 24, height: 24)
-                                Text(Str.Login.sign_in_github)
-                            }
-                            .font(.system(size: 18, weight: .semibold))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(Color(white: 0.15))
-                            .foregroundColor(Color.white)
-                            .cornerRadius(Radius.sm)
-                        }
-                    }
-                    .padding(.horizontal, Space.screenMargin)
-                    
-                    HStack {
-                        VStack { Divider().background(LognDark.line) }
-                        Text(Str.Login.or_separator)
-                            .font(LognFont.label)
-                            .foregroundColor(LognDark.textMuted)
-                        VStack { Divider().background(LognDark.line) }
-                    }
-                    .padding(.horizontal, Space.screenMargin)
-                    
-                    VStack(spacing: Space.md) {
-                        TextField("Email", text: $email)
-                            .padding(Space.md)
-                            .background(LognDark.surface)
-                            .cornerRadius(Radius.sm)
-                            .foregroundColor(LognDark.textPrimary)
-                            .keyboardType(.emailAddress)
-                            .autocapitalization(.none)
-                        
-                        SecureField("Password", text: $password)
-                            .padding(Space.md)
-                            .background(LognDark.surface)
-                            .cornerRadius(Radius.sm)
-                            .foregroundColor(LognDark.textPrimary)
-                        
-                        Button(action: {
+                    // Submit button
+                    Button(action: {
+                        if !email.isEmpty && !password.isEmpty {
                             core.dispatch(event: .login(email: email, passwordHash: password))
-                        }) {
-                            if core.viewModel.isAuthenticating {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: LognDark.onAccent))
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, Space.md)
-                                    .background(LognDark.accent)
-                                    .cornerRadius(Radius.sm)
-                            } else {
-                                Text(Str.Login.action_sign_in)
-                                    .font(LognFont.titleMedium)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, Space.md)
-                                    .background(LognDark.accent)
-                                    .foregroundColor(LognDark.onAccent)
-                                    .cornerRadius(Radius.sm)
-                            }
                         }
-                        .disabled(core.viewModel.isAuthenticating || email.isEmpty || password.isEmpty)
-                        
-                        NavigationLink(destination: RegisterView()) {
-                            Text("Create Account")
-                                .font(LognFont.titleMedium)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, Space.md)
-                                .background(LognDark.surface)
-                                .foregroundColor(LognDark.info)
-                                .cornerRadius(Radius.sm)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: Radius.sm)
-                                        .stroke(LognDark.info, lineWidth: 1)
-                                )
+                    }) {
+                        Text(core.viewModel.isAuthenticating ? "Carregando..." : "Entrar")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(email.isEmpty || password.isEmpty ? LognDark.textDim : LognDark.surface)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
+                            .background(email.isEmpty || password.isEmpty ? Color(hex: "1B1D20") : LognDark.accent)
+                            .cornerRadius(Radius.sm)
+                    }
+                    .disabled(email.isEmpty || password.isEmpty || core.viewModel.isAuthenticating)
+                    .padding(.top, 4)
+                    
+                    // Links
+                    HStack {
+                        NavigationLink(destination: RegisterView().environmentObject(core)) {
+                            Text("Criar conta")
+                                .font(.system(size: 13.5))
+                                .foregroundColor(LognDark.textSecondary)
                         }
-                        
+                        Spacer()
                         Button(action: {
                             if !email.isEmpty {
-                                core.dispatch(event: LogN.Event.requestOtp(email: email, purpose: "reset_password"))
+                                core.dispatch(event: .requestOtp(email: email, purpose: "reset_password"))
                             }
                         }) {
-                            Text("Forgot Password?")
-                                .font(LognFont.label)
-                                .foregroundColor(LognDark.textMuted)
-                                .underline()
-                        }
-                        
-                        // Status Box just to show the login status
-                        if !core.viewModel.displayStatus.isEmpty {
-                            Text(core.viewModel.displayStatus)
-                                .font(LognFont.label)
-                                .foregroundColor(LognDark.info)
-                                .multilineTextAlignment(.center)
-                                .padding(.top, Space.sm)
-                        }
-                        
-                        Button(action: {
-                            core.dispatch(event: .continueAsGuest)
-                        }) {
-                            Text(Str.Login.continue_as_guest)
-                                .font(LognFont.bodyLarge)
+                            Text("Esqueci a senha")
+                                .font(.system(size: 13.5))
                                 .foregroundColor(LognDark.textSecondary)
-                                .padding(.top, Space.sm)
-                                .underline()
                         }
                     }
-                    .padding(.horizontal, Space.screenMargin)
-                    
-                    Spacer()
+                    .padding(.top, 6)
                 }
+                .padding(.horizontal, 20)
+                
+                if !core.viewModel.displayStatus.isEmpty {
+                    Text(core.viewModel.displayStatus)
+                        .font(.system(size: 12))
+                        .foregroundColor(LognDark.wrong)
+                        .padding(.top, 10)
+                }
+                
+                Spacer()
+                
+                // Guest Button
+                VStack(spacing: Space.md) {
+                    Rectangle().fill(LognDark.line).frame(height: 1)
+                    
+                    Button(action: {
+                        core.dispatch(event: .continueAsGuest)
+                    }) {
+                        Text("Jogar como visitante")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(LognDark.textPrimary)
+                            .frame(height: 46)
+                            .frame(maxWidth: .infinity)
+                            .background(LognDark.canvas)
+                            .cornerRadius(Radius.sm)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Radius.sm)
+                                    .stroke(LognDark.line, style: StrokeStyle(lineWidth: 1, dash: [4]))
+                            )
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
             }
-            .colorScheme(.dark)
         }
-    }
-}
-
-struct LoginView_Previews: PreviewProvider {
-    static var previews: some View {
-        LoginView().environmentObject(CoreWrapper())
+        .navigationBarHidden(true)
     }
 }

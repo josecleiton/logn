@@ -20,18 +20,32 @@ struct RegisterView: View {
             
             VStack(spacing: Space.xl) {
                 // Header
-                Image(systemName: step == .email ? "envelope" : step == .otp ? "lock.shield" : "key.fill")
-                    .font(.system(size: 48))
-                    .foregroundColor(LognDark.info)
+                HStack(alignment: .center, spacing: 12) {
+                    BalloonShape(
+                        color: LognDark.accent,
+                        state: .filled,
+                        bodySize: 20,
+                        showString: true,
+                        showHighlight: true
+                    )
+                    .frame(width: 34, height: 43)
+                    
+                    Text("LogN")
+                        .font(.system(size: 40, weight: .semibold))
+                        .tracking(-0.04 * 40) // letter-spacing: -0.04em
+                        .foregroundColor(LognDark.textPrimary)
+                }
                 
-                Text(stepTitle)
-                    .font(LognFont.headlineMedium)
-                    .foregroundColor(LognDark.textPrimary)
-                
-                Text(stepSubtitle)
-                    .font(LognFont.bodyLarge)
-                    .foregroundColor(LognDark.textSecondary)
-                    .multilineTextAlignment(.center)
+                VStack(spacing: 4) {
+                    Text(stepTitle)
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundColor(LognDark.textPrimary)
+                    
+                    Text(stepSubtitle)
+                        .font(.custom("IBMPlexMono-Regular", size: 14))
+                        .foregroundColor(LognDark.textSecondary)
+                        .multilineTextAlignment(.center)
+                }
                 
                 switch step {
                 case .email:
@@ -68,34 +82,36 @@ struct RegisterView: View {
     // MARK: - Steps
     
     private var emailStep: some View {
-        VStack(spacing: Space.md) {
-            TextField("your@email.com", text: $email)
+        VStack(spacing: Space.sm) {
+            TextField("e-mail", text: $email)
                 .textContentType(.emailAddress)
                 .keyboardType(.emailAddress)
                 .autocapitalization(.none)
-                .font(LognFont.bodyLarge)
+                .font(.custom("IBMPlexMono-Regular", size: 14))
                 .foregroundColor(LognDark.textPrimary)
-                .padding()
+                .padding(.horizontal, 14)
+                .frame(height: 52)
                 .background(LognDark.surface)
                 .cornerRadius(Radius.sm)
                 .overlay(
                     RoundedRectangle(cornerRadius: Radius.sm)
-                        .stroke(LognDark.lineDim, lineWidth: 1)
+                        .stroke(LognDark.line, lineWidth: 1)
                 )
             
             Button(action: {
                 core.dispatch(event: LogN.Event.requestOtp(email: email, purpose: "verify_email"))
                 step = .otp
             }) {
-                Text("Send Verification Code")
-                    .font(LognFont.titleMedium)
+                Text(core.viewModel.isAuthenticating ? "Enviando..." : "Enviar Código")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(email.contains("@") ? LognDark.surface : LognDark.textDim)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, Space.md)
-                    .background(email.contains("@") ? LognDark.info : LognDark.buttonDisabled)
-                    .foregroundColor(LognDark.surface)
+                    .frame(height: 52)
+                    .background(email.contains("@") ? LognDark.accent : Color(hex: "1B1D20"))
                     .cornerRadius(Radius.sm)
             }
             .disabled(!email.contains("@") || core.viewModel.isAuthenticating)
+            .padding(.top, 4)
         }
     }
     
@@ -105,43 +121,46 @@ struct RegisterView: View {
     }
     
     private var passwordStep: some View {
-        VStack(spacing: Space.md) {
-            SecureField("Password (min 8 characters)", text: $password)
+        VStack(spacing: Space.sm) {
+            SecureField("senha (mín 8 chars)", text: $password)
                 .textContentType(.newPassword)
-                .font(LognFont.bodyLarge)
+                .font(.custom("IBMPlexMono-Regular", size: 14))
                 .foregroundColor(LognDark.textPrimary)
-                .padding()
+                .padding(.horizontal, 14)
+                .frame(height: 52)
                 .background(LognDark.surface)
                 .cornerRadius(Radius.sm)
                 .overlay(
                     RoundedRectangle(cornerRadius: Radius.sm)
-                        .stroke(LognDark.lineDim, lineWidth: 1)
+                        .stroke(LognDark.line, lineWidth: 1)
                 )
             
-            SecureField("Confirm Password", text: $confirmPassword)
+            SecureField("confirmar senha", text: $confirmPassword)
                 .textContentType(.newPassword)
-                .font(LognFont.bodyLarge)
+                .font(.custom("IBMPlexMono-Regular", size: 14))
                 .foregroundColor(LognDark.textPrimary)
-                .padding()
+                .padding(.horizontal, 14)
+                .frame(height: 52)
                 .background(LognDark.surface)
                 .cornerRadius(Radius.sm)
                 .overlay(
                     RoundedRectangle(cornerRadius: Radius.sm)
-                        .stroke(passwordsMatch ? LognDark.lineDim : LognDark.warn, lineWidth: 1)
+                        .stroke(passwordsMatch ? LognDark.line : LognDark.wrong, lineWidth: 1)
                 )
             
             Button(action: {
-                core.dispatch(event: .register(email: email, password: password, otp: otpCode))
+                core.dispatch(event: .register(email: email, password: password, otp: core.viewModel.otpEmail))
             }) {
-                Text("Create Account")
-                    .font(LognFont.titleMedium)
+                Text("Criar Conta")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(canRegister ? LognDark.surface : LognDark.textDim)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, Space.md)
-                    .background(canRegister ? LognDark.correct : LognDark.buttonDisabled)
-                    .foregroundColor(LognDark.surface)
+                    .frame(height: 52)
+                    .background(canRegister ? LognDark.accent : Color(hex: "1B1D20"))
                     .cornerRadius(Radius.sm)
             }
             .disabled(!canRegister || core.viewModel.isAuthenticating)
+            .padding(.top, 4)
         }
     }
     
@@ -149,17 +168,17 @@ struct RegisterView: View {
     
     private var stepTitle: String {
         switch step {
-        case .email: return "Create Account"
-        case .otp: return "Verify E-mail"
-        case .password: return "Set Password"
+        case .email: return "Criar Conta"
+        case .otp: return "Verificar e-mail"
+        case .password: return "Definir Senha"
         }
     }
     
     private var stepSubtitle: String {
         switch step {
-        case .email: return "Enter your e-mail to get started"
-        case .otp: return "Enter the code sent to \(email)"
-        case .password: return "Almost there! Choose a strong password"
+        case .email: return "Para salvar seu progresso"
+        case .otp: return "Digite o código enviado para \(email)"
+        case .password: return "Quase lá! Escolha sua senha"
         }
     }
     
