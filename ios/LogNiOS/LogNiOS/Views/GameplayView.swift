@@ -153,11 +153,13 @@ struct GameplayView: View {
                         showFeedback = false
                         if isCorrect {
                             // Enviar evento de acerto para o Core e sair
-                            core.dispatch(event: .challengeAnswered(challengeId: challenge.id, nodeId: challenge.nodeId, isCorrect: true))
+                            let now = Int64(Date().timeIntervalSince1970)
+                            core.dispatch(event: .challengeAnswered(challengeId: challenge.id, nodeId: challenge.nodeId, isCorrect: true, timestamp: now))
                             dismiss()
                         } else {
                             // Enviar evento de erro para o Core e sair (Punição 0 XP)
-                            core.dispatch(event: .challengeAnswered(challengeId: challenge.id, nodeId: challenge.nodeId, isCorrect: false))
+                            let now = Int64(Date().timeIntervalSince1970)
+                            core.dispatch(event: .challengeAnswered(challengeId: challenge.id, nodeId: challenge.nodeId, isCorrect: false, timestamp: now))
                             dismiss()
                         }
                     }

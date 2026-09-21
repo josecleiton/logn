@@ -46,7 +46,15 @@ pub enum Event {
     RegisterCompleted(HttpResult),
     ResetPassword { email: String, new_password: String, otp: String },
     ResetPasswordCompleted(HttpResult),
-    ChallengeAnswered { challenge_id: String, node_id: String, is_correct: bool },
+    ChallengeAnswered { challenge_id: String, node_id: String, is_correct: bool, timestamp: i64 },
+    QueueLoadedForHash {
+        challenge_id: String,
+        node_id: String,
+        is_correct: bool,
+        timestamp: i64,
+        result: KeyValueResult,
+    },
+    QueueSavedForSync(KeyValueResult),
 }
 
 #[derive(Default, Clone)]
@@ -601,6 +609,13 @@ Event::FetchChallenges => {
                         if response.status == 200 {
                             model.status = "Sync Successful".to_string();
                             model.pending_events.clear();
+                            
+                            // Flush the empty queue to disk so it doesn't duplicate
+                            let bytes = serde_json::to_vec(&model.pending_events).unwrap_or_default();
+                            return Command::request_from_shell(KeyValueOperation::Set {
+                                key: "offline_events".to_string(),
+                                value: bytes,
+                            }).then_send(|_| Event::Ping); // Ping just as a dummy no-op event
                         } else if response.status == 409 {
                             model.status = "Sync Conflict - Rebase Required".to_string();
                         } else if response.status == 401 {
@@ -617,16 +632,62 @@ Event::FetchChallenges => {
                 }
                 render::render()
             }
-            Event::ChallengeAnswered { challenge_id, node_id, is_correct } => {
-                let telemetry_event = if is_correct { "challenge_correct" } else { "challenge_incorrect" };
+            Event::ChallengeAnswered { challenge_id, node_id, is_correct, timestamp } => {
+                Command::request_from_shell(KeyValueOperation::Get {
+                    key: "offline_events".to_string(),
+                }).then_send(move |result| Event::QueueLoadedForHash {
+                    challenge_id: challenge_id.clone(),
+                    node_id: node_id.clone(),
+                    is_correct,
+                    timestamp,
+                    result,
+                })
+            }
+            Event::QueueLoadedForHash { challenge_id, node_id, is_correct, timestamp, result } => {
+                let mut queue: Vec<GameEvent> = Vec::new();
                 
-                Command::request_from_shell(TelemetryOperation::Track {
-                    event: telemetry_event.to_string(),
-                    properties: std::collections::HashMap::from([
-                        ("challenge_id".to_string(), challenge_id),
-                        ("node_id".to_string(), node_id),
-                    ])
-                }).then_send(|_| Event::SyncNow)
+                if let KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } = result {
+                    if let Ok(parsed) = serde_json::from_slice(&bytes) {
+                        queue = parsed;
+                    }
+                }
+                
+                let previous_hash = queue.last().map(|e| e.current_hash.clone()).unwrap_or_else(|| "0000000000000000000000000000000000000000000000000000000000000000".to_string());
+                
+                let action_id = format!("evt_{}", timestamp);
+                let payload_json = format!(r#"{{"challenge_id":"{}","node_id":"{}","is_correct":{}}}"#, challenge_id, node_id, is_correct);
+                
+                let event = GameEvent::new(
+                    action_id,
+                    "CHALLENGE_ANSWERED".to_string(),
+                    payload_json,
+                    timestamp,
+                    previous_hash
+                );
+                
+                queue.push(event);
+                
+                model.pending_events = queue.clone();
+                
+                let bytes = serde_json::to_vec(&queue).unwrap_or_default();
+                Command::request_from_shell(KeyValueOperation::Set {
+                    key: "offline_events".to_string(),
+                    value: bytes,
+                }).then_send(Event::QueueSavedForSync)
+            }
+            Event::QueueSavedForSync(_) => {
+                if let Some(event) = model.pending_events.last() {
+                    let is_correct = event.payload_json.contains("\"is_correct\":true");
+                    let telemetry_event = if is_correct { "challenge_correct" } else { "challenge_incorrect" };
+                    
+                    return Command::request_from_shell(TelemetryOperation::Track {
+                        event: telemetry_event.to_string(),
+                        properties: std::collections::HashMap::from([
+                            ("action_id".to_string(), event.id.clone()),
+                        ])
+                    }).then_send(|_| Event::SyncNow);
+                }
+                render::render()
             }
         }
     }
