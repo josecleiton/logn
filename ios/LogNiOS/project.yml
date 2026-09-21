@@ -3,6 +3,9 @@ options:
   bundleIdPrefix: sh.logn
   deploymentTarget:
     iOS: '16.0'
+configFiles:
+  Debug: Local.xcconfig
+  Release: Local.xcconfig
 packages:
   LogNCoreFFI:
     path: ../LogNCoreFFI
@@ -28,8 +31,9 @@ targets:
       path: LogNiOS/Info.plist
       properties:
         UILaunchScreen: {}
+        LogNApiBaseURL: ${API_BASE_URL}
+        LogNTelemetryKey: ${TELEMETRY_KEY}
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - logn
             CFBundleURLName: sh.logn.app
-

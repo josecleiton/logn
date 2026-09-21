@@ -96,9 +96,24 @@ public class CoreWrapper: ObservableObject {
         }
     }
     
+    private func getBaseURL() -> URL? {
+        guard let value = Bundle.main.object(forInfoDictionaryKey: "LogNApiBaseURL") as? String,
+              !value.isEmpty
+        else {
+            return nil
+        }
+        return URL(string: value)
+    }
+
     private func handleHttp(id: UInt32, request: HttpRequest) {
-        guard let url = URL(string: request.url) else {
-            resolveHttpEffect(id: id, result: .err(HttpError.io("Invalid URL")))
+        guard let base = getBaseURL() else {
+            print("HTTP Request blocked: No API_BASE_URL configured in environment")
+            resolveHttpEffect(id: id, result: .err(HttpError.io("No API base URL configured")))
+            return
+        }
+        
+        guard let url = URL(string: request.url, relativeTo: base) else {
+            resolveHttpEffect(id: id, result: .err(HttpError.url(request.url)))
             return
         }
         

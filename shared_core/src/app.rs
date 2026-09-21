@@ -138,7 +138,7 @@ impl App for LogNApp {
 
                 let request = HttpRequest {
                     method: "POST".to_string(),
-                    url: "http://localhost:8080/api/v1/auth/login".to_string(),
+                    url: "/api/v1/auth/login".to_string(),
                     headers: vec![crux_http::protocol::HttpHeader {
                         name: "Content-Type".to_string(),
                         value: "application/json".to_string(),
@@ -207,7 +207,7 @@ impl App for LogNApp {
                         
                         let request = HttpRequest {
                             method: "POST".to_string(),
-                            url: "http://localhost:8080/api/v1/auth/refresh".to_string(),
+                            url: "/api/v1/auth/refresh".to_string(),
                             headers: vec![crux_http::protocol::HttpHeader {
                                 name: "Content-Type".to_string(),
                                 value: "application/json".to_string(),
@@ -257,7 +257,7 @@ impl App for LogNApp {
                 
                 let request = HttpRequest {
                     method: "GET".to_string(),
-                    url: "http://localhost:8080/api/v1/nodes".to_string(),
+                    url: "/api/v1/nodes".to_string(),
                     headers: auth_headers(&model.access_token),
                     body: vec![],
                 };
@@ -303,7 +303,7 @@ Event::FetchChallenges => {
 
                 let request = HttpRequest {
                     method: "GET".to_string(),
-                    url: "http://localhost:8080/api/v1/challenges".to_string(),
+                    url: "/api/v1/challenges".to_string(),
                     headers: auth_headers(&model.access_token),
                     body: vec![],
                 };
@@ -423,7 +423,7 @@ Event::FetchChallenges => {
                 let body = serde_json::json!({ "email": email, "purpose": purpose });
                 let request = HttpRequest {
                     method: "POST".to_string(),
-                    url: "http://localhost:8080/api/v1/auth/request-otp".to_string(),
+                    url: "/api/v1/auth/request-otp".to_string(),
                     headers: vec![crux_http::protocol::HttpHeader {
                         name: "Content-Type".to_string(),
                         value: "application/json".to_string(),
@@ -451,7 +451,7 @@ Event::FetchChallenges => {
                 let body = serde_json::json!({ "email": email, "code": code, "purpose": purpose });
                 let request = HttpRequest {
                     method: "POST".to_string(),
-                    url: "http://localhost:8080/api/v1/auth/verify-otp".to_string(),
+                    url: "/api/v1/auth/verify-otp".to_string(),
                     headers: vec![crux_http::protocol::HttpHeader {
                         name: "Content-Type".to_string(),
                         value: "application/json".to_string(),
@@ -481,7 +481,7 @@ Event::FetchChallenges => {
                 let body = serde_json::json!({ "email": email, "password": password, "otp": otp });
                 let request = HttpRequest {
                     method: "POST".to_string(),
-                    url: "http://localhost:8080/api/v1/auth/register".to_string(),
+                    url: "/api/v1/auth/register".to_string(),
                     headers: vec![crux_http::protocol::HttpHeader {
                         name: "Content-Type".to_string(),
                         value: "application/json".to_string(),
@@ -540,7 +540,7 @@ Event::FetchChallenges => {
                 
                 let request = HttpRequest {
                     method: "POST".to_string(),
-                    url: "http://localhost:8080/api/v1/sync".to_string(),
+                    url: "/api/v1/sync".to_string(),
                     headers: auth_headers(&model.access_token),
                     body: body_bytes,
                 };
@@ -612,7 +612,7 @@ mod tests {
         
         let http_req = cmd.expect_one_effect();
         if let Effect::Http(r) = http_req {
-            assert_eq!(r.operation.url, "http://localhost:8080/api/v1/auth/request-otp");
+            assert_eq!(r.operation.url, "/api/v1/auth/request-otp");
         } else {
             panic!("Expected Http effect");
         }
@@ -638,7 +638,7 @@ mod tests {
         
         let http_req = cmd.expect_one_effect();
         if let Effect::Http(r) = http_req {
-            assert_eq!(r.operation.url, "http://localhost:8080/api/v1/auth/verify-otp");
+            assert_eq!(r.operation.url, "/api/v1/auth/verify-otp");
             assert!(String::from_utf8_lossy(&r.operation.body).contains("123456"));
         } else {
             panic!("Expected Http effect");
@@ -666,7 +666,7 @@ mod tests {
         
         let req = cmd.expect_one_effect();
         if let Effect::Http(http_req) = req {
-            assert_eq!(http_req.operation.url, "http://localhost:8080/api/v1/auth/login");
+            assert_eq!(http_req.operation.url, "/api/v1/auth/login");
         } else {
             panic!("Expected Http effect");
         }
@@ -722,7 +722,7 @@ mod tests {
         
         let http_req = cmd.expect_one_effect();
         if let Effect::Http(r) = http_req {
-            assert_eq!(r.operation.url, "http://localhost:8080/api/v1/auth/refresh");
+            assert_eq!(r.operation.url, "/api/v1/auth/refresh");
         } else {
             panic!("Expected Http effect");
         }
@@ -738,7 +738,7 @@ mod tests {
         
         let http_req = cmd.expect_one_effect();
         if let Effect::Http(r) = http_req {
-            assert_eq!(r.operation.url, "http://localhost:8080/api/v1/challenges");
+            assert_eq!(r.operation.url, "/api/v1/challenges");
             assert_eq!(r.operation.headers[1].value, "Bearer new_tok");
         } else {
             panic!("Expected Http effect re-emitting original request");

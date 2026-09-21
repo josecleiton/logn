@@ -38,6 +38,7 @@
 		4CB79DA23F81A184D6406E1A /* NodeChallengesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeChallengesView.swift; sourceTree = "<group>"; };
 		55B3E8E57827B8D99B38AF1A /* FillInTheBlankView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FillInTheBlankView.swift; sourceTree = "<group>"; };
 		72C915F676CBB9F04656C255 /* CoreWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreWrapper.swift; sourceTree = "<group>"; };
+		7670411FB487991006E4DE02 /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
 		80804A0792E45E01C5BE3D0B /* LogNiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogNiOSApp.swift; sourceTree = "<group>"; };
 		98613207977B12CB7500F98C /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		9D1A761B4BB79672516BF045 /* LogNiOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LogNiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -72,10 +73,20 @@
 			path = InfoPlist;
 			sourceTree = "<group>";
 		};
+		3742E5E9469E1C672130DE84 /* LogNiOS */ = {
+			isa = PBXGroup;
+			children = (
+				7670411FB487991006E4DE02 /* Local.xcconfig */,
+			);
+			name = LogNiOS;
+			path = .;
+			sourceTree = "<group>";
+		};
 		4D5F1268255946B4C54BC27F = {
 			isa = PBXGroup;
 			children = (
 				A941EF7BAA6199B90C91DCCB /* LogNiOS */,
+				3742E5E9469E1C672130DE84 /* LogNiOS */,
 				E2EC91FCB3848B0791696A6C /* Packages */,
 				5EF88F208A24C6BABF30F9A7 /* Products */,
 			);
@@ -256,6 +267,7 @@
 /* Begin XCBuildConfiguration section */
 		2777EF593D58D37536149714 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7670411FB487991006E4DE02 /* Local.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -329,6 +341,7 @@
 		};
 		86E62EE6B236BC61D129229F /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7670411FB487991006E4DE02 /* Local.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
