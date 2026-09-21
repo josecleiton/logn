@@ -1,3 +1,5 @@
+pub mod domain;
+
 pub mod app;
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
