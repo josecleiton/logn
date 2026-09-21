@@ -3,7 +3,7 @@ import AuthenticationServices
 import App
 
 struct LoginView: View {
-    @StateObject private var core = CoreWrapper()
+    @EnvironmentObject var core: CoreWrapper
     @State private var email = ""
     @State private var password = ""
     
@@ -107,15 +107,34 @@ struct LoginView: View {
                             .foregroundColor(LognDark.textPrimary)
                         
                         Button(action: {
-                            // TODO: Dispatch Email/Password login to Crux
+                            core.dispatch(event: .login(email: email, passwordHash: password))
                         }) {
-                            Text("Sign In")
-                                .font(LognFont.titleMedium)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, Space.md)
-                                .background(LognDark.accent)
-                                .foregroundColor(LognDark.onAccent)
-                                .cornerRadius(Radius.sm)
+                            if core.viewModel.isAuthenticating {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: LognDark.onAccent))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, Space.md)
+                                    .background(LognDark.accent)
+                                    .cornerRadius(Radius.sm)
+                            } else {
+                                Text("Sign In")
+                                    .font(LognFont.titleMedium)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, Space.md)
+                                    .background(LognDark.accent)
+                                    .foregroundColor(LognDark.onAccent)
+                                    .cornerRadius(Radius.sm)
+                            }
+                        }
+                        .disabled(core.viewModel.isAuthenticating || email.isEmpty || password.isEmpty)
+                        
+                        // Status Box just to show the login status
+                        if !core.viewModel.displayStatus.isEmpty {
+                            Text(core.viewModel.displayStatus)
+                                .font(LognFont.label)
+                                .foregroundColor(LognDark.info)
+                                .multilineTextAlignment(.center)
+                                .padding(.top, Space.sm)
                         }
                     }
                     .padding(.horizontal, Space.screenMargin)
@@ -130,6 +149,6 @@ struct LoginView: View {
 
 struct LoginView_Previews: PreviewProvider {
     static var previews: some View {
-        LoginView()
+        LoginView().environmentObject(CoreWrapper())
     }
 }

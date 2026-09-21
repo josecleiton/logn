@@ -2,7 +2,7 @@ import SwiftUI
 import App
 
 struct ContentView: View {
-    @StateObject private var core = CoreWrapper()
+    @EnvironmentObject var core: CoreWrapper
     
     var body: some View {
         NavigationView {

@@ -8,8 +8,18 @@ public class CoreWrapper: ObservableObject {
     @Published public var viewModel: ViewModel
     
     public init() {
-        self.viewModel = ViewModel(displayStatus: "Initializing...", pendingSyncCount: 0, isSyncing: false)
+        self.viewModel = ViewModel(
+            displayStatus: "Initializing...",
+            pendingSyncCount: 0,
+            isSyncing: false,
+            isFetching: false,
+            isAuthenticating: false,
+            hasAccessToken: false,
+            challenges: []
+        )
         updateViewModel()
+        // Auto-login on init
+        dispatch(event: .attemptRefresh)
     }
     
     public func dispatch(event: Event) {
@@ -35,13 +45,57 @@ public class CoreWrapper: ObservableObject {
                 updateViewModel()
             case .http(let httpRequest):
                 handleHttp(id: request.id, request: httpRequest)
+            case .secureStore(let operation):
+                handleSecureStore(id: request.id, operation: operation)
             }
+        }
+    }
+    
+    private func handleSecureStore(id: UInt32, operation: KeyValueOperation) {
+        let result: KeyValueResult
+        
+        // Simulating Secure Vault with UserDefaults for MVP
+        switch operation {
+        case .get(let key):
+            if let strValue = UserDefaults.standard.string(forKey: key) {
+                let bytes = Array(strValue.utf8)
+                result = .ok(KeyValueResponse.get(Value.bytes(bytes)))
+            } else {
+                result = .ok(KeyValueResponse.get(Value.none))
+            }
+        case .set(let key, let valueBytes):
+            let valueStr = String(bytes: valueBytes, encoding: .utf8) ?? ""
+            let previousStr = UserDefaults.standard.string(forKey: key)
+            
+            UserDefaults.standard.set(valueStr, forKey: key)
+            
+            if let prev = previousStr {
+                result = .ok(KeyValueResponse.set(Value.bytes(Array(prev.utf8))))
+            } else {
+                result = .ok(KeyValueResponse.set(Value.none))
+            }
+        case .delete(let key):
+            let previousStr = UserDefaults.standard.string(forKey: key)
+            UserDefaults.standard.removeObject(forKey: key)
+            
+            if let prev = previousStr {
+                result = .ok(KeyValueResponse.delete(Value.bytes(Array(prev.utf8))))
+            } else {
+                result = .ok(KeyValueResponse.delete(Value.none))
+            }
+        case .exists(let key):
+            let exists = UserDefaults.standard.object(forKey: key) != nil
+            result = .ok(KeyValueResponse.exists(exists))
+        }
+        
+        DispatchQueue.main.async {
+            self.resolveSecureStore(id: id, result: result)
         }
     }
     
     private func handleHttp(id: UInt32, request: HttpRequest) {
         guard let url = URL(string: request.url) else {
-            resolveEffect(id: id, result: .err(HttpError.io("Invalid URL")))
+            resolveHttpEffect(id: id, result: .err(HttpError.io("Invalid URL")))
             return
         }
         
@@ -61,7 +115,7 @@ public class CoreWrapper: ObservableObject {
             } else if let httpResponse = response as? HTTPURLResponse {
                 let res = HttpResponse(
                     status: UInt16(httpResponse.statusCode),
-                    headers: [], // Simplifying for now
+                    headers: [],
                     body: data.map { [UInt8]($0) } ?? []
                 )
                 result = .ok(res)
@@ -70,12 +124,12 @@ public class CoreWrapper: ObservableObject {
             }
             
             DispatchQueue.main.async {
-                self.resolveEffect(id: id, result: result)
+                self.resolveHttpEffect(id: id, result: result)
             }
         }.resume()
     }
     
-    private func resolveEffect(id: UInt32, result: HttpResult) {
+    private func resolveHttpEffect(id: UInt32, result: HttpResult) {
         do {
             let resultBytes = try result.bincodeSerialize()
             let nextEffectsBytes = coreFFI.resolve(id: id, data: Data(resultBytes))
@@ -83,6 +137,17 @@ public class CoreWrapper: ObservableObject {
             try processEffects(nextEffectsBytes)
         } catch {
             print("Failed to resolve HTTP effect: \(error)")
+        }
+    }
+    
+    private func resolveSecureStore(id: UInt32, result: KeyValueResult) {
+        do {
+            let resultBytes = try result.bincodeSerialize()
+            let nextEffectsBytes = coreFFI.resolve(id: id, data: Data(resultBytes))
+            
+            try processEffects(nextEffectsBytes)
+        } catch {
+            print("Failed to resolve SecureStore effect: \(error)")
         }
     }
     
