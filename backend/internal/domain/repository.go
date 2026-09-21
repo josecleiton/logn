@@ -180,3 +180,14 @@ func (r *Repository) GetUserProgress(ctx context.Context, userID string) ([]User
 	}
 	return progress, nil
 }
+
+func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string) (string, error) {
+	var id string
+	query := `
+		INSERT INTO users (email, password_hash)
+		VALUES ($1, $2)
+		RETURNING id
+	`
+	err := r.db.QueryRow(ctx, query, email, passwordHash).Scan(&id)
+	return id, err
+}

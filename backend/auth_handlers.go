@@ -112,3 +112,74 @@ func (s *Server) refreshHandler(w http.ResponseWriter, r *http.Request) {
 		"access_token": accessToken,
 	})
 }
+
+type RegisterRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	OTP      string `json:"otp"`
+}
+
+func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req RegisterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+
+	// 1. Verify OTP
+	valid, err := s.repo.VerifyOTP(ctx, req.Email, req.OTP, "verify_email")
+	if err != nil || !valid {
+		http.Error(w, "Invalid or expired OTP", http.StatusUnauthorized)
+		return
+	}
+
+	// 2. Hash Password
+	hashedPassword, err := domain.HashPassword(req.Password)
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	// 3. Create User
+	userID, err := s.repo.CreateUser(ctx, req.Email, hashedPassword)
+	if err != nil {
+		// Usually indicates email already exists
+		http.Error(w, "Error creating user: email might already be registered", http.StatusConflict)
+		return
+	}
+
+	// 4. Generate Tokens
+	accessToken, err := domain.GenerateAccessToken(userID)
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	refreshToken, err := domain.GenerateRefreshToken()
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	hash := sha256.Sum256([]byte(refreshToken))
+	tokenHash := hex.EncodeToString(hash[:])
+	
+	err = s.repo.CreateRefreshToken(ctx, userID, tokenHash, time.Now().Add(30*24*time.Hour))
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(AuthResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	})
+}
