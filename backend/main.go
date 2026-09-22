@@ -197,6 +197,11 @@ func main() {
 		log.Println("Bypassing auto-migrations (RUN_MIGRATIONS != true)")
 	}
 
+	if os.Getenv("MIGRATE_ONLY") == "true" {
+		log.Println("Migrações concluídas com sucesso. Encerrando (MIGRATE_ONLY=true).")
+		return
+	}
+
 	repo := domain.NewRepository(pool)
 	mailer := email.NewMailer()
 	server := &Server{repo: repo, mailer: mailer}

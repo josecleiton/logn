@@ -23,6 +23,11 @@ run-backend: db-up
 test-backend:
 	cd backend && go test -v ./...
 
+# Aplica as migrações no banco de Produção e encerra sem subir o servidor HTTP.
+# Uso: DATABASE_URL="postgres://admin..." just migrate-prod
+migrate-prod:
+	cd backend && RUN_MIGRATIONS=true MIGRATE_ONLY=true go run .
+
 # Faz o deploy do Backend para o Google Cloud Run (usando Source-to-Image)
 deploy-backend:
 	gcloud run deploy logn-backend \
