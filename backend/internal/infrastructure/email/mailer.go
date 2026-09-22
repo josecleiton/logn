@@ -18,17 +18,37 @@ type Mailer struct {
 	templates *template.Template
 	host      string
 	port      int
+	user      string
+	pass      string
 	from      string
 }
 
 func NewMailer() *Mailer {
 	tmpl := template.Must(template.ParseFS(templatesFS, "templates/*.html"))
 
+	host := os.Getenv("SMTP_HOST")
+	if host == "" {
+		host = "localhost"
+	}
+
+	portStr := os.Getenv("SMTP_PORT")
+	port := 1025
+	if portStr != "" {
+		fmt.Sscanf(portStr, "%d", &port)
+	}
+
+	from := os.Getenv("SMTP_FROM")
+	if from == "" {
+		from = "LogN <noreply@logn.sh>"
+	}
+
 	return &Mailer{
 		templates: tmpl,
-		host:      "localhost",
-		port:      1025,
-		from:      "LogN <noreply@logn.sh>",
+		host:      host,
+		port:      port,
+		user:      os.Getenv("SMTP_USER"),
+		pass:      os.Getenv("SMTP_PASS"),
+		from:      from,
 	}
 }
 
@@ -127,7 +147,7 @@ func (m *Mailer) send(to, subject, templateName string, data interface{}) error 
 
 	msg.SetBody("text/html", body.String())
 
-	dialer := gomail.Dialer{Host: m.host, Port: m.port}
+	dialer := gomail.NewDialer(m.host, m.port, m.user, m.pass)
 	if err := dialer.DialAndSend(msg); err != nil {
 		return fmt.Errorf("falha ao enviar e-mail smtp: %w", err)
 	}
