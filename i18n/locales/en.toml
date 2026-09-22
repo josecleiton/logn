@@ -40,6 +40,7 @@ sync_diverged = "Your progress diverged from the server."
 sync_failed = "I couldn't send your progress right now."
 sync_offline = "No connection to send your progress."
 sign_in_to_sync = "Sign in to save your progress."
+trail_from_bundle = "Trail from %{date} · newer problems may exist"
 
 [origin]
 eyebrow = "Where this problem came from"

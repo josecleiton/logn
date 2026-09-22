@@ -47,6 +47,7 @@ sync_diverged = {}
 sync_failed = {}
 sync_offline = {}
 sign_in_to_sync = {}
+trail_from_bundle = { placeholders = [{ name = "date", type = "text" }] }
 
 # Origem do desafio. A chave vem do Core (a coluna `origin`); a cópia mora aqui.
 [groups.origin.keys]

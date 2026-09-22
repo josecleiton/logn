@@ -25,6 +25,8 @@ public class CoreWrapper: ObservableObject {
             hasAccessToken: false,
             hasSession: false,
             isOfflineSession: false,
+            trailFromBundle: false,
+            trailGeneratedAt: "",
             isGuest: false,
             challenges: [],
             nodes: [],

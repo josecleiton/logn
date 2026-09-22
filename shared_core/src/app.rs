@@ -166,6 +166,15 @@ pub struct Model {
     pub origins_seen: Vec<String>,
     /// Origem cujo cartão está aberto agora. Vazia quando não há cartão na tela.
     pub origin_sheet: String,
+    /// A trilha em uso veio da semente do bundle, e ninguém falou com o servidor ainda.
+    ///
+    /// A semente envelhece com o binário, não com o conteúdo: quem instalar hoje e
+    /// passar um mês offline joga a trilha de um mês atrás, e sem isto não há nada na
+    /// tela dizendo isso. Vira falso assim que o retrato ou o servidor preenche.
+    pub trail_from_bundle: bool,
+    /// Quando a semente foi gerada, em ISO 8601, como veio do asset. O cliente formata
+    /// na língua dele — o Core não sabe em que idioma o app está.
+    pub trail_generated_at: String,
 }
 
 #[derive(Facet, Serialize, Deserialize, Default, Clone)]
@@ -184,6 +193,11 @@ pub struct ViewModel {
     pub has_session: bool,
     /// A sessão está em pé sem ter falado com o servidor nesta abertura.
     pub is_offline_session: bool,
+    /// A trilha na tela é a que viajou no bundle, congelada quando o build saiu.
+    /// O cliente avisa: pode haver desafio que este app ainda não conhece.
+    pub trail_from_bundle: bool,
+    /// Quando essa semente foi gerada, em ISO 8601. O cliente formata na língua dele.
+    pub trail_generated_at: String,
     pub is_guest: bool,
     pub challenges: Vec<Challenge>,
     pub nodes: Vec<crate::domain::SkillNode>,
@@ -514,6 +528,9 @@ impl App for LogNApp {
                         if !snap.nodes.is_empty() {
                             model.nodes = snap.nodes;
                             model.challenges = snap.challenges;
+                            // O retrato é o que o servidor respondeu por esta conta, e
+                            // é mais novo que a semente por definição.
+                            model.trail_from_bundle = false;
                         }
                     }
                 }
@@ -754,7 +771,12 @@ impl App for LogNApp {
                     HttpResult::Ok(response) => {
                         if response.status == 200 {
                             if let Ok(nodes) = serde_json::from_slice::<Vec<crate::domain::SkillNode>>(&response.body) {
+                                // Substitui a lista inteira, e não completa a que
+                                // estava: servidor que devolve menos nós — um nó
+                                // removido — tem de encolher a trilha, não conviver
+                                // com sobra da semente.
                                 model.nodes = nodes;
+                                model.trail_from_bundle = false;
                                 model.status = "Skill tree loaded".to_string();
                             } else {
                                 model.status = "Failed to parse nodes".to_string();
@@ -801,6 +823,7 @@ Event::FetchChallenges => {
                         if response.status == 200 {
                             if let Ok(challenges) = serde_json::from_slice::<Vec<Challenge>>(&response.body) {
                                 model.challenges = challenges;
+                                model.trail_from_bundle = false;
                                 model.status = "Challenges loaded".to_string();
                                 // Nós e desafios confirmados pelo servidor: é o momento
                                 // de guardar o retrato que vai servir sem rede.
@@ -1452,11 +1475,18 @@ Event::FetchChallenges => {
             Event::BundledTrailLoaded { json } => {
                 match serde_json::from_str::<crate::domain::TrailSeed>(&json) {
                     Ok(seed) if seed.version == crate::domain::TRAIL_SEED_VERSION => {
+                        let encheu = model.nodes.is_empty() || model.challenges.is_empty();
                         if model.nodes.is_empty() {
                             model.nodes = seed.nodes;
                         }
                         if model.challenges.is_empty() {
                             model.challenges = seed.challenges;
+                        }
+                        // Só marca quando a semente de fato entrou. Se o retrato já
+                        // tinha enchido tudo, o jogador não está vendo conteúdo velho.
+                        if encheu {
+                            model.trail_from_bundle = true;
+                            model.trail_generated_at = seed.generated_at;
                         }
                     }
                     // Semente de outra versão é ignorada, não é erro: o app segue
@@ -1610,6 +1640,8 @@ Event::FetchChallenges => {
             has_access_token: model.access_token.is_some(),
             has_session: model.access_token.is_some() || model.session_offline,
             is_offline_session: model.session_offline,
+            trail_from_bundle: model.trail_from_bundle,
+            trail_generated_at: model.trail_generated_at.clone(),
             is_guest: model.is_guest,
             challenges: model.challenges.clone(),
             nodes: computed_nodes,
@@ -1897,6 +1929,69 @@ mod tests {
             model.nodes[0].name, "Nó G",
             "o que veio do servidor manda; a semente não regride o conteúdo"
         );
+    }
+
+    /// A semente envelhece com o binário, não com o conteúdo: quem instala e fica
+    /// offline joga a trilha do dia do build. O app tem de conseguir dizer isso.
+    #[test]
+    fn test_the_app_knows_when_the_trail_is_the_frozen_one() {
+        let app = LogNApp::default();
+
+        let mut model = Model::default();
+        let _ = app.update(Event::BundledTrailLoaded { json: seed_json() }, &mut model);
+        let view = app.view(&model);
+        assert!(view.trail_from_bundle, "sem servidor, a trilha na tela é a do bundle");
+        assert_eq!(
+            view.trail_generated_at, "2026-09-22T00:00:00Z",
+            "e o app sabe de quando ela é, para poder dizer na tela"
+        );
+
+        // Retrato do servidor por cima: deixa de ser conteúdo congelado.
+        let snapshot = serde_json::to_vec(&serde_json::json!({
+            "global_xp": 0, "bugs_found": 0, "dry_runs_completed": 0,
+            "nodes": [{
+                "id": "20000000-0000-0000-0000-000000000002",
+                "name": "Nó B", "description": "Do servidor.",
+                "row": 1, "column": -1, "required_xp": 100, "prerequisites": []
+            }],
+            "challenges": []
+        }))
+        .unwrap();
+        let _ = app.update(
+            Event::SnapshotRestored(KeyValueResult::Ok {
+                response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(snapshot) },
+            }),
+            &mut model,
+        );
+        assert!(
+            !app.view(&model).trail_from_bundle,
+            "o retrato é o que o servidor respondeu, e é mais novo que a semente"
+        );
+    }
+
+    /// Servidor que devolve menos nós tem de encolher a trilha, não conviver com a
+    /// sobra da semente. Era lacuna declarada e sem teste.
+    #[test]
+    fn test_a_shorter_answer_from_the_server_shrinks_the_trail() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+
+        // Semente com um nó.
+        let _ = app.update(Event::BundledTrailLoaded { json: seed_json() }, &mut model);
+        assert_eq!(model.nodes.len(), 1);
+
+        // Servidor responde com lista vazia: o nó tem de sumir.
+        let _ = app.update(
+            Event::NodesFetched(HttpResult::Ok(crux_http::protocol::HttpResponse {
+                status: 200, headers: vec![], body: b"[]".to_vec(),
+            })),
+            &mut model,
+        );
+        assert!(
+            model.nodes.is_empty(),
+            "a lista do servidor substitui a da semente inteira, não completa"
+        );
+        assert!(!model.trail_from_bundle, "e o app para de dizer que a trilha é a do bundle");
     }
 
     /// Semente de outra versão é ignorada em silêncio: o app segue buscando pela rede,

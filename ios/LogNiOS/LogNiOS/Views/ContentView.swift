@@ -174,6 +174,14 @@ struct SkillTreeHostView: View {
                     offlineWarning
                 }
 
+                // A tarja acima diz que o progresso não sobe; esta diz que o conteúdo
+                // pode estar velho. São coisas diferentes e as duas podem valer ao mesmo
+                // tempo — visitante sem rede vê as duas. Esta é a mais quieta das duas
+                // de propósito: não é aviso, é ressalva.
+                if core.viewModel.trailFromBundle {
+                    bundledTrailNote
+                }
+
                 if core.viewModel.nodes.isEmpty {
                     emptyState
                 } else {
@@ -273,6 +281,50 @@ struct SkillTreeHostView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, Space.sm)
         .background(LognDark.warn)
+    }
+
+    /// A trilha na tela é a que veio dentro do app, congelada no dia do build.
+    ///
+    /// A semente envelhece com o binário e não com o conteúdo: quem instala e fica
+    /// offline joga a trilha daquele dia, e sem esta linha não há nada dizendo isso. O
+    /// `generated_at` já estava gravado no asset desde que ele existe; ninguém lia.
+    ///
+    /// Sem fundo `warn`: nada está errado, e amarelo aqui competiria com as duas tarjas
+    /// que de fato avisam de problema.
+    private var bundledTrailNote: some View {
+        // Alinhado ao topo, não ao centro: a frase com a data quebra em duas linhas em
+        // tela estreita, e o ícone centralizado ficava flutuando entre elas.
+        HStack(alignment: .top, spacing: Space.sm) {
+            Image(systemName: "shippingbox")
+                .font(.system(size: 11))
+                .padding(.top, 1)
+            Text(Str.Status.trail_from_bundle(bundledTrailDate))
+                .lognLabel()
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .foregroundColor(LognDark.textMuted)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.horizontal, Space.lg)
+        .padding(.vertical, Space.sm)
+        .background(LognDark.surface)
+        .overlay(alignment: .bottom) {
+            Rectangle().frame(height: 1).foregroundColor(LognDark.line)
+        }
+    }
+
+    /// A data como o leitor escreveria: "22 de setembro". O Core manda ISO 8601 porque
+    /// não sabe em que idioma o app está — quem traduz é quem tem o locale.
+    private var bundledTrailDate: String {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime]
+        guard let data = iso.date(from: core.viewModel.trailGeneratedAt) else {
+            // Data ilegível não vira tela quebrada: cai no texto cru, que ainda diz algo.
+            return core.viewModel.trailGeneratedAt
+        }
+        let f = DateFormatter()
+        f.locale = Locale.current
+        f.setLocalizedDateFormatFromTemplate("d MMMM")
+        return f.string(from: data)
     }
 
     /// Loading é skeleton, não spinner; vazio é uma frase e o CTA que resolve.
