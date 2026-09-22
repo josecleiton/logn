@@ -1,0 +1,11 @@
+// Copie este arquivo para `Local.xcconfig` para rodar o app localmente.
+// O XcodeGen irá carregá-lo nas builds de Debug e Release do desenvolvedor.
+
+// Hack do xcconfig para usar barras duplas sem comentar
+SLASH = /
+
+// Base URL da API
+API_BASE_URL = http:$(SLASH)$(SLASH)localhost:8080
+
+// Chave do PostHog (vazia por padrão em dev)
+TELEMETRY_KEY = phc_SuaChaveAqui

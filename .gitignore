@@ -24,3 +24,6 @@ backend/logn-backend
 .env
 *.xcconfig
 !*.xcconfig.example
+contest/
+backend/backend
+backend/test_match_sync
