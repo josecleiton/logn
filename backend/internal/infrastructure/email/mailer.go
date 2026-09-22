@@ -89,6 +89,20 @@ func (m *Mailer) SendWelcome(toEmail string) error {
 	return m.send(toEmail, "Bem-vindo ao LogN!", "welcome.html", data)
 }
 
+// Render devolve o HTML final de um template. Existe para o teste poder olhar o que
+// o destinatário veria: o template de redefinição trazia seis dígitos escritos à mão,
+// então o e-mail mostrava em destaque um código que nunca ia funcionar.
+func (m *Mailer) Render(templateName string, data interface{}) (string, error) {
+	var body bytes.Buffer
+	if err := m.templates.ExecuteTemplate(&body, templateName, data); err != nil {
+		return "", fmt.Errorf("falha ao renderizar template %s: %w", templateName, err)
+	}
+	return body.String(), nil
+}
+
+// NewOTPData monta os dados de um e-mail de código, para teste e para o envio.
+func NewOTPData(email, code, purpose string) OTPData { return newOTPData(email, code, purpose) }
+
 func (m *Mailer) send(to, subject, templateName string, data interface{}) error {
 	var body bytes.Buffer
 
