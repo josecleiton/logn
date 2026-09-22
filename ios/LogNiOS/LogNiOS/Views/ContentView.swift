@@ -185,11 +185,9 @@ struct SkillTreeHostView: View {
         .onAppear(perform: loadNodesIfNeeded)
         .onChange(of: core.viewModel.hasAccessToken) { _ in loadNodesIfNeeded() }
         .sheet(isPresented: $showsProfile) {
+            // Detent, grabber e cantos são do próprio hub: ele se mede.
             ProfileHubView()
                 .environmentObject(core)
-                .presentationDetents([.height(ProfileHubView.preferredHeight)])
-                .presentationDragIndicator(.hidden)
-                .modifier(SheetCorners())
         }
     }
 
@@ -223,10 +221,15 @@ struct SkillTreeHostView: View {
             // jogador não perde o lugar.
             Button { showsProfile = true } label: {
                 ProfileAvatar(
-                    initial: core.viewModel.isGuest ? "?" : core.viewModel.otpEmail,
+                    initial: core.viewModel.isGuest ? "?" : core.viewModel.accountEmail,
                     size: 40,
                     hasPending: core.viewModel.pendingSyncCount > 0
                 )
+                // O círculo tem 40dp e a área de toque saía ainda menor que isso.
+                // A borda do desenho continua em 40; só o alvo cresce para os 44
+                // mínimos, invisível, como o DS pede para todo controle.
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Perfil")

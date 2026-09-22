@@ -18,6 +18,8 @@ pub enum Event {
     LoginCompleted(HttpResult),
     ContinueAsGuest,
     TokenStored(KeyValueResult),
+    AccountEmailStored(KeyValueResult),
+    AccountEmailRead(KeyValueResult),
     AttemptRefresh,
     TokenRead(KeyValueResult),
     TokenCleared(KeyValueResult),
@@ -96,7 +98,12 @@ pub struct Model {
     pub is_authenticating: bool,
     pub is_guest: bool,
     pub pending_retry_event: Option<Event>, // Para o interceptor 401
+    /// E-mail em trânsito no fluxo de OTP. Vive só até o código ser verificado.
     pub otp_email: String,
+    /// E-mail da sessão. Diferente do `otp_email`, sobrevive ao login e é reposto
+    /// do armazenamento seguro quando o app abre direto pelo refresh token —
+    /// sem ele o perfil de quem entrou por senha mostrava "?" como se fosse visitante.
+    pub account_email: String,
     pub otp_verified: bool,
     pub global_xp: i32,
     pub bugs_found: i32,
@@ -118,6 +125,8 @@ pub struct ViewModel {
     pub challenges: Vec<Challenge>,
     pub nodes: Vec<crate::domain::SkillNode>,
     pub otp_email: String,
+    /// E-mail da conta em sessão. Vazio no visitante.
+    pub account_email: String,
     pub otp_verified: bool,
     pub global_xp: i32,
     pub bugs_found: i32,
@@ -216,6 +225,7 @@ impl App for LogNApp {
             Event::Login { email, password_hash } => {
                 model.is_authenticating = true;
                 model.status = "Logging in...".to_string();
+                model.account_email = email.clone();
 
                 let body = serde_json::json!({
                     "email": email,
@@ -244,24 +254,30 @@ impl App for LogNApp {
                         if let Ok(data) = serde_json::from_slice::<AuthResp>(&response.body) {
                             model.access_token = Some(data.access_token);
                             model.is_guest = false;
-                            model.status = "Login successful!".to_string();
-                            
+                            // A tela de login mostra o status como erro, em vermelho: um
+                            // "deu certo" ali é ruído. A prova do sucesso é o app abrir.
+                            model.status = String::new();
+
                             // Salva refresh token no Keychain
-                            return Command::request_from_shell(KeyValueOperation::Set { 
-                                key: "refresh_token".to_string(), 
-                                value: data.refresh_token.into_bytes() 
+                            return Command::request_from_shell(KeyValueOperation::Set {
+                                key: "refresh_token".to_string(),
+                                value: data.refresh_token.into_bytes()
                             }).then_send(Event::TokenStored);
                         } else {
-                            model.status = "Failed to parse auth response".to_string();
+                            model.status = "Não consegui ler a resposta do servidor.".to_string();
                             model.is_authenticating = false;
                         }
                     }
-                    HttpResult::Ok(response) => {
-                        model.status = format!("Login failed: {}", response.status);
+                    HttpResult::Ok(response) if response.status == 401 => {
+                        model.status = "E-mail ou senha não conferem.".to_string();
+                        model.is_authenticating = false;
+                    }
+                    HttpResult::Ok(_) => {
+                        model.status = "Não consegui entrar agora. Tente de novo.".to_string();
                         model.is_authenticating = false;
                     }
                     HttpResult::Err(_) => {
-                        model.status = "Network error on login".to_string();
+                        model.status = "Sem conexão com o servidor.".to_string();
                         model.is_authenticating = false;
                     }
                 }
@@ -278,6 +294,16 @@ impl App for LogNApp {
 
             Event::TokenStored(_) => {
                 model.is_authenticating = false;
+                // O e-mail vai para o mesmo cofre do refresh token: é ele que devolve
+                // a identidade quando o app abre sem passar pela tela de login.
+                Command::request_from_shell(KeyValueOperation::Set {
+                    key: "account_email".to_string(),
+                    value: model.account_email.clone().into_bytes(),
+                })
+                .then_send(Event::AccountEmailStored)
+            }
+
+            Event::AccountEmailStored(_) => {
                 Command::request_from_shell(crate::domain::TelemetryOperation::Identify { user_id: model.user_id.clone() })
                     .then_send(|_| Event::TelemetrySent)
             }
@@ -293,15 +319,19 @@ impl App for LogNApp {
                 model.logout_undo = Some(LogoutSnapshot {
                     access_token: model.access_token.clone(),
                     was_guest: model.is_guest,
-                    email: model.otp_email.clone(),
+                    email: model.account_email.clone(),
                 });
 
                 model.is_guest = false;
                 model.access_token = None;
+                model.account_email = String::new();
                 model.nodes = vec![];
                 model.challenges = vec![];
                 model.pending_events = vec![];
-                model.status = "Logged out successfully".to_string();
+                // Quem conta que a saída deu certo é a tela de despedida. Deixar texto
+                // aqui fazia a tela de login abrir com "Logged out successfully" em
+                // vermelho, como se sair fosse um erro.
+                model.status = String::new();
                 render::render()
             }
 
@@ -309,7 +339,7 @@ impl App for LogNApp {
                 if let Some(snapshot) = model.logout_undo.take() {
                     model.access_token = snapshot.access_token;
                     model.is_guest = snapshot.was_guest;
-                    model.otp_email = snapshot.email;
+                    model.account_email = snapshot.email;
                     model.status = "Sessão restaurada".to_string();
                 }
                 render::render()
@@ -361,17 +391,18 @@ impl App for LogNApp {
                             model.access_token = Some(data.access_token);
                             model.is_guest = false;
                             model.status = "Session refreshed!".to_string();
-                            
-                            // Re-trigger pending event if any
-                            if let Some(pending) = model.pending_retry_event.take() {
-                                return self.update(pending, model);
-                            }
+
+                            // O `/refresh` devolve só o token; quem a sessão é fica no cofre.
+                            return Command::request_from_shell(KeyValueOperation::Get {
+                                key: "account_email".to_string(),
+                            })
+                            .then_send(Event::AccountEmailRead);
                         } else {
                             model.status = "Failed to parse refresh response".to_string();
                         }
                     }
                     _ => {
-                        model.status = "Session expired. Please login again.".to_string();
+                        model.status = "Sua sessão expirou. Entre de novo.".to_string();
                         model.access_token = None;
                 model.is_authenticating = false;
                     }
@@ -379,8 +410,20 @@ impl App for LogNApp {
                 render::render()
             }
 
+            Event::AccountEmailRead(result) => {
+                if let KeyValueResult::Ok { response: KeyValueResponse::Get { value } } = result {
+                    if let crux_kv::Value::Bytes(bytes) = value {
+                        model.account_email = String::from_utf8(bytes).unwrap_or_default();
+                    }
+                }
 
-            
+                // O 401 que disparou o refresh deixou um evento em espera.
+                if let Some(pending) = model.pending_retry_event.take() {
+                    return self.update(pending, model);
+                }
+                render::render()
+            }
+
             Event::FetchNodes => {
                 model.is_fetching = true;
                 model.status = "Fetching skill tree...".to_string();
@@ -607,6 +650,7 @@ Event::FetchChallenges => {
             Event::Register { email, password, otp } => {
                 model.is_authenticating = true;
                 model.status = "Creating account...".to_string();
+                model.account_email = email.clone();
 
                 let body = serde_json::json!({ "email": email, "password": password, "otp": otp });
                 let request = HttpRequest {
@@ -650,6 +694,7 @@ Event::FetchChallenges => {
             Event::ResetPassword { email, new_password, otp } => {
                 model.is_authenticating = true;
                 model.status = "Resetting password...".to_string();
+                model.account_email = email.clone();
 
                 let body = serde_json::json!({ "email": email, "password": new_password, "otp": otp });
                 let request = HttpRequest {
@@ -1024,6 +1069,7 @@ Event::FetchChallenges => {
             challenges: model.challenges.clone(),
             nodes: computed_nodes,
             otp_email: model.otp_email.clone(),
+            account_email: model.account_email.clone(),
             otp_verified: model.otp_verified,
             global_xp: model.global_xp,
             bugs_found: model.bugs_found,
@@ -1035,8 +1081,9 @@ Event::FetchChallenges => {
             challenges_completed: model.bugs_found + model.dry_runs_completed,
             balloons_up: balloons_up,
             just_logged_out: model.logout_undo.is_some(),
+            // Depois de sair, o nome vem do instantâneo — é ele que a despedida usa.
             display_name: display_name_from_email(
-                model.logout_undo.as_ref().map(|s| s.email.as_str()).unwrap_or(&model.otp_email),
+                model.logout_undo.as_ref().map(|s| s.email.as_str()).unwrap_or(&model.account_email),
             ),
             match_view: model.match_state.as_ref()
                 .map(|ms| ms.to_view_model())
@@ -1172,6 +1219,27 @@ mod tests {
         } else {
             panic!("Expected SecureStore effect");
         }
+
+        // Entrar por senha também identifica a sessão: o e-mail vai para o cofre
+        // junto do refresh token, e é ele que o perfil mostra na volta.
+        assert_eq!(model.account_email, "test@x.com");
+
+        let kv_result = KeyValueResult::Ok { response: KeyValueResponse::Set { previous: crux_kv::Value::None } };
+        let mut cmd = app.update(Event::TokenStored(kv_result), &mut model);
+
+        let kv_req = cmd.expect_one_effect();
+        if let Effect::SecureStore(r) = kv_req {
+            if let KeyValueOperation::Set { key, value } = r.operation {
+                assert_eq!(key, "account_email");
+                assert_eq!(String::from_utf8(value).unwrap(), "test@x.com");
+            } else {
+                panic!("Expected Set operation");
+            }
+        } else {
+            panic!("Expected SecureStore effect storing the account e-mail");
+        }
+
+        assert_eq!(app.view(&model).display_name, "Test");
     }
 
     #[test]
@@ -1212,10 +1280,26 @@ mod tests {
         })).unwrap();
         let result = HttpResult::Ok(crux_http::protocol::HttpResponse { status: 200, headers: vec![], body });
         let mut cmd = app.update(Event::RefreshCompleted(result), &mut model);
-        
+
         assert_eq!(model.access_token, Some("new_tok".into()));
+
+        // O refresh só devolve o token: antes de repetir o pedido o core repõe de quem
+        // é a sessão, senão o perfil abre sem nome depois de um 401.
+        let kv_req = cmd.expect_one_effect();
+        if let Effect::SecureStore(r) = kv_req {
+            assert!(matches!(r.operation, KeyValueOperation::Get { ref key } if key == "account_email"));
+        } else {
+            panic!("Expected SecureStore effect reading the account e-mail");
+        }
+
+        let kv_result = KeyValueResult::Ok {
+            response: KeyValueResponse::Get { value: crux_kv::Value::Bytes("jogador@example.com".into()) },
+        };
+        let mut cmd = app.update(Event::AccountEmailRead(kv_result), &mut model);
+
+        assert_eq!(model.account_email, "jogador@example.com");
         assert!(model.pending_retry_event.is_none());
-        
+
         let http_req = cmd.expect_one_effect();
         if let Effect::Http(r) = http_req {
             assert_eq!(r.operation.url, "/api/v1/challenges");

@@ -27,6 +27,7 @@ public class CoreWrapper: ObservableObject {
             challenges: [],
             nodes: [],
             otpEmail: "",
+            accountEmail: "",
             otpVerified: false,
             globalXp: 0,
             bugsFound: 0,

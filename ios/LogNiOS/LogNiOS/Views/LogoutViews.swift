@@ -172,7 +172,7 @@ struct ManageAccountView: View {
                 header
 
                 VStack(spacing: 10) {
-                    actionRow("Trocar e-mail", sub: core.viewModel.otpEmail)
+                    actionRow("Trocar e-mail", sub: core.viewModel.accountEmail)
                     actionRow("Trocar senha", sub: nil)
                     actionRow("Baixar meus dados", sub: "JSON com XP, trilhas e submissões")
                 }

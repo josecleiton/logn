@@ -14,7 +14,22 @@ struct ProfileHubView: View {
     @State private var showsCriticalLogout = false
     @State private var showsManageAccount = false
 
+    /// Altura de partida do sheet, só até a primeira medição chegar.
     static let preferredHeight: CGFloat = 560
+
+    /// Altura real do conteúdo.
+    ///
+    /// O hub muda de tamanho conforme o estado — o cartão da fila offline só existe
+    /// quando há evento pendente, e o bloco do visitante é outro. Com a altura fixa de
+    /// 560 o estado sincronizado sobrava mais de 100dp de vazio no topo do sheet.
+    @State private var contentHeight: CGFloat = ProfileHubView.preferredHeight
+
+    private struct ContentHeightKey: PreferenceKey {
+        static var defaultValue: CGFloat = 0
+        static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+            value = max(value, nextValue())
+        }
+    }
 
     private var vm: LogN.ViewModel { core.viewModel }
     private var isGuest: Bool { vm.isGuest }
@@ -37,11 +52,23 @@ struct ProfileHubView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
                 .padding(.bottom, 22)
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: ContentHeightKey.self, value: proxy.size.height)
+                    }
+                )
             }
             .navigationDestination(isPresented: $showsManageAccount) {
                 ManageAccountView().environmentObject(core)
             }
         }
+        .onPreferenceChange(ContentHeightKey.self) { height in
+            if height > 0 { contentHeight = height }
+        }
+        // Gerenciar conta é uma tela empilhada: aí o sheet precisa da altura toda.
+        .presentationDetents(showsManageAccount ? [.large] : [.height(contentHeight)])
+        .presentationDragIndicator(.hidden)
+        .modifier(SheetCorners())
         .sheet(isPresented: $showsCriticalLogout) {
             CriticalLogoutSheet(
                 pendingCount: pending,
@@ -90,7 +117,7 @@ struct ProfileHubView: View {
                             .foregroundColor(LognDark.textMuted)
                     )
             } else {
-                ProfileAvatar(initial: vm.displayName.isEmpty ? vm.otpEmail : vm.displayName, size: 52)
+                ProfileAvatar(initial: vm.displayName.isEmpty ? vm.accountEmail : vm.displayName, size: 52)
             }
 
             VStack(alignment: .leading, spacing: 0) {
@@ -109,7 +136,7 @@ struct ProfileHubView: View {
                         .foregroundColor(LognDark.textMuted)
                         .padding(.top, 6)
                 } else {
-                    Text(vm.otpEmail)
+                    Text(vm.accountEmail)
                         .font(.plexMono(13))
                         .foregroundColor(LognDark.textPrimary)
                         .lineLimit(1)

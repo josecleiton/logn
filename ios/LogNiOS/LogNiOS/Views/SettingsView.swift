@@ -71,7 +71,7 @@ struct SettingsView: View {
                                 VStack(spacing: 0) {
                                     Button(action: {
                                         // TODO: Navegar para Reset Password ou Mudar Senha
-                                        core.dispatch(event: .requestOtp(email: core.viewModel.otpEmail, purpose: "reset_password"))
+                                        core.dispatch(event: .requestOtp(email: core.viewModel.accountEmail, purpose: "reset_password"))
                                     }) {
                                         HStack {
                                             Text("Alterar Senha")
