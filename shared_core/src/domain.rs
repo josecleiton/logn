@@ -183,6 +183,11 @@ pub struct Challenge {
     pub template_type: String,
     pub version: i32,
     pub payload: ChallengePayload, // Typed for Facet
+    /// De onde o desafio veio, quando não foi escrito para o LogN — hoje só `FARIAS`,
+    /// a origem registrada no conteúdo. Vazio é o caso comum, e o
+    /// `default` mantém compatível o JSON gravado antes de a coluna existir.
+    #[serde(default)]
+    pub origin: String,
 }
 
 /// O que o Core tem a dizer ao jogador, como **chave**, não como frase.

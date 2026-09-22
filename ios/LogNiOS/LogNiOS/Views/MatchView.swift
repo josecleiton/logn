@@ -141,10 +141,29 @@ struct MatchView: View {
     /// Nome do problema em `label` + o enunciado em 19sp/600.
     private var problemStatement: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(mv.currentTitle.uppercased())
-                .font(.plexMono(11))
-                .tracking(0.12 * 11)
-                .foregroundColor(LognDark.textMuted)
+            HStack(spacing: 8) {
+                Text(mv.currentTitle.uppercased())
+                    .font(.plexMono(11))
+                    .tracking(0.12 * 11)
+                    .foregroundColor(LognDark.textMuted)
+
+                // Nem todo desafio nasceu aqui. Quando veio de fora, a origem fica na
+                // linha do título — atribuição que ninguém vê não é atribuição.
+                if !mv.currentOrigin.isEmpty {
+                    Text(mv.currentOrigin.uppercased())
+                        .font(.plexMono(10))
+                        .tracking(0.12 * 10)
+                        .foregroundColor(LognDark.accent)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Radius.sm)
+                                .stroke(LognDark.accent.opacity(0.5), lineWidth: 1)
+                        )
+                }
+
+                Spacer(minLength: 0)
+            }
 
             Text(mv.currentDescription)
                 .font(.plexSansSemiBold(19, relativeTo: .title3))

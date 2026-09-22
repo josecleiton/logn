@@ -30,9 +30,12 @@ func (r *Repository) Ping(ctx context.Context) error {
 }
 
 func (r *Repository) InsertChallenge(ctx context.Context, ch Challenge) error {
-	query := `INSERT INTO challenges (id, node_id, template_type, version, payload)
-			  VALUES ($1, $2, $3, $4, $5)`
-	_, err := r.db.Exec(ctx, query, ch.ID, ch.NodeID, ch.TemplateType, ch.Version, ch.Payload)
+	// position_idx é NOT NULL desde que a ordem das letras virou dado em vez de efeito
+	// do sort do id; origin é nula para o desafio que nasceu aqui.
+	query := `INSERT INTO challenges (id, node_id, template_type, version, payload, position_idx, origin)
+			  VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''))`
+	_, err := r.db.Exec(ctx, query,
+		ch.ID, ch.NodeID, ch.TemplateType, ch.Version, ch.Payload, ch.PositionIdx, ch.Origin)
 	return err
 }
 
@@ -85,7 +88,7 @@ func (r *Repository) GetChallenges(ctx context.Context) ([]Challenge, error) {
 	// A ordem define as letras A, B, C da partida: o core enumera esta lista já
 	// ordenada. Ordenava por `id`, que é VARCHAR — ch_10 vinha antes de ch_2. Agora sai
 	// de position_idx, que é dado explícito (ADR 0006).
-	query := `SELECT id, node_id, template_type, version, payload FROM challenges ORDER BY node_id, position_idx`
+	query := `SELECT id, node_id, template_type, version, payload, COALESCE(origin, '') FROM challenges ORDER BY node_id, position_idx`
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
@@ -95,7 +98,7 @@ func (r *Repository) GetChallenges(ctx context.Context) ([]Challenge, error) {
 	var challenges []Challenge
 	for rows.Next() {
 		var ch Challenge
-		if err := rows.Scan(&ch.ID, &ch.NodeID, &ch.TemplateType, &ch.Version, &ch.Payload); err != nil {
+		if err := rows.Scan(&ch.ID, &ch.NodeID, &ch.TemplateType, &ch.Version, &ch.Payload, &ch.Origin); err != nil {
 			return nil, err
 		}
 		challenges = append(challenges, ch)

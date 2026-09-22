@@ -101,6 +101,9 @@ pub struct MatchProblem {
     pub options: Vec<String>,       // Para COMPLEXITY_MATCH e TAG_THE_PATTERN
     pub correct_options: Vec<String>, // Respostas corretas
     pub max_selections: i32,        // Para TAG_THE_PATTERN
+    /// De onde o desafio veio. Vazio para o que nasceu aqui; a tela mostra um selo
+    /// quando há algo.
+    pub origin: String,
     pub watch_variables: Vec<crate::domain::WatchVariable>, // Para DRY_RUN
     pub watch_note: String,         // Para DRY_RUN
 }
@@ -156,6 +159,8 @@ pub struct MatchViewModel {
     pub current_code_lines: Vec<String>,
     pub current_options: Vec<String>,
     pub max_selections: i32,
+    /// Origem do problema atual, vazia quando ele nasceu aqui.
+    pub current_origin: String,
     pub lives: i32,
     pub max_lives: i32,
     pub penalty_minutes: i32,
@@ -426,6 +431,7 @@ impl MatchState {
             current_code_lines: problem.map(|p| p.code_lines.clone()).unwrap_or_default(),
             current_options: problem.map(|p| p.options.clone()).unwrap_or_default(),
             max_selections: problem.map(|p| p.max_selections).unwrap_or(1),
+            current_origin: problem.map(|p| p.origin.clone()).unwrap_or_default(),
             lives: self.lives,
             max_lives: self.max_lives,
             penalty_minutes: self.penalty_minutes,
@@ -472,6 +478,7 @@ mod tests {
                 options: vec![],
                 correct_options: vec![],
                 max_selections: 0,
+                origin: String::new(),
                 watch_variables: vec![],
                 watch_note: String::new(),
             },
@@ -488,6 +495,7 @@ mod tests {
                 options: vec![],
                 correct_options: vec![],
                 max_selections: 0,
+                origin: String::new(),
                 watch_variables: vec![],
                 watch_note: String::new(),
             },
@@ -504,6 +512,7 @@ mod tests {
                 options: vec!["Grafos".into(), "BFS".into(), "DP".into(), "Greedy".into()],
                 correct_options: vec!["Grafos".into(), "BFS".into()],
                 max_selections: 2,
+                origin: String::new(),
                 watch_variables: vec![],
                 watch_note: String::new(),
             },
@@ -520,6 +529,7 @@ mod tests {
                 options: vec![],
                 correct_options: vec![],
                 max_selections: 0,
+                origin: String::new(),
                 watch_variables: vec![crate::domain::WatchVariable {
                     name: "acc".into(),
                     value: "0".into(),

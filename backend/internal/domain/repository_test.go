@@ -52,10 +52,20 @@ func TestRepository_InsertChallenge(t *testing.T) {
 
 	ctx := context.Background()
 
+	// O teste não trunca mais a tabela — o seed precisa sobreviver a rodar a suíte —
+	// então ele tem de recolher o que sujou. Sem isto, test_bug_1 ficava no banco e
+	// aparecia como um problema a mais na partida do nó 1.
+	defer func() {
+		_, _ = conn.Exec(context.Background(),
+			"DELETE FROM challenges WHERE id IN ('test_bug_1', 'test_bug_2')")
+	}()
+
 	// 1. Inserir Challenge válido
+	// A explicação é exigida por constraint desde a 0005: desafio sem ela caía no texto
+	// genérico, que é a regressão que a 0002 existiu para consertar.
 	validPayload := []byte(`{
 		"content": {"code_lines": ["int a = 1;"]},
-		"validation": {"type": "LINE_MATCH", "correct_line": 1}
+		"validation": {"type": "LINE_MATCH", "correct_line": 1, "explanation": "A linha 1 é a única."}
 	}`)
 	// node_id é FK para skill_nodes desde que a árvore virou DAG: precisa do UUID
 	// de um nó semeado, não de um rótulo solto.
@@ -67,6 +77,7 @@ func TestRepository_InsertChallenge(t *testing.T) {
 		TemplateType: "SPOT_THE_BUG",
 		Version:      1,
 		Payload:      validPayload,
+		PositionIdx:  90, // fora da faixa dos seeds, para não colidir no UNIQUE do nó
 	}
 
 	err := repo.InsertChallenge(ctx, ch1)
@@ -75,9 +86,12 @@ func TestRepository_InsertChallenge(t *testing.T) {
 	}
 
 	// 2. Inserir Challenge inválido (sem code_lines no SPOT_THE_BUG)
+	// A explicação está aqui de propósito: sem ela a linha bateria em duas constraints
+	// ao mesmo tempo, e a ordem em que o Postgres as avalia não é garantida — o teste
+	// passaria a depender de sorte para ver chk_payload_structure na mensagem.
 	invalidPayload := []byte(`{
 		"content": {"story": "missing code_lines"},
-		"validation": {"type": "MATCH"}
+		"validation": {"type": "MATCH", "correct_line": 1, "explanation": "Irrelevante."}
 	}`)
 	ch2 := Challenge{
 		ID:           "test_bug_2",
@@ -85,10 +99,18 @@ func TestRepository_InsertChallenge(t *testing.T) {
 		TemplateType: "SPOT_THE_BUG",
 		Version:      1,
 		Payload:      invalidPayload,
+		PositionIdx:  91,
 	}
 
+	// Sem code_lines, um SPOT_THE_BUG viola duas constraints ao mesmo tempo:
+	// chk_payload_structure, que exige a chave, e chk_spot_the_bug_linha_valida, que não
+	// consegue conferir o intervalo de uma lista que não existe. O Postgres não promete
+	// qual das duas ele reporta, então o teste aceita as duas — exigir uma era depender
+	// de sorte.
 	err = repo.InsertChallenge(ctx, ch2)
-	if err == nil || !strings.Contains(err.Error(), "chk_payload_structure") {
+	if err == nil ||
+		(!strings.Contains(err.Error(), "chk_payload_structure") &&
+			!strings.Contains(err.Error(), "chk_spot_the_bug_linha_valida")) {
 		t.Fatalf("Expected check constraint violation for missing code_lines, got: %v", err)
 	}
 }

@@ -1270,6 +1270,7 @@ Event::FetchChallenges => {
                             options: c.payload.content.options.clone().unwrap_or_default(),
                             correct_options: c.payload.content.correct_options.clone().unwrap_or_default(),
                             max_selections: if c.template_type == "TAG_THE_PATTERN" { c.payload.content.correct_options.as_ref().map_or(1, |o| o.len() as i32) } else { 1 },
+                            origin: c.origin.clone(),
                             watch_variables: c.payload.content.watch_variables.clone().unwrap_or_default(),
                             watch_note: c.payload.content.watch_note.clone().unwrap_or_default(),
                         }
@@ -1568,6 +1569,7 @@ mod tests {
             node_id: "node_1".into(),
             template_type: "SPOT_THE_BUG".into(),
             version: 1,
+            origin: String::new(),
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
@@ -1671,6 +1673,7 @@ mod tests {
             node_id: "10000000-0000-0000-0000-000000000001".into(),
             template_type: "SPOT_THE_BUG".into(),
             version: 1,
+            origin: String::new(),
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
@@ -1720,6 +1723,7 @@ mod tests {
             node_id: "10000000-0000-0000-0000-000000000001".into(),
             template_type: template.into(),
             version: 1,
+            origin: String::new(),
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Merge Sort".into(),
@@ -1814,6 +1818,7 @@ mod tests {
             node_id: "node_1".into(),
             template_type: "SPOT_THE_BUG".into(),
             version: 1,
+            origin: String::new(),
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
