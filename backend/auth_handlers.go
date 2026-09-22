@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 	"time"
 
@@ -16,12 +18,19 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+// refreshTokenLifetime é o prazo de cada refresh token. Com rotação ele reinicia a
+// cada uso, então quem abre o app dentro do prazo nunca é deslogado.
+const refreshTokenLifetime = 30 * 24 * time.Hour
+
 type AuthResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	// Quem é o dono da sessão. Sem este campo o cliente não tinha como saber, e o
 	// sync subia com o literal "user_1", que o Postgres recusa como UUID.
 	UserID string `json:"user_id"`
+	// Até quando a sessão vale, em segundos desde a época. É o que deixa o app seguir
+	// funcionando sem rede: sem saber o prazo, ele só podia perguntar ao servidor.
+	RefreshExpiresAt int64 `json:"refresh_expires_at"`
 }
 
 func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -38,11 +47,11 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 	user, err := s.repo.GetUserByEmail(ctx, req.Email)
-	
+
 	// Dummy hash to prevent user enumeration via timing attacks
 	// This hash was generated with the same argon2 parameters used by the app.
 	dummyHash := "$argon2id$v=19$m=65536,t=1,p=4$+WHflVRpX7CuqjkDl22cPw$63wNww35x7RbA11BqOCScXPk3AbIRru3IuzuOJ1vimA"
-	
+
 	var hashToCompare string
 	if err != nil {
 		hashToCompare = dummyHash
@@ -71,8 +80,9 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	// Hash the refresh token before storing it
 	hash := sha256.Sum256([]byte(refreshToken))
 	tokenHash := hex.EncodeToString(hash[:])
-	
-	err = s.repo.CreateRefreshToken(ctx, user.ID, tokenHash, time.Now().Add(30*24*time.Hour))
+
+	expiresAt := time.Now().Add(refreshTokenLifetime)
+	err = s.repo.CreateRefreshToken(ctx, user.ID, tokenHash, expiresAt)
 	if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
@@ -80,9 +90,10 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(AuthResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		UserID:       user.ID,
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
+		UserID:           user.ID,
+		RefreshExpiresAt: expiresAt.Unix(),
 	})
 }
 
@@ -118,10 +129,40 @@ func (s *Server) refreshHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Rotação: o refresh usado morre aqui e sai outro, com prazo novo.
+	//
+	// Antes o refresh só renovava o access token e o prazo do refresh seguia correndo
+	// desde o login — quem abria o app todo dia era deslogado no trigésimo primeiro,
+	// sem ter feito nada de errado.
+	newRefresh, err := domain.GenerateRefreshToken()
+	if err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+	newHash := sha256.Sum256([]byte(newRefresh))
+	expiresAt := time.Now().Add(refreshTokenLifetime)
+
+	if err := s.repo.RotateRefreshToken(
+		ctx, tokenHash, tokenRecord.UserID, hex.EncodeToString(newHash[:]), expiresAt,
+	); err != nil {
+		if errors.Is(err, domain.ErrRefreshTokenAlreadyUsed) {
+			// Alguém apresentou um token já trocado. Pode ser corrida do próprio app,
+			// pode ser cópia — de qualquer forma não se emite sessão a partir dele.
+			log.Printf("refresh recusado: user=%s token já usado", tokenRecord.UserID)
+			http.Error(w, "Invalid or expired refresh token", http.StatusUnauthorized)
+			return
+		}
+		log.Printf("refresh não rotacionado: user=%s erro=%v", tokenRecord.UserID, err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"access_token": accessToken,
-		"user_id":      tokenRecord.UserID,
+	json.NewEncoder(w).Encode(AuthResponse{
+		AccessToken:      accessToken,
+		RefreshToken:     newRefresh,
+		UserID:           tokenRecord.UserID,
+		RefreshExpiresAt: expiresAt.Unix(),
 	})
 }
 
@@ -182,8 +223,9 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 
 	hash := sha256.Sum256([]byte(refreshToken))
 	tokenHash := hex.EncodeToString(hash[:])
-	
-	err = s.repo.CreateRefreshToken(ctx, userID, tokenHash, time.Now().Add(30*24*time.Hour))
+
+	expiresAt := time.Now().Add(refreshTokenLifetime)
+	err = s.repo.CreateRefreshToken(ctx, userID, tokenHash, expiresAt)
 	if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
@@ -191,9 +233,10 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(AuthResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		UserID:       userID,
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
+		UserID:           userID,
+		RefreshExpiresAt: expiresAt.Unix(),
 	})
 }
 
@@ -247,15 +290,17 @@ func (s *Server) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 
 	accessToken, _ := domain.GenerateAccessToken(user.ID)
 	refreshToken, _ := domain.GenerateRefreshToken()
-	
+
 	hash := sha256.Sum256([]byte(refreshToken))
 	tokenHash := hex.EncodeToString(hash[:])
-	_ = s.repo.CreateRefreshToken(ctx, user.ID, tokenHash, time.Now().Add(30*24*time.Hour))
+	expiresAt := time.Now().Add(refreshTokenLifetime)
+	_ = s.repo.CreateRefreshToken(ctx, user.ID, tokenHash, expiresAt)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(AuthResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		UserID:       user.ID,
+		RefreshExpiresAt: expiresAt.Unix(),
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
+		UserID:           user.ID,
 	})
 }

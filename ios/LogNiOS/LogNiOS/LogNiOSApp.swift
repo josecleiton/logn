@@ -34,7 +34,9 @@ struct LogNiOSApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if core.viewModel.hasAccessToken || core.viewModel.isGuest {
+                // Sessão, não credencial: quem abre o app sem rede com a sessão dentro
+                // do prazo entra no jogo, não na tela de login.
+                if core.viewModel.hasSession || core.viewModel.isGuest {
                     ContentView()
                         .environmentObject(core)
                 } else if core.wantsRegistration {
@@ -59,7 +61,7 @@ struct LogNiOSApp: App {
                 // direto no app. Existe para conferir tela contra o design system sem
                 // depender de automação de toque; não muda nada em Release.
                 if ProcessInfo.processInfo.arguments.contains("-LogNStartAsGuest"),
-                   !core.viewModel.isGuest, !core.viewModel.hasAccessToken {
+                   !core.viewModel.isGuest, !core.viewModel.hasSession {
                     core.dispatch(event: .continueAsGuest)
                 }
                 #endif

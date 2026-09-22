@@ -16,6 +16,7 @@ syncing = "Sincronizando..."
 loaded = "Desafios carregados"
 sync_guest_warning = "Faça login para salvar seu progresso"
 tree_unavailable = "Não consegui carregar o mapa das trilhas."
+offline_session = "Sem conexão · seu progresso sobe quando a rede voltar"
 
 [status]
 signing_in = "Entrando…"

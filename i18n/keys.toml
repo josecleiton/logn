@@ -18,6 +18,7 @@ syncing = {}
 loaded = {}
 sync_guest_warning = {}
 tree_unavailable = {}
+offline_session = {}
 
 # O que o Core tem a dizer ao jogador.
 #

@@ -106,6 +106,10 @@ func GenerateAccessToken(userID string) (string, error) {
 // que não confere. O motivo exato não volta para o cliente de propósito.
 var ErrUnauthenticated = errors.New("unauthenticated")
 
+// ErrRefreshTokenAlreadyUsed sinaliza refresh token apresentado duas vezes. Com
+// rotação isso é sinal de cópia: o token de quem realmente está logado já foi trocado.
+var ErrRefreshTokenAlreadyUsed = errors.New("refresh token already used")
+
 // UserIDFromAccessToken valida o JWT e devolve de quem ele é.
 //
 // O `/sync` confiava no `user_id` que vinha no corpo do pedido: qualquer um podia

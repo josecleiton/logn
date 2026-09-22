@@ -170,6 +170,8 @@ struct SkillTreeHostView: View {
 
                 if core.viewModel.isGuest {
                     guestWarning
+                } else if core.viewModel.isOfflineSession {
+                    offlineWarning
                 }
 
                 if core.viewModel.nodes.isEmpty {
@@ -247,6 +249,24 @@ struct SkillTreeHostView: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 11))
             Text(Str.Dashboard.sync_guest_warning)
+                .lognLabel()
+        }
+        .foregroundColor(LognDark.onAccent)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Space.sm)
+        .background(LognDark.warn)
+    }
+
+    /// Sessão em pé, servidor fora de alcance.
+    ///
+    /// Mesma barra do visitante, mesmo `warn`: o jogo continua, o que não vai acontecer
+    /// agora é a subida do progresso. Dizer isso é melhor do que deixar o jogador
+    /// descobrir a fila crescendo no perfil.
+    private var offlineWarning: some View {
+        HStack(spacing: Space.sm) {
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 11))
+            Text(Str.Dashboard.offline_session)
                 .lognLabel()
         }
         .foregroundColor(LognDark.onAccent)

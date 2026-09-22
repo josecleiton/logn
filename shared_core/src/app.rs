@@ -42,6 +42,14 @@ pub enum Event {
     RestoreOfflineQueue,
     OfflineQueueRestored(KeyValueResult),
     DismissPasswordReset,
+    /// O shell dá a hora ao Core: na abertura e ao voltar para o primeiro plano.
+    Tick { now: i64 },
+    SessionExpiryStored(KeyValueResult),
+    OfflineSessionChecked(KeyValueResult),
+    SnapshotSaved(KeyValueResult),
+    SnapshotRestored(KeyValueResult),
+    RotatedTokenStored(KeyValueResult),
+    AttemptRefreshDone,
     SyncCompleted(HttpResult),
     SubmitChallengeAnswer { 
         action_id: String,
@@ -131,6 +139,16 @@ pub struct Model {
     /// Quem fechava era a chegada do token — e quem redefine já estando logado não vê
     /// token nenhum chegar, então a tela ficava aberta depois de salvar.
     pub password_reset_done: bool,
+    /// Agora, em segundos desde a época. Vem do shell — o Core não tem relógio.
+    pub now: i64,
+    /// Até quando a sessão vale, em segundos desde a época. 0 = desconhecido.
+    pub session_expires_at: i64,
+    /// Sessão em pé sem ter falado com o servidor nesta abertura.
+    ///
+    /// Abrir o app sem rede jogava para a tela de login mesmo com sessão guardada e
+    /// dentro do prazo — num app que promete offline-first, era pedir para o jogador
+    /// digitar a senha para ver o que já estava no aparelho.
+    pub session_offline: bool,
 }
 
 #[derive(Facet, Serialize, Deserialize, Default, Clone)]
@@ -143,7 +161,12 @@ pub struct ViewModel {
     pub is_syncing: bool,
     pub is_fetching: bool,
     pub is_authenticating: bool,
+    /// Tem credencial para falar com o servidor agora.
     pub has_access_token: bool,
+    /// Tem sessão — com ou sem rede. É isto que decide se o app abre no jogo ou no login.
+    pub has_session: bool,
+    /// A sessão está em pé sem ter falado com o servidor nesta abertura.
+    pub is_offline_session: bool,
     pub is_guest: bool,
     pub challenges: Vec<Challenge>,
     pub nodes: Vec<crate::domain::SkillNode>,
@@ -191,6 +214,35 @@ pub const XP_PER_LEVEL: i32 = 200;
 /// Nível a partir do XP acumulado. Mora aqui, não no cliente.
 pub fn level_for_xp(xp: i32) -> i32 {
     xp.max(0) / XP_PER_LEVEL + 1
+}
+
+/// Guarda o retrato local e renderiza.
+fn save_offline_snapshot(model: &Model) -> Command<Effect, Event> {
+    let snapshot = OfflineSnapshot {
+        global_xp: model.global_xp,
+        bugs_found: model.bugs_found,
+        dry_runs_completed: model.dry_runs_completed,
+        nodes: model.nodes.clone(),
+        challenges: model.challenges.clone(),
+    };
+    Command::request_from_shell(KeyValueOperation::Set {
+        key: "offline_snapshot".to_string(),
+        value: serde_json::to_vec(&snapshot).unwrap_or_default(),
+    })
+    .then_send(Event::SnapshotSaved)
+}
+
+/// O retrato local da conta: o que a tela precisa quando não há rede.
+///
+/// Sem ele, abrir o app offline mostrava 0 XP e a árvore de exemplo — a trilha de
+/// outra pessoa, na prática. Um app offline-first devolve o que era seu.
+#[derive(Serialize, Deserialize, Default)]
+struct OfflineSnapshot {
+    global_xp: i32,
+    bugs_found: i32,
+    dry_runs_completed: i32,
+    nodes: Vec<crate::domain::SkillNode>,
+    challenges: Vec<Challenge>,
 }
 
 /// Tira o "A · " da frente do nome do problema.
@@ -291,13 +343,17 @@ impl App for LogNApp {
                 match result {
                     HttpResult::Ok(response) if response.status == 200 => {
                         #[derive(Deserialize)]
-                        struct AuthResp { access_token: String, refresh_token: String, #[serde(default)] user_id: String }
+                        struct AuthResp { access_token: String, refresh_token: String, #[serde(default)] user_id: String, #[serde(default)] refresh_expires_at: i64 }
                         
                         if let Ok(data) = serde_json::from_slice::<AuthResp>(&response.body) {
                             model.access_token = Some(data.access_token);
                             if !data.user_id.is_empty() {
                                 model.user_id = data.user_id;
                             }
+                            if data.refresh_expires_at > 0 {
+                                model.session_expires_at = data.refresh_expires_at;
+                            }
+                            model.session_offline = false;
                             model.is_guest = false;
                             // A tela de login mostra o status como erro, em vermelho: um
                             // "deu certo" ali é ruído. A prova do sucesso é o app abrir.
@@ -349,6 +405,33 @@ impl App for LogNApp {
             }
 
             Event::AccountEmailStored(_) => {
+                // O prazo da sessão desce para o cofre com o resto: é ele que permite
+                // abrir o app sem rede sem precisar perguntar nada ao servidor.
+                Command::request_from_shell(KeyValueOperation::Set {
+                    key: "session_expires_at".to_string(),
+                    value: model.session_expires_at.to_string().into_bytes(),
+                })
+                .then_send(Event::SessionExpiryStored)
+            }
+
+            // Token rotacionado no disco: renova o prazo guardado e segue para saber
+            // de quem é a sessão. O e-mail fica onde está — quem o escreve é o login.
+            Event::RotatedTokenStored(_) => {
+                Command::request_from_shell(KeyValueOperation::Set {
+                    key: "session_expires_at".to_string(),
+                    value: model.session_expires_at.to_string().into_bytes(),
+                })
+                .then_send(|_| Event::AttemptRefreshDone)
+            }
+
+            Event::AttemptRefreshDone => {
+                Command::request_from_shell(KeyValueOperation::Get {
+                    key: "account_email".to_string(),
+                })
+                .then_send(Event::AccountEmailRead)
+            }
+
+            Event::SessionExpiryStored(_) => {
                 // Entrou agora: identifica na telemetria e busca o que já está no servidor.
                 Command::request_from_shell(crate::domain::TelemetryOperation::Identify { user_id: model.user_id.clone() })
                     .then_send(|_| Event::TelemetrySent)
@@ -374,6 +457,8 @@ impl App for LogNApp {
                 model.access_token = None;
                 model.account_email = String::new();
                 model.user_id = String::new();
+                model.session_offline = false;
+                model.session_expires_at = 0;
                 model.nodes = vec![];
                 model.challenges = vec![];
                 model.pending_events = vec![];
@@ -392,6 +477,39 @@ impl App for LogNApp {
                     model.status_key = StatusKey::Silent;
                 }
                 render::render()
+            }
+
+            Event::Tick { now } => {
+                model.now = now;
+                Command::done()
+            }
+
+            // Grava o retrato local. Chamado depois de cada coisa que o servidor confirma.
+            Event::SnapshotSaved(_) => render::render(),
+
+            Event::SnapshotRestored(result) => {
+                if let KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } = result {
+                    if let Ok(snap) = serde_json::from_slice::<OfflineSnapshot>(&bytes) {
+                        model.global_xp = snap.global_xp;
+                        model.bugs_found = snap.bugs_found;
+                        model.dry_runs_completed = snap.dry_runs_completed;
+                        if !snap.nodes.is_empty() {
+                            model.nodes = snap.nodes;
+                            model.challenges = snap.challenges;
+                        }
+                    }
+                }
+
+                // Sem retrato guardado ainda, ao menos há trilha para jogar.
+                if model.nodes.is_empty() {
+                    model.nodes = crate::mock_data::get_mock_nodes();
+                    model.challenges = crate::mock_data::get_mock_challenges();
+                }
+
+                Command::request_from_shell(KeyValueOperation::Get {
+                    key: "account_email".to_string(),
+                })
+                .then_send(Event::AccountEmailRead)
             }
 
             Event::DismissPasswordReset => {
@@ -440,16 +558,42 @@ impl App for LogNApp {
                 match result {
                     HttpResult::Ok(response) if response.status == 200 => {
                         #[derive(Deserialize)]
-                        struct RefreshResp { access_token: String, #[serde(default)] user_id: String }
-                        
+                        struct RefreshResp {
+                            access_token: String,
+                            #[serde(default)]
+                            refresh_token: String,
+                            #[serde(default)]
+                            user_id: String,
+                            #[serde(default)]
+                            refresh_expires_at: i64,
+                        }
+
                         if let Ok(data) = serde_json::from_slice::<RefreshResp>(&response.body) {
                             model.access_token = Some(data.access_token);
                             if !data.user_id.is_empty() {
                                 model.user_id = data.user_id;
                             }
+                            if data.refresh_expires_at > 0 {
+                                model.session_expires_at = data.refresh_expires_at;
+                            }
                             model.is_guest = false;
+                            model.session_offline = false;
                             // Retomar a sessão é invisível por definição: nada a dizer.
                             model.status_key = StatusKey::Silent;
+
+                            // O servidor rotaciona o refresh token a cada uso. Guardar o
+                            // novo não é opcional: na abertura seguinte o antigo já está
+                            // revogado, e apresentá-lo desloga quem não fez nada errado.
+                            if !data.refresh_token.is_empty() {
+                                // Evento próprio, não `TokenStored`: aquele grava o
+                                // `account_email` do modelo, que no refresh ainda está
+                                // vazio — passar por ele apagava do cofre quem é a sessão.
+                                return Command::request_from_shell(KeyValueOperation::Set {
+                                    key: "refresh_token".to_string(),
+                                    value: data.refresh_token.into_bytes(),
+                                })
+                                .then_send(Event::RotatedTokenStored);
+                            }
 
                             // O `/refresh` devolve só o token; quem a sessão é fica no cofre.
                             return Command::request_from_shell(KeyValueOperation::Get {
@@ -460,12 +604,54 @@ impl App for LogNApp {
                             model.status = "Failed to parse refresh response".to_string();
                         }
                     }
+                    // Sem rede. A sessão guardada pode estar perfeitamente válida — quem
+                    // decide é o prazo, não a existência de sinal.
+                    HttpResult::Err(_) => {
+                        return Command::request_from_shell(KeyValueOperation::Get {
+                            key: "session_expires_at".to_string(),
+                        })
+                        .then_send(Event::OfflineSessionChecked);
+                    }
+                    // O servidor respondeu e recusou: aí a sessão acabou mesmo.
                     _ => {
                         model.status_key = StatusKey::SessionExpired;
                         model.access_token = None;
-                model.is_authenticating = false;
+                        model.session_offline = false;
+                        model.session_expires_at = 0;
+                        model.is_authenticating = false;
                     }
                 }
+                render::render()
+            }
+
+            Event::OfflineSessionChecked(result) => {
+                model.is_authenticating = false;
+
+                let expires_at = match result {
+                    KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } => {
+                        String::from_utf8(bytes).ok().and_then(|s| s.parse::<i64>().ok()).unwrap_or(0)
+                    }
+                    _ => 0,
+                };
+
+                if expires_at > model.now && model.now > 0 {
+                    model.session_expires_at = expires_at;
+                    model.session_offline = true;
+                    model.is_guest = false;
+                    model.status_key = StatusKey::Silent;
+
+                    // Offline não há o que buscar: devolve o retrato da última vez que
+                    // o servidor respondeu — o XP e a trilha que são desta conta.
+                    return Command::request_from_shell(KeyValueOperation::Get {
+                        key: "offline_snapshot".to_string(),
+                    })
+                    .then_send(Event::SnapshotRestored);
+                }
+
+                // Sem prazo guardado, ou prazo vencido: não dá para afirmar que há sessão.
+                model.status_key = StatusKey::Silent;
+                model.access_token = None;
+                model.session_offline = false;
                 render::render()
             }
 
@@ -489,7 +675,10 @@ impl App for LogNApp {
             // seguinte abria com zero, com o progresso inteiro guardado do outro lado.
             Event::FetchProgress => {
                 if model.access_token.is_none() {
-                    return Command::done();
+                    // Renderiza mesmo sem ter o que buscar: este evento é o último elo
+                    // da cadeia de abertura, e sair daqui em silêncio deixava a tela
+                    // parada no login enquanto o modelo já estava com a sessão de pé.
+                    return render::render();
                 }
 
                 let request = HttpRequest {
@@ -516,6 +705,7 @@ impl App for LogNApp {
                             model.global_xp = stats.global_xp;
                             model.bugs_found = stats.bugs_found;
                             model.dry_runs_completed = stats.dry_runs_completed;
+                            return save_offline_snapshot(model);
                         }
                     }
                     HttpResult::Ok(response) if response.status == 401 => {
@@ -595,6 +785,9 @@ Event::FetchChallenges => {
                             if let Ok(challenges) = serde_json::from_slice::<Vec<Challenge>>(&response.body) {
                                 model.challenges = challenges;
                                 model.status = "Challenges loaded".to_string();
+                                // Nós e desafios confirmados pelo servidor: é o momento
+                                // de guardar o retrato que vai servir sem rede.
+                                return save_offline_snapshot(model);
                             } else {
                                 model.status = "Failed to parse challenges".to_string();
                             }
@@ -782,13 +975,17 @@ Event::FetchChallenges => {
                 match result {
                     HttpResult::Ok(response) if response.status == 200 => {
                         #[derive(Deserialize)]
-                        struct AuthResp { access_token: String, refresh_token: String, #[serde(default)] user_id: String }
+                        struct AuthResp { access_token: String, refresh_token: String, #[serde(default)] user_id: String, #[serde(default)] refresh_expires_at: i64 }
 
                         if let Ok(data) = serde_json::from_slice::<AuthResp>(&response.body) {
                             model.access_token = Some(data.access_token);
                             if !data.user_id.is_empty() {
                                 model.user_id = data.user_id;
                             }
+                            if data.refresh_expires_at > 0 {
+                                model.session_expires_at = data.refresh_expires_at;
+                            }
+                            model.session_offline = false;
                             model.is_guest = false;
                             model.otp_verified = false;
                             model.otp_email = String::new();
@@ -832,13 +1029,17 @@ Event::FetchChallenges => {
                 match result {
                     HttpResult::Ok(response) if response.status == 200 => {
                         #[derive(Deserialize)]
-                        struct AuthResp { access_token: String, refresh_token: String, #[serde(default)] user_id: String }
+                        struct AuthResp { access_token: String, refresh_token: String, #[serde(default)] user_id: String, #[serde(default)] refresh_expires_at: i64 }
 
                         if let Ok(data) = serde_json::from_slice::<AuthResp>(&response.body) {
                             model.access_token = Some(data.access_token);
                             if !data.user_id.is_empty() {
                                 model.user_id = data.user_id;
                             }
+                            if data.refresh_expires_at > 0 {
+                                model.session_expires_at = data.refresh_expires_at;
+                            }
+                            model.session_offline = false;
                             model.is_guest = false;
                             model.otp_verified = false;
                             model.otp_email = String::new();
@@ -1299,6 +1500,8 @@ Event::FetchChallenges => {
             is_fetching: model.is_fetching,
             is_authenticating: model.is_authenticating,
             has_access_token: model.access_token.is_some(),
+            has_session: model.access_token.is_some() || model.session_offline,
+            is_offline_session: model.session_offline,
             is_guest: model.is_guest,
             challenges: model.challenges.clone(),
             nodes: computed_nodes,
@@ -1722,6 +1925,130 @@ mod tests {
             &mut model,
         );
         assert_eq!(app.view(&model).status, StatusKey::SyncDiverged);
+    }
+
+    /// Sem rede, a sessão guardada continua valendo até o prazo dela.
+    ///
+    /// Abrir o app offline jogava para a tela de login mesmo com sessão dentro do
+    /// prazo: pedia a senha para ver o que já estava no aparelho.
+    #[test]
+    fn test_an_unexpired_session_survives_having_no_network() {
+        let app = LogNApp::default();
+        let now = 1_790_000_000;
+
+        // Dentro do prazo: entra, mesmo sem falar com o servidor.
+        let mut model = Model::default();
+        let _ = app.update(Event::Tick { now }, &mut model);
+        let _ = app.update(Event::RefreshCompleted(HttpResult::Err(
+            crux_http::HttpError::Io("offline".into()),
+        )), &mut model);
+
+        let expiry = (now + 60 * 60 * 24).to_string();
+        let _ = app.update(
+            Event::OfflineSessionChecked(KeyValueResult::Ok {
+                response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(expiry.into_bytes()) },
+            }),
+            &mut model,
+        );
+
+        let view = app.view(&model);
+        assert!(view.has_session, "sessão dentro do prazo não pode virar tela de login");
+        assert!(view.is_offline_session, "e o app sabe que ainda não falou com o servidor");
+        assert!(!view.has_access_token, "sem rede não há credencial nova");
+
+        // O retrato da última vez que o servidor respondeu devolve XP e trilha desta
+        // conta; sem retrato guardado, ao menos há o que jogar.
+        let snapshot = serde_json::to_vec(&serde_json::json!({
+            "global_xp": 300, "bugs_found": 2, "dry_runs_completed": 1,
+            "nodes": [], "challenges": []
+        })).unwrap();
+        let _ = app.update(
+            Event::SnapshotRestored(KeyValueResult::Ok {
+                response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(snapshot) },
+            }),
+            &mut model,
+        );
+        let view = app.view(&model);
+        assert_eq!(view.global_xp, 300, "offline mostra o último XP conhecido, não zero");
+        assert!(!view.nodes.is_empty(), "e há trilha para jogar");
+
+        // Vencida: aí é login mesmo.
+        let mut model = Model::default();
+        let _ = app.update(Event::Tick { now }, &mut model);
+        let expired = (now - 1).to_string();
+        let _ = app.update(
+            Event::OfflineSessionChecked(KeyValueResult::Ok {
+                response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(expired.into_bytes()) },
+            }),
+            &mut model,
+        );
+        assert!(!app.view(&model).has_session, "prazo vencido não é sessão");
+
+        // Servidor respondeu e recusou: não interessa o que está guardado.
+        let mut model = Model::default();
+        model.session_offline = true;
+        model.session_expires_at = now + 999;
+        let _ = app.update(Event::Tick { now }, &mut model);
+        let _ = app.update(Event::RefreshCompleted(HttpResult::Ok(
+            crux_http::protocol::HttpResponse { status: 401, headers: vec![], body: vec![] },
+        )), &mut model);
+        assert!(!app.view(&model).has_session, "recusa do servidor encerra a sessão");
+    }
+
+    /// O refresh rotaciona: o token novo tem de ser guardado.
+    ///
+    /// Se o cliente ignorar o `refresh_token` da resposta, a abertura seguinte
+    /// apresenta um token já revogado e desloga quem não fez nada errado.
+    #[test]
+    fn test_the_rotated_refresh_token_is_stored() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+
+        let body = serde_json::to_vec(&serde_json::json!({
+            "access_token": "novo_acesso",
+            "refresh_token": "refresh_rotacionado",
+            "user_id": "66b670a2-41d2-4ba2-b863-78735b69ec7c",
+            "refresh_expires_at": 1_792_600_000i64,
+        })).unwrap();
+
+        let mut cmd = app.update(
+            Event::RefreshCompleted(HttpResult::Ok(crux_http::protocol::HttpResponse {
+                status: 200, headers: vec![], body,
+            })),
+            &mut model,
+        );
+
+        let req = cmd.expect_one_effect();
+        match req {
+            Effect::SecureStore(r) => match r.operation {
+                KeyValueOperation::Set { key, value } => {
+                    assert_eq!(key, "refresh_token");
+                    assert_eq!(String::from_utf8(value).unwrap(), "refresh_rotacionado");
+                }
+                _ => panic!("esperava gravar o refresh token rotacionado"),
+            },
+            _ => panic!("esperava efeito de cofre"),
+        }
+
+        assert_eq!(model.session_expires_at, 1_792_600_000);
+        assert!(!model.session_offline, "falou com o servidor: a sessão está confirmada");
+
+        // E a rotação não pode passar por `TokenStored`: aquele grava o `account_email`
+        // do modelo, vazio no refresh, e apagava do cofre quem é a sessão.
+        let mut cmd = app.update(
+            Event::RotatedTokenStored(KeyValueResult::Ok {
+                response: KeyValueResponse::Set { previous: crux_kv::Value::None },
+            }),
+            &mut model,
+        );
+        let req = cmd.expect_one_effect();
+        match req {
+            Effect::SecureStore(r) => match r.operation {
+                KeyValueOperation::Set { key, .. } => assert_eq!(key, "session_expires_at"),
+                _ => panic!("esperava gravar o prazo da sessão"),
+            },
+            _ => panic!("esperava efeito de cofre"),
+        }
     }
 
     #[test]

@@ -23,6 +23,8 @@ public class CoreWrapper: ObservableObject {
             isFetching: false,
             isAuthenticating: false,
             hasAccessToken: false,
+            hasSession: false,
+            isOfflineSession: false,
             isGuest: false,
             challenges: [],
             nodes: [],
@@ -62,6 +64,9 @@ public class CoreWrapper: ObservableObject {
             scoreboard: []
         )
         updateViewModel()
+        // O Core não tem relógio: quem dá a hora é o shell, e sem ela ele não consegue
+        // decidir se a sessão guardada ainda vale quando não há rede.
+        dispatch(event: .tick(now: Int64(Date().timeIntervalSince1970)))
         // Auto-login on init
         dispatch(event: .attemptRefresh)
         // E a fila que ficou no disco da sessão anterior volta junto: responder
@@ -85,7 +90,6 @@ public class CoreWrapper: ObservableObject {
         if effectsBytes.isEmpty { return }
         
         let requests = try Requests.bincodeDeserialize(input: [UInt8](effectsBytes)).value
-        
         for request in requests {
             switch request.effect {
             case .render(_):

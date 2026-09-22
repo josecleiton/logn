@@ -3,8 +3,8 @@ package domain
 import (
 	"context"
 	"encoding/json"
-	"time"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -138,6 +138,42 @@ func (r *Repository) GetRefreshToken(ctx context.Context, tokenHash string) (*Re
 	return &t, nil
 }
 
+// RotateRefreshToken revoga o token apresentado e emite outro, na mesma transação.
+//
+// Sem rotação o refresh só renovava o access token, e o prazo do refresh seguia
+// correndo desde o login: quem usava o app todo dia era deslogado no trigésimo
+// primeiro. Rotacionar também dá detecção de reuso de graça — um token revogado
+// apresentado de novo é sinal de cópia, e o `Revoked` já barra.
+func (r *Repository) RotateRefreshToken(
+	ctx context.Context, oldHash, userID, newHash string, expiresAt time.Time,
+) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Só revoga o que ainda valia: duas chamadas com o mesmo token não podem as duas
+	// emitir um token novo.
+	tag, err := tx.Exec(ctx,
+		`UPDATE refresh_tokens SET revoked = TRUE WHERE token_hash = $1 AND revoked = FALSE`,
+		oldHash)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrRefreshTokenAlreadyUsed
+	}
+
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)`,
+		userID, newHash, expiresAt); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
 type SkillNode struct {
 	ID            string   `json:"id"`
 	Name          string   `json:"name"`
@@ -160,10 +196,10 @@ type UserProgress struct {
 // Sem isto o XP vivia só na memória do app: sincronizava tudo certinho e, no login
 // seguinte, o jogador voltava para zero com os eventos parados no servidor.
 type UserStats struct {
-	GlobalXP          int            `json:"global_xp"`
-	BugsFound         int            `json:"bugs_found"`
-	DryRunsCompleted  int            `json:"dry_runs_completed"`
-	Nodes             []UserProgress `json:"nodes"`
+	GlobalXP         int            `json:"global_xp"`
+	BugsFound        int            `json:"bugs_found"`
+	DryRunsCompleted int            `json:"dry_runs_completed"`
+	Nodes            []UserProgress `json:"nodes"`
 }
 
 func (r *Repository) GetUserStats(ctx context.Context, userID string) (UserStats, error) {
