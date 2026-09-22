@@ -42,6 +42,34 @@ impl GameEvent {
             current_hash,
         }
     }
+
+    /// Hash do gênesis: onde a cadeia de um usuário começa.
+    pub const GENESIS: &'static str =
+        "0000000000000000000000000000000000000000000000000000000000000000";
+
+    /// Reencadeia a fila a partir de um topo novo, preservando o conteúdo.
+    ///
+    /// Quando o servidor responde `rebase_required` é porque o `previous_hash` do
+    /// primeiro evento não bate com o que ele tem — outro aparelho escreveu antes, ou
+    /// o app reabriu sem lembrar o topo. O conteúdo continua válido; só o encadeamento
+    /// precisa ser refeito, e é exatamente isso que o Mini-Git promete.
+    pub fn rebase(events: &[GameEvent], onto: &str) -> Vec<GameEvent> {
+        let mut previous = onto.to_string();
+        events
+            .iter()
+            .map(|e| {
+                let rebased = GameEvent::new(
+                    e.id.clone(),
+                    e.event_type.clone(),
+                    e.payload_json.clone(),
+                    e.timestamp,
+                    previous.clone(),
+                );
+                previous = rebased.current_hash.clone();
+                rebased
+            })
+            .collect()
+    }
 }
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]

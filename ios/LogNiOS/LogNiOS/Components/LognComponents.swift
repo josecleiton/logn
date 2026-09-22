@@ -296,14 +296,21 @@ struct MatchHeader: View {
         }
     }
 
-    /// A fileira A—M: endereço de cada problema do contest, sempre na mesma cor.
+    /// A fileira de problemas do contest, cada um sempre na mesma cor.
+    ///
+    /// Vai até a letra do último problema **desta** partida, não até M. A fileira
+    /// iterava a paleta inteira: uma sessão de cinco problemas mostrava oito balões
+    /// vazios que nunca iam encher, e a leitura de tela anunciava "problema F, em
+    /// aberto" para um problema que não existe.
     ///
     /// A letra abaixo do balão cai para 8sp aqui, sob o mínimo de 11sp do DS: em fileira
     /// densa ela é reforço visual, e o fallback acessível de verdade é o rótulo de
     /// acessibilidade de cada balão.
+    private var letters: [Character] { balloonStates.map(\.0) }
+
     private var balloonRow: some View {
         HStack(spacing: 7) {
-            ForEach(BalloonColor.all, id: \.self) { l in
+            ForEach(letters, id: \.self) { l in
                 VStack(spacing: 2) {
                     BalloonShape(style: balloonStyle(for: l), width: 13)
                     // A paleta de balões é certificada para 3:1 como forma, não 4.5:1

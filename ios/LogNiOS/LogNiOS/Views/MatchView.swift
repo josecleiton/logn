@@ -571,9 +571,11 @@ struct MatchReportView: View {
             }
             .padding(.top, 8)
 
-            // Fileira A—M em tamanho grande: é o troféu da sessão.
+            // A fileira em tamanho grande: é o troféu da sessão. Só os problemas que
+            // esta partida teve — balão vazio de problema inexistente não é troféu,
+            // é promessa falsa.
             HStack(spacing: 7) {
-                ForEach(BalloonColor.all, id: \.self) { letter in
+                ForEach(balloonStates.map(\.0), id: \.self) { letter in
                     let accepted = balloonStates.contains { $0.0 == letter && $0.1 }
                     VStack(spacing: 4) {
                         BalloonShape(

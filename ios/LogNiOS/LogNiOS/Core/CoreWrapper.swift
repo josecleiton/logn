@@ -63,6 +63,9 @@ public class CoreWrapper: ObservableObject {
         updateViewModel()
         // Auto-login on init
         dispatch(event: .attemptRefresh)
+        // E a fila que ficou no disco da sessão anterior volta junto: responder
+        // offline e fechar o app não pode apagar o progresso.
+        dispatch(event: .restoreOfflineQueue)
     }
     
     public func dispatch(event: Event) {

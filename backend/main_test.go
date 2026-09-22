@@ -30,7 +30,9 @@ func setupTestDB(t *testing.T) *pgxpool.Pool {
 		t.Fatalf("Failed to connect to test db: %v", err)
 	}
 
-	_, err = conn.Exec(context.Background(), "TRUNCATE TABLE game_events, user_sync_state, challenges CASCADE")
+	// Os desafios ficam: a suíte não tem nada a ver com eles, e apagá-los deixava o
+	// banco de desenvolvimento sem seed até alguém reparar que a partida abre vazia.
+	_, err = conn.Exec(context.Background(), "TRUNCATE TABLE game_events, user_sync_state CASCADE")
 	if err != nil {
 		t.Fatalf("Failed to truncate tables: %v", err)
 	}

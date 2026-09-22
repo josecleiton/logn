@@ -39,6 +39,8 @@ pub enum Event {
     },
     SyncNow,
     SyncAndLogout,
+    RestoreOfflineQueue,
+    OfflineQueueRestored(KeyValueResult),
     SyncCompleted(HttpResult),
     SubmitChallengeAnswer { 
         action_id: String,
@@ -118,6 +120,8 @@ pub struct Model {
     pub logout_undo: Option<LogoutSnapshot>,
     /// Marcado por `SyncAndLogout`: a saída espera a fila subir.
     pub logout_after_sync: bool,
+    /// Já reencadeou a fila nesta tentativa. Impede laço de rebase com o servidor.
+    pub rebase_attempted: bool,
 }
 
 #[derive(Facet, Serialize, Deserialize, Default, Clone)]
@@ -882,6 +886,17 @@ Event::FetchChallenges => {
                         if response.status == 200 {
                             model.status = String::new();
                             model.pending_events.clear();
+                            model.rebase_attempted = false;
+
+                            // O topo que o servidor confirmou vira o ponto de partida do
+                            // próximo evento, e desce para o disco junto com a fila vazia.
+                            #[derive(Deserialize)]
+                            struct SyncOk { new_top: String }
+                            if let Ok(ok) = serde_json::from_slice::<SyncOk>(&response.body) {
+                                if !ok.new_top.is_empty() {
+                                    model.last_hash = ok.new_top;
+                                }
+                            }
 
                             // Flush the empty queue to disk so it doesn't duplicate
                             let bytes = serde_json::to_vec(&model.pending_events).unwrap_or_default();
@@ -897,6 +912,33 @@ Event::FetchChallenges => {
                             }
                             return flush;
                         } else if response.status == 409 {
+                            // Rebase: o conteúdo da fila continua bom, só o
+                            // encadeamento é que partiu do lugar errado. Reencadeia a
+                            // partir do topo do servidor e tenta de novo, uma vez — sem
+                            // isso a fila ficava presa para sempre e o jogador via
+                            // "divergiu do servidor" sem nada que pudesse fazer.
+                            #[derive(Deserialize)]
+                            struct Rebase { server_top: String }
+
+                            let top = serde_json::from_slice::<Rebase>(&response.body)
+                                .map(|r| r.server_top)
+                                .unwrap_or_default();
+
+                            if !model.rebase_attempted && !top.is_empty() && !model.pending_events.is_empty() {
+                                model.rebase_attempted = true;
+                                model.pending_events = GameEvent::rebase(&model.pending_events, &top);
+                                model.last_hash = model.pending_events[model.pending_events.len() - 1]
+                                    .current_hash
+                                    .clone();
+
+                                let bytes = serde_json::to_vec(&model.pending_events).unwrap_or_default();
+                                return Command::request_from_shell(KeyValueOperation::Set {
+                                    key: "offline_events".to_string(),
+                                    value: bytes,
+                                })
+                                .then_send(|_| Event::SyncNow);
+                            }
+
                             model.status = "Seu progresso divergiu do servidor.".to_string();
                         } else if response.status == 401 {
                             // Intercept 401 and attempt refresh
@@ -1106,6 +1148,40 @@ Event::FetchChallenges => {
                         let end_event = GameEvent::new(format!("{}_end", action_id), "MATCH_END".into(), end_payload, timestamp, model.last_hash.clone());
                         model.last_hash = end_event.current_hash.clone();
                         model.pending_events.push(end_event);
+                    }
+                }
+
+                // A fila vai para o disco a cada resposta.
+                //
+                // O caminho antigo (`ChallengeAnswered`) já gravava; o da partida, que
+                // é o que o app usa, só empilhava na memória. Fechar o app entre a
+                // resposta e o sync apagava tudo — o oposto de offline-first.
+                let bytes = serde_json::to_vec(&model.pending_events).unwrap_or_default();
+                Command::request_from_shell(KeyValueOperation::Set {
+                    key: "offline_events".to_string(),
+                    value: bytes,
+                })
+                .then_send(Event::QueueSavedForSync)
+                .and(render::render())
+            }
+
+            // Recupera a fila que ficou no disco de uma sessão anterior.
+            Event::RestoreOfflineQueue => {
+                Command::request_from_shell(KeyValueOperation::Get {
+                    key: "offline_events".to_string(),
+                })
+                .then_send(Event::OfflineQueueRestored)
+            }
+
+            Event::OfflineQueueRestored(result) => {
+                if let KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } = result {
+                    if let Ok(queue) = serde_json::from_slice::<Vec<GameEvent>>(&bytes) {
+                        if !queue.is_empty() {
+                            // O topo da cadeia também volta: sem ele o próximo evento
+                            // encadeia a partir do gênesis e o servidor pede rebase.
+                            model.last_hash = queue[queue.len() - 1].current_hash.clone();
+                            model.pending_events = queue;
+                        }
                     }
                 }
                 render::render()
@@ -1484,6 +1560,134 @@ mod tests {
         let _ = app.update(Event::MatchToggleTag { tag: "Grafos".into() }, &mut model);
         let _ = app.update(Event::MatchSubmit { timestamp: 1_700_000_000 }, &mut model);
         assert_eq!(app.view(&model).match_view.last_verdict, "AC");
+    }
+
+    /// Responder grava a fila; abrir de novo devolve ela e o topo da cadeia.
+    ///
+    /// O caminho da partida só empilhava na memória: fechar o app entre a resposta e
+    /// o sync apagava o progresso, num app que promete offline-first.
+    #[test]
+    fn test_the_match_queue_survives_closing_the_app() {
+        use crate::domain::{Challenge, ChallengeContent, ChallengePayload, ChallengeValidation};
+
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.challenges = vec![Challenge {
+            id: "ch_001".into(),
+            node_id: "node_1".into(),
+            template_type: "SPOT_THE_BUG".into(),
+            version: 1,
+            payload: ChallengePayload {
+                content: ChallengeContent {
+                    title: "Soma de Dois Números".into(),
+                    description: "Ache o laço infinito.".into(),
+                    code_lines: vec!["while (a < b) {".into(), "    a = a;".into()],
+                    options: None,
+                    correct_options: None,
+                    watch_variables: None,
+                    watch_note: None,
+                },
+                validation: ChallengeValidation {
+                    validation_type: "LINE_MATCH".into(),
+                    correct_line: Some(2),
+                    expected_string: None,
+                    explanation: None,
+                },
+            },
+        }];
+
+        let _ = app.update(Event::StartMatch { node_id: "node_1".into() }, &mut model);
+        let _ = app.update(Event::MatchSelectLine { line: 1 }, &mut model);
+        let mut cmd = app.update(Event::MatchSubmit { timestamp: 1_700_000_000 }, &mut model);
+
+        // A resposta desceu para o disco junto com o render.
+        let stored = cmd
+            .effects()
+            .find_map(|e| match e {
+                Effect::SecureStore(r) => match r.operation {
+                    KeyValueOperation::Set { ref key, ref value } if key == "offline_events" => {
+                        Some(value.clone())
+                    }
+                    _ => None,
+                },
+                _ => None,
+            })
+            .expect("a fila tem de ser gravada a cada resposta");
+
+        // Um problema só: responder encerra a partida, então vão a resposta e o fim.
+        let saved: Vec<GameEvent> = serde_json::from_slice(&stored).unwrap();
+        assert_eq!(saved.len(), 2);
+
+        // Sessão nova: o app abre sem nada na memória e recupera do disco.
+        let mut fresh = Model::default();
+        let result = KeyValueResult::Ok {
+            response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(stored) },
+        };
+        let _ = app.update(Event::OfflineQueueRestored(result), &mut fresh);
+
+        assert_eq!(fresh.pending_events.len(), saved.len(), "a fila volta inteira");
+        assert_eq!(
+            fresh.last_hash,
+            saved[saved.len() - 1].current_hash,
+            "e o topo da cadeia volta junto, senão o próximo evento parte do gênesis"
+        );
+        assert_eq!(app.view(&fresh).pending_sync_count, saved.len() as u32);
+    }
+
+    /// O 409 do servidor tem de virar rebase, não fila presa.
+    ///
+    /// O app reabria sem lembrar o topo da cadeia, o evento seguinte partia do gênesis
+    /// e o servidor pedia rebase. O cliente só escrevia "divergiu do servidor" e a fila
+    /// ficava lá, sem nada que o jogador pudesse fazer.
+    #[test]
+    fn test_a_rebase_reply_rechains_the_queue_and_retries() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("tok".into());
+        model.user_id = "66b670a2-41d2-4ba2-b863-78735b69ec7c".into();
+
+        let orphan = GameEvent::new(
+            "match_1".into(), "MATCH_ANSWER".into(), r#"{"is_correct":true}"#.into(),
+            1_700_000_000, GameEvent::GENESIS.into(),
+        );
+        model.pending_events = vec![orphan.clone()];
+
+        let server_top = "9ce55fdca5966683595a7282a7e7ebaabce4421ececadd97c8da5fc719f4aad5";
+        let body = serde_json::to_vec(&serde_json::json!({
+            "status": "rebase_required", "server_top": server_top, "events_applied": 0
+        })).unwrap();
+
+        let mut cmd = app.update(
+            Event::SyncCompleted(HttpResult::Ok(crux_http::protocol::HttpResponse {
+                status: 409, headers: vec![], body,
+            })),
+            &mut model,
+        );
+
+        let rebased = &model.pending_events[0];
+        assert_eq!(rebased.previous_hash, server_top, "reencadeou a partir do topo do servidor");
+        assert_eq!(rebased.payload_json, orphan.payload_json, "o conteúdo é o mesmo");
+        assert_ne!(rebased.current_hash, orphan.current_hash, "o hash muda junto com o elo");
+        assert_eq!(model.last_hash, rebased.current_hash);
+
+        // E grava a fila reencadeada antes de tentar de novo.
+        let req = cmd.expect_one_effect();
+        assert!(matches!(
+            req,
+            Effect::SecureStore(ref r) if matches!(r.operation, KeyValueOperation::Set { ref key, .. } if key == "offline_events")
+        ));
+
+        // Um rebase só: se o servidor insistir, para de tentar.
+        let body = serde_json::to_vec(&serde_json::json!({
+            "status": "rebase_required", "server_top": server_top, "events_applied": 0
+        })).unwrap();
+        let _ = app.update(
+            Event::SyncCompleted(HttpResult::Ok(crux_http::protocol::HttpResponse {
+                status: 409, headers: vec![], body,
+            })),
+            &mut model,
+        );
+        assert_eq!(app.view(&model).display_status, "Seu progresso divergiu do servidor.");
     }
 
     #[test]
