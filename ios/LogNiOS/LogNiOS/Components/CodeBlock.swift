@@ -106,7 +106,12 @@ private struct CodeLineRow: View {
                 .font(.plexMono(fontSize))
                 .monospacedDigit()
                 .foregroundColor(isSelected ? highlightInk : LognDark.textMuted)
-                .frame(width: 12, alignment: .trailing)
+                // 12pt cabia um dígito só: da linha 10 em diante o número quebrava em
+                // duas alturas e comia o bloco inteiro. Dois dígitos de Plex Mono
+                // pedem ~16pt; o lineLimit garante que três dígitos truncam em vez de
+                // voltar a quebrar.
+                .lineLimit(1)
+                .frame(width: 20, alignment: .trailing)
 
             if let blankRange {
                 HStack(spacing: 0) {
