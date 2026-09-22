@@ -42,6 +42,14 @@ sync_offline = "Sem conexão para enviar seu progresso."
 sign_in_to_sync = "Entre para salvar seu progresso."
 trail_from_bundle = "Trilha de %{date} · pode haver desafio novo"
 
+[leave]
+eyebrow = "Sair da partida"
+solved = "Você resolveu %{solved} de %{total}."
+body = "O XP que você já ganhou está guardado — ele entra por resposta aceita, não no fim. O que acaba aqui é esta partida: os balões que faltam voltam a zero na próxima."
+stay = "Continuar jogando"
+confirm = "Sair mesmo assim"
+accessibility = "Sair da partida"
+
 [origin]
 eyebrow = "Origem do problema"
 origin_name = "Farias"

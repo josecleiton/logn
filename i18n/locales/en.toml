@@ -42,6 +42,14 @@ sync_offline = "No connection to send your progress."
 sign_in_to_sync = "Sign in to save your progress."
 trail_from_bundle = "Trail from %{date} · newer problems may exist"
 
+[leave]
+eyebrow = "Leave the match"
+solved = "You solved %{solved} of %{total}."
+body = "The XP you have earned is kept — it lands on each accepted answer, not at the end. What ends here is this match: the balloons still up go back to none next time."
+stay = "Keep playing"
+confirm = "Leave anyway"
+accessibility = "Leave the match"
+
 [origin]
 eyebrow = "Where this problem came from"
 origin_name = "Farias"

@@ -45,6 +45,12 @@ pub enum Event {
     ///
     /// O Core não lê arquivo; quem lê é o shell, e aqui só se decide se a semente serve.
     BundledTrailLoaded { json: String },
+    /// Tocou no X. Pede confirmação quando há partida a perder; sai direto quando não há.
+    LeaveMatch,
+    /// Confirmou a saída no cartão.
+    ConfirmLeaveMatch,
+    /// Desistiu de sair e voltou para a partida.
+    CancelLeaveMatch,
     /// Tocou no selo de origem. Na primeira vez de cada origem, para o relógio.
     OpenOriginSheet,
     CloseOriginSheet,
@@ -166,6 +172,12 @@ pub struct Model {
     pub origins_seen: Vec<String>,
     /// Origem cujo cartão está aberto agora. Vazia quando não há cartão na tela.
     pub origin_sheet: String,
+    /// O jogador saiu da partida por vontade própria, e não porque ela acabou.
+    ///
+    /// A diferença importa para a navegação: quem perdeu as três vidas tem relatório
+    /// para ler, quem desistiu não tem o que revisar e volta direto para a trilha.
+    /// Volta a falso quando uma partida começa.
+    pub match_left: bool,
     /// A trilha em uso veio da semente do bundle, e ninguém falou com o servidor ainda.
     ///
     /// A semente envelhece com o binário, não com o conteúdo: quem instalar hoje e
@@ -198,6 +210,9 @@ pub struct ViewModel {
     pub trail_from_bundle: bool,
     /// Quando essa semente foi gerada, em ISO 8601. O cliente formata na língua dele.
     pub trail_generated_at: String,
+    /// A última partida acabou porque o jogador saiu, não porque ela terminou. A tela
+    /// volta direto para a trilha: quem desistiu não tem relatório para ler.
+    pub match_left: bool,
     pub is_guest: bool,
     pub challenges: Vec<Challenge>,
     pub nodes: Vec<crate::domain::SkillNode>,
@@ -1289,6 +1304,9 @@ Event::FetchChallenges => {
 
             // ── Match Events ──────────────────────────────────
             Event::StartMatch { node_id } => {
+                // Abrir uma partida apaga o registro da saída anterior, senão a tela
+                // nova nasce achando que já a abandonaram.
+                model.match_left = false;
                 let problems: Vec<match_engine::MatchProblem> = model.challenges.iter()
                     .filter(|c| c.node_id == node_id)
                     .enumerate()
@@ -1496,6 +1514,51 @@ Event::FetchChallenges => {
                 render::render()
             }
 
+            // Sair da partida. Antes disto não havia saída: quem abrisse um desafio sem
+            // saber a resposta ficava preso até perder as três vidas.
+            //
+            // Confirma só quando há partida a perder — nenhum balão no ar e as três
+            // vidas de pé quer dizer que não há nada a confirmar. Pergunta que aparece
+            // quando não há o que perguntar ensina a dispensá-la sem ler, e aí ela
+            // também não funciona quando importa.
+            Event::LeaveMatch => {
+                let tem_o_que_perder = match model.match_state.as_ref() {
+                    Some(ms) => ms.solved_count() > 0 || ms.lives < ms.max_lives,
+                    None => false,
+                };
+
+                if !tem_o_que_perder {
+                    return self.update(Event::ConfirmLeaveMatch, model);
+                }
+
+                if let Some(ref mut ms) = model.match_state {
+                    // O relógio para enquanto a pessoa decide: perguntar e continuar
+                    // contando é cobrar pela pergunta.
+                    ms.leave_pending = true;
+                    ms.is_paused = true;
+                }
+                render::render()
+            }
+
+            Event::CancelLeaveMatch => {
+                if let Some(ref mut ms) = model.match_state {
+                    ms.leave_pending = false;
+                    // Só devolve o relógio se não for o cartão de origem que o segura.
+                    ms.is_paused = !model.origin_sheet.is_empty();
+                }
+                render::render()
+            }
+
+            // Sair não custa XP: ele entra por resposta aceita e já foi para a fila.
+            // O que acaba é a partida.
+            Event::ConfirmLeaveMatch => {
+                model.match_state = None;
+                model.match_node_id.clear();
+                model.origin_sheet.clear();
+                model.match_left = true;
+                render::render()
+            }
+
             // O selo de origem abre o cartão de homenagem. A primeira leitura de cada
             // origem para o relógio: ler de onde o problema veio não pode custar a
             // questão. Da segunda em diante o relógio segue, senão o cartão vira um
@@ -1642,6 +1705,7 @@ Event::FetchChallenges => {
             is_offline_session: model.session_offline,
             trail_from_bundle: model.trail_from_bundle,
             trail_generated_at: model.trail_generated_at.clone(),
+            match_left: model.match_left,
             is_guest: model.is_guest,
             challenges: model.challenges.clone(),
             nodes: computed_nodes,
@@ -1929,6 +1993,56 @@ mod tests {
             model.nodes[0].name, "Nó G",
             "o que veio do servidor manda; a semente não regride o conteúdo"
         );
+    }
+
+    /// Confirmar só quando há o que perder. Pergunta que aparece quando não há nada a
+    /// confirmar ensina o jogador a dispensá-la sem ler.
+    #[test]
+    fn test_leaving_asks_only_when_there_is_something_to_lose() {
+        let app = LogNApp::default();
+        let node = "10000000-0000-0000-0000-000000000001";
+
+        fn um_desafio() -> Vec<crate::domain::Challenge> {
+            vec![seeded_challenge(
+                "ch_004", "COMPLEXITY_MATCH",
+                vec!["O(n)".into(), "O(1)".into()],
+                vec!["O(n)".into(), "O(1)".into()],
+                "Irrelevante para este teste.",
+            )]
+        }
+
+        // Partida intacta: três vidas, nada resolvido. Sai direto.
+        let mut model = Model::default();
+        model.challenges = um_desafio();
+        let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
+        let _ = app.update(Event::LeaveMatch, &mut model);
+        assert!(model.match_state.is_none(), "sem nada a perder, o X sai direto");
+
+        // Uma vida gasta: aí pergunta.
+        let mut model = Model::default();
+        model.challenges = um_desafio();
+        let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
+        let _ = app.update(Event::MatchSetDropTime { value: "O(1)".into() }, &mut model);
+        let _ = app.update(Event::MatchSetDropSpace { value: "O(n)".into() }, &mut model);
+        let _ = app.update(Event::MatchSubmit { timestamp: 1_700_000_000 }, &mut model);
+
+        let _ = app.update(Event::LeaveMatch, &mut model);
+        let ms = model.match_state.as_ref().expect("a partida continua enquanto pergunta");
+        assert!(ms.leave_pending, "com vida gasta, pergunta antes");
+        assert!(ms.is_paused, "e o relógio para enquanto a pessoa decide");
+
+        // Desistir de sair devolve o relógio.
+        let _ = app.update(Event::CancelLeaveMatch, &mut model);
+        let ms = model.match_state.as_ref().unwrap();
+        assert!(!ms.leave_pending);
+        assert!(!ms.is_paused, "voltar para a partida volta a contar");
+
+        // Confirmar encerra. O XP já ganho não é assunto daqui: ele entra por resposta
+        // aceita e já está na fila de sync.
+        let _ = app.update(Event::LeaveMatch, &mut model);
+        let _ = app.update(Event::ConfirmLeaveMatch, &mut model);
+        assert!(model.match_state.is_none(), "confirmar encerra a partida");
+        assert!(model.match_node_id.is_empty(), "e solta o nó de onde ela saiu");
     }
 
     /// A semente envelhece com o binário, não com o conteúdo: quem instala e fica

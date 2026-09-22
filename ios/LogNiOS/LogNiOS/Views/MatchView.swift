@@ -55,7 +55,9 @@ struct MatchView: View {
                     onContinue: dismissVerdict
                 )
                 .transition(.opacity)
-            } else if !mv.isActive {
+            } else if !mv.isActive && !core.viewModel.matchLeft {
+                // Relatório é para quem jogou até o fim. Quem saiu pelo X não tem o que
+                // revisar, e o `onChange` abaixo já está levando a tela de volta.
                 MatchReportView(onDismiss: { dismiss() })
             } else {
                 playScreen
@@ -65,6 +67,11 @@ struct MatchView: View {
         .onAppear {
             core.dispatch(event: .startMatch(nodeId: nodeId))
             startTimer()
+        }
+        // Quem decide que a partida acabou é o Core; empilhar ou desempilhar tela é do
+        // shell. Ele diz que a saída foi por vontade do jogador, e a tela volta.
+        .onChange(of: core.viewModel.matchLeft) { saiu in
+            if saiu { dismiss() }
         }
         .onChange(of: mv.hasTrap) { hasTrap in
             // O TLE não vem de um toque: o relógio zera e o Core submete sozinho.
@@ -94,7 +101,8 @@ struct MatchView: View {
                 isFrozen: mv.isFrozen,
                 lives: Int(mv.lives),
                 maxLives: Int(mv.maxLives),
-                balloonStates: balloonStates
+                balloonStates: balloonStates,
+                onLeave: { core.dispatch(event: .leaveMatch) }
             )
 
             if fillsHeight {
@@ -145,6 +153,22 @@ struct MatchView: View {
                 onClose: { core.dispatch(event: .closeOriginSheet) }
             )
             .presentationDetents([.large])
+            .modifier(SheetCorners())
+        }
+        // Arrastar para baixo é o mesmo que ficar: quem some com o cartão sem escolher
+        // está voltando para a partida, e o relógio tem de voltar junto.
+        .sheet(isPresented: Binding(
+            get: { mv.leavePending },
+            set: { aberto in if !aberto { core.dispatch(event: .cancelLeaveMatch) } }
+        )) {
+            LeaveMatchSheet(
+                solved: Int(mv.solvedSoFar),
+                total: Int(mv.totalProblems),
+                balloonStates: balloonStates,
+                onStay: { core.dispatch(event: .cancelLeaveMatch) },
+                onLeave: { core.dispatch(event: .confirmLeaveMatch) }
+            )
+            .presentationDetents([.medium, .large])
             .modifier(SheetCorners())
         }
     }

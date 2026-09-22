@@ -253,10 +253,30 @@ struct MatchHeader: View {
     /// Quando falso, o balão do problema atual aparece murcho — usado na tela de erro.
     var currentIsAlive: Bool = true
     var showsBalloonRow: Bool = true
+    /// Saída da partida. Sem isto não havia nenhuma: quem abrisse um desafio sem saber a
+    /// resposta ficava preso até perder as três vidas.
+    var onLeave: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
+                if let onLeave {
+                    // Área de toque de 44dp com glifo de 18, recuada para o glifo alinhar
+                    // com a margem do conteúdo. Cinza e não accent: sair não é a ação que
+                    // o app quer incentivar, e o laranja é a cor do que se quer que a
+                    // pessoa faça.
+                    Button(action: onLeave) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(LognDark.textMuted)
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.leading, -12)
+                    .padding(.trailing, -10)
+                    .accessibilityLabel(Str.Leave.accessibility)
+                }
+
                 BalloonShape(
                     style: currentIsAlive
                         ? .filled(BalloonColor.forLetter(letter))

@@ -20,6 +20,9 @@ pub struct MatchState {
     /// Relógio parado enquanto o jogador lê o cartão de origem pela primeira vez.
     /// Vale uma vez por origem, e não por partida — ver `Model::origins_seen`.
     pub is_paused: bool,
+    /// O cartão de confirmação de saída está aberto. Segura o relógio enquanto a
+    /// pessoa decide: perguntar e continuar contando é cobrar pela pergunta.
+    pub leave_pending: bool,
     pub is_frozen: bool,
     pub trap: Option<TrapInfo>,
     pub selection: MatchSelection,
@@ -169,6 +172,11 @@ pub struct MatchViewModel {
     /// O cartão aberto está segurando o relógio. Só na primeira leitura de cada origem,
     /// e é isso que o cartão avisa ao jogador.
     pub origin_sheet_paused: bool,
+    /// O cartão de confirmação de saída está na tela.
+    pub leave_pending: bool,
+    /// Quantos problemas do nó já foram aceitos — o que a pessoa deixa para trás se
+    /// sair agora, e o número que o cartão mostra.
+    pub solved_so_far: i32,
     pub lives: i32,
     pub max_lives: i32,
     pub penalty_minutes: i32,
@@ -217,6 +225,7 @@ impl MatchState {
             penalty_minutes: 0,
             attempts,
             is_paused: false,
+            leave_pending: false,
             contest_seconds_remaining: 180, // 3 minutos por sessão
             question_seconds_remaining: 60,
             is_frozen: false,
@@ -445,6 +454,8 @@ impl MatchState {
             current_origin: problem.map(|p| p.origin.clone()).unwrap_or_default(),
             origin_sheet: origin_sheet.to_string(),
             origin_sheet_paused: !origin_sheet.is_empty() && self.is_paused,
+            leave_pending: self.leave_pending,
+            solved_so_far: self.solved_count(),
             lives: self.lives,
             max_lives: self.max_lives,
             penalty_minutes: self.penalty_minutes,

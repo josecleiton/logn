@@ -49,6 +49,15 @@ sync_offline = {}
 sign_in_to_sync = {}
 trail_from_bundle = { placeholders = [{ name = "date", type = "text" }] }
 
+# Sair da partida. O Core decide se pergunta; a cópia mora aqui.
+[groups.leave.keys]
+eyebrow = {}
+solved = { placeholders = [{ name = "solved", type = "int" }, { name = "total", type = "int" }] }
+body = {}
+stay = {}
+confirm = {}
+accessibility = {}
+
 # Origem do desafio. A chave vem do Core (a coluna `origin`); a cópia mora aqui.
 [groups.origin.keys]
 eyebrow = {}
