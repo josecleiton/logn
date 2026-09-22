@@ -46,6 +46,15 @@ targets:
         UIRequiresFullScreen: true
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        # O backend de desenvolvimento fala HTTP puro, e o ATS bloqueia isso por
+        # padrão em qualquer destino que não seja localhost — no simulador passava,
+        # no aparelho não. NSAllowsLocalNetworking libera só a rede local: HTTP para
+        # a internet continua barrado, então isto não é o mesmo que desligar o ATS.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        # A partir do iOS 14 falar com um IP da rede local pede permissão, e o
+        # sistema mostra este texto no pedido.
+        NSLocalNetworkUsageDescription: O LogN fala com o servidor de desenvolvimento rodando no seu computador, na mesma rede.
         LogNApiBaseURL: ${API_BASE_URL}
         LogNTelemetryKey: ${TELEMETRY_KEY}
         LogNPostHogHost: ${POSTHOG_HOST}
