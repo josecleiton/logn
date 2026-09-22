@@ -1,0 +1,42 @@
+LogN
+Copyright 2026 José Cleiton Correia
+
+Este produto inclui software desenvolvido por José Cleiton Correia.
+Licenciado sob a Apache License, Version 2.0 — ver LICENSE.
+
+--------------------------------------------------------------------------------
+MARCA
+--------------------------------------------------------------------------------
+
+O nome "LogN", o símbolo do balão, a paleta de cores e a identidade visual do
+aplicativo NÃO estão cobertos pela licença deste código. A seção 6 da Apache
+License 2.0 deixa isso explícito, e TRADEMARKS.md diz o que vale e o que não vale.
+
+--------------------------------------------------------------------------------
+CONTEÚDO
+--------------------------------------------------------------------------------
+
+Os desafios, enunciados, gabaritos e explicações da trilha — e o método de
+escrevê-los — não estão neste repositório e não são cobertos por esta licença.
+
+Parte dos problemas tem origem em exercícios de Farias.
+Eles são identificados no aplicativo com o selo da origem.
+
+--------------------------------------------------------------------------------
+SOFTWARE DE TERCEIROS
+--------------------------------------------------------------------------------
+
+IBM Plex Sans e IBM Plex Mono
+  Copyright 2017 IBM Corp.
+  SIL Open Font License 1.1
+  https://github.com/IBM/plex/blob/master/LICENSE.txt
+  Os arquivos .ttf distribuídos em ios/LogNiOS/LogNiOS/Resources/Fonts/ estão sob
+  a OFL, não sob a Apache 2.0.
+
+Crux
+  Redbadger — Apache License 2.0
+  https://github.com/redbadger/crux
+
+PostHog iOS SDK
+  PostHog — MIT License
+  https://github.com/PostHog/posthog-ios
