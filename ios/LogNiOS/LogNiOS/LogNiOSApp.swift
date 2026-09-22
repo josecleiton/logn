@@ -27,6 +27,10 @@ struct LogNiOSApp: App {
                 if core.viewModel.hasAccessToken || core.viewModel.isGuest {
                     ContentView()
                         .environmentObject(core)
+                } else if core.viewModel.justLoggedOut {
+                    // Saiu agora: tela de despedida com desfazer, no lugar do alerta.
+                    LogoutNoticeView()
+                        .environmentObject(core)
                 } else {
                     LoginView()
                         .environmentObject(core)

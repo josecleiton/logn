@@ -69,6 +69,17 @@ pub enum Event {
     MatchSubmit { timestamp: i64 },
     MatchDismissTrap,
     MatchTimerTick,
+    // Logout
+    UndoLogout,
+    DismissLogoutNotice,
+}
+
+/// O que o desfazer devolve. Existe só entre a saída e o jogador deixar a tela.
+#[derive(Clone, Default)]
+pub struct LogoutSnapshot {
+    pub access_token: Option<String>,
+    pub was_guest: bool,
+    pub email: String,
 }
 
 #[derive(Default, Clone)]
@@ -91,6 +102,7 @@ pub struct Model {
     pub bugs_found: i32,
     pub dry_runs_completed: i32,
     pub match_state: Option<match_engine::MatchState>,
+    pub logout_undo: Option<LogoutSnapshot>,
 }
 
 #[derive(Facet, Serialize, Deserialize, Default, Clone)]
@@ -110,6 +122,17 @@ pub struct ViewModel {
     pub global_xp: i32,
     pub bugs_found: i32,
     pub dry_runs_completed: i32,
+    /// Progressão. Calculada aqui, nunca no cliente.
+    pub level: i32,
+    pub xp_into_level: i32,
+    pub xp_for_level: i32,
+    pub xp_to_next_level: i32,
+    pub challenges_completed: i32,
+    pub balloons_up: i32,
+    /// Acabou de sair e ainda dá para desfazer.
+    pub just_logged_out: bool,
+    /// Primeiro nome derivado do e-mail, para a despedida.
+    pub display_name: String,
     pub match_view: match_engine::MatchViewModel,
     pub contest_name: String,
     pub standings_global: Vec<crate::domain::StandingRow>,
@@ -126,6 +149,30 @@ pub enum Effect {
     SecureStore(KeyValueOperation),
     Telemetry(crate::domain::TelemetryOperation),
     Monitoring(crate::domain::MonitoringOperation),
+}
+
+/// XP por nível. O DS fixa a fórmula: `nível = floor(xp / 200) + 1`.
+pub const XP_PER_LEVEL: i32 = 200;
+
+/// Nível a partir do XP acumulado. Mora aqui, não no cliente.
+pub fn level_for_xp(xp: i32) -> i32 {
+    xp.max(0) / XP_PER_LEVEL + 1
+}
+
+/// Primeiro nome a partir do e-mail, para a tela de saída ("Até a próxima, Rodrigo").
+/// Sem e-mail, devolve vazio — e a tela cai numa despedida sem nome.
+pub fn display_name_from_email(email: &str) -> String {
+    let local = email.split('@').next().unwrap_or("");
+    let first = local
+        .split(|c: char| c == '.' || c == '_' || c == '-' || c == '+')
+        .find(|p| !p.is_empty())
+        .unwrap_or("");
+
+    let mut chars = first.chars();
+    match chars.next() {
+        Some(c) => c.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase(),
+        None => String::new(),
+    }
 }
 
 #[derive(Default)]
@@ -240,12 +287,36 @@ impl App for LogNApp {
                 Command::request_from_shell(KeyValueOperation::Delete { key: "refresh_token".into() }).then_send(Event::TokenCleared)
             }
             Event::TokenCleared(_) => {
+                // Guarda o que dá para devolver. Sair estando sincronizado é
+                // reversível, e o DS troca o alerta de confirmação por um desfazer:
+                // alerta em toda saída treina o usuário a confirmar sem ler.
+                model.logout_undo = Some(LogoutSnapshot {
+                    access_token: model.access_token.clone(),
+                    was_guest: model.is_guest,
+                    email: model.otp_email.clone(),
+                });
+
                 model.is_guest = false;
                 model.access_token = None;
                 model.nodes = vec![];
                 model.challenges = vec![];
                 model.pending_events = vec![];
                 model.status = "Logged out successfully".to_string();
+                render::render()
+            }
+
+            Event::UndoLogout => {
+                if let Some(snapshot) = model.logout_undo.take() {
+                    model.access_token = snapshot.access_token;
+                    model.is_guest = snapshot.was_guest;
+                    model.otp_email = snapshot.email;
+                    model.status = "Sessão restaurada".to_string();
+                }
+                render::render()
+            }
+
+            Event::DismissLogoutNotice => {
+                model.logout_undo = None;
                 render::render()
             }
 
@@ -936,6 +1007,12 @@ Event::FetchChallenges => {
             }
         }
 
+        // "N balões no ar" conta nós conquistados, não problemas aceitos.
+        let balloons_up = computed_nodes
+            .iter()
+            .filter(|n| n.status == crate::domain::NodeStatus::Completed)
+            .count() as i32;
+
         ViewModel {
             display_status: model.status.clone(),
             pending_sync_count: model.pending_events.len() as u32,
@@ -951,6 +1028,16 @@ Event::FetchChallenges => {
             global_xp: model.global_xp,
             bugs_found: model.bugs_found,
             dry_runs_completed: model.dry_runs_completed,
+            level: level_for_xp(model.global_xp),
+            xp_into_level: model.global_xp.rem_euclid(XP_PER_LEVEL),
+            xp_for_level: XP_PER_LEVEL,
+            xp_to_next_level: XP_PER_LEVEL - model.global_xp.rem_euclid(XP_PER_LEVEL),
+            challenges_completed: model.bugs_found + model.dry_runs_completed,
+            balloons_up: balloons_up,
+            just_logged_out: model.logout_undo.is_some(),
+            display_name: display_name_from_email(
+                model.logout_undo.as_ref().map(|s| s.email.as_str()).unwrap_or(&model.otp_email),
+            ),
             match_view: model.match_state.as_ref()
                 .map(|ms| ms.to_view_model())
                 .unwrap_or_default(),
@@ -969,6 +1056,25 @@ Event::FetchChallenges => {
 mod tests {
     use super::*;
 
+
+    #[test]
+    fn test_display_name_takes_the_first_name_from_the_email() {
+        assert_eq!(display_name_from_email("jogador@example.com"), "Rodrigo");
+        assert_eq!(display_name_from_email("jogador@example.com"), "Rodrigo");
+        assert_eq!(display_name_from_email("JOSE_CLEITON@x.com"), "Jose");
+        assert_eq!(display_name_from_email(""), "", "sem e-mail, sem nome inventado");
+        assert_eq!(display_name_from_email("@x.com"), "");
+    }
+
+    #[test]
+    fn test_level_starts_at_one_and_climbs_every_200_xp() {
+        assert_eq!(level_for_xp(0), 1, "quem nunca jogou já está no nível 1");
+        assert_eq!(level_for_xp(199), 1);
+        assert_eq!(level_for_xp(200), 2);
+        assert_eq!(level_for_xp(620), 4);
+        // XP negativo não existe, mas não pode virar nível zero nem negativo.
+        assert_eq!(level_for_xp(-50), 1);
+    }
 
     #[test]
     fn test_otp_flow() {

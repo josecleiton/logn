@@ -23,6 +23,7 @@
 		567C1D15944B685B8204F3ED /* ResetPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B2B5EA563D4C0A69035BF3 /* ResetPasswordView.swift */; };
 		5B28C2226E5C4917A2F15B4E /* CoreWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C915F676CBB9F04656C255 /* CoreWrapper.swift */; };
 		67E43BEE172F2659EA187C3B /* ScoreboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50E1734BB756CB9066ECEC94 /* ScoreboardView.swift */; };
+		724724B930EEFEFF07CB88DB /* LogoutViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E3DB489715A5B620395CD47 /* LogoutViews.swift */; };
 		7447A744F19419838DA5F8C5 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F111AFD2776AF5D50D29BF33 /* IBMPlexMono-SemiBold.ttf */; };
 		7EC7FCEE24F8C2D1213036A7 /* ProfileHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8ACFF3284CD5B7DC2095483 /* ProfileHubView.swift */; };
 		86F460E1EFCA8C55032ECD9D /* LognTopics.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06AADFA16250D1A08A15AFE /* LognTopics.swift */; };
@@ -59,6 +60,7 @@
 		42D4982DBEFBD646B4F5FD62 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		48659346006694BF96682CBE /* OTPInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTPInputView.swift; sourceTree = "<group>"; };
 		50E1734BB756CB9066ECEC94 /* ScoreboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoreboardView.swift; sourceTree = "<group>"; };
+		6E3DB489715A5B620395CD47 /* LogoutViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogoutViews.swift; sourceTree = "<group>"; };
 		72C915F676CBB9F04656C255 /* CoreWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreWrapper.swift; sourceTree = "<group>"; };
 		752CBF98CC2C51F2EDC3EF62 /* IBMPlexSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Regular.ttf"; sourceTree = "<group>"; };
 		7670411FB487991006E4DE02 /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
@@ -186,6 +188,7 @@
 				42D4982DBEFBD646B4F5FD62 /* ContentView.swift */,
 				26D31A9B206FE1CD0C80B3F9 /* DryRunView.swift */,
 				3C3479CDAF7B4103E414DAC3 /* LoginView.swift */,
+				6E3DB489715A5B620395CD47 /* LogoutViews.swift */,
 				8BCAD3D7D269E2D03F55181F /* MatchView.swift */,
 				9476B1DFF7AE686900CF32CD /* NodeSheetView.swift */,
 				48659346006694BF96682CBE /* OTPInputView.swift */,
@@ -335,6 +338,7 @@
 				E73189436712870098DA5F1C /* LognComponents.swift in Sources */,
 				0D1298B1A212D2DC271F95DA /* LognDesignSystem.swift in Sources */,
 				86F460E1EFCA8C55032ECD9D /* LognTopics.swift in Sources */,
+				724724B930EEFEFF07CB88DB /* LogoutViews.swift in Sources */,
 				E618B59B0A839990BDA626EA /* MatchView.swift in Sources */,
 				AF4EF398751D584030B9F840 /* NodeSheetView.swift in Sources */,
 				F78BA7613AF912F27820D2ED /* OTPInputView.swift in Sources */,

@@ -154,6 +154,7 @@ struct LognBottomNav: View {
 struct SkillTreeHostView: View {
     @EnvironmentObject var core: CoreWrapper
     @Binding var tab: LognTab
+    @State private var showsProfile = LognTab.launchScreen == "perfil"
 
     /// "N balões no ar" — o contador é de nós conquistados, não de problemas aceitos.
     private var balloonsUp: Int {
@@ -181,6 +182,13 @@ struct SkillTreeHostView: View {
             }
         }
         .navigationBarHidden(true)
+        .sheet(isPresented: $showsProfile) {
+            ProfileHubView()
+                .environmentObject(core)
+                .presentationDetents([.height(ProfileHubView.preferredHeight)])
+                .presentationDragIndicator(.hidden)
+                .modifier(SheetCorners())
+        }
     }
 
     private var header: some View {
@@ -197,13 +205,16 @@ struct SkillTreeHostView: View {
                 .monospacedDigit()
                 .foregroundColor(LognDark.accentInk)
 
-            NavigationLink(destination: ProfileHubView().environmentObject(core)) {
+            // O perfil sobe como sheet sobre a árvore — ela fica visível atrás e o
+            // jogador não perde o lugar.
+            Button { showsProfile = true } label: {
                 ProfileAvatar(
                     initial: core.viewModel.isGuest ? "?" : core.viewModel.otpEmail,
                     size: 40,
                     hasPending: core.viewModel.pendingSyncCount > 0
                 )
             }
+            .buttonStyle(.plain)
             .accessibilityLabel("Perfil")
         }
         .padding(.horizontal, 20)

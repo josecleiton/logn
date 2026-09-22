@@ -2,198 +2,369 @@ import SwiftUI
 import LogN
 import App
 
+/// Hub de perfil — tela 5 do DS.
+///
+/// Sobe como **sheet** sobre a árvore, que fica visível a 18% atrás: o jogador não perde
+/// o lugar. Sem tab bar. Três estados: sincronizado, com fila offline, e visitante.
 struct ProfileHubView: View {
     @EnvironmentObject var core: CoreWrapper
-    @Environment(\.dismiss) var dismiss
-    @State private var showLogoutWarning = false
-    @State private var showSettings = false
-    
+    @Environment(\.dismiss) private var dismiss
+
+    /// Sheet crítico de saída, quando há evento na fila.
+    @State private var showsCriticalLogout = false
+    @State private var showsManageAccount = false
+
+    static let preferredHeight: CGFloat = 560
+
+    private var vm: LogN.ViewModel { core.viewModel }
+    private var isGuest: Bool { vm.isGuest }
+    private var pending: Int { Int(vm.pendingSyncCount) }
+
     var body: some View {
-        ZStack {
-            LognDark.canvas.ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Navegação customizada
-                HStack {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(LognDark.textSecondary)
-                    }
-                    Spacer()
-                    Text("PERFIL")
-                        .font(LognFont.label)
-                        .foregroundColor(LognDark.textMuted)
-                    Spacer()
-                    Button(action: {
-                        showSettings = true
-                    }) {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(LognDark.textSecondary)
-                    }
+        NavigationStack {
+            ZStack(alignment: .bottom) {
+                LognDark.surfaceRaised.ignoresSafeArea()
+
+                VStack(alignment: .leading, spacing: 0) {
+                    grabber
+                    identity
+                    if pending > 0 && !isGuest { queueCard }
+                    levelBlock
+                    statsGrid
+                    summary
+                    footer
                 }
-                .padding(.horizontal, Space.screenMargin)
-                .padding(.vertical, Space.md)
-                
-                ScrollView {
-                    VStack(spacing: Space.xl) {
-                        
-                        // User Info Card
-                        VStack(spacing: Space.md) {
-                            Circle()
-                                .fill(LognDark.surface)
-                                .frame(width: 80, height: 80)
-                                .overlay(
-                                    Image(systemName: "person.crop.circle.fill")
-                                        .resizable()
-                                        .foregroundColor(LognDark.textMuted)
-                                )
-                            
-                            VStack(spacing: 4) {
-                                Text(core.viewModel.isGuest ? "Visitante" : core.viewModel.otpEmail)
-                                    .font(LognFont.titleMedium)
-                                    .foregroundColor(LognDark.textPrimary)
-                                
-                                if core.viewModel.isGuest {
-                                    Text("Progresso salvo apenas no dispositivo")
-                                        .font(LognFont.bodyLarge)
-                                        .foregroundColor(LognDark.warnInk)
-                                }
-                            }
-                        }
-                        .padding(.top, Space.lg)
-                        
-                        // XP e Nível
-                        let xp = Int(core.viewModel.globalXp)
-                        let level = (xp / 200) + 1
-                        let xpInLevel = xp % 200
-                        let progress = Double(xpInLevel) / 200.0
-                        
-                        VStack(alignment: .leading, spacing: Space.sm) {
-                            HStack {
-                                Text("NÍVEL \(level)")
-                                    .font(LognFont.label)
-                                    .foregroundColor(LognDark.accentInk)
-                                Spacer()
-                                Text("\(xpInLevel) / 200 XP")
-                                    .font(LognFont.label)
-                                    .foregroundColor(LognDark.textSecondary)
-                            }
-                            
-                            GeometryReader { geo in
-                                ZStack(alignment: .leading) {
-                                    Capsule()
-                                        .fill(LognDark.surfaceRaised)
-                                        .frame(height: 8)
-                                    
-                                    Capsule()
-                                        .fill(LognDark.accent)
-                                        .frame(width: geo.size.width * CGFloat(progress), height: 8)
-                                }
-                            }
-                            .frame(height: 8)
-                        }
-                        .padding(.horizontal, Space.screenMargin)
-                        
-                        // Stats Grid
-                        HStack(spacing: Space.md) {
-                            StatBox(title: "XP TOTAL", value: "\(xp)")
-                            StatBox(title: "BUGS", value: "0") // TODO: ViewModels stats
-                            StatBox(title: "DRY RUNS", value: "\(core.viewModel.dryRunsCompleted)")
-                        }
-                        .padding(.horizontal, Space.screenMargin)
-                        
-                        // Sync Status
-                        VStack(alignment: .leading, spacing: Space.sm) {
-                            Text("SINCRONIZAÇÃO")
-                                .font(LognFont.label)
-                                .foregroundColor(LognDark.textMuted)
-                                .padding(.horizontal, Space.screenMargin)
-                            
-                            HStack {
-                                Circle()
-                                    .fill(core.viewModel.pendingSyncCount > 0 ? LognDark.warn : LognDark.correct)
-                                    .frame(width: 8, height: 8)
-                                
-                                Text(core.viewModel.pendingSyncCount > 0 ? "\(core.viewModel.pendingSyncCount) edições locais pendentes" : "Tudo sincronizado na nuvem")
-                                    .font(LognFont.bodyLarge)
-                                    .foregroundColor(LognDark.textPrimary)
-                                
-                                Spacer()
-                                
-                                if core.viewModel.isSyncing {
-                                    ProgressView().progressViewStyle(CircularProgressViewStyle(tint: LognDark.accent))
-                                } else {
-                                    Button("Sincronizar") {
-                                        core.dispatch(event: .syncNow)
-                                    }
-                                    .font(LognFont.label)
-                                    .foregroundColor(LognDark.accentInk)
-                                }
-                            }
-                            .padding(Space.md)
-                            .background(LognDark.surface)
-                            .cornerRadius(Radius.sm)
-                            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
-                            .padding(.horizontal, Space.screenMargin)
-                        }
-                        
-                        if core.viewModel.isGuest {
-                            LognButton(title: "Criar Conta Gratuita", variant: .primary) {
-                                // Envia para logout/login
-                                core.dispatch(event: .logout)
-                            }
-                            .padding(.horizontal, Space.screenMargin)
-                        } else {
-                            LognButton(title: "Sair da Conta", variant: .ghost) {
-                                if core.viewModel.pendingSyncCount > 0 {
-                                    showLogoutWarning = true
-                                } else {
-                                    core.dispatch(event: .logout)
-                                }
-                            }
-                            .padding(.horizontal, Space.screenMargin)
-                        }
-                        
-                        Spacer().frame(height: 100)
-                    }
-                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 22)
+            }
+            .navigationDestination(isPresented: $showsManageAccount) {
+                ManageAccountView().environmentObject(core)
             }
         }
-        .navigationBarHidden(true)
-        .alert(isPresented: $showLogoutWarning) {
-            Alert(
-                title: Text("Atenção!"),
-                message: Text("Você possui \(core.viewModel.pendingSyncCount) edições locais que ainda não foram enviadas. Se você sair agora, perderá esse progresso.\n\nRecomendamos clicar em Sincronizar antes de sair."),
-                primaryButton: .destructive(Text("Sair e perder progresso")) {
+        .sheet(isPresented: $showsCriticalLogout) {
+            CriticalLogoutSheet(
+                pendingCount: pending,
+                xpAtRisk: Int(vm.xpIntoLevel),
+                onSyncAndLeave: {
+                    core.dispatch(event: .syncNow)
                     core.dispatch(event: .logout)
                 },
-                secondaryButton: .cancel(Text("Cancelar"))
+                onStay: { showsCriticalLogout = false },
+                onDiscard: { core.dispatch(event: .logout) }
             )
-        }
-        .fullScreenCover(isPresented: $showSettings) {
-            SettingsView().environmentObject(core)
+            .presentationDetents([.height(CriticalLogoutSheet.preferredHeight)])
+            .presentationDragIndicator(.hidden)
+            .modifier(SheetCorners())
         }
     }
-}
 
-struct StatBox: View {
-    let title: String
-    let value: String
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.plexMonoMedium(10))
-                .foregroundColor(LognDark.textMuted)
-            Text(value)
-                .font(LognFont.titleMedium)
-                .foregroundColor(LognDark.textPrimary)
+    // MARK: Grabber
+
+    private var grabber: some View {
+        Capsule()
+            .fill(LognDark.lineStrong)
+            .frame(width: 36, height: 3)
+            .frame(maxWidth: .infinity)
+            .padding(.bottom, 18)
+    }
+
+    // MARK: Identidade
+
+    private var identity: some View {
+        HStack(spacing: 14) {
+            if isGuest {
+                // Visitante não tem inicial: ícone genérico e borda tracejada.
+                Circle()
+                    .fill(LognDark.surface)
+                    .frame(width: 52, height: 52)
+                    .overlay(
+                        Circle().strokeBorder(
+                            LognDark.lineDim,
+                            style: StrokeStyle(lineWidth: 1, dash: [4])
+                        )
+                    )
+                    .overlay(
+                        Image(systemName: "person")
+                            .font(.system(size: 22, weight: .regular))
+                            .foregroundColor(LognDark.textMuted)
+                    )
+            } else {
+                ProfileAvatar(initial: vm.displayName.isEmpty ? vm.otpEmail : vm.displayName, size: 52)
+            }
+
+            VStack(alignment: .leading, spacing: 0) {
+                if isGuest {
+                    Text("MODO VISITANTE")
+                        .font(.plexMono(11))
+                        .tracking(0.1 * 11)
+                        .foregroundColor(LognDark.textSecondary)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4)
+                        .overlay(RoundedRectangle(cornerRadius: Radius.xs).stroke(LognDark.lineStrong, lineWidth: 1))
+
+                    Text("SEM CONTA · SÓ NESTE APARELHO")
+                        .font(.plexMono(10))
+                        .tracking(0.12 * 10)
+                        .foregroundColor(LognDark.textMuted)
+                        .padding(.top, 6)
+                } else {
+                    Text(vm.otpEmail)
+                        .font(.plexMono(13))
+                        .foregroundColor(LognDark.textPrimary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(pending > 0 ? LognDark.warn : LognDark.correct)
+                            .frame(width: 6, height: 6)
+                        Text(pending > 0 ? "\(pending) EVENTOS NA FILA" : "TUDO SINCRONIZADO")
+                            .font(.plexMono(10))
+                            .tracking(0.12 * 10)
+                            .foregroundColor(pending > 0 ? LognDark.warnInk : LognDark.textMuted)
+                    }
+                    .padding(.top, 6)
+                }
+            }
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(Space.md)
-        .background(LognDark.surface)
+    }
+
+    // MARK: Card da fila offline
+
+    private var queueCard: some View {
+        HStack(spacing: 11) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("\(vm.globalXp) XP ainda só existem neste aparelho.")
+                    .font(.plexSans(13.5))
+                    .lineSpacing(19 - 13.5)
+                    .foregroundColor(LognDark.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("\(pending) evento\(pending == 1 ? "" : "s") aguardando envio")
+                    .font(.plexMono(10.5))
+                    .foregroundColor(LognDark.textSecondary)
+                    .padding(.top, 4)
+            }
+
+            Button {
+                core.dispatch(event: .syncNow)
+            } label: {
+                Text(vm.isSyncing ? "…" : "Tentar")
+                    .font(.plexMonoMedium(11.5))
+                    .foregroundColor(LognDark.warnInk)
+                    .frame(height: 34)
+                    .padding(.horizontal, 13)
+                    .overlay(RoundedRectangle(cornerRadius: 3).stroke(LognDark.warn, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 13)
+        .padding(.vertical, 12)
+        .background(LognDark.tintWarn)
+        .cornerRadius(Radius.sm)
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.warn, lineWidth: 1))
+        .padding(.top, 16)
+    }
+
+    // MARK: Nível — o herói da tela
+
+    private var levelBlock: some View {
+        HStack(alignment: .bottom, spacing: 14) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("\(vm.level)")
+                    .font(.plexSansSemiBold(44))
+                    .tracking(-0.035 * 44)
+                    .monospacedDigit()
+                    .foregroundColor(LognDark.textPrimary)
+                Text("NÍVEL")
+                    .font(.plexMono(11))
+                    .tracking(0.14 * 11)
+                    .foregroundColor(LognDark.textMuted)
+            }
+
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text("\(vm.globalXp) XP")
+                    Spacer(minLength: 0)
+                    Text("\(Int(vm.level) * Int(vm.xpForLevel))")
+                }
+                .font(.plexMono(10.5))
+                .monospacedDigit()
+                .foregroundColor(LognDark.textMuted)
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(LognDark.line)
+                        Capsule()
+                            .fill(LognDark.accent)
+                            .frame(width: geo.size.width * progress)
+                    }
+                }
+                .frame(height: 4)
+                .padding(.top, 6)
+
+                Text("\(vm.xpToNextLevel) XP para o nível \(vm.level + 1)")
+                    .font(.plexMono(9.5))
+                    .monospacedDigit()
+                    .foregroundColor(LognDark.textMuted)
+                    .padding(.top, 5)
+            }
+            .padding(.bottom, 3)
+        }
+        .padding(.top, 20)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "nível \(vm.level), \(vm.globalXp) XP, faltam \(vm.xpToNextLevel) para o nível \(vm.level + 1)"
+        )
+    }
+
+    private var progress: CGFloat {
+        let total = max(Int(vm.xpForLevel), 1)
+        return CGFloat(Int(vm.xpIntoLevel)) / CGFloat(total)
+    }
+
+    // MARK: Stats
+
+    private var statsGrid: some View {
+        HStack(spacing: 1) {
+            statCell("XP TOTAL", "\(vm.globalXp)", nil)
+            statCell("BUGS", "\(vm.bugsFound)", "spot the bug")
+            statCell("DRY RUNS", "\(vm.dryRunsCompleted)", "trace")
+        }
+        .background(LognDark.line)
         .cornerRadius(Radius.sm)
         .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+        .padding(.top, 20)
+    }
+
+    private func statCell(_ label: String, _ value: String, _ sub: String?) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(label)
+                .font(.plexMono(10))
+                .tracking(0.12 * 10)
+                .foregroundColor(LognDark.textMuted)
+            Text(value)
+                .font(.plexMonoSemiBold(17))
+                .monospacedDigit()
+                .foregroundColor(LognDark.textPrimary)
+                .padding(.top, 4)
+            if let sub {
+                Text(sub)
+                    .font(.plexMono(9.5))
+                    .foregroundColor(LognDark.textMuted)
+                    .padding(.top, 2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 13)
+        .padding(.vertical, 12)
+        .background(LognDark.surface)
+    }
+
+    private var summary: some View {
+        Text("\(vm.challengesCompleted) desafios concluídos · \(vm.balloonsUp) balões no ar")
+            .font(.plexMono(10.5))
+            .monospacedDigit()
+            .foregroundColor(LognDark.textMuted)
+            .padding(.top, 10)
+    }
+
+    // MARK: Rodapé — muda inteiro entre visitante e conta
+
+    @ViewBuilder
+    private var footer: some View {
+        if isGuest {
+            conversionCard.padding(.top, 22)
+
+            Button {
+                core.dispatch(event: .logout)
+            } label: {
+                Text("Já tenho conta")
+                    .font(.plexSans(14))
+                    .foregroundColor(LognDark.textSecondary)
+                    .frame(maxWidth: .infinity, minHeight: 42)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 6)
+        } else {
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(LognDark.line)
+                .padding(.top, pending > 0 ? 20 : 22)
+                .padding(.bottom, 16)
+
+            Button {
+                // Sem alerta quando não há o que perder: sair sincronizado é reversível,
+                // e a tela de saída traz o desfazer.
+                if pending > 0 { showsCriticalLogout = true } else { core.dispatch(event: .logout) }
+            } label: {
+                HStack(spacing: 9) {
+                    if pending > 0 {
+                        Circle().fill(LognDark.warn).frame(width: 7, height: 7)
+                    }
+                    Text("Sair da conta")
+                        .font(.plexSansMedium(15))
+                        .foregroundColor(LognDark.textPrimary)
+                }
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.lineStrong, lineWidth: 1))
+            }
+            .buttonStyle(PressSinkStyle())
+
+            Button {
+                showsManageAccount = true
+            } label: {
+                HStack(spacing: 7) {
+                    Image(systemName: "lock")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(LognDark.textMuted)
+                    Text("Gerenciar conta")
+                        .font(.plexSans(13.5))
+                        .foregroundColor(LognDark.textSecondary)
+                }
+                .frame(maxWidth: .infinity, minHeight: 40)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 6)
+        }
+    }
+
+    /// Nomeia o risco e o ganho em números reais — nunca um "crie sua conta" genérico.
+    private var conversionCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Seu progresso vive só neste aparelho")
+                .font(.plexSansSemiBold(16))
+                .lineSpacing(16 * 0.3)
+                .foregroundColor(LognDark.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("Criar conta herda os \(vm.globalXp) XP, os \(vm.balloonsUp) balões e os \(vm.challengesCompleted) desafios que você já resolveu. Reinstalar ou trocar de aparelho sem conta apaga tudo.")
+                .font(.plexSans(13.5))
+                .lineSpacing(20 - 13.5)
+                .foregroundColor(LognDark.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 8)
+
+            Button {
+                core.dispatch(event: .logout)
+            } label: {
+                Text("Criar conta · salvar progresso")
+                    .font(.plexSansSemiBold(15))
+                    .foregroundColor(LognDark.onAccent)
+                    .frame(maxWidth: .infinity, minHeight: 50)
+                    .background(LognDark.accent)
+                    .cornerRadius(Radius.sm)
+            }
+            .buttonStyle(PressSinkStyle())
+            .padding(.top, 16)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 18)
+        .background(LognDark.accent.opacity(0.12))
+        .cornerRadius(Radius.sm)
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.accent, lineWidth: 1))
     }
 }
