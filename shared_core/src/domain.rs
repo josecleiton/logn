@@ -185,6 +185,43 @@ pub struct Challenge {
     pub payload: ChallengePayload, // Typed for Facet
 }
 
+/// O que o Core tem a dizer ao jogador, como **chave**, não como frase.
+///
+/// O Core escrevia a frase pronta em `status`, e ela vazava para a tela: a de login
+/// abria com "Logged out successfully", em inglês, no vermelho de erro, num app em
+/// português. A cópia vive em `i18n/locales/`; o cliente resolve a chave.
+///
+/// `Silent` é o estado normal — a maior parte do que acontece não precisa ser narrada.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum StatusKey {
+    #[default]
+    Silent,
+    SigningIn,
+    WrongCredentials,
+    SignInFailed,
+    NoConnection,
+    ServerUnreadable,
+    SessionExpired,
+    SigningOut,
+    ResumingSession,
+    SendingCode,
+    CodeSentFailed,
+    CheckingCode,
+    CodeInvalid,
+    CreatingAccount,
+    AccountFailed,
+    ResettingPassword,
+    ResetFailed,
+    Syncing,
+    SyncDiverged,
+    SyncFailed,
+    SyncOffline,
+    SignInToSync,
+    TreeUnavailable,
+}
+
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
 #[facet(fg::namespace = "LogN")]
 #[repr(u8)]

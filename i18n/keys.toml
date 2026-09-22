@@ -17,3 +17,32 @@ fetching = {}
 syncing = {}
 loaded = {}
 sync_guest_warning = {}
+tree_unavailable = {}
+
+# O que o Core tem a dizer ao jogador.
+#
+# O Core manda a **chave** (`StatusKey`), nunca a frase: quem traduz é o cliente.
+# Antes ele escrevia a frase pronta, e a tela de login abria com "Logged out
+# successfully" em inglês, no vermelho de erro, num app em português.
+[groups.status.keys]
+signing_in = {}
+wrong_credentials = {}
+sign_in_failed = {}
+no_connection = {}
+server_unreadable = {}
+session_expired = {}
+signing_out = {}
+resuming_session = {}
+sending_code = {}
+code_sent_failed = {}
+checking_code = {}
+code_invalid = {}
+creating_account = {}
+account_failed = {}
+resetting_password = {}
+reset_failed = {}
+syncing = {}
+sync_diverged = {}
+sync_failed = {}
+sync_offline = {}
+sign_in_to_sync = {}

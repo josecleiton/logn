@@ -17,7 +17,7 @@ public class CoreWrapper: ObservableObject {
 
     public init() {
         self.viewModel = ViewModel(
-            displayStatus: "Initializing...",
+            status: .silent,
             pendingSyncCount: 0,
             isSyncing: false,
             isFetching: false,
@@ -39,6 +39,7 @@ public class CoreWrapper: ObservableObject {
             challengesCompleted: 0,
             balloonsUp: 0,
             justLoggedOut: false,
+            passwordResetDone: false,
             displayName: "",
             matchView: MatchViewModel(
                 isActive: false, currentLetter: "", currentTitle: "", currentDescription: "",

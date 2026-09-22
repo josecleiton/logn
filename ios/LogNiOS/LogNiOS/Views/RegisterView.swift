@@ -44,11 +44,8 @@ struct RegisterView: View {
                     passwordStep
                 }
                 
-                if !core.viewModel.displayStatus.isEmpty {
-                    Text(core.viewModel.displayStatus)
-                        .lognLabel()
-                        .foregroundColor(LognDark.infoInk)
-                }
+                // Uma linha de status na tela inteira: a de código não repete.
+                StatusLine(status: core.viewModel.status)
                 
                 Spacer()
             }
@@ -104,7 +101,7 @@ struct RegisterView: View {
     }
     
     private var otpStep: some View {
-        OTPInputView(email: email, purpose: "verify_email")
+        OTPInputView(email: email, purpose: "verify_email", code: $otpCode)
             .environmentObject(core)
     }
     
@@ -137,7 +134,9 @@ struct RegisterView: View {
                 )
             
             Button(action: {
-                core.dispatch(event: .register(email: email, password: password, otp: core.viewModel.otpEmail))
+                // O código que o jogador digitou, não o e-mail: ia `otpEmail` aqui, e
+                // "Criar Conta" chegava ao servidor com o endereço no campo do OTP.
+                core.dispatch(event: .register(email: email, password: password, otp: otpCode))
             }) {
                 Text("Criar Conta")
                     .font(.plexSansSemiBold(15))

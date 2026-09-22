@@ -170,12 +170,8 @@ struct LoginView: View {
                 }
                 .padding(.horizontal, 20)
                 
-                if !core.viewModel.displayStatus.isEmpty {
-                    Text(core.viewModel.displayStatus)
-                        .font(.plexSans(12))
-                        .foregroundColor(LognDark.wrongInk)
-                        .padding(.top, 10)
-                }
+                StatusLine(status: core.viewModel.status)
+                    .padding(.top, 10)
                 
                 Spacer()
                 

@@ -2,124 +2,111 @@ import SwiftUI
 import LogN
 import App
 
+/// Os seis campos do código, e nada além disso.
+///
+/// A tela hospedeira já diz o que está pedindo e para qual e-mail — esta view repetia
+/// o mesmo cabeçalho logo abaixo, e a mesma frase de status saía duas vezes, uma em
+/// `warn` e outra em `info`. Aqui só o campo, a colagem e a confirmação.
+///
+/// A paleta também estava fora: foco e ação em `info` azul, e um envelope azul de 48pt
+/// como ilustração. No LogN o acento é laranja e o azul é informação, não ação.
 struct OTPInputView: View {
     @EnvironmentObject var core: CoreWrapper
     let email: String
     let purpose: String
-    
+    /// O código digitado, devolvido à tela hospedeira.
+    ///
+    /// Ele vivia só aqui dentro, e o cadastro mandava `otpEmail` no lugar do código:
+    /// "Criar Conta" ia para o servidor com o e-mail no campo do OTP e voltava 401.
+    @Binding var code: String
+
     @State private var digits: [String] = Array(repeating: "", count: 6)
     /// Último código já enviado, para não repetir a mesma submissão.
     @State private var lastSubmittedCode = ""
     @FocusState private var focusedIndex: Int?
-    
-    var otpCode: String { digits.joined() }
-    
-    var body: some View {
-        ZStack {
-            LognDark.canvas.ignoresSafeArea()
-            
-            VStack(spacing: Space.xl) {
-                Image(systemName: "envelope.badge.shield.half.filled")
-                    .font(.system(size: 48))
-                    .foregroundColor(LognDark.infoInk)
-                
-                Text("Código de verificação")
-                    .font(LognFont.headlineMedium)
-                    .foregroundColor(LognDark.textPrimary)
-                
-                Text("Digite o código de 6 dígitos enviado para\n\(email)")
-                    .font(LognFont.bodyLarge)
-                    .foregroundColor(LognDark.textSecondary)
-                    .multilineTextAlignment(.center)
-                
-                // OTP Input Boxes
-                HStack(spacing: Space.sm) {
-                    ForEach(0..<6, id: \.self) { index in
-                        TextField("", text: $digits[index])
-                            .frame(width: 48, height: 56)
-                            .multilineTextAlignment(.center)
-                            .font(.plexMonoSemiBold(24))
-                            .foregroundColor(LognDark.textPrimary)
-                            .background(LognDark.surface)
-                            .cornerRadius(Radius.sm)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Radius.sm)
-                                    .stroke(focusedIndex == index ? LognDark.info : LognDark.lineDim, lineWidth: 2)
-                            )
-                            .keyboardType(.numberPad)
-                            .focused($focusedIndex, equals: index)
-                            .onChange(of: digits[index]) { newVal in
-                                // Limit to 1 digit
-                                if newVal.count > 1 {
-                                    digits[index] = String(newVal.last!)
-                                }
-                                // Auto-advance
-                                if !newVal.isEmpty && index < 5 {
-                                    focusedIndex = index + 1
-                                }
-                                // Auto-submit when all 6 are filled
-                                if otpCode.count == 6 && digits.allSatisfy({ !$0.isEmpty }) {
-                                    submitOTP()
-                                }
 
-                            }
-                    }
-                }
-                
-                // Paste button
-                Button(action: {
-                    if let clipboardContent = UIPasteboard.general.string,
-                       clipboardContent.count == 6,
-                       clipboardContent.allSatisfy({ $0.isNumber }) {
-                        for (i, char) in clipboardContent.enumerated() {
-                            digits[i] = String(char)
-                        }
-                        submitOTP()
-                    }
-                }) {
-                    Label("Colar da área de transferência", systemImage: "doc.on.clipboard")
-                        .lognLabel()
-                        .foregroundColor(LognDark.infoInk)
-                }
-                .padding(.top, Space.sm)
-                
-                // Verify Button
-                Button(action: { submitOTP() }) {
-                    Text("Verificar")
-                        .font(LognFont.titleMedium)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, Space.md)
-                        // Verde é veredito do juiz. Ação neutra de formulário usa o acento.
-                        .background(otpCode.count == 6 ? LognDark.accent : LognDark.buttonDisabled)
-                        .foregroundColor(otpCode.count == 6 ? LognDark.onAccent : LognDark.textDim)
+    var otpCode: String { digits.joined() }
+
+    var body: some View {
+        VStack(spacing: Space.lg) {
+            HStack(spacing: Space.sm) {
+                ForEach(0..<6, id: \.self) { index in
+                    TextField("", text: $digits[index])
+                        .frame(width: 44, height: 56)
+                        .multilineTextAlignment(.center)
+                        .font(.plexMonoSemiBold(24))
+                        .foregroundColor(LognDark.textPrimary)
+                        .background(LognDark.surface)
                         .cornerRadius(Radius.sm)
-                }
-                .disabled(otpCode.count < 6 || core.viewModel.isAuthenticating)
-                
-                // Resend
-                Button(action: {
-                    core.dispatch(event: LogN.Event.requestOtp(email: email, purpose: purpose))
-                }) {
-                    Text("Reenviar código")
-                        .font(LognFont.bodyLarge)
-                        .foregroundColor(LognDark.textSecondary)
-                        .underline()
-                }
-                
-                if !core.viewModel.displayStatus.isEmpty {
-                    Text(core.viewModel.displayStatus)
-                        .lognLabel()
-                        .foregroundColor(core.viewModel.otpVerified ? LognDark.correctInk : LognDark.warnInk)
-                        .padding(.top, Space.sm)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Radius.sm)
+                                .stroke(
+                                    focusedIndex == index ? LognDark.accent : LognDark.line,
+                                    lineWidth: focusedIndex == index ? 2 : 1
+                                )
+                        )
+                        .keyboardType(.numberPad)
+                        .focused($focusedIndex, equals: index)
+                        .accessibilityLabel("dígito \(index + 1) de 6")
+                        .onChange(of: digits[index]) { newVal in
+                            if newVal.count > 1 {
+                                digits[index] = String(newVal.last!)
+                            }
+                            if !newVal.isEmpty && index < 5 {
+                                focusedIndex = index + 1
+                            }
+                            if otpCode.count == 6 && digits.allSatisfy({ !$0.isEmpty }) {
+                                submitOTP()
+                            }
+                        }
                 }
             }
-            .padding(.horizontal, Space.screenMargin)
+
+            Button(action: pasteFromClipboard) {
+                Label("Colar o código", systemImage: "doc.on.clipboard")
+                    .lognLabel()
+                    .foregroundColor(LognDark.textSecondary)
+                    .frame(minHeight: Space.minTouch)
+            }
+            .buttonStyle(.plain)
+
+            Button(action: { submitOTP() }) {
+                Text("Verificar")
+                    .font(.plexSansSemiBold(15))
+                    .foregroundColor(isComplete ? LognDark.onAccent : LognDark.textDim)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(isComplete ? LognDark.accent : LognDark.buttonDisabled)
+                    .cornerRadius(Radius.sm)
+            }
+            .disabled(!isComplete || core.viewModel.isAuthenticating)
+
+            Button(action: {
+                core.dispatch(event: LogN.Event.requestOtp(email: email, purpose: purpose))
+            }) {
+                Text("Reenviar código")
+                    .font(.plexSans(13.5))
+                    .foregroundColor(LognDark.textSecondary)
+                    .underline()
+                    .frame(minHeight: Space.minTouch)
+            }
+            .buttonStyle(.plain)
         }
-        .onAppear {
-            focusedIndex = 0
-        }
+        .onAppear { focusedIndex = 0 }
     }
-    
+
+    private var isComplete: Bool { otpCode.count == 6 }
+
+    private func pasteFromClipboard() {
+        guard let clipboard = UIPasteboard.general.string else { return }
+        let onlyDigits = clipboard.filter(\.isNumber)
+        guard onlyDigits.count == 6 else { return }
+        for (i, char) in onlyDigits.enumerated() {
+            digits[i] = String(char)
+        }
+        submitOTP()
+    }
+
     /// Envia o código uma única vez por valor.
     ///
     /// Preencher os seis campos — colando ou digitando — dispara `onChange` seis vezes,
@@ -127,9 +114,10 @@ struct OTPInputView: View {
     /// Sem esta guarda o app mandava sete requisições por código, algumas com dígitos
     /// de uma tentativa anterior ainda no estado, e o servidor recusava as parciais.
     private func submitOTP() {
-        let code = otpCode
-        guard code.count == 6, code != lastSubmittedCode else { return }
-        lastSubmittedCode = code
-        core.dispatch(event: LogN.Event.verifyOtp(email: email, code: code, purpose: purpose))
+        let typed = otpCode
+        guard typed.count == 6, typed != lastSubmittedCode else { return }
+        lastSubmittedCode = typed
+        code = typed
+        core.dispatch(event: LogN.Event.verifyOtp(email: email, code: typed, purpose: purpose))
     }
 }

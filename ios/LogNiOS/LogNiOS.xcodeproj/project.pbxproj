@@ -10,6 +10,7 @@
 		00B7B8B14FF0303E46007203 /* TopicIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 799B328B5FC2E3F615F7DB41 /* TopicIcon.swift */; };
 		03E8A94FF11F486216CC13B1 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D4982DBEFBD646B4F5FD62 /* ContentView.swift */; };
 		076F9AE7C7903FF70A671E08 /* IBMPlexSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 752CBF98CC2C51F2EDC3EF62 /* IBMPlexSans-Regular.ttf */; };
+		0ACF6DDB39EBC84AD6AABC71 /* StatusLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F017FABEBC4E5B128A074D0 /* StatusLine.swift */; };
 		0B24F964C6C184D6E7B671B8 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3479CDAF7B4103E414DAC3 /* LoginView.swift */; };
 		0D1298B1A212D2DC271F95DA /* LognDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFC409C250EFC18B48AF0021 /* LognDesignSystem.swift */; };
 		113A7C042597592AB08772A7 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 052D097253B21873566489C9 /* InfoPlist.strings */; };
@@ -26,6 +27,7 @@
 		724724B930EEFEFF07CB88DB /* LogoutViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E3DB489715A5B620395CD47 /* LogoutViews.swift */; };
 		7447A744F19419838DA5F8C5 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F111AFD2776AF5D50D29BF33 /* IBMPlexMono-SemiBold.ttf */; };
 		7EC7FCEE24F8C2D1213036A7 /* ProfileHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8ACFF3284CD5B7DC2095483 /* ProfileHubView.swift */; };
+		847B9C5F21C81347B4C1204A /* StatusKeyCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C36C16A334636C98206B989 /* StatusKeyCopy.swift */; };
 		86F460E1EFCA8C55032ECD9D /* LognTopics.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06AADFA16250D1A08A15AFE /* LognTopics.swift */; };
 		92CE64A8F39A3BACBDFA7E2D /* ViewExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DA78EDFD4661B922FE1E389 /* ViewExtensions.swift */; };
 		936B6709633ADF906CB1E02F /* LogNiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80804A0792E45E01C5BE3D0B /* LogNiOSApp.swift */; };
@@ -48,11 +50,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0C36C16A334636C98206B989 /* StatusKeyCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusKeyCopy.swift; sourceTree = "<group>"; };
 		1BE5DBCB70C667BEFA031ED7 /* IBMPlexSans-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-SemiBold.ttf"; sourceTree = "<group>"; };
 		26D31A9B206FE1CD0C80B3F9 /* DryRunView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DryRunView.swift; sourceTree = "<group>"; };
 		28351D90B42E5417571B1A37 /* pt-BR */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "pt-BR"; path = "pt-BR.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		2A37D7575A08B4C92B940D53 /* IBMPlexMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Regular.ttf"; sourceTree = "<group>"; };
 		2CEDA9E40AF59358F4F00143 /* SkillTreeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillTreeView.swift; sourceTree = "<group>"; };
+		2F017FABEBC4E5B128A074D0 /* StatusLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusLine.swift; sourceTree = "<group>"; };
 		36CC53FEE4EF414C2FFE69AB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		39639030FF1ABF8B56AB4F26 /* LogNCoreFFI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LogNCoreFFI; path = ../LogNCoreFFI; sourceTree = SOURCE_ROOT; };
 		3C234F5143F4791D66EF36E0 /* LognComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LognComponents.swift; sourceTree = "<group>"; };
@@ -175,6 +179,7 @@
 				911B685B7906CC9801E098A1 /* BalloonShape.swift */,
 				9D8EF036E181D0306E94D226 /* CodeBlock.swift */,
 				3C234F5143F4791D66EF36E0 /* LognComponents.swift */,
+				2F017FABEBC4E5B128A074D0 /* StatusLine.swift */,
 				EB03B22842CF2E79E83561F8 /* SVGPath.swift */,
 				799B328B5FC2E3F615F7DB41 /* TopicIcon.swift */,
 				8DA78EDFD4661B922FE1E389 /* ViewExtensions.swift */,
@@ -233,6 +238,7 @@
 				CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */,
 				DFC409C250EFC18B48AF0021 /* LognDesignSystem.swift */,
 				D06AADFA16250D1A08A15AFE /* LognTopics.swift */,
+				0C36C16A334636C98206B989 /* StatusKeyCopy.swift */,
 				DF70445FC4588B69074A5843 /* Strings.swift */,
 				9D238C31B32D323BF620359D /* StringsMappers.swift */,
 				1562414396442F18EFB11F52 /* InfoPlist */,
@@ -350,6 +356,8 @@
 				BDCD280587BB96E31FE8B1FA /* SettingsView.swift in Sources */,
 				C878D3C2E023BF3402DA39A2 /* SkillTreeView.swift in Sources */,
 				1B3F7CCE389E70B29D4DC659 /* StandingsView.swift in Sources */,
+				847B9C5F21C81347B4C1204A /* StatusKeyCopy.swift in Sources */,
+				0ACF6DDB39EBC84AD6AABC71 /* StatusLine.swift in Sources */,
 				2F7173374C70B98EECB2E04A /* Strings.swift in Sources */,
 				EA1F6042A86DDF791B09AB41 /* StringsMappers.swift in Sources */,
 				00B7B8B14FF0303E46007203 /* TopicIcon.swift in Sources */,

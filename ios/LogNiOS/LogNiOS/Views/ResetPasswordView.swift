@@ -19,7 +19,8 @@ struct ResetPasswordView: View {
                 // Header
                 Image(systemName: "key.fill")
                     .font(.system(size: 48))
-                    .foregroundColor(LognDark.infoInk)
+                    // Azul é informação; o que a tela pede é ação, e ação é o acento.
+                    .foregroundColor(LognDark.accentInk)
                 
                 Text("Redefinir senha")
                     .font(LognFont.headlineMedium)
@@ -70,11 +71,7 @@ struct ResetPasswordView: View {
                     .disabled(!canSubmit || core.viewModel.isAuthenticating)
                 }
                 
-                if !core.viewModel.displayStatus.isEmpty {
-                    Text(core.viewModel.displayStatus)
-                        .lognLabel()
-                        .foregroundColor(LognDark.infoInk)
-                }
+                StatusLine(status: core.viewModel.status)
                 
                 Spacer()
             }

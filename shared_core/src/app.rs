@@ -4,7 +4,7 @@ use facet::Facet;
 use facet_generate_attrs as fg;
 use crux_http::protocol::{HttpRequest, HttpResult};
 use crux_kv::{KeyValueOperation, KeyValueResult, KeyValueResponse};
-use crate::domain::{GameEvent, SyncPayload, Challenge, TelemetryOperation};
+use crate::domain::{GameEvent, SyncPayload, Challenge, StatusKey, TelemetryOperation};
 use crate::match_engine;
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
@@ -41,6 +41,7 @@ pub enum Event {
     SyncAndLogout,
     RestoreOfflineQueue,
     OfflineQueueRestored(KeyValueResult),
+    DismissPasswordReset,
     SyncCompleted(HttpResult),
     SubmitChallengeAnswer { 
         action_id: String,
@@ -91,7 +92,10 @@ pub struct LogoutSnapshot {
 
 #[derive(Default, Clone)]
 pub struct Model {
+    /// Diagnóstico interno, em inglês, para log e teste. **Não vai para a tela.**
     pub status: String,
+    /// O que a tela mostra, como chave. A cópia vive em `i18n/locales/`.
+    pub status_key: crate::domain::StatusKey,
     pub pending_events: Vec<GameEvent>,
     pub challenges: Vec<Challenge>,
     pub nodes: Vec<crate::domain::SkillNode>,
@@ -122,12 +126,19 @@ pub struct Model {
     pub logout_after_sync: bool,
     /// Já reencadeou a fila nesta tentativa. Impede laço de rebase com o servidor.
     pub rebase_attempted: bool,
+    /// Acabou de trocar a senha. Fecha a tela de redefinição e volta a false.
+    ///
+    /// Quem fechava era a chegada do token — e quem redefine já estando logado não vê
+    /// token nenhum chegar, então a tela ficava aberta depois de salvar.
+    pub password_reset_done: bool,
 }
 
 #[derive(Facet, Serialize, Deserialize, Default, Clone)]
 #[facet(fg::namespace = "LogN")]
 pub struct ViewModel {
-    pub display_status: String,
+    /// O que dizer ao jogador, como chave — o cliente traduz. Nunca frase pronta:
+    /// o Core não sabe em que idioma o app está.
+    pub status: crate::domain::StatusKey,
     pub pending_sync_count: u32,
     pub is_syncing: bool,
     pub is_fetching: bool,
@@ -152,6 +163,8 @@ pub struct ViewModel {
     pub balloons_up: i32,
     /// Acabou de sair e ainda dá para desfazer.
     pub just_logged_out: bool,
+    /// Acabou de trocar a senha: a tela de redefinição pode fechar.
+    pub password_reset_done: bool,
     /// Primeiro nome derivado do e-mail, para a despedida.
     pub display_name: String,
     pub match_view: match_engine::MatchViewModel,
@@ -252,7 +265,8 @@ impl App for LogNApp {
 
             Event::Login { email, password_hash } => {
                 model.is_authenticating = true;
-                model.status = "Logging in...".to_string();
+                model.status = "Logging in".to_string();
+                model.status_key = StatusKey::SigningIn;
                 model.account_email = email.clone();
 
                 let body = serde_json::json!({
@@ -287,7 +301,7 @@ impl App for LogNApp {
                             model.is_guest = false;
                             // A tela de login mostra o status como erro, em vermelho: um
                             // "deu certo" ali é ruído. A prova do sucesso é o app abrir.
-                            model.status = String::new();
+                            model.status_key = StatusKey::Silent;
 
                             // Salva refresh token no Keychain
                             return Command::request_from_shell(KeyValueOperation::Set {
@@ -295,20 +309,20 @@ impl App for LogNApp {
                                 value: data.refresh_token.into_bytes()
                             }).then_send(Event::TokenStored);
                         } else {
-                            model.status = "Não consegui ler a resposta do servidor.".to_string();
+                            model.status_key = StatusKey::ServerUnreadable;
                             model.is_authenticating = false;
                         }
                     }
                     HttpResult::Ok(response) if response.status == 401 => {
-                        model.status = "E-mail ou senha não conferem.".to_string();
+                        model.status_key = StatusKey::WrongCredentials;
                         model.is_authenticating = false;
                     }
                     HttpResult::Ok(_) => {
-                        model.status = "Não consegui entrar agora. Tente de novo.".to_string();
+                        model.status_key = StatusKey::SignInFailed;
                         model.is_authenticating = false;
                     }
                     HttpResult::Err(_) => {
-                        model.status = "Sem conexão com o servidor.".to_string();
+                        model.status_key = StatusKey::NoConnection;
                         model.is_authenticating = false;
                     }
                 }
@@ -342,7 +356,8 @@ impl App for LogNApp {
             }
 
             Event::Logout => {
-                model.status = "Logging out...".to_string();
+                model.status = "Logging out".to_string();
+                model.status_key = StatusKey::SigningOut;
                 Command::request_from_shell(KeyValueOperation::Delete { key: "refresh_token".into() }).then_send(Event::TokenCleared)
             }
             Event::TokenCleared(_) => {
@@ -365,7 +380,7 @@ impl App for LogNApp {
                 // Quem conta que a saída deu certo é a tela de despedida. Deixar texto
                 // aqui fazia a tela de login abrir com "Logged out successfully" em
                 // vermelho, como se sair fosse um erro.
-                model.status = String::new();
+                model.status_key = StatusKey::Silent;
                 render::render()
             }
 
@@ -374,8 +389,13 @@ impl App for LogNApp {
                     model.access_token = snapshot.access_token;
                     model.is_guest = snapshot.was_guest;
                     model.account_email = snapshot.email;
-                    model.status = "Sessão restaurada".to_string();
+                    model.status_key = StatusKey::Silent;
                 }
+                render::render()
+            }
+
+            Event::DismissPasswordReset => {
+                model.password_reset_done = false;
                 render::render()
             }
 
@@ -385,7 +405,8 @@ impl App for LogNApp {
             }
 
             Event::AttemptRefresh => {
-                model.status = "Refreshing session...".to_string();
+                model.status = "Refreshing session".to_string();
+                model.status_key = StatusKey::ResumingSession;
                 Command::request_from_shell(KeyValueOperation::Get { key: "refresh_token".to_string() })
                     .then_send(Event::TokenRead)
             }
@@ -409,7 +430,7 @@ impl App for LogNApp {
                     }
                 }
                 // Instead of showing an error on the login screen, we just remain silent
-                model.status = "".to_string();
+                model.status_key = StatusKey::Silent;
                 model.access_token = None;
                 model.is_authenticating = false;
                 render::render()
@@ -427,7 +448,8 @@ impl App for LogNApp {
                                 model.user_id = data.user_id;
                             }
                             model.is_guest = false;
-                            model.status = "Session refreshed!".to_string();
+                            // Retomar a sessão é invisível por definição: nada a dizer.
+                            model.status_key = StatusKey::Silent;
 
                             // O `/refresh` devolve só o token; quem a sessão é fica no cofre.
                             return Command::request_from_shell(KeyValueOperation::Get {
@@ -439,7 +461,7 @@ impl App for LogNApp {
                         }
                     }
                     _ => {
-                        model.status = "Sua sessão expirou. Entre de novo.".to_string();
+                        model.status_key = StatusKey::SessionExpired;
                         model.access_token = None;
                 model.is_authenticating = false;
                     }
@@ -676,7 +698,8 @@ Event::FetchChallenges => {
             Event::RequestOTP { email, purpose } => {
                 model.is_authenticating = true;
                 model.otp_email = email.clone();
-                model.status = "Sending verification code...".to_string();
+                model.status = "Sending verification code".to_string();
+                model.status_key = StatusKey::SendingCode;
 
                 let body = serde_json::json!({ "email": email, "purpose": purpose });
                 let request = HttpRequest {
@@ -694,17 +717,20 @@ Event::FetchChallenges => {
                 model.is_authenticating = false;
                 match result {
                     HttpResult::Ok(response) if response.status == 200 => {
-                        model.status = "Code sent! Check your e-mail.".to_string();
+                        // A tela já diz para onde o código foi; repetir aqui só enche
+                        // o rodapé de status. Sucesso é o campo de código aparecer.
+                        model.status_key = StatusKey::Silent;
                     }
                     _ => {
-                        model.status = "Failed to send code.".to_string();
+                        model.status_key = StatusKey::CodeSentFailed;
                     }
                 }
                 render::render()
             }
             Event::VerifyOTP { email, code, purpose } => {
                 model.is_authenticating = true;
-                model.status = "Verifying code...".to_string();
+                model.status = "Verifying code".to_string();
+                model.status_key = StatusKey::CheckingCode;
 
                 let body = serde_json::json!({ "email": email, "code": code, "purpose": purpose });
                 let request = HttpRequest {
@@ -723,18 +749,20 @@ Event::FetchChallenges => {
                 match result {
                     HttpResult::Ok(response) if response.status == 200 => {
                         model.otp_verified = true;
-                        model.status = "E-mail verified!".to_string();
+                        // A tela avança para a senha; dizer "verificado" é redundante.
+                        model.status_key = StatusKey::Silent;
                     }
                     _ => {
                         model.otp_verified = false;
-                        model.status = "Invalid or expired code.".to_string();
+                        model.status_key = StatusKey::CodeInvalid;
                     }
                 }
                 render::render()
             }
             Event::Register { email, password, otp } => {
                 model.is_authenticating = true;
-                model.status = "Creating account...".to_string();
+                model.status = "Creating account".to_string();
+                model.status_key = StatusKey::CreatingAccount;
                 model.account_email = email.clone();
 
                 let body = serde_json::json!({ "email": email, "password": password, "otp": otp });
@@ -764,24 +792,27 @@ Event::FetchChallenges => {
                             model.is_guest = false;
                             model.otp_verified = false;
                             model.otp_email = String::new();
-                            model.status = "Account created!".to_string();
+                            // Conta criada: a prova é o app abrir. Status aqui vira
+                            // ruído em vermelho na tela seguinte.
+                            model.status_key = StatusKey::Silent;
 
                             return Command::request_from_shell(KeyValueOperation::Set {
                                 key: "refresh_token".to_string(),
                                 value: data.refresh_token.into_bytes(),
                             }).then_send(Event::TokenStored);
                         }
-                        model.status = "Failed to parse response".to_string();
+                        model.status_key = StatusKey::ServerUnreadable;
                     }
                     _ => {
-                        model.status = "Registration failed.".to_string();
+                        model.status_key = StatusKey::AccountFailed;
                     }
                 }
                 render::render()
             }
             Event::ResetPassword { email, new_password, otp } => {
                 model.is_authenticating = true;
-                model.status = "Resetting password...".to_string();
+                model.status = "Resetting password".to_string();
+                model.status_key = StatusKey::ResettingPassword;
                 model.account_email = email.clone();
 
                 let body = serde_json::json!({ "email": email, "password": new_password, "otp": otp });
@@ -811,17 +842,18 @@ Event::FetchChallenges => {
                             model.is_guest = false;
                             model.otp_verified = false;
                             model.otp_email = String::new();
-                            model.status = "Password updated!".to_string();
+                            model.status_key = StatusKey::Silent;
+                            model.password_reset_done = true;
 
                             return Command::request_from_shell(KeyValueOperation::Set {
                                 key: "refresh_token".to_string(),
                                 value: data.refresh_token.into_bytes(),
                             }).then_send(Event::TokenStored);
                         }
-                        model.status = "Failed to parse response".to_string();
+                        model.status_key = StatusKey::ServerUnreadable;
                     }
                     _ => {
-                        model.status = "Failed to reset password.".to_string();
+                        model.status_key = StatusKey::ResetFailed;
                     }
                 }
                 render::render()
@@ -842,7 +874,7 @@ Event::FetchChallenges => {
 
             Event::SyncNow => {
                 if model.is_guest && model.access_token.is_none() {
-                    model.status = "Sign in to sync your progress!".to_string();
+                    model.status_key = StatusKey::SignInToSync;
                     model.logout_after_sync = false;
                     return Command::done();
                 }
@@ -854,13 +886,14 @@ Event::FetchChallenges => {
                 // mandava o literal "user_1", que o Postgres recusa como UUID: a fila
                 // batia num 500 e o app dizia que o progresso estava salvo.
                 if model.user_id.is_empty() {
-                    model.status = "Entre de novo para sincronizar.".to_string();
+                    model.status_key = StatusKey::SessionExpired;
                     model.logout_after_sync = false;
                     return render::render();
                 }
 
                 model.is_syncing = true;
-                model.status = "Syncing...".to_string();
+                model.status = "Syncing".to_string();
+                model.status_key = StatusKey::Syncing;
 
                 let payload = SyncPayload {
                     user_id: model.user_id.clone(),
@@ -884,7 +917,7 @@ Event::FetchChallenges => {
                 match result {
                     HttpResult::Ok(response) => {
                         if response.status == 200 {
-                            model.status = String::new();
+                            model.status_key = StatusKey::Silent;
                             model.pending_events.clear();
                             model.rebase_attempted = false;
 
@@ -939,17 +972,17 @@ Event::FetchChallenges => {
                                 .then_send(|_| Event::SyncNow);
                             }
 
-                            model.status = "Seu progresso divergiu do servidor.".to_string();
+                            model.status_key = StatusKey::SyncDiverged;
                         } else if response.status == 401 {
                             // Intercept 401 and attempt refresh
                             model.pending_retry_event = Some(Event::SyncNow);
                             return self.update(Event::AttemptRefresh, model);
                         } else {
-                            model.status = "Não consegui enviar seu progresso agora.".to_string();
+                            model.status_key = StatusKey::SyncFailed;
                         }
                     }
                     HttpResult::Err(_err) => {
-                        model.status = "Sem conexão para enviar seu progresso.".to_string();
+                        model.status_key = StatusKey::SyncOffline;
                     }
                 }
                 // Falhou: fica. Sair aqui apagaria a fila que não subiu.
@@ -1260,7 +1293,7 @@ Event::FetchChallenges => {
             .count() as i32;
 
         ViewModel {
-            display_status: model.status.clone(),
+            status: model.status_key.clone(),
             pending_sync_count: model.pending_events.len() as u32,
             is_syncing: model.is_syncing,
             is_fetching: model.is_fetching,
@@ -1282,6 +1315,7 @@ Event::FetchChallenges => {
             challenges_completed: model.bugs_found + model.dry_runs_completed,
             balloons_up: balloons_up,
             just_logged_out: model.logout_undo.is_some(),
+            password_reset_done: model.password_reset_done,
             // Depois de sair, o nome vem do instantâneo — é ele que a despedida usa.
             display_name: display_name_from_email(
                 model.logout_undo.as_ref().map(|s| s.email.as_str()).unwrap_or(&model.account_email),
@@ -1687,7 +1721,7 @@ mod tests {
             })),
             &mut model,
         );
-        assert_eq!(app.view(&model).display_status, "Seu progresso divergiu do servidor.");
+        assert_eq!(app.view(&model).status, StatusKey::SyncDiverged);
     }
 
     #[test]
@@ -1738,7 +1772,8 @@ mod tests {
         };
         let _ = app.update(Event::OTPRequested(HttpResult::Ok(resp)), &mut model);
         assert!(!model.is_authenticating);
-        assert_eq!(model.status, "Code sent! Check your e-mail.");
+        // Sucesso não diz nada ao jogador: a prova é a tela de código aparecer.
+        assert_eq!(model.status_key, StatusKey::Silent);
 
         // 3. Verify OTP
         let mut cmd = app.update(Event::VerifyOTP { 
@@ -1766,7 +1801,7 @@ mod tests {
         let _ = app.update(Event::OTPVerified(HttpResult::Ok(resp)), &mut model);
         assert!(!model.is_authenticating);
         assert!(model.otp_verified);
-        assert_eq!(model.status, "E-mail verified!");
+        assert_eq!(model.status_key, StatusKey::Silent, "verificar não fala; a tela avança");
     }
 
     #[test]

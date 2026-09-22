@@ -17,9 +17,19 @@ struct LogNiOSApp: App {
         }
     }
     
-    @State private var resetPasswordEmail: String?
-    @State private var resetPasswordCode: String?
-    @State private var showResetPassword = false
+    /// O link de redefinição que chegou, como um dado só.
+    ///
+    /// Eram três `@State` separados — e-mail, código e um booleano — com o sheet por
+    /// `isPresented` e um `if let` dentro. O SwiftUI monta o conteúdo antes das outras
+    /// duas mudanças chegarem, o `if let` via `nil` e o sheet abria **em branco**.
+    /// `sheet(item:)` existe exatamente para isso: o conteúdo nasce do dado.
+    private struct ResetLink: Identifiable {
+        let email: String
+        let code: String
+        var id: String { email + code }
+    }
+
+    @State private var resetLink: ResetLink?
     
     var body: some Scene {
         WindowGroup {
@@ -54,15 +64,21 @@ struct LogNiOSApp: App {
                 }
                 #endif
             }
-            .sheet(isPresented: $showResetPassword) {
-                if let email = resetPasswordEmail, let code = resetPasswordCode {
-                    ResetPasswordView(email: email, otp: code)
-                        .environmentObject(core)
-                }
+            .sheet(item: $resetLink) { link in
+                ResetPasswordView(email: link.email, otp: link.code)
+                    .environmentObject(core)
             }
             .onChange(of: core.viewModel.hasAccessToken) { hasToken in
                 if hasToken {
-                    showResetPassword = false
+                    resetLink = nil
+                }
+            }
+            // Quem já estava logado não vê token chegar, então a tela de redefinição
+            // ficava aberta depois de salvar. O Core avisa que a senha trocou.
+            .onChange(of: core.viewModel.passwordResetDone) { done in
+                if done {
+                    resetLink = nil
+                    core.dispatch(event: .dismissPasswordReset)
                 }
             }
         }
@@ -85,9 +101,7 @@ struct LogNiOSApp: App {
         } else if host == "reset-password" {
             if !code.isEmpty && !email.isEmpty {
                 // Ao invés de apenas validar, já subimos a tela para o usuário digitar a nova senha
-                resetPasswordEmail = email
-                resetPasswordCode = code
-                showResetPassword = true
+                resetLink = ResetLink(email: email, code: code)
             }
         }
     }
