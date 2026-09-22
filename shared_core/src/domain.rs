@@ -166,6 +166,13 @@ pub struct ChallengeContent {
     /// Só em DRY_RUN: em que ponto o watch foi capturado, ex. "antes da linha 4".
     #[serde(default)]
     pub watch_note: Option<String>,
+    /// Segundos para esta questão, quando ela foge da régua do template.
+    ///
+    /// Existe para o desafio atípico — um trace longo demais, um enunciado curto demais
+    /// — e não para ser preenchido em todo desafio: o custo é quase todo do template, e
+    /// obrigar um número por desafio faz todo mundo copiar o do vizinho.
+    #[serde(default)]
+    pub seconds: Option<i32>,
 }
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]

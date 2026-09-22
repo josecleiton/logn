@@ -1328,6 +1328,10 @@ Event::FetchChallenges => {
                             correct_options: c.payload.content.correct_options.clone().unwrap_or_default(),
                             max_selections: if c.template_type == "TAG_THE_PATTERN" { c.payload.content.correct_options.as_ref().map_or(1, |o| o.len() as i32) } else { 1 },
                             origin: c.origin.clone(),
+                            // A régua é do template; o desafio só entra se for atípico.
+                            seconds: c.payload.content.seconds.unwrap_or_else(|| {
+                                match_engine::seconds_for_template(&c.template_type)
+                            }),
                             watch_variables: c.payload.content.watch_variables.clone().unwrap_or_default(),
                             watch_note: c.payload.content.watch_note.clone().unwrap_or_default(),
                         }
@@ -1787,6 +1791,7 @@ mod tests {
                     correct_options: None,
                     watch_variables: None,
                     watch_note: None,
+                    seconds: None,
                 },
                 validation: ChallengeValidation {
                     validation_type: "LINE_MATCH".into(),
@@ -1886,6 +1891,7 @@ mod tests {
                     correct_options: None,
                     watch_variables: None,
                     watch_note: None,
+                    seconds: None,
                 },
                 validation: ChallengeValidation {
                     validation_type: "LINE_MATCH".into(),
@@ -1953,6 +1959,7 @@ mod tests {
                     correct_options: Some(correct),
                     watch_variables: None,
                     watch_note: None,
+                    seconds: None,
                 },
                 validation: ChallengeValidation {
                     validation_type: template.into(),
@@ -1992,6 +1999,78 @@ mod tests {
         assert_eq!(
             model.nodes[0].name, "Nó G",
             "o que veio do servidor manda; a semente não regride o conteúdo"
+        );
+    }
+
+    /// O relógio da questão sai do template, e o da sessão sai da soma.
+    ///
+    /// Antes os dois eram fixos — 60 e 180 — e isso tornava o da questão decorativo:
+    /// com seis problemas a sessão dava 30 segundos por problema em média, então
+    /// ninguém conseguia gastar o minuto em mais de três.
+    #[test]
+    fn test_each_template_gets_the_time_it_costs() {
+        let app = LogNApp::default();
+        let node = "10000000-0000-0000-0000-000000000001";
+
+        // Prever saída custa muito mais que marcar padrão: três revisores cegos
+        // independentes estimaram 70 a 150 segundos contra os 60 que havia.
+        assert!(
+            match_engine::seconds_for_template("DRY_RUN")
+                > match_engine::seconds_for_template("TAG_THE_PATTERN"),
+            "DRY_RUN não pode valer o mesmo que reconhecer um padrão"
+        );
+
+        let mut model = Model::default();
+        let mut dry = seeded_challenge("ch_a", "DRY_RUN", vec![], vec![], "E.");
+        dry.payload.validation.expected_string = Some("9".into());
+        let tag = seeded_challenge(
+            "ch_b", "TAG_THE_PATTERN",
+            vec!["Pilha".into(), "Fila".into()],
+            vec!["Pilha".into()],
+            "E.",
+        );
+        model.challenges = vec![dry, tag];
+
+        let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
+        let ms = model.match_state.as_ref().expect("a partida abre");
+
+        assert_eq!(
+            ms.question_seconds_remaining,
+            match_engine::seconds_for_template("DRY_RUN"),
+            "a primeira questão abre com o tempo do template dela"
+        );
+
+        let soma = match_engine::seconds_for_template("DRY_RUN")
+            + match_engine::seconds_for_template("TAG_THE_PATTERN");
+        assert_eq!(
+            ms.contest_seconds_remaining,
+            soma + soma / 5,
+            "a sessão vale a soma dos problemas mais a folga, não um número fixo"
+        );
+    }
+
+    /// O desafio atípico pode pedir outro tempo, e aí o dele manda.
+    #[test]
+    fn test_a_challenge_may_override_its_template_time() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+
+        let mut c = seeded_challenge(
+            "ch_a", "TAG_THE_PATTERN",
+            vec!["Pilha".into(), "Fila".into()],
+            vec!["Pilha".into()],
+            "E.",
+        );
+        c.payload.content.seconds = Some(200);
+        model.challenges = vec![c];
+
+        let node = "10000000-0000-0000-0000-000000000001";
+        let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
+
+        assert_eq!(
+            model.match_state.as_ref().unwrap().question_seconds_remaining,
+            200,
+            "o número do desafio manda sobre a régua do template"
         );
     }
 
@@ -2320,6 +2399,7 @@ mod tests {
                     correct_options: None,
                     watch_variables: None,
                     watch_note: None,
+                    seconds: None,
                 },
                 validation: ChallengeValidation {
                     validation_type: "LINE_MATCH".into(),

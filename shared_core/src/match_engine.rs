@@ -89,6 +89,28 @@ impl VerdictCode {
     }
 }
 
+/// Quanto tempo cada template pede, medido e não chutado.
+///
+/// Três revisores cegos independentes cronometraram os mesmos cinco templates e o
+/// resultado foi consistente: o custo é quase todo **do template**, não do desafio.
+/// Prever saída exige simular estado passo a passo, e isso não tem atalho — as
+/// estimativas ficaram entre 70 e 150 segundos contra os 60 que todos tinham.
+///
+/// Marcar padrão e completar lacuna são reconhecimento: quem sabe responde em 15
+/// segundos, e quem não sabe não descobre com mais tempo.
+pub fn seconds_for_template(template_type: &str) -> i32 {
+    match template_type {
+        // Simular estado é o trabalho caro, e é linear no tamanho da entrada.
+        "DRY_RUN" => 150,
+        // Ler o código inteiro procurando a linha, com o código na tela.
+        "SPOT_THE_BUG" => 90,
+        // Dois eixos e um raciocínio de custo em cada.
+        "COMPLEXITY_MATCH" => 75,
+        // Reconhecimento: ou se sabe, ou mais tempo não ajuda.
+        _ => 60,
+    }
+}
+
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
 #[facet(fg::namespace = "LogN")]
 pub struct MatchProblem {
@@ -110,6 +132,9 @@ pub struct MatchProblem {
     /// De onde o desafio veio. Vazio para o que nasceu aqui; a tela mostra um selo
     /// quando há algo.
     pub origin: String,
+    /// Quanto tempo esta questão dá. Sai do template, a menos que o desafio traga
+    /// `content.seconds` — o que é para o caso atípico, não para o comum.
+    pub seconds: i32,
     pub watch_variables: Vec<crate::domain::WatchVariable>, // Para DRY_RUN
     pub watch_note: String,         // Para DRY_RUN
 }
@@ -215,6 +240,10 @@ impl MatchState {
         let verdicts: HashMap<char, VerdictCode> = letters.iter().map(|&l| (l, VerdictCode::Pending)).collect();
         let attempts: HashMap<char, i32> = letters.iter().map(|&l| (l, 0)).collect();
 
+        // Os dois relógios saem daqui, antes de `problems` mudar de dono.
+        let soma_segundos: i32 = problems.iter().map(|p| p.seconds).sum();
+        let primeira_questao = problems.first().map_or(60, |p| p.seconds);
+
         MatchState {
             is_active: true,
             problems,
@@ -226,8 +255,15 @@ impl MatchState {
             attempts,
             is_paused: false,
             leave_pending: false,
-            contest_seconds_remaining: 180, // 3 minutos por sessão
-            question_seconds_remaining: 60,
+            // A sessão vale a soma do que os problemas deste nó pedem, mais um quinto de
+            // folga para ler enunciado e trocar de tela.
+            //
+            // Era 180 fixo, e isso tornava o relógio da questão decorativo: com seis
+            // problemas davam 30 segundos por problema em média, então ninguém
+            // conseguia gastar o minuto em mais de três. Agora um nó com DRY_RUN
+            // naturalmente dura mais que um sem, que é o que ele custa.
+            contest_seconds_remaining: soma_segundos + soma_segundos / 5,
+            question_seconds_remaining: primeira_questao,
             is_frozen: false,
             trap: None,
             selection: MatchSelection::default(),
@@ -418,7 +454,12 @@ impl MatchState {
                 break;
             }
         }
-        self.question_seconds_remaining = 60;
+        // Cada problema traz o seu tempo: passar de um TAG para um DRY_RUN tem de dar
+        // mais minuto, não o mesmo.
+        self.question_seconds_remaining = self
+            .problems
+            .get(self.current_index)
+            .map_or(60, |p| p.seconds);
     }
 
     fn all_solved(&self) -> bool {
@@ -503,6 +544,7 @@ mod tests {
                 correct_options: vec![],
                 max_selections: 0,
                 origin: String::new(),
+                seconds: 60,
                 watch_variables: vec![],
                 watch_note: String::new(),
             },
@@ -520,6 +562,7 @@ mod tests {
                 correct_options: vec![],
                 max_selections: 0,
                 origin: String::new(),
+                seconds: 60,
                 watch_variables: vec![],
                 watch_note: String::new(),
             },
@@ -537,6 +580,7 @@ mod tests {
                 correct_options: vec!["Grafos".into(), "BFS".into()],
                 max_selections: 2,
                 origin: String::new(),
+                seconds: 60,
                 watch_variables: vec![],
                 watch_note: String::new(),
             },
@@ -554,6 +598,7 @@ mod tests {
                 correct_options: vec![],
                 max_selections: 0,
                 origin: String::new(),
+                seconds: 60,
                 watch_variables: vec![crate::domain::WatchVariable {
                     name: "acc".into(),
                     value: "0".into(),

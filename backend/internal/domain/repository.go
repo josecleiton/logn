@@ -88,7 +88,10 @@ func (r *Repository) GetChallenges(ctx context.Context) ([]Challenge, error) {
 	// A ordem define as letras A, B, C da partida: o core enumera esta lista já
 	// ordenada. Ordenava por `id`, que é VARCHAR — ch_10 vinha antes de ch_2. Agora sai
 	// de position_idx, que é dado explícito (ADR 0006).
-	query := `SELECT id, node_id, template_type, version, payload, COALESCE(origin, '') FROM challenges ORDER BY node_id, position_idx`
+	// position_idx vai junto: a coluna decide a ordem aqui, e o JSON a anunciava sem
+	// nunca preenchê-la — a trilha empacotada saía com zero em todos os desafios.
+	query := `SELECT id, node_id, template_type, version, payload, position_idx, COALESCE(origin, '')
+			  FROM challenges ORDER BY node_id, position_idx`
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
@@ -98,7 +101,7 @@ func (r *Repository) GetChallenges(ctx context.Context) ([]Challenge, error) {
 	var challenges []Challenge
 	for rows.Next() {
 		var ch Challenge
-		if err := rows.Scan(&ch.ID, &ch.NodeID, &ch.TemplateType, &ch.Version, &ch.Payload, &ch.Origin); err != nil {
+		if err := rows.Scan(&ch.ID, &ch.NodeID, &ch.TemplateType, &ch.Version, &ch.Payload, &ch.PositionIdx, &ch.Origin); err != nil {
 			return nil, err
 		}
 		challenges = append(challenges, ch)
