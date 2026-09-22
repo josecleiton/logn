@@ -2,161 +2,155 @@ import SwiftUI
 import LogN
 import App
 
+/// Ranking de celular — tela 6 do DS.
+///
+/// Abas Global / Sede, linhas densas, e a linha do jogador grudada na base com o mesmo
+/// tratamento accent do telão: fundo accent @14%, bordas accent em cima e embaixo, rank
+/// e sublinha em `accentInk`.
 struct StandingsView: View {
     @EnvironmentObject var core: CoreWrapper
-    @State private var selectedTab = 0 // 0 = Global, 1 = Sede
-    
-    // Mocks for now until the Rust engine exposes the Standings API
-    let mockGlobal = [
-        StandingRow(rank: 1, name: "GennadyK", solved: 13, penalty: 345, isCurrentUser: false),
-        StandingRow(rank: 2, name: "tourist", solved: 13, penalty: 412, isCurrentUser: false),
-        StandingRow(rank: 3, name: "Petr", solved: 12, penalty: 981, isCurrentUser: false),
-        StandingRow(rank: 4, name: "Um_nik", solved: 12, penalty: 1044, isCurrentUser: false),
-        StandingRow(rank: 341, name: "Você (Guest)", solved: 4, penalty: 210, isCurrentUser: true)
-    ]
-    
-    let mockSede = [
-        StandingRow(rank: 1, name: "Você (Guest)", solved: 4, penalty: 210, isCurrentUser: true),
-        StandingRow(rank: 2, name: "Joãozinho", solved: 3, penalty: 150, isCurrentUser: false),
-        StandingRow(rank: 3, name: "Maria", solved: 3, penalty: 320, isCurrentUser: false)
-    ]
-    
+    @State private var tab: Tab = .global
+
+    enum Tab { case global, home }
+
+    private var rows: [LogN.StandingRow] {
+        tab == .global ? core.viewModel.standingsGlobal : core.viewModel.standingsHome
+    }
+
     var body: some View {
         ZStack {
             LognDark.canvas.ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
-                // Header
-                VStack(spacing: Space.md) {
-                    Text("PLACAR GERAL")
-                        .font(LognFont.headlineMedium)
-                        .foregroundColor(LognDark.textPrimary)
-                    
-                    // Custom Segmented Control
-                    HStack(spacing: 0) {
-                        TabButton(title: "GLOBAL", isSelected: selectedTab == 0) { selectedTab = 0 }
-                        TabButton(title: "SEDE", isSelected: selectedTab == 1) { selectedTab = 1 }
-                    }
-                    .background(LognDark.surfaceRaised)
-                    .cornerRadius(Radius.sm)
-                    .padding(.horizontal, Space.screenMargin)
-                }
-                .padding(.vertical, Space.lg)
-                .background(LognDark.surface)
-                
-                // Header da Tabela
-                HStack {
-                    Text("#")
-                        .font(LognFont.label)
-                        .foregroundColor(LognDark.textMuted)
-                        .frame(width: 30, alignment: .leading)
-                    
-                    Text("COMPETIDOR")
-                        .font(LognFont.label)
-                        .foregroundColor(LognDark.textMuted)
-                        
-                    Spacer()
-                    
-                    Text("AC")
-                        .font(LognFont.label)
-                        .foregroundColor(LognDark.textMuted)
-                        .frame(width: 30, alignment: .trailing)
-                    
-                    Text("PEN")
-                        .font(LognFont.label)
-                        .foregroundColor(LognDark.textMuted)
-                        .frame(width: 40, alignment: .trailing)
-                }
-                .padding(.horizontal, Space.screenMargin)
-                .padding(.vertical, Space.sm)
-                .background(LognDark.surfaceRaised)
-                
-                // Lista de Rankings
+                header
+
                 ScrollView {
-                    VStack(spacing: 0) {
-                        let activeList = selectedTab == 0 ? mockGlobal : mockSede
-                        ForEach(activeList, id: \.name) { row in
+                    LazyVStack(spacing: 0) {
+                        ForEach(rows, id: \.handle) { row in
                             StandingRowView(row: row)
-                            Divider().background(LognDark.line)
                         }
+                        scoreboardLink
                     }
-                    
-                    NavigationLink(destination: ScoreboardView()) {
-                        Text("VER TELÃO COMPLETO (ICPC)")
-                            .font(LognFont.label)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, Space.md)
-                            .background(LognDark.surfaceRaised)
-                            .foregroundColor(LognDark.accent)
-                            .cornerRadius(Radius.sm)
-                    }
-                    .padding(Space.lg)
                 }
+
+                // A linha do usuário não rola com a lista: ela fica sempre à vista.
+                StandingRowView(row: core.viewModel.userStanding)
             }
         }
     }
-}
 
-struct TabButton: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(LognFont.label)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(isSelected ? LognDark.surface : Color.clear)
-                .foregroundColor(isSelected ? LognDark.textPrimary : LognDark.textSecondary)
-                .cornerRadius(Radius.sm)
-                .overlay(
-                    RoundedRectangle(cornerRadius: Radius.sm)
-                        .stroke(isSelected ? LognDark.line : Color.clear, lineWidth: 1)
-                )
-                .padding(2)
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Standings")
+                .font(.plexSansSemiBold(22, relativeTo: .title2))
+                .tracking(-0.02 * 22)
+                .foregroundColor(LognDark.textPrimary)
+                .padding(.bottom, 14)
+
+            HStack(spacing: 20) {
+                tabButton("Global", .global)
+                tabButton(core.viewModel.userStanding.university, .home)
+                Spacer(minLength: 0)
+            }
+            .overlay(alignment: .bottom) {
+                Rectangle().frame(height: 1).foregroundColor(LognDark.line)
+            }
         }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+    }
+
+    /// Aba ativa: borda inferior 2dp `accent`, 14sp/600.
+    private func tabButton(_ title: String, _ value: Tab) -> some View {
+        let isActive = tab == value
+        return Button { tab = value } label: {
+            Text(title)
+                .font(isActive ? .plexSansSemiBold(14) : .plexSans(14))
+                .foregroundColor(isActive ? LognDark.textPrimary : LognDark.textMuted)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 2)
+                .overlay(alignment: .bottom) {
+                    if isActive {
+                        Rectangle()
+                            .frame(height: 2)
+                            .foregroundColor(LognDark.accent)
+                            .offset(y: 1)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isActive ? [.isSelected] : [])
+    }
+
+    private var scoreboardLink: some View {
+        NavigationLink(destination: ScoreboardView().environmentObject(core)) {
+            Text("VER O TELÃO COMPLETO")
+                .font(LognFont.label)
+                .foregroundColor(LognDark.accentInk)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, Space.md)
+                .background(LognDark.surface)
+                .cornerRadius(Radius.sm)
+                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, Space.lg)
     }
 }
 
-struct StandingRow {
-    let rank: Int
-    let name: String
-    let solved: Int
-    let penalty: Int
-    let isCurrentUser: Bool
-}
-
+/// Linha 44dp: rank mono 13sp largura 26 · handle 15sp/500 + universidade em label ·
+/// `solved · penalty` mono 14sp tabular à direita.
 struct StandingRowView: View {
-    let row: StandingRow
-    
+    let row: LogN.StandingRow
+
     var body: some View {
-        HStack {
+        HStack(spacing: 14) {
             Text("\(row.rank)")
-                .font(.plexMonoMedium(14))
-                .foregroundColor(row.isCurrentUser ? LognDark.onAccent : LognDark.textSecondary)
-                .frame(width: 30, alignment: .leading)
-            
-            Text(row.name)
-                .font(LognFont.titleMedium)
-                .foregroundColor(row.isCurrentUser ? LognDark.onAccent : LognDark.textPrimary)
-                .lineLimit(1)
-            
-            Spacer()
-            
-            Text("\(row.solved)")
-                .font(.plexMonoMedium(14))
-                .foregroundColor(row.isCurrentUser ? LognDark.onAccent : LognDark.info)
-                .frame(width: 30, alignment: .trailing)
-            
-            Text("\(row.penalty)")
-                .font(.plexMono(14))
-                .foregroundColor(row.isCurrentUser ? LognDark.onAccent.opacity(0.8) : LognDark.textMuted)
-                .frame(width: 40, alignment: .trailing)
+                .font(.plexMono(13))
+                .monospacedDigit()
+                .foregroundColor(row.isUser ? LognDark.accentInk : LognDark.textMuted)
+                .frame(width: 26, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(row.handle)
+                    .font(row.isUser ? .plexSansSemiBold(15) : .plexSansMedium(15))
+                    .foregroundColor(LognDark.textPrimary)
+                    .lineLimit(1)
+
+                Text(subtitle)
+                    .font(.plexMono(11))
+                    .foregroundColor(row.isUser ? LognDark.accentInk : LognDark.textMuted)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+
+            Text("\(row.solved) · \(row.penalty)")
+                .font(row.isUser ? .plexMonoSemiBold(14) : .plexMono(14))
+                .monospacedDigit()
+                .foregroundColor(LognDark.textPrimary)
         }
-        .padding(.horizontal, Space.screenMargin)
-        .padding(.vertical, Space.md)
-        .background(row.isCurrentUser ? LognDark.accent : Color.clear)
+        .padding(.horizontal, 20)
+        .padding(.vertical, row.isUser ? 16 : 14)
+        .background(row.isUser ? LognDark.accentTint : Color.clear)
+        .overlay(alignment: .top) {
+            if row.isUser {
+                Rectangle().frame(height: 1).foregroundColor(LognDark.accent)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(row.isUser ? LognDark.accent : LognDark.rowLine)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(row.isUser ? "sua posição, " : "")\(row.rank)º, \(row.handle), \(row.university), "
+            + "\(row.solved) aceitos, \(row.penalty) de penalidade"
+        )
+    }
+
+    private var subtitle: String {
+        row.note.isEmpty ? row.university : "\(row.university) · \(row.note)"
     }
 }

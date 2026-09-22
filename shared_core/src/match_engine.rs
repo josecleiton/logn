@@ -22,6 +22,26 @@ pub struct MatchState {
     pub selection: MatchSelection,
     /// Veredito da última submissão. Dirige a tela de veredito em tela cheia.
     pub last_verdict: Option<VerdictCode>,
+    /// Os erros da sessão, na ordem em que aconteceram.
+    pub errors: Vec<MatchError>,
+}
+
+/// Descreve a resposta do jogador em texto, para a revisão. Vazio quando não respondeu.
+fn describe_answer(template: &str, selection: &MatchSelection) -> String {
+    match template {
+        "SPOT_THE_BUG" => selection
+            .selected_line
+            .map(|l| format!("linha {}", l + 1))
+            .unwrap_or_default(),
+        "FILL_IN_THE_BLANK" => selection.answer_string.clone().unwrap_or_default(),
+        "DRY_RUN" => selection.predicted_output.clone().unwrap_or_default(),
+        "COMPLEXITY_MATCH" => match (&selection.drop_time, &selection.drop_space) {
+            (Some(t), Some(s)) => format!("{} / {}", t, s),
+            _ => String::new(),
+        },
+        "TAG_THE_PATTERN" => selection.selected_tags.join(", "),
+        _ => String::new(),
+    }
 }
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -74,6 +94,20 @@ pub struct MatchProblem {
     pub max_selections: i32,        // Para TAG_THE_PATTERN
     pub watch_variables: Vec<crate::domain::WatchVariable>, // Para DRY_RUN
     pub watch_note: String,         // Para DRY_RUN
+}
+
+/// Um erro da sessão, guardado para a revisão do relatório pós-partida.
+/// Um por problema errado — o relatório lista todos, não só o último.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug)]
+#[facet(fg::namespace = "LogN")]
+pub struct MatchError {
+    pub letter: String,
+    pub title: String,
+    /// Sigla do juiz: `WA`, `TLE`, …
+    pub verdict: String,
+    /// O que o jogador respondeu, já em texto legível.
+    pub given_answer: String,
+    pub explanation: String,
 }
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
@@ -131,6 +165,7 @@ pub struct MatchViewModel {
     pub watch_variables: Vec<crate::domain::WatchVariable>, // DRY_RUN
     pub watch_note: String,               // DRY_RUN
     pub last_verdict: String,             // "", "AC", "WA", etc.
+    pub errors: Vec<MatchError>,          // revisão do relatório pós-partida
     pub has_trap: bool,
     pub trap_category: String,
     pub trap_title: String,
@@ -165,7 +200,28 @@ impl MatchState {
             trap: None,
             selection: MatchSelection::default(),
             last_verdict: None,
+            errors: Vec::new(),
         }
+    }
+
+    /// Registra um erro para a revisão. A resposta é lida antes da seleção ser limpa.
+    fn record_error(&mut self, problem: &MatchProblem, verdict: &VerdictCode, explanation: &str) {
+        self.errors.push(MatchError {
+            letter: problem.letter.clone(),
+            title: problem.title.clone(),
+            verdict: verdict.code().to_string(),
+            given_answer: describe_answer(&problem.template_type, &self.selection),
+            explanation: explanation.to_string(),
+        });
+    }
+
+    /// A última hora do contest, na escala de uma sessão de três minutos: o último
+    /// terço. A partir daí o placar congela e ninguém sabe mais o resultado.
+    pub const FREEZE_SECONDS: i32 = 60;
+
+    /// Recalcula o congelamento a partir do relógio. Chamado a cada tick.
+    pub fn refresh_freeze(&mut self) {
+        self.is_frozen = self.is_active && self.contest_seconds_remaining <= Self::FREEZE_SECONDS;
     }
 
     pub fn current_problem(&self) -> Option<&MatchProblem> {
@@ -242,12 +298,20 @@ impl MatchState {
             self.lives -= 1;
             self.penalty_minutes += 20;
             
-            // Exibir TrapSheet para Wrong Answer
+            let explanation = "A escolha não cobre todos os casos de entrada. Vale reler o enunciado olhando para os limites: o primeiro índice, o último, e o array vazio.";
+            let title = problem.title.trim_start_matches(|c: char| c.is_ascii_uppercase())
+                .trim_start_matches(" · ")
+                .to_string();
+
+            // Guarda o erro antes de limpar a seleção: a resposta dada é o que o
+            // relatório mostra em "sua resposta".
+            self.record_error(&problem, &verdict, explanation);
+
             self.trap = Some(TrapInfo {
                 name: "Wrong Answer".into(),
                 category: "TRAP CLÁSSICA".into(),
-                title: problem.title.replace("A · ", "").replace("B · ", "").replace("C · ", "").into(),
-                explanation: "A escolha não cobre todos os casos de entrada. Vale reler o enunciado olhando para os limites: o primeiro índice, o último, e o array vazio.".into(),
+                title,
+                explanation: explanation.into(),
             });
         }
 
@@ -282,13 +346,17 @@ impl MatchState {
 
         self.lives -= 1;
         self.penalty_minutes += 20;
+
+        let explanation = "No contest o tempo conta como resposta errada: o problema fica em aberto e a penalidade entra igual. Quando a saída não vem em um minuto, costuma ser sinal de que a abordagem é outra.";
+        // Antes de limpar a seleção, para o relatório saber o que estava escolhido.
+        self.record_error(&problem, &verdict, explanation);
         self.selection = MatchSelection::default();
-        
+
         self.trap = Some(TrapInfo {
             name: "Time Limit Exceeded".into(),
             category: "TIME LIMIT EXCEEDED".into(),
             title: "O relógio da questão zerou".into(),
-            explanation: "No contest o tempo conta como resposta errada: o problema fica em aberto e a penalidade entra igual. Quando a saída não vem em um minuto, costuma ser sinal de que a abordagem é outra.".into(),
+            explanation: explanation.into(),
         });
 
         if self.lives > 0 {
@@ -365,6 +433,7 @@ impl MatchState {
             watch_variables: problem.map(|p| p.watch_variables.clone()).unwrap_or_default(),
             watch_note: problem.map(|p| p.watch_note.clone()).unwrap_or_default(),
             last_verdict: self.last_verdict.as_ref().map(|v| v.code().to_string()).unwrap_or_default(),
+            errors: self.errors.clone(),
             has_trap: self.trap.is_some(),
             trap_category: self.trap.as_ref().map(|t| t.category.clone()).unwrap_or_default(),
             trap_title: self.trap.as_ref().map(|t| t.title.clone()).unwrap_or_default(),
@@ -549,6 +618,79 @@ mod tests {
         assert_eq!(vm.watch_variables.len(), 1);
         assert_eq!(vm.watch_variables[0].name, "acc");
         assert_eq!(vm.watch_note, "antes da linha 2");
+    }
+
+    #[test]
+    fn test_errors_are_recorded_with_the_given_answer() {
+        let mut state = MatchState::new(sample_problems());
+
+        state.selection.selected_line = Some(0); // errada, a certa é 1
+        state.submit();
+
+        assert_eq!(state.errors.len(), 1);
+        let e = &state.errors[0];
+        assert_eq!(e.letter, "A");
+        assert_eq!(e.verdict, "WA");
+        assert_eq!(e.given_answer, "linha 1", "a linha é exibida 1-based");
+        assert!(!e.explanation.is_empty());
+    }
+
+    #[test]
+    fn test_correct_answers_leave_no_error() {
+        let mut state = MatchState::new(sample_problems());
+        state.selection.selected_line = Some(1); // certa
+        state.submit();
+        assert!(state.errors.is_empty());
+    }
+
+    #[test]
+    fn test_errors_accumulate_across_problems() {
+        let mut state = MatchState::new(sample_problems());
+        state.selection.selected_line = Some(0);
+        state.submit(); // A errado
+        state.selection.answer_string = Some("errado".into());
+        state.submit(); // B errado
+
+        assert_eq!(state.errors.len(), 2);
+        assert_eq!(state.errors[1].letter, "B");
+        assert_eq!(state.errors[1].given_answer, "errado");
+        assert_eq!(state.to_view_model().errors.len(), 2);
+    }
+
+    #[test]
+    fn test_timeout_records_the_error_too() {
+        let mut state = MatchState::new(sample_problems());
+        state.selection.selected_line = Some(0);
+        state.submit_tle();
+
+        assert_eq!(state.errors.len(), 1);
+        assert_eq!(state.errors[0].verdict, "TLE");
+        assert_eq!(state.errors[0].given_answer, "linha 1");
+    }
+
+    #[test]
+    fn test_scoreboard_freezes_in_the_last_stretch() {
+        let mut state = MatchState::new(sample_problems());
+        assert!(!state.is_frozen, "placar não começa congelado");
+
+        state.contest_seconds_remaining = MatchState::FREEZE_SECONDS + 1;
+        state.refresh_freeze();
+        assert!(!state.is_frozen, "um segundo antes do limiar ainda está aberto");
+
+        state.contest_seconds_remaining = MatchState::FREEZE_SECONDS;
+        state.refresh_freeze();
+        assert!(state.is_frozen, "no limiar o placar congela");
+        assert!(state.to_view_model().is_frozen);
+    }
+
+    #[test]
+    fn test_finished_match_is_not_frozen() {
+        let mut state = MatchState::new(sample_problems());
+        state.contest_seconds_remaining = 0;
+        state.is_active = false;
+        state.refresh_freeze();
+        // Contest encerrado não é contest congelado: o resultado já é conhecido.
+        assert!(!state.is_frozen);
     }
 
     #[test]

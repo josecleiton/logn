@@ -132,6 +132,56 @@ pub enum NodeStatus {
     Completed,
 }
 
+/// Estado de uma célula do telão. Os quatro estados do DS, e só eles.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum ScoreCellState {
+    /// Aceito — `+` ou `+N` em cima, minuto do AC embaixo.
+    Accepted,
+    /// Tentado sem AC — `−N` em cima.
+    Failed,
+    /// Submetido após o congelamento — `?` em cima, `frz` embaixo.
+    Frozen,
+    /// Não tentado — célula vazia.
+    Untried,
+}
+
+#[derive(Facet, Serialize, Deserialize, Clone, Debug)]
+#[facet(fg::namespace = "LogN")]
+pub struct ScoreCell {
+    pub state: ScoreCellState,
+    pub top: String,
+    pub bottom: String,
+}
+
+/// Uma linha do telão. 13 células, uma por letra A—M.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug)]
+#[facet(fg::namespace = "LogN")]
+pub struct ScoreboardRow {
+    pub rank: i32,
+    pub team: String,
+    pub university: String,
+    pub solved: i32,
+    pub penalty: i32,
+    pub is_user: bool,
+    pub cells: Vec<ScoreCell>,
+}
+
+/// Uma linha do ranking de celular.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default)]
+#[facet(fg::namespace = "LogN")]
+pub struct StandingRow {
+    pub rank: i32,
+    pub handle: String,
+    pub university: String,
+    pub solved: i32,
+    pub penalty: i32,
+    pub is_user: bool,
+    /// Só na linha do usuário: `subiu 6 nesta rodada`. Vazio nas demais.
+    pub note: String,
+}
+
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
 #[facet(fg::namespace = "LogN")]
 pub struct SkillNode {

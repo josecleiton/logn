@@ -4,7 +4,7 @@ import App
 
 struct ContentView: View {
     @EnvironmentObject var core: CoreWrapper
-    @State private var tab: LognTab = .trilhas
+    @State private var tab: LognTab = LognTab.launchOverride ?? .trilhas
 
     var body: some View {
         // A navegação mora dentro de cada tela raiz, não em volta delas: quando a
@@ -38,6 +38,35 @@ enum LognTab: CaseIterable {
         case .arena:   return "ARENA"
         case .placar:  return "PLACAR"
         }
+    }
+
+    /// Aba inicial forçada por argumento de lançamento, só em DEBUG:
+    /// `simctl launch … -LogNStartTab placar`. Serve para conferir tela contra o
+    /// design system sem depender de automação de toque.
+    static var launchOverride: LognTab? {
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-LogNStartTab"), i + 1 < args.count else { return nil }
+        switch args[i + 1] {
+        case "trilhas": return .trilhas
+        case "arena":   return .arena
+        case "placar":  return .placar
+        default:        return nil
+        }
+        #else
+        return nil
+        #endif
+    }
+
+    /// Tela empilhada a abrir no lançamento, só em DEBUG: `-LogNStartScreen telao`.
+    static var launchScreen: String? {
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-LogNStartScreen"), i + 1 < args.count else { return nil }
+        return args[i + 1]
+        #else
+        return nil
+        #endif
     }
 }
 
@@ -275,11 +304,17 @@ struct StandingsHostView: View {
     @EnvironmentObject var core: CoreWrapper
     @Binding var tab: LognTab
 
+    /// Só em DEBUG: `-LogNStartScreen telao` abre o telão direto, para inspeção visual.
+    @State private var showsScoreboard = LognTab.launchScreen == "telao"
+
     var body: some View {
         VStack(spacing: 0) {
             StandingsView().environmentObject(core)
             LognBottomNav(selection: $tab)
         }
         .navigationBarHidden(true)
+        .navigationDestination(isPresented: $showsScoreboard) {
+            ScoreboardView().environmentObject(core)
+        }
     }
 }

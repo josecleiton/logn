@@ -111,6 +111,11 @@ pub struct ViewModel {
     pub bugs_found: i32,
     pub dry_runs_completed: i32,
     pub match_view: match_engine::MatchViewModel,
+    pub contest_name: String,
+    pub standings_global: Vec<crate::domain::StandingRow>,
+    pub standings_home: Vec<crate::domain::StandingRow>,
+    pub user_standing: crate::domain::StandingRow,
+    pub scoreboard: Vec<crate::domain::ScoreboardRow>,
 }
 
 #[effect(facet_typegen)]
@@ -891,6 +896,9 @@ Event::FetchChallenges => {
                             ms.is_active = false;
                             model.status = "Time's up!".to_string();
                         }
+
+                        // A última hora do contest: o placar congela.
+                        ms.refresh_freeze();
                     }
                 }
                 render::render()
@@ -946,6 +954,13 @@ Event::FetchChallenges => {
             match_view: model.match_state.as_ref()
                 .map(|ms| ms.to_view_model())
                 .unwrap_or_default(),
+            // Placar e ranking ainda não têm API; os dados vivem no core para o
+            // cliente seguir sendo uma camada burra, como manda a arquitetura.
+            contest_name: "REGIONAL SUL-AMERICANA".to_string(),
+            standings_global: crate::mock_data::get_mock_standings_global(),
+            standings_home: crate::mock_data::get_mock_standings_home(),
+            user_standing: crate::mock_data::get_mock_user_standing(),
+            scoreboard: crate::mock_data::get_mock_scoreboard(),
         }
     }
 }

@@ -524,42 +524,54 @@ struct MatchReportView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: Space.md) {
+        VStack(alignment: .leading, spacing: 0) {
             Text("CONTEST ENCERRADO")
-                .font(LognFont.label)
+                .font(.plexMono(11))
+                .tracking(0.14 * 11)
                 .foregroundColor(LognDark.textMuted)
 
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text("\(mv.solvedCount)")
                     .font(.plexSansSemiBold(40))
+                    .tracking(-0.03 * 40)
                     .monospacedDigit()
                     .foregroundColor(LognDark.textPrimary)
 
                 Text("/ \(mv.totalProblems) aceitos · \(mv.penaltyMinutes) pen")
                     .font(.plexMono(15))
                     .monospacedDigit()
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognDark.textMuted)
             }
+            .padding(.top, 8)
 
+            // Fileira A—M em tamanho grande: é o troféu da sessão.
             HStack(spacing: 7) {
                 ForEach(BalloonColor.all, id: \.self) { letter in
                     let accepted = balloonStates.contains { $0.0 == letter && $0.1 }
-                    BalloonShape(
-                        style: accepted
-                            ? .filled(BalloonColor.forLetter(letter))
-                            : .outline(LognDark.lineStrong, 5),
-                        width: 13
-                    )
-                    .accessibilityHidden(false)
+                    VStack(spacing: 4) {
+                        BalloonShape(
+                            style: accepted
+                                ? .filled(BalloonColor.forLetter(letter))
+                                : .outline(LognDark.lineStrong, 4.5),
+                            width: 20,
+                            showString: true
+                        )
+                        Text(String(letter))
+                            .font(.plexMono(8))
+                            .foregroundColor(LognDark.textMuted)
+                    }
+                    .opacity(accepted ? 1 : 0.55)
+                    .accessibilityElement(children: .ignore)
                     .accessibilityLabel("problema \(letter), \(accepted ? "aceito" : "em aberto")")
                 }
                 Spacer(minLength: 0)
             }
+            .padding(.top, 14)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, Space.screenMargin)
-        .padding(.top, Space.xl)
-        .padding(.bottom, Space.lg)
+        .padding(.horizontal, 20)
+        .padding(.top, 22)
+        .padding(.bottom, 18)
         .background(LognDark.canvas)
         .overlay(alignment: .bottom) {
             Rectangle().frame(height: 1).foregroundColor(LognDark.line)
@@ -567,52 +579,64 @@ struct MatchReportView: View {
     }
 
     private var review: some View {
-        let errorCount = Int(mv.maxLives - mv.lives)
+        let errors = mv.errors
 
-        return VStack(alignment: .leading, spacing: Space.sm) {
-            Text(errorCount > 0 ? "REVISÃO · \(errorCount) ERRO\(errorCount == 1 ? "" : "S")" : "REVISÃO")
-                .font(LognFont.label)
+        return VStack(alignment: .leading, spacing: 10) {
+            Text(errors.isEmpty ? "REVISÃO" : "REVISÃO · \(errors.count) ERRO\(errors.count == 1 ? "" : "S")")
+                .font(.plexMono(11))
+                .tracking(0.12 * 11)
                 .foregroundColor(LognDark.textMuted)
-                .padding(.bottom, Space.xs)
 
-            if errorCount > 0 {
-                ErrorReviewCard(
-                    title: mv.trapTitle.isEmpty ? "Resposta incorreta" : mv.trapTitle,
-                    verdict: VerdictChip.Verdict(code: mv.lastVerdict),
-                    explanation: mv.trapExplanation
-                )
-            } else {
+            if errors.isEmpty {
                 // Empty state: uma frase, nunca uma ilustração.
                 Text("Nenhum erro nesta sessão.")
                     .font(LognFont.bodyMedium)
                     .foregroundColor(LognDark.textSecondary)
+            } else {
+                ForEach(Array(errors.enumerated()), id: \.offset) { _, error in
+                    ErrorReviewCard(error: error)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, Space.screenMargin)
-        .padding(.top, Space.lg)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
     }
 }
 
+/// Um card por erro. O veredito é a sigla em mono na tinta do tom — não o chip,
+/// que o documento reserva para contextos onde a moldura ajuda a separar.
 struct ErrorReviewCard: View {
-    let title: String
-    let verdict: VerdictChip.Verdict
-    let explanation: String
+    let error: LogN.MatchError
+
+    private var verdict: VerdictChip.Verdict { VerdictChip.Verdict(code: error.verdict) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top) {
-                Text(title)
+            HStack(alignment: .top, spacing: 10) {
+                Text(error.title)
                     .font(.plexSansSemiBold(15))
                     .foregroundColor(LognDark.textPrimary)
-                Spacer(minLength: Space.sm)
-                VerdictChip(verdict: verdict)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 0)
+
+                Text(verdict.rawValue)
+                    .font(.plexMono(11))
+                    .foregroundColor(verdict.ink)
             }
 
-            if !explanation.isEmpty {
-                Text(explanation)
+            if !error.givenAnswer.isEmpty {
+                Text("sua resposta: \(error.givenAnswer)")
+                    .font(.plexMono(12))
+                    .foregroundColor(LognDark.textMuted)
+                    .padding(.top, 6)
+            }
+
+            if !error.explanation.isEmpty {
+                Text(error.explanation)
                     .font(.plexSans(13))
-                    .lineSpacing(6)
+                    .lineSpacing(13 * 0.5)
                     .foregroundColor(LognDark.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 8)
@@ -623,6 +647,10 @@ struct ErrorReviewCard: View {
         .background(LognDark.surface)
         .cornerRadius(Radius.sm)
         .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "problema \(error.letter), \(error.title), \(verdict.rawValue), \(verdict.meaning)"
+        )
     }
 }
 

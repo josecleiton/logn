@@ -35,9 +35,17 @@ public class CoreWrapper: ObservableObject {
                 totalProblems: 0, solvedCount: 0, balloonStates: [],
                 selectedLine: -1, answerString: "", dropTime: "", dropSpace: "",
                 selectedTags: [], predictedOutput: "", watchVariables: [], watchNote: "",
-                lastVerdict: "", hasTrap: false, trapCategory: "",
+                lastVerdict: "", errors: [], hasTrap: false, trapCategory: "",
                 trapTitle: "", trapExplanation: ""
-            )
+            ),
+            contestName: "",
+            standingsGlobal: [],
+            standingsHome: [],
+            userStanding: StandingRow(
+                rank: 0, handle: "", university: "", solved: 0, penalty: 0,
+                isUser: true, note: ""
+            ),
+            scoreboard: []
         )
         updateViewModel()
         // Auto-login on init
