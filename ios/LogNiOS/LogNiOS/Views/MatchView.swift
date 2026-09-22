@@ -199,6 +199,14 @@ struct MatchView: View {
 
         case "COMPLEXITY_MATCH":
             VStack(alignment: .leading, spacing: 10) {
+                // Estes dois templates viviam só de prosa: a rotina era descrita no
+                // enunciado e o jogador tinha de imaginá-la. Quando o desafio traz
+                // código, mostrar vale mais que descrever — e evita a discussão sobre
+                // qual é o tipo da variável, que é onde a complexidade se decide.
+                if !mv.currentCodeLines.isEmpty {
+                    CodeBlock(lines: mv.currentCodeLines)
+                }
+
                 labelledDrop(
                     "TEMPO",
                     value: mv.dropTime,
@@ -222,6 +230,10 @@ struct MatchView: View {
 
         case "TAG_THE_PATTERN":
             VStack(alignment: .leading, spacing: 18) {
+                if !mv.currentCodeLines.isEmpty {
+                    CodeBlock(lines: mv.currentCodeLines)
+                }
+
                 Text("SELECIONE ATÉ \(mv.maxSelections)")
                     .font(.plexMono(11))
                     .tracking(0.12 * 11)
