@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"os"
 	"time"
 
 	"gopkg.in/gomail.v2"
