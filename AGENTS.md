@@ -5,6 +5,7 @@ Este arquivo contém as diretrizes e regras arquiteturais do projeto **LogN**, s
 ## 📚 Documentação e Referências
 - **Design System:** Localizado em `docs/design_system/`. Contém todas as especificações de UI/UX, cores, semântica e exportações de tokens (`tokens/`).
 - **Decisões Arquiteturais (ADRs):** Localizadas em `docs/architecture/decisions/`. Antes de alterar paradigmas do sistema, leia as ADRs para entender o contexto das decisões passadas.
+- **Teste no simulador:** `docs/testing/roteiro-simulador-ios.md`. Percorre o app inteiro tela a tela por linha de comando — geometria da janela, toque e arrasto sintéticos, atalhos de DEBUG e o que conferir em cada tela. Use antes de dar uma mudança de UI como pronta: os bugs mais caros deste projeto passaram por build, teste unitário e revisão, e só apareceram jogando.
 
 ## 🏗️ Arquitetura do Sistema
 O LogN adota um padrão de **Monorepo** com separação clara de responsabilidades:
