@@ -66,7 +66,7 @@ struct NodeSheetView: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(node.name)
-                    .font(.plexSansSemiBold(19))
+                    .font(.plexSansSemiBold(19, relativeTo: .title3))
                     .foregroundColor(LognDark.textPrimary)
                 Text(stateLabel)
                     .font(.plexMono(11))
@@ -101,10 +101,12 @@ struct NodeSheetView: View {
         }
     }
 
+    /// Tinta do rótulo de estado. A cor da família vive no balão, não no texto:
+    /// a paleta é certificada para 3:1 como forma, não 4.5:1 como glifo.
     private var stateColor: Color {
         switch node.status {
-        case .completed: return topic.color
-        case .active:    return LognDark.accent
+        case .completed: return LognDark.textSecondary
+        case .active:    return LognDark.accentInk
         case .locked:    return LognDark.textMuted
         }
     }
@@ -129,7 +131,7 @@ struct NodeSheetView: View {
                 // Vazio nunca é ilustração: uma frase e pronto.
                 // `textDim` é só forma e placeholder — isto é texto lido.
                 Text(isUpstream ? "ponto de partida" : "fim da trilha")
-                    .font(.plexSans(13.5))
+                    .font(.plexSans(13.5, relativeTo: .footnote))
                     .foregroundColor(LognDark.textMuted)
                     .padding(.top, 10)
             } else {
@@ -141,7 +143,7 @@ struct NodeSheetView: View {
                             size: 17
                         )
                         Text(neighbour.name)
-                            .font(.plexSans(13.5))
+                            .font(.plexSans(13.5, relativeTo: .footnote))
                             .foregroundColor(isUpstream ? LognDark.textPrimary : LognDark.textSecondary)
                             .lineLimit(1)
                     }

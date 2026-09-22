@@ -21,17 +21,17 @@ struct ResetPasswordView: View {
                     .font(.system(size: 48))
                     .foregroundColor(LognDark.infoInk)
                 
-                Text("Reset Password")
+                Text("Redefinir senha")
                     .font(LognFont.headlineMedium)
                     .foregroundColor(LognDark.textPrimary)
                 
-                Text("Choose a new password for\n\(email)")
+                Text("Escolha uma nova senha para\n\(email)")
                     .font(LognFont.bodyLarge)
                     .foregroundColor(LognDark.textSecondary)
                     .multilineTextAlignment(.center)
                 
                 VStack(spacing: Space.md) {
-                    SecureField("New Password (min 8 characters)", text: $password)
+                    SecureField("nova senha · mínimo 8 caracteres", text: $password)
                         .textContentType(.newPassword)
                         .font(LognFont.bodyLarge)
                         .foregroundColor(LognDark.textPrimary)
@@ -43,7 +43,7 @@ struct ResetPasswordView: View {
                                 .stroke(LognDark.lineDim, lineWidth: 1)
                         )
                     
-                    SecureField("Confirm Password", text: $confirmPassword)
+                    SecureField("confirmar senha", text: $confirmPassword)
                         .textContentType(.newPassword)
                         .font(LognFont.bodyLarge)
                         .foregroundColor(LognDark.textPrimary)
@@ -58,12 +58,13 @@ struct ResetPasswordView: View {
                     Button(action: {
                         core.dispatch(event: .resetPassword(email: email, newPassword: password, otp: otp))
                     }) {
-                        Text("Save New Password")
+                        Text("Salvar nova senha")
                             .font(LognFont.titleMedium)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, Space.md)
-                            .background(canSubmit ? LognDark.correct : LognDark.buttonDisabled)
-                            .foregroundColor(LognDark.surface)
+                            // Verde é veredito do juiz, não confirmação de formulário.
+                            .background(canSubmit ? LognDark.accent : LognDark.buttonDisabled)
+                            .foregroundColor(canSubmit ? LognDark.onAccent : LognDark.textDim)
                             .cornerRadius(Radius.sm)
                     }
                     .disabled(!canSubmit || core.viewModel.isAuthenticating)
@@ -71,7 +72,7 @@ struct ResetPasswordView: View {
                 
                 if !core.viewModel.displayStatus.isEmpty {
                     Text(core.viewModel.displayStatus)
-                        .font(LognFont.label)
+                        .lognLabel()
                         .foregroundColor(LognDark.infoInk)
                 }
                 

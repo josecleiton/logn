@@ -131,10 +131,10 @@ struct LoginView: View {
                     }) {
                         Text(core.viewModel.isAuthenticating ? "Carregando..." : "Entrar")
                             .font(.plexSansSemiBold(15))
-                            .foregroundColor(email.isEmpty || password.isEmpty ? LognDark.textDim : LognDark.surface)
+                            .foregroundColor(email.isEmpty || password.isEmpty ? LognDark.textDim : LognDark.onAccent)
                             .frame(maxWidth: .infinity)
                             .frame(height: 52)
-                            .background(email.isEmpty || password.isEmpty ? Color(hex: "1B1D20") : LognDark.accent)
+                            .background(email.isEmpty || password.isEmpty ? LognDark.buttonDisabled : LognDark.accent)
                             .cornerRadius(Radius.sm)
                     }
                     .disabled(email.isEmpty || password.isEmpty || core.viewModel.isAuthenticating)
@@ -184,7 +184,7 @@ struct LoginView: View {
                                 .foregroundColor(LognDark.textPrimary)
                             Text("sem salvar")
                                 .font(.plexMono(10.5))
-                                .foregroundColor(LognDark.textDim)
+                                .foregroundColor(LognDark.textMuted)
                         }
                         .frame(height: 46)
                         .frame(maxWidth: .infinity)
@@ -204,7 +204,7 @@ struct LoginView: View {
                         Text("CORE PRONTO")
                             .font(.plexMono(10))
                             .tracking(0.1 * 10)
-                            .foregroundColor(LognDark.textDim)
+                            .foregroundColor(LognDark.textMuted)
                     }
                     .padding(.top, 4)
                 }

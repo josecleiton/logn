@@ -85,7 +85,7 @@ struct LifeBar: View {
             }
             if showsCounter {
                 Text("\(lives) / \(maxLives)")
-                    .font(LognFont.label)
+                    .lognLabel()
                     .monospacedDigit()
                     .foregroundColor(LognDark.textSecondary)
             }
@@ -268,7 +268,7 @@ struct MatchHeader: View {
                 Text("PROBLEM \(String(letter))")
                     .font(.plexMono(12))
                     .tracking(0.12 * 12)
-                    .foregroundColor(isSolved ? BalloonColor.forLetter(letter) : LognDark.textMuted)
+                    .foregroundColor(LognDark.textMuted)
 
                 Spacer(minLength: 0)
 
@@ -306,9 +306,11 @@ struct MatchHeader: View {
             ForEach(BalloonColor.all, id: \.self) { l in
                 VStack(spacing: 2) {
                     BalloonShape(style: balloonStyle(for: l), width: 13)
+                    // A paleta de balões é certificada para 3:1 como forma, não 4.5:1
+                    // como texto — a letra fica em `textMuted`, a cor vive no balão.
                     Text(String(l))
                         .font(.plexMono(8))
-                        .foregroundColor(isAccepted(l) ? BalloonColor.forLetter(l) : LognDark.textMuted)
+                        .foregroundColor(LognDark.textMuted)
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(balloonDescription(for: l))

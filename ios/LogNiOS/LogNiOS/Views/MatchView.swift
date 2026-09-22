@@ -147,7 +147,7 @@ struct MatchView: View {
                 .foregroundColor(LognDark.textMuted)
 
             Text(mv.currentDescription)
-                .font(.plexSansSemiBold(19))
+                .font(.plexSansSemiBold(19, relativeTo: .title3))
                 .lineSpacing(19 * 0.3)
                 .foregroundColor(LognDark.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -468,7 +468,7 @@ struct MatchVerdictScreen: View {
 
                 if !trapTitle.isEmpty {
                     Text(trapTitle)
-                        .font(.plexSans(15))
+                        .font(.plexSans(15, relativeTo: .callout))
                         .lineSpacing(23 - 15)
                         .foregroundColor(LognDark.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -477,7 +477,7 @@ struct MatchVerdictScreen: View {
 
                 if !trapExplanation.isEmpty {
                     Text(trapExplanation)
-                        .font(.plexSans(14))
+                        .font(.plexSans(14, relativeTo: .subheadline))
                         .lineSpacing(22 - 14)
                         .foregroundColor(LognDark.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -631,7 +631,7 @@ struct ErrorReviewCard: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 10) {
                 Text(error.title)
-                    .font(.plexSansSemiBold(15))
+                    .font(.plexSansSemiBold(15, relativeTo: .callout))
                     .foregroundColor(LognDark.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -651,7 +651,7 @@ struct ErrorReviewCard: View {
 
             if !error.explanation.isEmpty {
                 Text(error.explanation)
-                    .font(.plexSans(13))
+                    .font(.plexSans(13, relativeTo: .footnote))
                     .lineSpacing(13 * 0.5)
                     .foregroundColor(LognDark.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -685,6 +685,8 @@ struct TagChip: View {
                 .foregroundColor(isSelected ? LognDark.accentInk : LognDark.textSecondary)
                 .padding(.horizontal, 13)
                 .padding(.vertical, 11)
+                // Piso de 56pt em partida: um mis-tap custa uma vida.
+                .frame(minHeight: Space.matchTouch)
                 .background(isSelected ? LognDark.accentTint : Color.clear)
                 .cornerRadius(Radius.xs)
                 .overlay(
@@ -707,6 +709,7 @@ struct DraggableChip: View {
             .foregroundColor(LognDark.textPrimary)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
+            .frame(minHeight: Space.matchTouch)
             .background(LognDark.surfaceRaised)
             .cornerRadius(Radius.xs)
             .overlay(RoundedRectangle(cornerRadius: Radius.xs).stroke(LognDark.lineStrong, lineWidth: 1))

@@ -46,7 +46,7 @@ struct RegisterView: View {
                 
                 if !core.viewModel.displayStatus.isEmpty {
                     Text(core.viewModel.displayStatus)
-                        .font(LognFont.label)
+                        .lognLabel()
                         .foregroundColor(LognDark.infoInk)
                 }
                 
@@ -92,10 +92,10 @@ struct RegisterView: View {
             }) {
                 Text(core.viewModel.isAuthenticating ? "Enviando..." : "Enviar Código")
                     .font(.plexSansSemiBold(15))
-                    .foregroundColor(email.contains("@") ? LognDark.surface : LognDark.textDim)
+                    .foregroundColor(email.contains("@") ? LognDark.onAccent : LognDark.textDim)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
-                    .background(email.contains("@") ? LognDark.accent : Color(hex: "1B1D20"))
+                    .background(email.contains("@") ? LognDark.accent : LognDark.buttonDisabled)
                     .cornerRadius(Radius.sm)
             }
             .disabled(!email.contains("@") || core.viewModel.isAuthenticating)
@@ -141,10 +141,10 @@ struct RegisterView: View {
             }) {
                 Text("Criar Conta")
                     .font(.plexSansSemiBold(15))
-                    .foregroundColor(canRegister ? LognDark.surface : LognDark.textDim)
+                    .foregroundColor(canRegister ? LognDark.onAccent : LognDark.textDim)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
-                    .background(canRegister ? LognDark.accent : Color(hex: "1B1D20"))
+                    .background(canRegister ? LognDark.accent : LognDark.buttonDisabled)
                     .cornerRadius(Radius.sm)
             }
             .disabled(!canRegister || core.viewModel.isAuthenticating)
@@ -166,7 +166,7 @@ struct RegisterView: View {
         switch step {
         case .email: return "Para salvar seu progresso"
         case .otp: return "Digite o código enviado para \(email)"
-        case .password: return "Quase lá! Escolha sua senha"
+        case .password: return "Escolha sua senha"
         }
     }
     

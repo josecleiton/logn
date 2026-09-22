@@ -26,7 +26,7 @@ struct SettingsView: View {
                     }
                     Spacer()
                     Text("GERENCIAR CONTA")
-                        .font(LognFont.label)
+                        .lognLabel()
                         .foregroundColor(LognDark.textMuted)
                     Spacer()
                     // Espaçador para equilibrar o chevron
@@ -41,7 +41,7 @@ struct SettingsView: View {
                         // Section: Preferências de App
                         VStack(alignment: .leading, spacing: Space.md) {
                             Text("PREFERÊNCIAS DO APP")
-                                .font(LognFont.label)
+                                .lognLabel()
                                 .foregroundColor(LognDark.textMuted)
                                 .padding(.horizontal, Space.screenMargin)
                             
@@ -64,7 +64,7 @@ struct SettingsView: View {
                         if !core.viewModel.isGuest {
                             VStack(alignment: .leading, spacing: Space.md) {
                                 Text("SUA CONTA")
-                                    .font(LognFont.label)
+                                    .lognLabel()
                                     .foregroundColor(LognDark.textMuted)
                                     .padding(.horizontal, Space.screenMargin)
                                 
@@ -110,7 +110,7 @@ struct SettingsView: View {
                         // Section: Zona de Perigo
                         VStack(alignment: .leading, spacing: Space.md) {
                             Text("ZONA DE PERIGO")
-                                .font(LognFont.label)
+                                .lognLabel()
                                 .foregroundColor(LognDark.warnInk)
                                 .padding(.horizontal, Space.screenMargin)
                             

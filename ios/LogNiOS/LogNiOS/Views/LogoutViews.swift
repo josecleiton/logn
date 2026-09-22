@@ -24,12 +24,12 @@ struct LogoutNoticeView: View {
                         .foregroundColor(LognDark.textMuted)
 
                     Text(farewell)
-                        .font(.plexSansSemiBold(18))
+                        .font(.plexSansSemiBold(18, relativeTo: .headline))
                         .foregroundColor(LognDark.textPrimary)
                         .multilineTextAlignment(.center)
 
                     Text("Seus \(vm.globalXp) XP estão no servidor. Entrar de novo traz tudo de volta.")
-                        .font(.plexSans(14))
+                        .font(.plexSans(14, relativeTo: .subheadline))
                         .lineSpacing(21 - 14)
                         .foregroundColor(LognDark.textSecondary)
                         .multilineTextAlignment(.center)
@@ -43,7 +43,7 @@ struct LogoutNoticeView: View {
                         core.dispatch(event: .dismissLogoutNotice)
                     } label: {
                         Text("Entrar de novo")
-                            .font(.plexSansSemiBold(15))
+                            .font(.plexSansSemiBold(15, relativeTo: .callout))
                             .foregroundColor(LognDark.onAccent)
                             .frame(maxWidth: .infinity, minHeight: 50)
                             .background(LognDark.accent)
@@ -102,13 +102,13 @@ struct CriticalLogoutSheet: View {
                     .foregroundColor(LognDark.warnInk)
 
                 Text("Vamos salvar antes de sair")
-                    .font(.plexSansSemiBold(18))
+                    .font(.plexSansSemiBold(18, relativeTo: .headline))
                     .lineSpacing(18 * 0.3)
                     .foregroundColor(LognDark.textPrimary)
                     .padding(.top, 9)
 
                 Text("Esse progresso ainda não chegou ao servidor. Sincronizar leva alguns segundos e você não perde nada.")
-                    .font(.plexSans(14))
+                    .font(.plexSans(14, relativeTo: .subheadline))
                     .lineSpacing(21 - 14)
                     .foregroundColor(LognDark.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -116,7 +116,7 @@ struct CriticalLogoutSheet: View {
 
                 Button(action: onSyncAndLeave) {
                     Text("Sincronizar e sair")
-                        .font(.plexSansSemiBold(15))
+                        .font(.plexSansSemiBold(15, relativeTo: .callout))
                         .foregroundColor(LognDark.onAccent)
                         .frame(maxWidth: .infinity, minHeight: 50)
                         .background(LognDark.accent)
@@ -138,7 +138,7 @@ struct CriticalLogoutSheet: View {
                 // Texto, não botão: a perda deixa de ser o caminho padrão.
                 Button(action: onDiscard) {
                     Text("Sair e descartar \(xpAtRisk) XP")
-                        .font(.plexSans(13.5))
+                        .font(.plexSans(13.5, relativeTo: .footnote))
                         .foregroundColor(LognDark.wrongInk)
                         .frame(maxWidth: .infinity, minHeight: 42)
                 }
@@ -248,12 +248,12 @@ struct ManageAccountView: View {
                 .foregroundColor(LognDark.wrongInk)
 
             Text("Excluir conta")
-                .font(.plexSansSemiBold(15))
+                .font(.plexSansSemiBold(15, relativeTo: .callout))
                 .foregroundColor(LognDark.textPrimary)
                 .padding(.top, 8)
 
             Text("Apaga o e-mail, os \(core.viewModel.globalXp) XP, as trilhas e o histórico de submissões do servidor. Nada disso volta.")
-                .font(.plexSans(13))
+                .font(.plexSans(13, relativeTo: .footnote))
                 .lineSpacing(19 - 13)
                 .foregroundColor(LognDark.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

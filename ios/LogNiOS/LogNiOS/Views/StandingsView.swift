@@ -85,7 +85,7 @@ struct StandingsView: View {
     private var scoreboardLink: some View {
         NavigationLink(destination: ScoreboardView().environmentObject(core)) {
             Text("VER O TELÃO COMPLETO")
-                .font(LognFont.label)
+                .lognLabel()
                 .foregroundColor(LognDark.accentInk)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, Space.md)

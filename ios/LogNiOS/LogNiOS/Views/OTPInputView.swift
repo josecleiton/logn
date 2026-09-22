@@ -21,11 +21,11 @@ struct OTPInputView: View {
                     .font(.system(size: 48))
                     .foregroundColor(LognDark.infoInk)
                 
-                Text("Verification Code")
+                Text("Código de verificação")
                     .font(LognFont.headlineMedium)
                     .foregroundColor(LognDark.textPrimary)
                 
-                Text("Enter the 6-digit code sent to\n\(email)")
+                Text("Digite o código de 6 dígitos enviado para\n\(email)")
                     .font(LognFont.bodyLarge)
                     .foregroundColor(LognDark.textSecondary)
                     .multilineTextAlignment(.center)
@@ -74,20 +74,21 @@ struct OTPInputView: View {
                         submitOTP()
                     }
                 }) {
-                    Label("Paste from clipboard", systemImage: "doc.on.clipboard")
-                        .font(LognFont.label)
+                    Label("Colar da área de transferência", systemImage: "doc.on.clipboard")
+                        .lognLabel()
                         .foregroundColor(LognDark.infoInk)
                 }
                 .padding(.top, Space.sm)
                 
                 // Verify Button
                 Button(action: { submitOTP() }) {
-                    Text("Verify")
+                    Text("Verificar")
                         .font(LognFont.titleMedium)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, Space.md)
-                        .background(otpCode.count == 6 ? LognDark.correct : LognDark.buttonDisabled)
-                        .foregroundColor(LognDark.surface)
+                        // Verde é veredito do juiz. Ação neutra de formulário usa o acento.
+                        .background(otpCode.count == 6 ? LognDark.accent : LognDark.buttonDisabled)
+                        .foregroundColor(otpCode.count == 6 ? LognDark.onAccent : LognDark.textDim)
                         .cornerRadius(Radius.sm)
                 }
                 .disabled(otpCode.count < 6 || core.viewModel.isAuthenticating)
@@ -96,7 +97,7 @@ struct OTPInputView: View {
                 Button(action: {
                     core.dispatch(event: LogN.Event.requestOtp(email: email, purpose: purpose))
                 }) {
-                    Text("Resend code")
+                    Text("Reenviar código")
                         .font(LognFont.bodyLarge)
                         .foregroundColor(LognDark.textSecondary)
                         .underline()
@@ -104,7 +105,7 @@ struct OTPInputView: View {
                 
                 if !core.viewModel.displayStatus.isEmpty {
                     Text(core.viewModel.displayStatus)
-                        .font(LognFont.label)
+                        .lognLabel()
                         .foregroundColor(core.viewModel.otpVerified ? LognDark.correctInk : LognDark.warnInk)
                         .padding(.top, Space.sm)
                 }

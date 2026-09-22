@@ -170,6 +170,18 @@ enum LognFont {
     static let bodyMedium     = Font.plexSans(15, relativeTo: .callout)
     static let code           = Font.plexMono(15, relativeTo: .body)
     static let label          = Font.plexMonoMedium(11, relativeTo: .caption)
+    static let labelTracking: CGFloat = 0.14 * 11
+}
+
+extension View {
+    /// Estilo `label` completo: Plex Mono 11/500 **com tracking +0.14em**.
+    ///
+    /// Existe porque `Font` não carrega tracking: aplicar só `.font(LognFont.label)`
+    /// entrega o corpo certo e o espacejamento errado, que é o tipo de desvio que
+    /// passa despercebido numa revisão.
+    func lognLabel() -> some View {
+        font(LognFont.label).tracking(LognFont.labelTracking)
+    }
 }
 
 enum Radius { static let xs: CGFloat = 2; static let sm: CGFloat = 4; static let md: CGFloat = 8 }

@@ -43,7 +43,7 @@ struct DryRunPanel: View {
                 if !watchNote.isEmpty {
                     Text(watchNote)
                         .font(.plexMono(10))
-                        .foregroundColor(LognDark.textDim)
+                        .foregroundColor(LognDark.textMuted)
                 }
             }
             .padding(.horizontal, 12)

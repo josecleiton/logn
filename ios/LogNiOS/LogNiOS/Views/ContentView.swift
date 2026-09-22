@@ -230,7 +230,7 @@ struct SkillTreeHostView: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 11))
             Text(Str.Dashboard.sync_guest_warning)
-                .font(LognFont.label)
+                .lognLabel()
         }
         .foregroundColor(LognDark.onAccent)
         .frame(maxWidth: .infinity)
@@ -285,7 +285,7 @@ struct ArenaHostView: View {
                 Spacer()
                 VStack(alignment: .leading, spacing: Space.md) {
                     Text("ARENA")
-                        .font(LognFont.label)
+                        .lognLabel()
                         .foregroundColor(LognDark.textMuted)
 
                     Text("Contests cronometrados entram aqui.")

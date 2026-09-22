@@ -137,7 +137,7 @@ struct ProfileHubView: View {
         HStack(spacing: 11) {
             VStack(alignment: .leading, spacing: 0) {
                 Text("\(vm.globalXp) XP ainda só existem neste aparelho.")
-                    .font(.plexSans(13.5))
+                    .font(.plexSans(13.5, relativeTo: .footnote))
                     .lineSpacing(19 - 13.5)
                     .foregroundColor(LognDark.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -282,7 +282,7 @@ struct ProfileHubView: View {
                 core.dispatch(event: .logout)
             } label: {
                 Text("Já tenho conta")
-                    .font(.plexSans(14))
+                    .font(.plexSans(14, relativeTo: .subheadline))
                     .foregroundColor(LognDark.textSecondary)
                     .frame(maxWidth: .infinity, minHeight: 42)
             }
@@ -321,7 +321,7 @@ struct ProfileHubView: View {
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(LognDark.textMuted)
                     Text("Gerenciar conta")
-                        .font(.plexSans(13.5))
+                        .font(.plexSans(13.5, relativeTo: .footnote))
                         .foregroundColor(LognDark.textSecondary)
                 }
                 .frame(maxWidth: .infinity, minHeight: 40)
@@ -335,13 +335,13 @@ struct ProfileHubView: View {
     private var conversionCard: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Seu progresso vive só neste aparelho")
-                .font(.plexSansSemiBold(16))
+                .font(.plexSansSemiBold(16, relativeTo: .headline))
                 .lineSpacing(16 * 0.3)
                 .foregroundColor(LognDark.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text("Criar conta herda os \(vm.globalXp) XP, os \(vm.balloonsUp) balões e os \(vm.challengesCompleted) desafios que você já resolveu. Reinstalar ou trocar de aparelho sem conta apaga tudo.")
-                .font(.plexSans(13.5))
+                .font(.plexSans(13.5, relativeTo: .footnote))
                 .lineSpacing(20 - 13.5)
                 .foregroundColor(LognDark.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -352,7 +352,7 @@ struct ProfileHubView: View {
                 core.dispatch(event: .logout)
             } label: {
                 Text("Criar conta · salvar progresso")
-                    .font(.plexSansSemiBold(15))
+                    .font(.plexSansSemiBold(15, relativeTo: .callout))
                     .foregroundColor(LognDark.onAccent)
                     .frame(maxWidth: .infinity, minHeight: 50)
                     .background(LognDark.accent)

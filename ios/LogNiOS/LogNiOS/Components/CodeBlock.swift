@@ -192,7 +192,7 @@ enum SyntaxHighlighter {
             switch token.kind {
             case .keyword:     piece.foregroundColor = LognDark.synKeyword
             case .function:    piece.foregroundColor = LognDark.synFunction
-            case .number:      piece.foregroundColor = LognDark.warn
+            case .number:      piece.foregroundColor = LognDark.warnInk
             case .placeholder: piece.foregroundColor = LognDark.accent
             case .plain:       piece.foregroundColor = baseColor
             }
