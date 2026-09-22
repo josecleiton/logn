@@ -40,6 +40,9 @@ enum LognDark {
     static let tintInfo        = Color(hex: "0D1B2B")
     static let synKeyword      = Color(hex: "C792EA")
     static let synFunction     = Color(hex: "82AAFF")
+    /// Acento sobre canvas — fundo de seleção (linha escolhida, tag marcada, nó ativo).
+    /// Literal de `logn-gameplay-exploracoes.dc.html`.
+    static let accentTint      = Color(hex: "241610")
 }
 
 enum LognLight {
@@ -108,14 +111,55 @@ enum Balloon {
     }
 }
 
+/// Nomes PostScript da IBM Plex.
+///
+/// **Cuidado:** eles são abreviados e NÃO batem com o nome do arquivo —
+/// `IBMPlexSans-SemiBold.ttf` se registra como `IBMPlexSans-SmBld`. Pedir o nome do
+/// arquivo faz o SwiftUI cair no fallback do sistema **em silêncio**, sem erro nenhum.
+/// Por isso ninguém chama `Font.custom` direto: use os construtores abaixo.
+enum Plex {
+    static let sans         = "IBMPlexSans"
+    static let sansMedium   = "IBMPlexSans-Medm"
+    static let sansSemiBold = "IBMPlexSans-SmBld"
+    static let mono         = "IBMPlexMono"
+    static let monoMedium   = "IBMPlexMono-Medm"
+    static let monoSemiBold = "IBMPlexMono-SmBld"
+}
+
+extension Font {
+    static func plexSans(_ size: CGFloat, relativeTo style: Font.TextStyle? = nil) -> Font {
+        make(Plex.sans, size, style)
+    }
+    static func plexSansMedium(_ size: CGFloat, relativeTo style: Font.TextStyle? = nil) -> Font {
+        make(Plex.sansMedium, size, style)
+    }
+    static func plexSansSemiBold(_ size: CGFloat, relativeTo style: Font.TextStyle? = nil) -> Font {
+        make(Plex.sansSemiBold, size, style)
+    }
+    static func plexMono(_ size: CGFloat, relativeTo style: Font.TextStyle? = nil) -> Font {
+        make(Plex.mono, size, style)
+    }
+    static func plexMonoMedium(_ size: CGFloat, relativeTo style: Font.TextStyle? = nil) -> Font {
+        make(Plex.monoMedium, size, style)
+    }
+    static func plexMonoSemiBold(_ size: CGFloat, relativeTo style: Font.TextStyle? = nil) -> Font {
+        make(Plex.monoSemiBold, size, style)
+    }
+
+    private static func make(_ name: String, _ size: CGFloat, _ style: Font.TextStyle?) -> Font {
+        if let style { return .custom(name, size: size, relativeTo: style) }
+        return .custom(name, fixedSize: size)
+    }
+}
+
 enum LognFont {
-    static let displayLarge   = Font.custom("IBMPlexSans-SemiBold", size: 40, relativeTo: .largeTitle)
-    static let headlineMedium = Font.custom("IBMPlexSans-SemiBold", size: 24, relativeTo: .title2)
-    static let titleMedium    = Font.custom("IBMPlexSans-SemiBold", size: 19, relativeTo: .headline)
-    static let bodyLarge      = Font.custom("IBMPlexSans-Regular",  size: 17, relativeTo: .body)
-    static let bodyMedium     = Font.custom("IBMPlexSans-Regular",  size: 15, relativeTo: .callout)
-    static let code           = Font.custom("IBMPlexMono-Regular",  size: 15, relativeTo: .body)
-    static let label          = Font.custom("IBMPlexMono-Medium",   size: 11, relativeTo: .caption)
+    static let displayLarge   = Font.plexSansSemiBold(40, relativeTo: .largeTitle)
+    static let headlineMedium = Font.plexSansSemiBold(24, relativeTo: .title2)
+    static let titleMedium    = Font.plexSansSemiBold(19, relativeTo: .headline)
+    static let bodyLarge      = Font.plexSans(17, relativeTo: .body)
+    static let bodyMedium     = Font.plexSans(15, relativeTo: .callout)
+    static let code           = Font.plexMono(15, relativeTo: .body)
+    static let label          = Font.plexMonoMedium(11, relativeTo: .caption)
 }
 
 enum Radius { static let xs: CGFloat = 2; static let sm: CGFloat = 4; static let md: CGFloat = 8 }

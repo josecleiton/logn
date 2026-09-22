@@ -1,173 +1,240 @@
 import SwiftUI
 
-/// Bloco de código com numeração de linhas, syntax highlighting básico,
-/// e suporte a seleção de linha (para SPOT_THE_BUG).
-/// DS: Fundo `canvas`, borda `line`, raio 2dp. Plex Mono 13-15sp, entrelinha 24dp.
-/// Linha realçada: fundo tint + barra lateral 2dp.
+/// Bloco de código com numeração de linha, realce de sintaxe e seleção de linha.
+///
+/// Exploração `3b · Contest`: fundo `surface`, borda `line`, raio 4dp, Plex Mono 12.5sp com
+/// entrelinha 33dp, divisor `rowLine` entre linhas. Linha selecionada ganha fundo `accentTint`
+/// e barra lateral 2dp em `accent`.
+///
+/// Sem scroll horizontal — linhas longas quebram preservando a indentação.
 struct CodeBlock: View {
     let lines: [String]
-    let selectedLine: Int? // 0-indexed
+    /// Índice 0-based da linha selecionada.
+    let selectedLine: Int?
     let onSelectLine: ((Int) -> Void)?
-    let highlightColor: Color // accent para seleção, correct/wrong para feedback
+    /// `accent` durante a escolha; `correct`/`wrong` quando o juiz já respondeu.
+    let highlightColor: Color
+    let fontSize: CGFloat
+    let lineHeight: CGFloat
+    let cornerRadius: CGFloat
+    /// Em SPOT_THE_BUG o bloco ocupa a altura que sobra (o `flex:1` do documento):
+    /// a moldura vai até o CTA em vez de parar na última linha.
+    var fillsHeight: Bool = false
+
+    /// Um bloco tocável precisa de divisor e de linha alta o bastante para ser alvo;
+    /// um bloco só de leitura é mais denso e não se fatia.
+    private var isSelectable: Bool { onSelectLine != nil }
 
     init(
         lines: [String],
         selectedLine: Int? = nil,
         highlightColor: Color = LognDark.accent,
+        fontSize: CGFloat? = nil,
+        lineHeight: CGFloat? = nil,
+        cornerRadius: CGFloat? = nil,
+        fillsHeight: Bool = false,
         onSelectLine: ((Int) -> Void)? = nil
     ) {
         self.lines = lines
         self.selectedLine = selectedLine
         self.highlightColor = highlightColor
         self.onSelectLine = onSelectLine
+        self.fillsHeight = fillsHeight
+
+        let selectable = onSelectLine != nil
+        // SPOT_THE_BUG (3b): 12.5 / 33dp, raio 4. Bloco inerte (DS): 13 / 26dp, raio 2.
+        self.fontSize = fontSize ?? (selectable ? 12.5 : 13)
+        self.lineHeight = lineHeight ?? (selectable ? 33 : 26)
+        self.cornerRadius = cornerRadius ?? (selectable ? Radius.sm : Radius.xs)
     }
 
     var body: some View {
         VStack(spacing: 0) {
             ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
-                HStack(spacing: 0) {
-                    
-
-                    // Número de linha
-                    Text("\(index + 1)")
-                        .font(.custom("IBMPlexMono-Regular", size: 13))
-                        .foregroundColor(index == selectedLine ? highlightColor : LognDark.textMuted)
-                        .frame(width: 32, alignment: .trailing)
-                        .padding(.trailing, 16)
-
-                    // Código com syntax highlighting
-                    SyntaxHighlightedText(code: line)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .padding(.vertical, 8)
-                .frame(minHeight: 34) 
-                .background(index == selectedLine ? highlightColor.opacity(0.14) : .clear)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    onSelectLine?(index)
-                }
-
-                
+                CodeLineRow(
+                    number: index + 1,
+                    code: line,
+                    isSelected: index == selectedLine,
+                    showsDivider: isSelectable && index < lines.count - 1,
+                    highlightColor: highlightColor,
+                    fontSize: fontSize,
+                    lineHeight: lineHeight,
+                    onTap: onSelectLine.map { handler in { handler(index) } }
+                )
+            }
+            if fillsHeight {
+                Spacer(minLength: 0)
             }
         }
-        .padding(.vertical, 8)
-        .background(LognDark.canvas)
-        .cornerRadius(2)
+        .frame(maxHeight: fillsHeight ? .infinity : nil, alignment: .top)
+        .padding(.vertical, isSelectable ? 0 : 8)
+        .background(LognDark.surface)
+        .cornerRadius(cornerRadius)
         .overlay(
-            RoundedRectangle(cornerRadius: 2)
+            RoundedRectangle(cornerRadius: cornerRadius)
                 .stroke(LognDark.line, lineWidth: 1)
         )
     }
 }
 
-/// Syntax highlighting básico para C/C++/pseudocode.
-/// DS: keywords em `synKeyword`, funções em `synFunction`, texto base em `textSecondary`.
-struct SyntaxHighlightedText: View {
+/// Uma linha do bloco. Alvo de toque = a linha inteira; as linhas são contíguas, então
+/// não há área morta entre elas. A escolha só vira resposta no CTA, que nomeia a linha.
+private struct CodeLineRow: View {
+    let number: Int
     let code: String
+    let isSelected: Bool
+    let showsDivider: Bool
+    let highlightColor: Color
+    let fontSize: CGFloat
+    let lineHeight: CGFloat
+    let onTap: (() -> Void)?
 
-    // Palavras-chave comuns
-    private let keywords: Set<String> = [
+    /// A lacuna do FILL_IN_THE_BLANK é uma caixa tracejada, não um texto sublinhado.
+    private var blankRange: Range<String.Index>? { code.range(of: "_____") }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text("\(number)")
+                .font(.plexMono(fontSize))
+                .monospacedDigit()
+                .foregroundColor(isSelected ? highlightColor : LognDark.lineDim)
+                .frame(width: 12, alignment: .trailing)
+
+            if let blankRange {
+                HStack(spacing: 0) {
+                    Text(SyntaxHighlighter.highlight(String(code[code.startIndex..<blankRange.lowerBound])))
+                    blankBox
+                    Text(SyntaxHighlighter.highlight(String(code[blankRange.upperBound...])))
+                }
+                .font(.plexMono(fontSize))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                Text(SyntaxHighlighter.highlight(code, isEmphasised: isSelected))
+                    .font(.plexMono(fontSize))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(minHeight: lineHeight, alignment: .center)
+        .background(background)
+        .overlay(alignment: .leading) { sideBar }
+        .overlay(alignment: .bottom) { divider }
+        .contentShape(Rectangle())
+        .onTapGesture { onTap?() }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    /// Lacuna inline: min-width 74dp, altura 30dp, tracejado `accent`, raio 2dp.
+    private var blankBox: some View {
+        RoundedRectangle(cornerRadius: Radius.xs)
+            .strokeBorder(LognDark.accent, style: StrokeStyle(lineWidth: 1, dash: [3]))
+            .frame(minWidth: 74, maxWidth: 74, minHeight: 30)
+            .padding(.horizontal, 2)
+            .accessibilityLabel("lacuna a preencher")
+    }
+
+    private var background: Color {
+        isSelected ? highlightColor.opacity(0.14) : Color.clear
+    }
+
+    /// Barra lateral 2dp — o estado nunca depende só do fundo.
+    @ViewBuilder
+    private var sideBar: some View {
+        if isSelected {
+            Rectangle().frame(width: 2).foregroundColor(highlightColor)
+        }
+    }
+
+    @ViewBuilder
+    private var divider: some View {
+        if showsDivider {
+            Rectangle().frame(height: 1).foregroundColor(LognDark.rowLine)
+        }
+    }
+}
+
+// MARK: - Realce de sintaxe
+
+/// Realce básico para o pseudocódigo do LogN (sabor C/C++/Kotlin).
+///
+/// DS: keywords em `synKeyword`, chamadas em `synFunction`, números em `warn`,
+/// texto base em `textSecondary`, lacuna em `accent` tracejado.
+enum SyntaxHighlighter {
+
+    private static let keywords: Set<String> = [
+        // C / C++
         "int", "void", "return", "if", "else", "for", "while", "do",
         "break", "continue", "bool", "true", "false", "string",
         "char", "long", "double", "float", "auto", "const",
         "struct", "class", "public", "private", "static",
         "vector", "map", "set", "pair", "queue", "stack",
-        "using", "namespace", "std", "include", "define"
+        "using", "namespace", "std", "include", "define",
+        // Kotlin — o dialeto usado nas telas do documento de gameplay
+        "fun", "val", "var", "in", "is", "when", "null",
     ]
 
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(tokenize(code).enumerated()), id: \.offset) { _, token in
-                switch token.kind {
-                case .keyword:
-                    Text(token.text).foregroundColor(LognDark.synKeyword)
-                case .function:
-                    Text(token.text).foregroundColor(LognDark.synFunction)
-                case .number:
-                    Text(token.text).foregroundColor(LognDark.warn)
-                case .placeholder:
-                    // DS: dashed box for placeholder
-                    Text("____")
-                        .foregroundColor(.clear)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 2)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 2)
-                                .stroke(LognDark.accent, style: StrokeStyle(lineWidth: 1, dash: [3]))
-                        )
-                default:
-                    // Fix spaces rendering correctly in HStack by preserving them
-                    Text(token.text).foregroundColor(LognDark.textSecondary)
-                }
+    static func highlight(_ code: String, isEmphasised: Bool = false) -> AttributedString {
+        var out = AttributedString()
+        let baseColor = isEmphasised ? LognDark.textPrimary : LognDark.textSecondary
+
+        for token in tokenize(code) {
+            var piece = AttributedString(token.text)
+            switch token.kind {
+            case .keyword:     piece.foregroundColor = LognDark.synKeyword
+            case .function:    piece.foregroundColor = LognDark.synFunction
+            case .number:      piece.foregroundColor = LognDark.warn
+            case .placeholder: piece.foregroundColor = LognDark.accent
+            case .plain:       piece.foregroundColor = baseColor
             }
+            out.append(piece)
         }
-        .font(.custom("IBMPlexMono-Regular", size: 13))
+        return out
     }
 
-    private enum TokenKind {
-        case keyword, function, number, placeholder, plain
-    }
+    private enum Kind { case keyword, function, number, placeholder, plain }
+    private struct Token { let text: String; let kind: Kind }
 
-    private struct Token {
-        let text: String
-        let kind: TokenKind
-    }
-
-    private func tokenize(_ code: String) -> [Token] {
+    private static func tokenize(_ code: String) -> [Token] {
         var tokens: [Token] = []
-        var current = ""
         let chars = Array(code)
         var i = 0
 
-        while i < chars.count {
-            let c = chars[i]
+        func isWordChar(_ c: Character) -> Bool { c.isLetter || c.isNumber || c == "_" || c == "#" }
 
-            if c == "_" && i + 4 < chars.count && String(chars[i..<i+5]) == "_____" {
-                if !current.isEmpty { tokens.append(Token(text: current, kind: .plain)); current = "" }
+        while i < chars.count {
+            // Lacuna do FILL_IN_THE_BLANK.
+            if chars[i] == "_", chars[i...].prefix(5).count == 5, String(chars[i..<i+5]) == "_____" {
                 tokens.append(Token(text: "_____", kind: .placeholder))
                 i += 5
                 continue
             }
 
-            if c.isLetter || c == "_" || c == "#" {
-                if !current.isEmpty && !current.last!.isLetter && current.last != "_" {
-                    tokens.append(Token(text: current, kind: .plain))
-                    current = ""
-                }
-                current.append(c)
-            } else if c.isNumber {
-                if !current.isEmpty && !current.last!.isNumber && !current.last!.isLetter {
-                    tokens.append(Token(text: current, kind: .plain))
-                    current = ""
-                }
-                current.append(c)
-            } else {
-                if !current.isEmpty {
-                    // Classify the accumulated word
-                    if keywords.contains(current) {
-                        tokens.append(Token(text: current, kind: .keyword))
-                    } else if c == "(" {
-                        tokens.append(Token(text: current, kind: .function))
-                    } else if current.allSatisfy({ $0.isNumber }) {
-                        tokens.append(Token(text: current, kind: .number))
-                    } else {
-                        tokens.append(Token(text: current, kind: .plain))
-                    }
-                    current = ""
-                }
-                tokens.append(Token(text: String(c), kind: .plain))
-            }
-            i += 1
-        }
+            if isWordChar(chars[i]) {
+                let start = i
+                while i < chars.count, isWordChar(chars[i]) { i += 1 }
+                let word = String(chars[start..<i])
 
-        if !current.isEmpty {
-            if keywords.contains(current) {
-                tokens.append(Token(text: current, kind: .keyword))
-            } else if current.allSatisfy({ $0.isNumber }) {
-                tokens.append(Token(text: current, kind: .number))
-            } else {
-                tokens.append(Token(text: current, kind: .plain))
+                let kind: Kind
+                if keywords.contains(word) {
+                    kind = .keyword
+                } else if word.allSatisfy({ $0.isNumber }) {
+                    kind = .number
+                } else if i < chars.count, chars[i] == "(" {
+                    kind = .function
+                } else {
+                    kind = .plain
+                }
+                tokens.append(Token(text: word, kind: kind))
+                continue
             }
+
+            // Corre a sequência de não-palavra de uma vez, para não fatiar espaços.
+            let start = i
+            while i < chars.count, !isWordChar(chars[i]), chars[i] != "_" { i += 1 }
+            if i == start { i += 1 }
+            tokens.append(Token(text: String(chars[start..<i]), kind: .plain))
         }
 
         return tokens

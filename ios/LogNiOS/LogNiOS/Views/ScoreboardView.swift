@@ -75,7 +75,7 @@ struct ScoreboardView: View {
                             HStack(spacing: 0) {
                                 Text("\(team.rank)")
                                     .frame(width: 40, alignment: .center)
-                                    .font(.custom("IBMPlexMono-Medium", size: 14))
+                                    .font(.plexMonoMedium(14))
                                     .foregroundColor(team.isUser ? LognDark.onAccent : LognDark.textSecondary)
                                 
                                 Text(team.name)
@@ -87,10 +87,10 @@ struct ScoreboardView: View {
                                 
                                 VStack(spacing: 2) {
                                     Text("\(team.solved)")
-                                        .font(.custom("IBMPlexMono-Medium", size: 14))
+                                        .font(.plexMonoMedium(14))
                                         .foregroundColor(team.isUser ? LognDark.onAccent : LognDark.info)
                                     Text("\(team.penalty)")
-                                        .font(.custom("IBMPlexMono-Regular", size: 10))
+                                        .font(.plexMono(10))
                                         .foregroundColor(team.isUser ? LognDark.onAccent.opacity(0.8) : LognDark.textMuted)
                                 }
                                 .frame(width: 70, alignment: .center)
@@ -101,12 +101,12 @@ struct ScoreboardView: View {
                                         if v == "AC" {
                                             Rectangle().fill(LognDark.correct).opacity(0.15)
                                             Text("+")
-                                                .font(.custom("IBMPlexMono-Medium", size: 14))
+                                                .font(.plexMonoMedium(14))
                                                 .foregroundColor(LognDark.correct)
                                         } else if v == "WA" {
                                             Rectangle().fill(LognDark.wrong).opacity(0.15)
                                             Text("-1")
-                                                .font(.custom("IBMPlexMono-Medium", size: 14))
+                                                .font(.plexMonoMedium(14))
                                                 .foregroundColor(LognDark.wrong)
                                         } else {
                                             Text("")

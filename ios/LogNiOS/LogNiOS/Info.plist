@@ -37,6 +37,15 @@
 	<string>${POSTHOG_HOST}</string>
 	<key>LogNTelemetryKey</key>
 	<string>${TELEMETRY_KEY}</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>IBMPlexSans-Regular.ttf</string>
+		<string>IBMPlexSans-Medium.ttf</string>
+		<string>IBMPlexSans-SemiBold.ttf</string>
+		<string>IBMPlexMono-Regular.ttf</string>
+		<string>IBMPlexMono-Medium.ttf</string>
+		<string>IBMPlexMono-SemiBold.ttf</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UIRequiresFullScreen</key>

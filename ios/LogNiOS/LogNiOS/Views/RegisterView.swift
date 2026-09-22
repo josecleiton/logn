@@ -19,52 +19,18 @@ struct RegisterView: View {
             LognDark.canvas.ignoresSafeArea()
             
             VStack(spacing: Space.xl) {
-                // Mini Balloons Row
-                HStack(spacing: 7) {
-                    let colors: [Color] = [
-                        Color(hex: "E4572E"), Color(hex: "F5C451"), Color(hex: "3DB2FF"),
-                        Color(hex: "6BCB77"), Color(hex: "C77DFF"), Color(hex: "FF6FB5"),
-                        Color(hex: "4ECDC4"), Color(hex: "F4A261"), Color(hex: "9BC53D"),
-                        Color(hex: "D64550"), Color(hex: "7C8BFF"), Color(hex: "D8DEE4"),
-                        Color(hex: "00B894")
-                    ]
-                    ForEach(0..<13) { i in
-                        BalloonShape(
-                            color: colors[i],
-                            state: i < 5 ? .filled : .outline,
-                            bodySize: 9,
-                            showString: false,
-                            showHighlight: false
-                        )
-                    }
-                }
-                .opacity(0.5)
-                .padding(.top, 14)
-                
-                // Header
-                HStack(alignment: .center, spacing: 12) {
-                    BalloonShape(
-                        color: LognDark.accent,
-                        state: .filled,
-                        bodySize: 20,
-                        showString: true,
-                        showHighlight: true
-                    )
-                    .frame(width: 34, height: 43)
-                    
-                    Text("LogN")
-                        .font(.system(size: 40, weight: .semibold))
-                        .tracking(-0.04 * 40) // letter-spacing: -0.04em
-                        .foregroundColor(LognDark.textPrimary)
-                }
+                BalloonMarquee()
+                    .padding(.top, 14)
+
+                BrandLockup(fontSize: 40)
                 
                 VStack(spacing: 4) {
                     Text(stepTitle)
-                        .font(.system(size: 24, weight: .semibold))
+                        .font(LognFont.headlineMedium)
                         .foregroundColor(LognDark.textPrimary)
                     
                     Text(stepSubtitle)
-                        .font(.custom("IBMPlexMono-Regular", size: 14))
+                        .font(.plexMono(14))
                         .foregroundColor(LognDark.textSecondary)
                         .multilineTextAlignment(.center)
                 }
@@ -109,7 +75,7 @@ struct RegisterView: View {
                 .textContentType(.emailAddress)
                 .keyboardType(.emailAddress)
                 .autocapitalization(.none)
-                .font(.custom("IBMPlexMono-Regular", size: 14))
+                .font(.plexMono(14))
                 .foregroundColor(LognDark.textPrimary)
                 .padding(.horizontal, 14)
                 .frame(height: 52)
@@ -125,7 +91,7 @@ struct RegisterView: View {
                 step = .otp
             }) {
                 Text(core.viewModel.isAuthenticating ? "Enviando..." : "Enviar Código")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.plexSansSemiBold(15))
                     .foregroundColor(email.contains("@") ? LognDark.surface : LognDark.textDim)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
@@ -146,7 +112,7 @@ struct RegisterView: View {
         VStack(spacing: Space.sm) {
             SecureField("senha (mín 8 chars)", text: $password)
                 .textContentType(.newPassword)
-                .font(.custom("IBMPlexMono-Regular", size: 14))
+                .font(.plexMono(14))
                 .foregroundColor(LognDark.textPrimary)
                 .padding(.horizontal, 14)
                 .frame(height: 52)
@@ -159,7 +125,7 @@ struct RegisterView: View {
             
             SecureField("confirmar senha", text: $confirmPassword)
                 .textContentType(.newPassword)
-                .font(.custom("IBMPlexMono-Regular", size: 14))
+                .font(.plexMono(14))
                 .foregroundColor(LognDark.textPrimary)
                 .padding(.horizontal, 14)
                 .frame(height: 52)
@@ -174,7 +140,7 @@ struct RegisterView: View {
                 core.dispatch(event: .register(email: email, password: password, otp: core.viewModel.otpEmail))
             }) {
                 Text("Criar Conta")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.plexSansSemiBold(15))
                     .foregroundColor(canRegister ? LognDark.surface : LognDark.textDim)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)

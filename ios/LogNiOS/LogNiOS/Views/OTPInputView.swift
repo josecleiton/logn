@@ -36,7 +36,7 @@ struct OTPInputView: View {
                         TextField("", text: $digits[index])
                             .frame(width: 48, height: 56)
                             .multilineTextAlignment(.center)
-                            .font(.system(size: 24, weight: .bold, design: .monospaced))
+                            .font(.plexMonoSemiBold(24))
                             .foregroundColor(LognDark.textPrimary)
                             .background(LognDark.surface)
                             .cornerRadius(Radius.sm)

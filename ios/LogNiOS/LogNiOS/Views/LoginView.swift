@@ -18,59 +18,17 @@ struct LoginView: View {
             LognDark.canvas.ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Mini Balloons Row
-                HStack(spacing: 7) {
-                    let colors: [Color] = [
-                        Color(hex: "E4572E"), // A
-                        Color(hex: "F5C451"), // B
-                        Color(hex: "3DB2FF"), // C
-                        Color(hex: "6BCB77"), // D
-                        Color(hex: "C77DFF"), // E
-                        Color(hex: "FF6FB5"), // F
-                        Color(hex: "4ECDC4"), // G
-                        Color(hex: "F4A261"), // H
-                        Color(hex: "9BC53D"), // I
-                        Color(hex: "D64550"), // J
-                        Color(hex: "7C8BFF"), // K
-                        Color(hex: "D8DEE4"), // L
-                        Color(hex: "00B894")  // M
-                    ]
-                    ForEach(0..<13) { i in
-                        BalloonShape(
-                            color: colors[i],
-                            state: i < 5 ? .filled : .outline,
-                            bodySize: 9,
-                            showString: false,
-                            showHighlight: false
-                        )
-                    }
-                }
-                .opacity(0.5)
-                .padding(.top, 14)
+                BalloonMarquee()
+                    .padding(.top, 14)
                 
                 Spacer().frame(height: 35)
                 
                 // Brand Header
                 VStack(spacing: 12) {
-                    HStack(alignment: .center, spacing: 12) {
-                        // Symbol
-                        BalloonShape(
-                            color: LognDark.accent,
-                            state: .filled,
-                            bodySize: 20,
-                            showString: true,
-                            showHighlight: true
-                        )
-                        .frame(width: 34, height: 43)
-                        
-                        Text("LogN")
-                            .font(.system(size: 40, weight: .semibold))
-                            .tracking(-0.04 * 40) // letter-spacing: -0.04em
-                            .foregroundColor(LognDark.textPrimary)
-                    }
+                    BrandLockup(fontSize: 40)
                     
                     Text("REDUCE THE COMPLEXITY OF YOUR SOLUTIONS")
-                        .font(.custom("IBMPlexMono-Regular", size: 11))
+                        .font(.plexMono(11))
                         .tracking(0.16 * 11) // letter-spacing: 0.16em
                         .foregroundColor(LognDark.textSecondary)
                 }
@@ -86,7 +44,7 @@ struct LoginView: View {
                                 .font(.system(size: 20))
                                 .foregroundColor(.black)
                             Text("Continuar com a Apple")
-                                .font(.system(size: 15, weight: .medium))
+                                .font(.plexSansMedium(15))
                                 .foregroundColor(.black)
                         }
                         .frame(maxWidth: .infinity)
@@ -104,7 +62,7 @@ struct LoginView: View {
                                 .scaledToFit()
                                 .frame(width: 20, height: 20)
                             Text("Continuar com o Google")
-                                .font(.system(size: 15, weight: .medium))
+                                .font(.plexSansMedium(15))
                                 .foregroundColor(LognDark.textPrimary)
                         }
                         .frame(maxWidth: .infinity)
@@ -122,7 +80,7 @@ struct LoginView: View {
                                 .scaledToFit()
                                 .frame(width: 20, height: 20)
                             Text("Continuar com o GitHub")
-                                .font(.system(size: 15, weight: .medium))
+                                .font(.plexSansMedium(15))
                                 .foregroundColor(LognDark.textPrimary)
                         }
                         .frame(maxWidth: .infinity)
@@ -136,7 +94,7 @@ struct LoginView: View {
                     HStack(spacing: 12) {
                         Rectangle().fill(LognDark.line).frame(height: 1)
                         Text("OU COM E-MAIL")
-                            .font(.custom("IBMPlexMono-Regular", size: 10))
+                            .font(.plexMono(10))
                             .tracking(0.14 * 10)
                             .foregroundColor(LognDark.textMuted)
                         Rectangle().fill(LognDark.line).frame(height: 1)
@@ -145,7 +103,7 @@ struct LoginView: View {
                     
                     // E-mail field
                     TextField("", text: $email, prompt: Text("e-mail").foregroundColor(LognDark.textDim))
-                        .font(.custom("IBMPlexMono-Regular", size: 14))
+                        .font(.plexMono(14))
                         .padding(.horizontal, 14)
                         .frame(height: 52)
                         .background(LognDark.surface)
@@ -157,7 +115,7 @@ struct LoginView: View {
                         
                     // Password field
                     SecureField("", text: $password, prompt: Text("senha").foregroundColor(LognDark.textDim))
-                        .font(.custom("IBMPlexMono-Regular", size: 14))
+                        .font(.plexMono(14))
                         .padding(.horizontal, 14)
                         .frame(height: 52)
                         .background(LognDark.surface)
@@ -172,7 +130,7 @@ struct LoginView: View {
                         }
                     }) {
                         Text(core.viewModel.isAuthenticating ? "Carregando..." : "Entrar")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.plexSansSemiBold(15))
                             .foregroundColor(email.isEmpty || password.isEmpty ? LognDark.textDim : LognDark.surface)
                             .frame(maxWidth: .infinity)
                             .frame(height: 52)
@@ -186,7 +144,7 @@ struct LoginView: View {
                     HStack {
                         NavigationLink(destination: RegisterView().environmentObject(core)) {
                             Text("Criar conta")
-                                .font(.system(size: 13.5))
+                                .font(.plexSans(13.5))
                                 .foregroundColor(LognDark.textSecondary)
                         }
                         Spacer()
@@ -196,7 +154,7 @@ struct LoginView: View {
                             }
                         }) {
                             Text("Esqueci a senha")
-                                .font(.system(size: 13.5))
+                                .font(.plexSans(13.5))
                                 .foregroundColor(LognDark.textSecondary)
                         }
                     }
@@ -206,7 +164,7 @@ struct LoginView: View {
                 
                 if !core.viewModel.displayStatus.isEmpty {
                     Text(core.viewModel.displayStatus)
-                        .font(.system(size: 12))
+                        .font(.plexSans(12))
                         .foregroundColor(LognDark.wrong)
                         .padding(.top, 10)
                 }
@@ -222,10 +180,10 @@ struct LoginView: View {
                     }) {
                         VStack(spacing: 2) {
                             Text("Jogar como visitante")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.plexSansSemiBold(14))
                                 .foregroundColor(LognDark.textPrimary)
                             Text("sem salvar")
-                                .font(.custom("IBMPlexMono-Regular", size: 10.5))
+                                .font(.plexMono(10.5))
                                 .foregroundColor(LognDark.textDim)
                         }
                         .frame(height: 46)
@@ -244,7 +202,7 @@ struct LoginView: View {
                             .fill(LognDark.correct) // 3DD68C
                             .frame(width: 6, height: 6)
                         Text("CORE PRONTO")
-                            .font(.custom("IBMPlexMono-Regular", size: 10))
+                            .font(.plexMono(10))
                             .tracking(0.1 * 10)
                             .foregroundColor(LognDark.textDim)
                     }

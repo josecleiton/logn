@@ -35,6 +35,13 @@ targets:
       path: LogNiOS/Info.plist
       properties:
         CFBundleDisplayName: LogN
+        UIAppFonts:
+          - IBMPlexSans-Regular.ttf
+          - IBMPlexSans-Medium.ttf
+          - IBMPlexSans-SemiBold.ttf
+          - IBMPlexMono-Regular.ttf
+          - IBMPlexMono-Medium.ttf
+          - IBMPlexMono-SemiBold.ttf
         UILaunchScreen: {}
         UIRequiresFullScreen: true
         UISupportedInterfaceOrientations:

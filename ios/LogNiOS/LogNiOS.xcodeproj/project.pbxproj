@@ -7,20 +7,29 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00B7B8B14FF0303E46007203 /* TopicIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 799B328B5FC2E3F615F7DB41 /* TopicIcon.swift */; };
 		03E8A94FF11F486216CC13B1 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D4982DBEFBD646B4F5FD62 /* ContentView.swift */; };
+		076F9AE7C7903FF70A671E08 /* IBMPlexSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 752CBF98CC2C51F2EDC3EF62 /* IBMPlexSans-Regular.ttf */; };
 		0B24F964C6C184D6E7B671B8 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3479CDAF7B4103E414DAC3 /* LoginView.swift */; };
 		0D1298B1A212D2DC271F95DA /* LognDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFC409C250EFC18B48AF0021 /* LognDesignSystem.swift */; };
 		113A7C042597592AB08772A7 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 052D097253B21873566489C9 /* InfoPlist.strings */; };
+		1AFD3DC5C3190DE8CF4CA6D9 /* IBMPlexMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C5B7C9FB40CD745774D3BA3F /* IBMPlexMono-Medium.ttf */; };
 		1B3F7CCE389E70B29D4DC659 /* StandingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2638F7B390A01676A65CFD9 /* StandingsView.swift */; };
+		2904B02ECB83300658D107C7 /* IBMPlexSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1BE5DBCB70C667BEFA031ED7 /* IBMPlexSans-SemiBold.ttf */; };
+		2C16E5D79E26EC653658C71B /* IBMPlexSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E30F815E4AC253B06790AAE8 /* IBMPlexSans-Medium.ttf */; };
 		2F7173374C70B98EECB2E04A /* Strings.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF70445FC4588B69074A5843 /* Strings.swift */; };
 		367A11F1AABAF76BBEC5269D /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4DB2DC21E3986A71469A3AA /* RegisterView.swift */; };
+		3C863FFB4FF7194F0493F4FE /* DryRunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26D31A9B206FE1CD0C80B3F9 /* DryRunView.swift */; };
 		567C1D15944B685B8204F3ED /* ResetPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B2B5EA563D4C0A69035BF3 /* ResetPasswordView.swift */; };
 		5B28C2226E5C4917A2F15B4E /* CoreWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C915F676CBB9F04656C255 /* CoreWrapper.swift */; };
 		67E43BEE172F2659EA187C3B /* ScoreboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50E1734BB756CB9066ECEC94 /* ScoreboardView.swift */; };
+		7447A744F19419838DA5F8C5 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F111AFD2776AF5D50D29BF33 /* IBMPlexMono-SemiBold.ttf */; };
 		7EC7FCEE24F8C2D1213036A7 /* ProfileHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8ACFF3284CD5B7DC2095483 /* ProfileHubView.swift */; };
+		86F460E1EFCA8C55032ECD9D /* LognTopics.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06AADFA16250D1A08A15AFE /* LognTopics.swift */; };
 		92CE64A8F39A3BACBDFA7E2D /* ViewExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DA78EDFD4661B922FE1E389 /* ViewExtensions.swift */; };
 		936B6709633ADF906CB1E02F /* LogNiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80804A0792E45E01C5BE3D0B /* LogNiOSApp.swift */; };
 		9B73D9EDD483D4291A531CE4 /* CodeBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8EF036E181D0306E94D226 /* CodeBlock.swift */; };
+		A7FE0DF6B468F1DB4208B401 /* SVGPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB03B22842CF2E79E83561F8 /* SVGPath.swift */; };
 		AF4EF398751D584030B9F840 /* NodeSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9476B1DFF7AE686900CF32CD /* NodeSheetView.swift */; };
 		B118212843B83D5CB04DFAE9 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */; };
 		B25F010AFF41794BFC439A02 /* LogNCoreFFI in Frameworks */ = {isa = PBXBuildFile; productRef = 13135BDC590A9C01156FE7B3 /* LogNCoreFFI */; };
@@ -28,6 +37,7 @@
 		C1C10995476705C547B2E3F3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F486C5E97DFDCE2C80818FB7 /* Assets.xcassets */; };
 		C878D3C2E023BF3402DA39A2 /* SkillTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CEDA9E40AF59358F4F00143 /* SkillTreeView.swift */; };
 		CF0A1EB4CE4E50CC539A134C /* App in Frameworks */ = {isa = PBXBuildFile; productRef = DD2764DB02225A48407F7CA7 /* App */; };
+		E51C5DD63A8796B58694D004 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2A37D7575A08B4C92B940D53 /* IBMPlexMono-Regular.ttf */; };
 		E618B59B0A839990BDA626EA /* MatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BCAD3D7D269E2D03F55181F /* MatchView.swift */; };
 		E73189436712870098DA5F1C /* LognComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C234F5143F4791D66EF36E0 /* LognComponents.swift */; };
 		EA1F6042A86DDF791B09AB41 /* StringsMappers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D238C31B32D323BF620359D /* StringsMappers.swift */; };
@@ -37,7 +47,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1BE5DBCB70C667BEFA031ED7 /* IBMPlexSans-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-SemiBold.ttf"; sourceTree = "<group>"; };
+		26D31A9B206FE1CD0C80B3F9 /* DryRunView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DryRunView.swift; sourceTree = "<group>"; };
 		28351D90B42E5417571B1A37 /* pt-BR */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "pt-BR"; path = "pt-BR.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		2A37D7575A08B4C92B940D53 /* IBMPlexMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Regular.ttf"; sourceTree = "<group>"; };
 		2CEDA9E40AF59358F4F00143 /* SkillTreeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillTreeView.swift; sourceTree = "<group>"; };
 		36CC53FEE4EF414C2FFE69AB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		39639030FF1ABF8B56AB4F26 /* LogNCoreFFI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LogNCoreFFI; path = ../LogNCoreFFI; sourceTree = SOURCE_ROOT; };
@@ -47,7 +60,9 @@
 		48659346006694BF96682CBE /* OTPInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTPInputView.swift; sourceTree = "<group>"; };
 		50E1734BB756CB9066ECEC94 /* ScoreboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoreboardView.swift; sourceTree = "<group>"; };
 		72C915F676CBB9F04656C255 /* CoreWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreWrapper.swift; sourceTree = "<group>"; };
+		752CBF98CC2C51F2EDC3EF62 /* IBMPlexSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Regular.ttf"; sourceTree = "<group>"; };
 		7670411FB487991006E4DE02 /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
+		799B328B5FC2E3F615F7DB41 /* TopicIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopicIcon.swift; sourceTree = "<group>"; };
 		7B898D7AB3E5B637BC526B1A /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		80804A0792E45E01C5BE3D0B /* LogNiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogNiOSApp.swift; sourceTree = "<group>"; };
 		8BCAD3D7D269E2D03F55181F /* MatchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchView.swift; sourceTree = "<group>"; };
@@ -61,10 +76,15 @@
 		C2638F7B390A01676A65CFD9 /* StandingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsView.swift; sourceTree = "<group>"; };
 		C4DB2DC21E3986A71469A3AA /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
 		C5B2B5EA563D4C0A69035BF3 /* ResetPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetPasswordView.swift; sourceTree = "<group>"; };
+		C5B7C9FB40CD745774D3BA3F /* IBMPlexMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Medium.ttf"; sourceTree = "<group>"; };
 		CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		D06AADFA16250D1A08A15AFE /* LognTopics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LognTopics.swift; sourceTree = "<group>"; };
 		DDFF15C0C673EF7D549B36D0 /* App */ = {isa = PBXFileReference; lastKnownFileType = folder; name = App; path = ../SharedCore/App; sourceTree = SOURCE_ROOT; };
 		DF70445FC4588B69074A5843 /* Strings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Strings.swift; sourceTree = "<group>"; };
 		DFC409C250EFC18B48AF0021 /* LognDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LognDesignSystem.swift; sourceTree = "<group>"; };
+		E30F815E4AC253B06790AAE8 /* IBMPlexSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Medium.ttf"; sourceTree = "<group>"; };
+		EB03B22842CF2E79E83561F8 /* SVGPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SVGPath.swift; sourceTree = "<group>"; };
+		F111AFD2776AF5D50D29BF33 /* IBMPlexMono-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-SemiBold.ttf"; sourceTree = "<group>"; };
 		F486C5E97DFDCE2C80818FB7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F8ACFF3284CD5B7DC2095483 /* ProfileHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileHubView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -118,6 +138,14 @@
 			path = Core;
 			sourceTree = "<group>";
 		};
+		58280166579ADDC720965769 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				680BBE13756474F7C039A97A /* Fonts */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		5EF88F208A24C6BABF30F9A7 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -126,12 +154,27 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		680BBE13756474F7C039A97A /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				C5B7C9FB40CD745774D3BA3F /* IBMPlexMono-Medium.ttf */,
+				2A37D7575A08B4C92B940D53 /* IBMPlexMono-Regular.ttf */,
+				F111AFD2776AF5D50D29BF33 /* IBMPlexMono-SemiBold.ttf */,
+				E30F815E4AC253B06790AAE8 /* IBMPlexSans-Medium.ttf */,
+				752CBF98CC2C51F2EDC3EF62 /* IBMPlexSans-Regular.ttf */,
+				1BE5DBCB70C667BEFA031ED7 /* IBMPlexSans-SemiBold.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
 		856EBED95C7BAADCCD7D633E /* Components */ = {
 			isa = PBXGroup;
 			children = (
 				911B685B7906CC9801E098A1 /* BalloonShape.swift */,
 				9D8EF036E181D0306E94D226 /* CodeBlock.swift */,
 				3C234F5143F4791D66EF36E0 /* LognComponents.swift */,
+				EB03B22842CF2E79E83561F8 /* SVGPath.swift */,
+				799B328B5FC2E3F615F7DB41 /* TopicIcon.swift */,
 				8DA78EDFD4661B922FE1E389 /* ViewExtensions.swift */,
 			);
 			path = Components;
@@ -141,6 +184,7 @@
 			isa = PBXGroup;
 			children = (
 				42D4982DBEFBD646B4F5FD62 /* ContentView.swift */,
+				26D31A9B206FE1CD0C80B3F9 /* DryRunView.swift */,
 				3C3479CDAF7B4103E414DAC3 /* LoginView.swift */,
 				8BCAD3D7D269E2D03F55181F /* MatchView.swift */,
 				9476B1DFF7AE686900CF32CD /* NodeSheetView.swift */,
@@ -165,6 +209,7 @@
 				856EBED95C7BAADCCD7D633E /* Components */,
 				4DA05EDD2970433B4DA72D53 /* Core */,
 				E4C57CC21C8B47F8AE6859FE /* DesignSystem */,
+				58280166579ADDC720965769 /* Resources */,
 				8A706ECEAA021B704E9D9935 /* Views */,
 			);
 			path = LogNiOS;
@@ -184,6 +229,7 @@
 			children = (
 				CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */,
 				DFC409C250EFC18B48AF0021 /* LognDesignSystem.swift */,
+				D06AADFA16250D1A08A15AFE /* LognTopics.swift */,
 				DF70445FC4588B69074A5843 /* Strings.swift */,
 				9D238C31B32D323BF620359D /* StringsMappers.swift */,
 				1562414396442F18EFB11F52 /* InfoPlist */,
@@ -261,6 +307,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				C1C10995476705C547B2E3F3 /* Assets.xcassets in Resources */,
+				1AFD3DC5C3190DE8CF4CA6D9 /* IBMPlexMono-Medium.ttf in Resources */,
+				E51C5DD63A8796B58694D004 /* IBMPlexMono-Regular.ttf in Resources */,
+				7447A744F19419838DA5F8C5 /* IBMPlexMono-SemiBold.ttf in Resources */,
+				2C16E5D79E26EC653658C71B /* IBMPlexSans-Medium.ttf in Resources */,
+				076F9AE7C7903FF70A671E08 /* IBMPlexSans-Regular.ttf in Resources */,
+				2904B02ECB83300658D107C7 /* IBMPlexSans-SemiBold.ttf in Resources */,
 				113A7C042597592AB08772A7 /* InfoPlist.strings in Resources */,
 				B118212843B83D5CB04DFAE9 /* Localizable.xcstrings in Resources */,
 			);
@@ -277,22 +329,26 @@
 				9B73D9EDD483D4291A531CE4 /* CodeBlock.swift in Sources */,
 				03E8A94FF11F486216CC13B1 /* ContentView.swift in Sources */,
 				5B28C2226E5C4917A2F15B4E /* CoreWrapper.swift in Sources */,
+				3C863FFB4FF7194F0493F4FE /* DryRunView.swift in Sources */,
 				936B6709633ADF906CB1E02F /* LogNiOSApp.swift in Sources */,
 				0B24F964C6C184D6E7B671B8 /* LoginView.swift in Sources */,
 				E73189436712870098DA5F1C /* LognComponents.swift in Sources */,
 				0D1298B1A212D2DC271F95DA /* LognDesignSystem.swift in Sources */,
+				86F460E1EFCA8C55032ECD9D /* LognTopics.swift in Sources */,
 				E618B59B0A839990BDA626EA /* MatchView.swift in Sources */,
 				AF4EF398751D584030B9F840 /* NodeSheetView.swift in Sources */,
 				F78BA7613AF912F27820D2ED /* OTPInputView.swift in Sources */,
 				7EC7FCEE24F8C2D1213036A7 /* ProfileHubView.swift in Sources */,
 				367A11F1AABAF76BBEC5269D /* RegisterView.swift in Sources */,
 				567C1D15944B685B8204F3ED /* ResetPasswordView.swift in Sources */,
+				A7FE0DF6B468F1DB4208B401 /* SVGPath.swift in Sources */,
 				67E43BEE172F2659EA187C3B /* ScoreboardView.swift in Sources */,
 				BDCD280587BB96E31FE8B1FA /* SettingsView.swift in Sources */,
 				C878D3C2E023BF3402DA39A2 /* SkillTreeView.swift in Sources */,
 				1B3F7CCE389E70B29D4DC659 /* StandingsView.swift in Sources */,
 				2F7173374C70B98EECB2E04A /* Strings.swift in Sources */,
 				EA1F6042A86DDF791B09AB41 /* StringsMappers.swift in Sources */,
+				00B7B8B14FF0303E46007203 /* TopicIcon.swift in Sources */,
 				92CE64A8F39A3BACBDFA7E2D /* ViewExtensions.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

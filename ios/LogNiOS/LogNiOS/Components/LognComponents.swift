@@ -2,24 +2,20 @@ import SwiftUI
 
 // MARK: - LognButton
 
-/// Botão padronizado do LogN Design System.
-/// Altura 52dp, largura total, raio 4dp. Um primário por tela.
+/// Botão do LogN. Altura 52dp, largura total, raio 4dp. Um primário por tela —
+/// sempre o que avança a partida.
 struct LognButton: View {
     let title: String
     let variant: Variant
     let action: () -> Void
     var isDisabled: Bool = false
 
-    enum Variant {
-        case primary
-        case secondary
-        case ghost
-    }
+    enum Variant { case primary, secondary, ghost }
 
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.custom("IBMPlexSans-SemiBold", size: 15))
+                .font(.custom(fontName, size: 15))
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
                 .foregroundColor(foregroundColor)
@@ -32,53 +28,77 @@ struct LognButton: View {
                         : nil
                 )
         }
+        .buttonStyle(PressSinkStyle())
         .disabled(isDisabled)
+    }
+
+    /// Primário é SemiBold; secundário e ghost são Medium.
+    private var fontName: String {
+        variant == .primary ? Plex.sansSemiBold : Plex.sansMedium
     }
 
     private var foregroundColor: Color {
         if isDisabled { return LognDark.textDim }
         switch variant {
-        case .primary: return LognDark.onAccent
+        case .primary:   return LognDark.onAccent
         case .secondary: return LognDark.textPrimary
-        case .ghost: return LognDark.textSecondary
+        case .ghost:     return LognDark.textSecondary
         }
     }
 
     private var backgroundColor: Color {
         if isDisabled { return LognDark.buttonDisabled }
         switch variant {
-        case .primary: return LognDark.accent
-        case .secondary: return .clear
-        case .ghost: return .clear
+        case .primary:             return LognDark.accent
+        case .secondary, .ghost:   return .clear
         }
+    }
+}
+
+/// Pressed = translateY(1dp). Sem sombra, sem escala — hierarquia vem de linha e luminância.
+struct PressSinkStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .offset(y: configuration.isPressed ? 1 : 0)
     }
 }
 
 // MARK: - LifeBar
 
-/// 3 corações 20sp. Cheio = `wrong`; vazio = `heartOff`. Contador mono ao lado.
+/// 3 corações. Cheio = `wrong`; vazio = `heartOff`.
+///
+/// O contador mono ao lado é o fallback exigido pelo DS — a barra nunca comunica só por
+/// cor. Em partida o header usa a forma compacta (`showsCounter: false`), que é a do
+/// documento de gameplay, e carrega a mesma informação no rótulo de acessibilidade.
 struct LifeBar: View {
-    let lives: Int // 0-3
-    let maxLives: Int = 3
+    let lives: Int
+    var maxLives: Int = 3
+    var showsCounter: Bool = true
+    var heartSize: CGFloat = 20
 
     var body: some View {
         HStack(spacing: 4) {
             ForEach(0..<maxLives, id: \.self) { i in
                 Image(systemName: i < lives ? "heart.fill" : "heart")
-                    .font(.system(size: 20))
+                    .font(.system(size: heartSize))
                     .foregroundColor(i < lives ? LognDark.wrong : LognDark.heartOff)
             }
-            Text("\(lives) / \(maxLives)")
-                .font(LognFont.label)
-                .foregroundColor(LognDark.textSecondary)
+            if showsCounter {
+                Text("\(lives) / \(maxLives)")
+                    .font(LognFont.label)
+                    .monospacedDigit()
+                    .foregroundColor(LognDark.textSecondary)
+            }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(lives) de \(maxLives) vidas")
     }
 }
 
 // MARK: - ContestClock
 
-/// Relógio do contest. Plex Mono, tabular-nums.
-/// 3 estados: normal, congelado (última hora), crítico (< 15s).
+/// Relógio do contest. Plex Mono, tabular-nums obrigatório.
+/// Três estados: normal, congelado (última hora) e questão crítica (<15s).
 struct ContestClock: View {
     let remainingSeconds: Int
     let isFrozen: Bool
@@ -87,38 +107,34 @@ struct ContestClock: View {
         if isCritical {
             HStack(alignment: .lastTextBaseline, spacing: 10) {
                 Text(formattedTime)
-                    .font(.custom("IBMPlexMono-Medium", size: 28))
-                    .fontWeight(.semibold)
+                    .font(.plexMonoSemiBold(28))
                     .monospacedDigit()
                     .foregroundColor(LognDark.wrong)
-                
+
                 Text("RELÓGIO DA QUESTÃO · CRÍTICO")
-                    .font(.custom("IBMPlexMono-Regular", size: 11))
-                    .tracking(1.1)
-                    .textCase(.uppercase)
+                    .font(.plexMono(11))
+                    .tracking(0.1 * 11)
                     .foregroundColor(LognDark.wrong)
             }
         } else {
             VStack(alignment: .leading, spacing: 6) {
                 Text(isFrozen ? "PLACAR CONGELADO" : "TEMPO RESTANTE")
-                    .font(.custom("IBMPlexMono-Regular", size: 10.5))
-                    .tracking(1.6)
-                    .textCase(.uppercase)
+                    .font(.plexMono(10.5))
+                    .tracking(0.16 * 10.5)
                     .foregroundColor(isFrozen ? LognDark.warn : LognDark.textMuted)
 
                 Text(formattedTime)
-                    .font(.custom("IBMPlexMono-Medium", size: 38))
-                    .fontWeight(.medium)
-                    .tracking(-0.02 * 38)
+                    .font(.plexMonoMedium(38))
+                    .tracking(-0.01 * 38)
                     .monospacedDigit()
                     .foregroundColor(isFrozen ? LognDark.warn : LognDark.textPrimary)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 16)
             .background(isFrozen ? LognDark.tintWarn : LognDark.canvas)
-            .cornerRadius(4)
+            .cornerRadius(Radius.sm)
             .overlay(
-                RoundedRectangle(cornerRadius: 4)
+                RoundedRectangle(cornerRadius: Radius.sm)
                     .stroke(isFrozen ? LognDark.warn : LognDark.line, lineWidth: 1)
             )
         }
@@ -126,23 +142,20 @@ struct ContestClock: View {
 
     private var isCritical: Bool { remainingSeconds <= 15 && !isFrozen }
 
-    private var formattedTime: String {
-        if remainingSeconds > 3600 {
-            let h = remainingSeconds / 3600
-            let m = (remainingSeconds % 3600) / 60
-            let s = remainingSeconds % 60
-            return String(format: "%02d:%02d:%02d", h, m, s)
-        } else {
-            let m = remainingSeconds / 60
-            let s = remainingSeconds % 60
-            return String(format: "%02d:%02d", m, s)
+    private var formattedTime: String { ContestClock.format(remainingSeconds) }
+
+    static func format(_ seconds: Int) -> String {
+        if seconds >= 3600 {
+            return String(format: "%02d:%02d:%02d", seconds / 3600, (seconds % 3600) / 60, seconds % 60)
         }
+        return String(format: "%02d:%02d", seconds / 60, seconds % 60)
     }
 }
 
 // MARK: - VerdictChip
 
 /// Chip de veredito do juiz. Altura 26dp, min-width 46dp, raio 2dp.
+/// A sigla é a do juiz, sem tradução.
 struct VerdictChip: View {
     let verdict: Verdict
 
@@ -155,139 +168,181 @@ struct VerdictChip: View {
         case ce  = "CE"
         case pe  = "PE"
         case judging = "…"
+
+        init(code: String) {
+            self = Verdict(rawValue: code.uppercased()) ?? .judging
+        }
+
+        /// O texto em português fica ao lado, nunca no lugar da sigla.
+        var meaning: String {
+            switch self {
+            case .ac:  return "Accepted"
+            case .wa:  return "Wrong Answer"
+            case .tle: return "Time Limit Exceeded"
+            case .mle: return "Memory Limit"
+            case .re:  return "Runtime Error"
+            case .ce:  return "Compile Error"
+            case .pe:  return "Presentation Error"
+            case .judging: return "Judging"
+            }
+        }
+
+        var tone: Color {
+            switch self {
+            case .ac:                   return LognDark.correct
+            case .wa, .tle, .mle, .re:  return LognDark.wrong
+            case .ce, .pe:              return LognDark.warn
+            case .judging:              return LognDark.textMuted
+            }
+        }
+
+        var tint: Color {
+            switch self {
+            case .ac:                   return LognDark.tintOk
+            case .wa, .tle, .mle, .re:  return LognDark.tintErr
+            case .ce, .pe:              return LognDark.tintWarn
+            case .judging:              return .clear
+            }
+        }
     }
 
     var body: some View {
         Text(verdict.rawValue)
-            .font(.custom("IBMPlexMono-SemiBold", size: 12))
-            .tracking(0.72)
-            .foregroundColor(inkColor)
+            .font(.plexMonoSemiBold(12))
+            .tracking(0.06 * 12)
+            .foregroundColor(verdict.tone)
             .padding(.horizontal, 8)
             .frame(minWidth: 46, minHeight: 26)
-            .background(tintColor)
+            .background(verdict.tint)
+            .cornerRadius(Radius.xs)
             .overlay(
-                RoundedRectangle(cornerRadius: 2)
-                    .stroke(borderColor, lineWidth: 1)
+                RoundedRectangle(cornerRadius: Radius.xs)
+                    .stroke(verdict == .judging ? LognDark.lineDim : verdict.tone, lineWidth: 1)
             )
-            .cornerRadius(2)
-    }
-
-    private var inkColor: Color {
-        switch verdict {
-        case .ac: return LognDark.correct
-        case .wa, .tle, .mle, .re: return LognDark.wrong
-        case .ce, .pe: return LognDark.warn
-        case .judging: return LognDark.textMuted
-        }
-    }
-
-    private var borderColor: Color {
-        switch verdict {
-        case .ac: return LognDark.correct
-        case .wa, .tle, .mle, .re: return LognDark.wrong
-        case .ce, .pe: return LognDark.warn
-        case .judging: return LognDark.lineDim
-        }
-    }
-
-    private var tintColor: Color {
-        switch verdict {
-        case .ac: return LognDark.tintOk
-        case .wa, .tle, .mle, .re: return LognDark.tintErr
-        case .ce, .pe: return LognDark.tintWarn
-        case .judging: return .clear
-        }
+            .accessibilityLabel("\(verdict.rawValue), \(verdict.meaning)")
     }
 }
 
 // MARK: - MatchHeader
 
-/// Header fixo de partida (84dp). Rótulo + ContestClock + LifeBar + fileira de balões.
+/// Header fixo de partida — exploração `3b · Contest`.
+///
+/// O placar fica sempre à vista: problema atual, relógio, vidas e a fileira A—M inteira.
+/// Fundo `canvas`, divisor inferior `line`, sem card e sem raio: ele é a moldura da tela,
+/// não um elemento sobre ela.
 struct MatchHeader: View {
-    let sessionLabel: String
+    let letter: Character
     let remainingSeconds: Int
     let isFrozen: Bool
     let lives: Int
-    let balloonStates: [(Character, Bool)] // (letter, isAccepted)
-
-    private var formattedTime: String {
-        let m = remainingSeconds / 60
-        let s = remainingSeconds % 60
-        return String(format: "%02d:%02d", m, s)
-    }
+    let maxLives: Int
+    /// (letra, aceito) para as 13 posições do contest.
+    let balloonStates: [(Character, Bool)]
+    /// Quando falso, o balão do problema atual aparece murcho — usado na tela de erro.
+    var currentIsAlive: Bool = true
+    var showsBalloonRow: Bool = true
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Text(sessionLabel)
-                    .font(LognFont.label)
-                    .foregroundColor(LognDark.textMuted)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                BalloonShape(
+                    style: currentIsAlive
+                        ? .filled(BalloonColor.forLetter(letter))
+                        : .outline(LognDark.lineStrong, 4),
+                    width: 14,
+                    showString: true
+                )
 
-                Spacer()
+                Text("PROBLEM \(String(letter))")
+                    .font(.plexMono(12))
+                    .tracking(0.12 * 12)
+                    .foregroundColor(isSolved ? BalloonColor.forLetter(letter) : LognDark.textMuted)
 
-                // Small inline timer for MatchHeader
-                Text(formattedTime)
-                    .font(.custom("IBMPlexMono-Medium", size: 13))
-                    .foregroundColor(remainingSeconds <= 15 ? LognDark.wrong : (isFrozen ? LognDark.warn : LognDark.textPrimary))
+                Spacer(minLength: 0)
+
+                Text(ContestClock.format(remainingSeconds))
+                    .font(.plexMonoMedium(15))
                     .monospacedDigit()
+                    .foregroundColor(clockColor)
+                    .accessibilityLabel("tempo restante \(remainingSeconds) segundos")
 
-                Spacer()
-
-                LifeBar(lives: lives)
+                LifeBar(lives: lives, maxLives: maxLives, showsCounter: false, heartSize: 14)
+                    .padding(.leading, 12)
             }
 
-            // Fileira de balões A—M
-            HStack(spacing: 7) {
-                let letters: [Character] = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
-                ForEach(letters, id: \.self) { letter in
-                    let isAccepted = balloonStates.contains(where: { $0.0 == letter && $0.1 == true })
-                    VStack(spacing: 2) {
-                        BalloonShape(
-                            color: BalloonColor.forLetter(letter),
-                            state: isAccepted ? .filled : .outline,
-                            bodySize: 13,
-                            showString: true,
-                            showHighlight: false
-                        )
-                        .opacity(isAccepted ? 1.0 : 0.55)
-                        
-                        Text(String(letter))
-                            .font(.custom("IBMPlexMono-SemiBold", size: 8))
-                            .foregroundColor(isAccepted ? BalloonColor.forLetter(letter) : LognDark.textMuted)
-                    }
-                }
+            if showsBalloonRow {
+                balloonRow
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .frame(height: 84)
+        .padding(.horizontal, 18)
+        .padding(.top, 16)
+        .padding(.bottom, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(LognDark.canvas)
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(LognDark.line, lineWidth: 1)
-        )
-        .padding(.horizontal, Space.screenMargin)
-        .padding(.top, 10)
+        .overlay(alignment: .bottom) {
+            Rectangle().frame(height: 1).foregroundColor(LognDark.line)
+        }
+    }
+
+    /// A fileira A—M: endereço de cada problema do contest, sempre na mesma cor.
+    private var balloonRow: some View {
+        HStack(spacing: 7) {
+            ForEach(BalloonColor.all, id: \.self) { l in
+                BalloonShape(style: balloonStyle(for: l), width: 13)
+                    .accessibilityHidden(false)
+                    .accessibilityLabel(balloonDescription(for: l))
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func balloonStyle(for l: Character) -> BalloonShape.Style {
+        if isAccepted(l) { return .filled(BalloonColor.forLetter(l)) }
+        if l == letter   { return .outline(BalloonColor.forLetter(l), 5) }
+        return .outline(LognDark.lineStrong, 5)
+    }
+
+    /// O balão nunca comunica só por cor — a letra e o estado vão no rótulo.
+    private func balloonDescription(for l: Character) -> String {
+        if isAccepted(l) { return "problema \(l), aceito" }
+        if l == letter   { return "problema \(l), em resolução" }
+        return "problema \(l), em aberto"
+    }
+
+    private func isAccepted(_ l: Character) -> Bool {
+        balloonStates.contains { $0.0 == l && $0.1 }
+    }
+
+    private var isSolved: Bool { isAccepted(letter) }
+
+    private var clockColor: Color {
+        if remainingSeconds <= 15 { return LognDark.wrong }
+        if isFrozen || remainingSeconds <= 45 { return LognDark.warn }
+        return LognDark.textSecondary
     }
 }
-import SwiftUI
 
-/// Um modificador que aplica um efeito de shake (tremor lateral) quando o trigger for incrementado.
+// MARK: - Shake
+
+/// Shake de erro: ±5dp horizontal, 4 oscilações, 240ms ease-out.
+/// Com `reduceMotion` ligado o chamador troca isto por um flash de borda.
 struct ShakeEffect: GeometryEffect {
     var amount: CGFloat = 5
     var shakesPerUnit = 4
     var animatableData: CGFloat
-    
+
     func effectValue(size: CGSize) -> ProjectionTransform {
-        ProjectionTransform(CGAffineTransform(translationX:
-            amount * sin(animatableData * .pi * CGFloat(shakesPerUnit)),
-            y: 0))
+        ProjectionTransform(
+            CGAffineTransform(
+                translationX: amount * sin(animatableData * .pi * CGFloat(shakesPerUnit)),
+                y: 0
+            )
+        )
     }
 }
 
 extension View {
     func shake(animatableData: CGFloat) -> some View {
-        self.modifier(ShakeEffect(animatableData: animatableData))
+        modifier(ShakeEffect(animatableData: animatableData))
     }
 }

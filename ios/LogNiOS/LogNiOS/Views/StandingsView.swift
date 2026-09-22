@@ -134,7 +134,7 @@ struct StandingRowView: View {
     var body: some View {
         HStack {
             Text("\(row.rank)")
-                .font(.custom("IBMPlexMono-Medium", size: 14))
+                .font(.plexMonoMedium(14))
                 .foregroundColor(row.isCurrentUser ? LognDark.onAccent : LognDark.textSecondary)
                 .frame(width: 30, alignment: .leading)
             
@@ -146,12 +146,12 @@ struct StandingRowView: View {
             Spacer()
             
             Text("\(row.solved)")
-                .font(.custom("IBMPlexMono-Medium", size: 14))
+                .font(.plexMonoMedium(14))
                 .foregroundColor(row.isCurrentUser ? LognDark.onAccent : LognDark.info)
                 .frame(width: 30, alignment: .trailing)
             
             Text("\(row.penalty)")
-                .font(.custom("IBMPlexMono-Regular", size: 14))
+                .font(.plexMono(14))
                 .foregroundColor(row.isCurrentUser ? LognDark.onAccent.opacity(0.8) : LognDark.textMuted)
                 .frame(width: 40, alignment: .trailing)
         }

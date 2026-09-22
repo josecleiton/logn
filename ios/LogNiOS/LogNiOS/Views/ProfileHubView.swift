@@ -184,7 +184,7 @@ struct StatBox: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.custom("IBMPlexMono-Medium", size: 10))
+                .font(.plexMonoMedium(10))
                 .foregroundColor(LognDark.textMuted)
             Text(value)
                 .font(LognFont.titleMedium)

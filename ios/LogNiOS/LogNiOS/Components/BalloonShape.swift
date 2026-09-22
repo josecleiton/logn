@@ -1,151 +1,226 @@
 import SwiftUI
 
-/// Primitiva do Balão LogN — desenhada a partir dos paths SVG do Design System.
-/// ViewBox de referência: 0 0 96 150 (com cordinha) ou 0 0 96 95 (sem).
-/// O corpo ocupa x 16…80 — 66.7% da largura da viewBox.
+/// Primitiva do Balão LogN, desenhada a partir dos paths SVG do Design System.
+///
+/// **Dimensionamento:** `width` é a largura da *viewBox*, não do corpo — é assim que o
+/// design especifica cada uso (64, 80, 56, 14, 13…). A altura sai da proporção da viewBox:
+/// `0 0 96 95` sem cordinha, `0 0 96 150` com. O corpo ocupa x 16…80, ou seja 2/3 da largura.
 struct BalloonShape: View {
-    let color: Color
-    let state: BalloonState
-    let bodySize: CGFloat // Largura do corpo do balão
-    let showString: Bool
-    let showHighlight: Bool
 
-    enum BalloonState {
-        case filled   // Conquistado / AC
-        case active   // Nó ativo — contorno accent, traço 5
-        case outline  // Em aberto — contorno `lineStrong`, opacidade 0.55
-        case locked   // Bloqueado — contorno tracejado `lineDim`, silhueta murcha
+    enum Style: Equatable {
+        /// Problema aceito / nó conquistado — corpo preenchido na cor.
+        case filled(Color)
+        /// Em aberto — contorno na cor, com a espessura dada (unidades de viewBox).
+        case outline(Color, CGFloat)
+        /// Nó ativo da trilha — contorno accent, traço 5, brilho em accent.
+        case active
+        /// Bloqueado — silhueta murcha, contorno tracejado.
+        case deflated
     }
 
-    init(
-        color: Color = LognDark.accent,
-        state: BalloonState = .filled,
-        bodySize: CGFloat = 44,
-        showString: Bool = true,
-        showHighlight: Bool = true
-    ) {
-        self.color = color
-        self.state = state
-        self.bodySize = bodySize
-        self.showString = showString
-        // DS: brilho só aparece em balão preenchido e sai abaixo de 12dp de corpo
-        self.showHighlight = showHighlight && state == .filled && bodySize >= 12
+    let style: Style
+    /// Largura da viewBox. A altura é derivada.
+    let width: CGFloat
+    var showString: Bool = false
+    var showHighlight: Bool = true
+
+    // MARK: - Paths do Design System
+
+    private enum D {
+        static let body    = "M48 4 C66 4 80 20 80 41 C80 60 66 74 53 79 L48 83 L43 79 C30 74 16 60 16 41 C16 20 30 4 48 4 Z"
+        static let knot    = "M41 76 L55 76 L48 91 Z"
+        static let shine   = "M31 21 C27 27 25 33 25 40"
+        static let string  = "M48 90 C38 98 58 106 48 114 C38 122 58 130 48 138"
+        // Silhueta murcha do nó bloqueado — corpo menor, nó mais curto.
+        static let bodyDeflated = "M48 14 C62 14 74 26 74 42 C74 56 62 68 52 74 L48 80 L44 74 C34 68 22 56 22 42 C22 26 34 14 48 14 Z"
+        static let knotDeflated = "M42 74 L54 74 L48 88 Z"
     }
 
-    // viewBox: 0 0 96 150. Corpo em 16..80 = 64 unidades de largura.
-    // Scale factor to map viewBox to our bodySize
-    private var scale: CGFloat { bodySize / 64.0 }
+    private static let viewBoxWidth: CGFloat = 96
+    private static let viewBoxHeightShort: CGFloat = 95
+    private static let viewBoxHeightTall: CGFloat = 150
+
+    var height: CGFloat {
+        width * (showString ? Self.viewBoxHeightTall : Self.viewBoxHeightShort) / Self.viewBoxWidth
+    }
+
+    /// Largura do corpo do balão — o que o README do DS chama de "tamanho de corpo".
+    var bodyWidth: CGFloat { width * 64 / Self.viewBoxWidth }
 
     var body: some View {
         Canvas { context, size in
-            let s = scale
-            // Offset to center: corpo vai de x=16 a x=80, centro = 48
-            let ox = size.width / 2 - 48 * s
-            let oy: CGFloat = 0
+            let s = size.width / Self.viewBoxWidth
 
-            // --- Corpo ---
-            var bodyPath = Path()
-            bodyPath.move(to: p(48, 4, s, ox, oy))
-            bodyPath.addCurve(to: p(80, 41, s, ox, oy), control1: p(66, 4, s, ox, oy), control2: p(80, 20, s, ox, oy))
-            bodyPath.addCurve(to: p(53, 79, s, ox, oy), control1: p(80, 60, s, ox, oy), control2: p(66, 74, s, ox, oy))
-            bodyPath.addLine(to: p(48, 83, s, ox, oy))
-            bodyPath.addLine(to: p(43, 79, s, ox, oy))
-            bodyPath.addCurve(to: p(16, 41, s, ox, oy), control1: p(30, 74, s, ox, oy), control2: p(16, 60, s, ox, oy))
-            bodyPath.addCurve(to: p(48, 4, s, ox, oy), control1: p(16, 20, s, ox, oy), control2: p(30, 4, s, ox, oy))
-            bodyPath.closeSubpath()
+            let isDeflated = style == .deflated
+            let bodyPath = scaled(isDeflated ? D.bodyDeflated : D.body, s)
+            let knotPath = scaled(isDeflated ? D.knotDeflated : D.knot, s)
 
-            switch state {
-            case .filled:
+            switch style {
+            case .filled(let color):
                 context.fill(bodyPath, with: .color(color))
+                drawShine(context, s, color: .white.opacity(0.72))
+                context.fill(knotPath, with: .color(color))
+
+            case .outline(let color, let lineWidth):
+                context.stroke(bodyPath, with: .color(color), lineWidth: lineWidth * s)
+                context.fill(knotPath, with: .color(color))
+
             case .active:
-                context.fill(bodyPath, with: .color(LognDark.accent))
-            case .outline:
-                // DS: br: t.line2 (we map line2 to lineStrong or line), op: 0.55 is applied on the container
-                context.stroke(bodyPath, with: .color(LognDark.lineStrong), lineWidth: 4 * s)
-            case .locked:
-                context.stroke(bodyPath, with: .color(LognDark.lineDim), style: StrokeStyle(lineWidth: 3 * s, dash: [5 * s, 4 * s]))
+                context.stroke(bodyPath, with: .color(LognDark.accent), lineWidth: 5 * s)
+                drawShine(context, s, color: LognDark.accent.opacity(0.4))
+                context.fill(knotPath, with: .color(LognDark.accent))
+
+            case .deflated:
+                context.stroke(
+                    bodyPath,
+                    with: .color(LognDark.lineDim),
+                    style: StrokeStyle(lineWidth: 4 * s, dash: [5 * s, 4 * s])
+                )
+                context.fill(knotPath, with: .color(LognDark.lineDim))
             }
 
-            // --- Brilho (Specular Highlight) ---
-            if showHighlight {
-                var highlightPath = Path()
-                highlightPath.move(to: p(31, 21, s, ox, oy))
-                highlightPath.addCurve(to: p(25, 40, s, ox, oy), control1: p(27, 27, s, ox, oy), control2: p(25, 33, s, ox, oy))
+            if showString {
                 context.stroke(
-                    highlightPath,
+                    scaled(D.string, s),
+                    with: .color(stringColor),
+                    style: StrokeStyle(lineWidth: 5 * s, lineCap: .round)
+                )
+            }
+        }
+        .frame(width: width, height: height)
+        .accessibilityHidden(true)
+    }
+
+    // MARK: -
+
+    private func scaled(_ d: String, _ s: CGFloat) -> Path {
+        SVGPath.path(d).applying(CGAffineTransform(scaleX: s, y: s))
+    }
+
+    /// O brilho especular só aparece em balão preenchido e some abaixo de 12dp de corpo.
+    private func drawShine(_ context: GraphicsContext, _ s: CGFloat, color: Color) {
+        guard showHighlight, bodyWidth >= 12 else { return }
+        context.stroke(
+            scaled(D.shine, s),
+            with: .color(color),
+            style: StrokeStyle(lineWidth: 5.5 * s, lineCap: .round)
+        )
+    }
+
+    private var stringColor: Color {
+        switch style {
+        case .filled(let color):     return color
+        case .outline(let color, _): return color
+        case .active:                return LognDark.accent
+        case .deflated:              return LognDark.lineDim
+        }
+    }
+}
+
+// MARK: - Símbolo da marca
+
+/// O símbolo do LogN. Mesmo corpo, brilho e nó do balão de UI — só a cauda difere:
+/// aqui ela é a **curva logarítmica**, não a cordinha ondulada.
+///
+/// ViewBox `0 0 96 122`. Abaixo de 24px o brilho especular sai.
+struct BrandSymbol: View {
+    var color: Color = LognDark.accent
+    /// Altura do símbolo. A largura sai da proporção da viewBox.
+    let height: CGFloat
+
+    private static let viewBox = CGSize(width: 96, height: 122)
+
+    private enum D {
+        static let body  = "M48 4 C66 4 80 20 80 41 C80 60 66 74 53 79 L48 83 L43 79 C30 74 16 60 16 41 C16 20 30 4 48 4 Z"
+        static let shine = "M31 21 C27 27 25 33 25 40"
+        static let knot  = "M41 76 L55 76 L48 91 Z"
+        /// Cauda: sobe rápido, depois estabiliza.
+        static let tail  = "M48 90 C49 104 56 111 68 113 C78 115 84 115 90 116"
+    }
+
+    var width: CGFloat { height * Self.viewBox.width / Self.viewBox.height }
+
+    var body: some View {
+        Canvas { context, size in
+            let s = size.height / Self.viewBox.height
+            func p(_ d: String) -> Path {
+                SVGPath.path(d).applying(CGAffineTransform(scaleX: s, y: s))
+            }
+
+            context.fill(p(D.body), with: .color(color))
+            if width >= 24 {
+                context.stroke(
+                    p(D.shine),
                     with: .color(.white.opacity(0.72)),
                     style: StrokeStyle(lineWidth: 5.5 * s, lineCap: .round)
                 )
             }
+            context.fill(p(D.knot), with: .color(color))
+            context.stroke(
+                p(D.tail),
+                with: .color(color),
+                style: StrokeStyle(lineWidth: 5 * s, lineCap: .round)
+            )
+        }
+        .frame(width: width, height: height)
+        .accessibilityHidden(true)
+    }
+}
 
-            // --- Nó ---
-            var knotPath = Path()
-            knotPath.move(to: p(41, 76, s, ox, oy))
-            knotPath.addLine(to: p(55, 76, s, ox, oy))
-            knotPath.addLine(to: p(48, 91, s, ox, oy))
-            knotPath.closeSubpath()
+/// Lockup horizontal — uso diário: header, loja, e-mail.
+/// Símbolo + `LogN` em Plex Sans SemiBold, tracking −0.035em, gap 14dp.
+struct BrandLockup: View {
+    var fontSize: CGFloat = 44
+    var color: Color = LognDark.accent
+    var textColor: Color = LognDark.textPrimary
 
-            switch state {
-            case .filled:
-                context.fill(knotPath, with: .color(color))
-            case .active:
-                context.fill(knotPath, with: .color(LognDark.accent))
-            case .outline:
-                context.stroke(knotPath, with: .color(LognDark.lineStrong), lineWidth: 2 * s)
-            case .locked:
-                context.stroke(knotPath, with: .color(LognDark.lineDim), style: StrokeStyle(lineWidth: 2 * s, dash: [5 * s, 4 * s]))
-            }
+    /// Proporção medida no lockup do design system: símbolo de 58px ao lado de texto
+    /// de 46px. (O README fala em "1,27× a caixa-alta", mas o HTML — que é o que
+    /// renderiza — usa 1,26× o corpo da fonte.)
+    private var symbolHeight: CGFloat { fontSize * 58 / 46 }
 
-            // --- Cordinha (UI) ---
-            if showString {
-                var stringPath = Path()
-                stringPath.move(to: p(48, 90, s, ox, oy))
-                stringPath.addCurve(to: p(48, 114, s, ox, oy), control1: p(38, 98, s, ox, oy), control2: p(58, 106, s, ox, oy))
-                stringPath.addCurve(to: p(48, 138, s, ox, oy), control1: p(38, 122, s, ox, oy), control2: p(58, 130, s, ox, oy))
+    var body: some View {
+        HStack(alignment: .center, spacing: 14) {
+            BrandSymbol(color: color, height: symbolHeight)
+            Text("LogN")
+                .font(.plexSansSemiBold(fontSize))
+                .tracking(-0.035 * fontSize)
+                .foregroundColor(textColor)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("LogN")
+    }
+}
 
-                let stringColor: Color = {
-                    switch state {
-                    case .filled: return color
-                    case .active: return LognDark.accent
-                    case .outline: return LognDark.lineStrong
-                    case .locked: return LognDark.lineDim
-                    }
-                }()
+/// Fileira decorativa A—M das telas de entrada. Cinco balões no ar, o resto em aberto.
+struct BalloonMarquee: View {
+    var filledCount: Int = 5
 
-                if state == .locked {
-                    context.stroke(stringPath, with: .color(stringColor), style: StrokeStyle(lineWidth: 4 * s, lineCap: .round, dash: [5 * s, 4 * s]))
-                } else {
-                    context.stroke(stringPath, with: .color(stringColor), style: StrokeStyle(lineWidth: 4 * s, lineCap: .round))
-                }
+    var body: some View {
+        HStack(spacing: 7) {
+            ForEach(Array(BalloonColor.all.enumerated()), id: \.element) { index, letter in
+                BalloonShape(
+                    style: index < filledCount
+                        ? .filled(BalloonColor.forLetter(letter))
+                        : .outline(LognDark.lineStrong, 5),
+                    width: 13
+                )
             }
         }
-        .frame(width: bodySize * 1.5, height: showString ? bodySize * 2.34 : bodySize * 1.45)
-    }
-
-    private func p(_ x: CGFloat, _ y: CGFloat, _ s: CGFloat, _ ox: CGFloat, _ oy: CGFloat) -> CGPoint {
-        CGPoint(x: x * s + ox, y: y * s + oy)
+        .opacity(0.5)
+        .accessibilityHidden(true)
     }
 }
 
 // MARK: - Balloon Colors (A—M)
 
 enum BalloonColor {
+    /// Cor da letra do problema. Endereço, nunca estado — acesse sempre por aqui.
     static func forLetter(_ letter: Character) -> Color {
-        switch letter {
-        case "A": return Color(hex: "E4572E")
-        case "B": return Color(hex: "F5C451")
-        case "C": return Color(hex: "3DB2FF")
-        case "D": return Color(hex: "6BCB77")
-        case "E": return Color(hex: "C77DFF")
-        case "F": return Color(hex: "FF6FB5")
-        case "G": return Color(hex: "4ECDC4")
-        case "H": return Color(hex: "F4A261")
-        case "I": return Color(hex: "9BC53D")
-        case "J": return Color(hex: "D64550")
-        case "K": return Color(hex: "7C8BFF")
-        case "L": return Color(hex: "D8DEE4")
-        case "M": return Color(hex: "00B894")
-        default: return LognDark.textMuted
-        }
+        guard let ascii = letter.uppercased().first?.asciiValue,
+              (65...77).contains(ascii) else { return LognDark.textMuted }
+        return Balloon.of(letter)
     }
+
+    static let all: [Character] = Array("ABCDEFGHIJKLM")
 }

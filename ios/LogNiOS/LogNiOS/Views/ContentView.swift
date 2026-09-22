@@ -4,186 +4,265 @@ import App
 
 struct ContentView: View {
     @EnvironmentObject var core: CoreWrapper
-    @State private var selectedTab = 0
+    @State private var tab: LognTab = .trilhas
     @AppStorage("isDarkMode") private var isDarkMode = true
-    
-    init() {
-        // Setup TabBar Appearance for LogN Dark mode
-        let appearance = UITabBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(LognDark.surfaceRaised)
-        
-        // Font setup will fallback to system if IBM Plex is not bundled yet
-        let font = UIFont(name: "IBMPlexSans-Medium", size: 10) ?? UIFont.systemFont(ofSize: 10, weight: .medium)
-        
-        let itemAppearance = UITabBarItemAppearance()
-        itemAppearance.normal.iconColor = UIColor(LognDark.textMuted)
-        itemAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor(LognDark.textMuted), .font: font]
-        
-        itemAppearance.selected.iconColor = UIColor(LognDark.accent)
-        itemAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor(LognDark.accent), .font: font]
-        
-        appearance.stackedLayoutAppearance = itemAppearance
-        appearance.inlineLayoutAppearance = itemAppearance
-        appearance.compactInlineLayoutAppearance = itemAppearance
-        
-        UITabBar.appearance().standardAppearance = appearance
-        if #available(iOS 15.0, *) {
-            UITabBar.appearance().scrollEdgeAppearance = appearance
-        }
-    }
-    
+
     var body: some View {
-        TabView(selection: $selectedTab) {
-            NavigationView {
-                SkillTreeHostView()
-                    .environmentObject(core)
+        // A navegação mora dentro de cada tela raiz, não em volta delas: quando a
+        // partida é empurrada, ela toma a tela inteira e a barra sai junto — que é o
+        // comportamento que o documento de gameplay mostra.
+        Group {
+            switch tab {
+            case .trilhas:
+                NavigationStack { SkillTreeHostView(tab: $tab).environmentObject(core) }
+            case .arena:
+                NavigationStack { ArenaHostView(tab: $tab).environmentObject(core) }
+            case .placar:
+                NavigationStack { StandingsHostView(tab: $tab).environmentObject(core) }
             }
-            .tabItem {
-                Image(systemName: "point.3.connected.trianglepath.dotted")
-                Text("TRILHAS")
-            }
-            .tag(0)
-            
-            NavigationView {
-                ArenaHostView()
-                    .environmentObject(core)
-            }
-            .tabItem {
-                Image(systemName: "gamecontroller.fill")
-                Text("ARENA")
-            }
-            .tag(1)
-            
-            NavigationView {
-                StandingsHostView()
-                    .environmentObject(core)
-            }
-            .tabItem {
-                Image(systemName: "list.number")
-                Text("PLACAR")
-            }
-            .tag(2)
         }
-        .accentColor(LognDark.accent)
+        .tint(LognDark.accent)
         .preferredColorScheme(isDarkMode ? .dark : .light)
     }
 }
 
+// MARK: - Barra de navegação
+
+enum LognTab: CaseIterable {
+    case trilhas, arena, placar
+
+    var title: String {
+        switch self {
+        case .trilhas: return "TRILHAS"
+        case .arena:   return "ARENA"
+        case .placar:  return "PLACAR"
+        }
+    }
+}
+
+/// Bottom nav de 3 itens — exploração `4b`.
+///
+/// Rótulos em `label` (Plex Mono 11, tracking +0.1em) sobre `surface`, divisor superior
+/// em `line`, e o item ativo em `accent` com uma borda superior de 2dp que cobre o divisor.
+///
+/// É desenhada à mão porque a `TabView` do iOS 26 renderiza uma cápsula flutuante e
+/// ignora a geometria que o design pede.
+struct LognBottomNav: View {
+    @Binding var selection: LognTab
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(LognTab.allCases, id: \.self) { item in
+                let isActive = item == selection
+
+                Button {
+                    selection = item
+                } label: {
+                    Text(item.title)
+                        .font(.plexMono(11))
+                        .tracking(0.1 * 11)
+                        .foregroundColor(isActive ? LognDark.accent : LognDark.textMuted)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .contentShape(Rectangle())
+                        .overlay(alignment: .top) {
+                            if isActive {
+                                Rectangle()
+                                    .frame(height: 2)
+                                    .foregroundColor(LognDark.accent)
+                                    .offset(y: -1)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isActive ? [.isSelected] : [])
+            }
+        }
+        .background(LognDark.surface)
+        .overlay(alignment: .top) {
+            Rectangle().frame(height: 1).foregroundColor(LognDark.line)
+        }
+    }
+}
+
 // MARK: - Trilhas
+
 struct SkillTreeHostView: View {
     @EnvironmentObject var core: CoreWrapper
-    
+    @Binding var tab: LognTab
+
+    /// "N balões no ar" — o contador é de nós conquistados, não de problemas aceitos.
+    private var balloonsUp: Int {
+        core.viewModel.nodes.filter { $0.status == .completed }.count
+    }
+
     var body: some View {
         ZStack {
             LognDark.canvas.ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
-                // Header (Mockup)
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("LogN")
-                            .font(LognFont.headlineMedium)
-                            .foregroundColor(LognDark.textPrimary)
-                        Text(core.viewModel.isFetching ? "Atualizando mapa..." : "7 balões no ar")
-                            .font(LognFont.label)
+                header
+
+                if core.viewModel.isGuest {
+                    guestWarning
+                }
+
+                if core.viewModel.nodes.isEmpty {
+                    emptyState
+                } else {
+                    SkillTreeView(nodes: core.viewModel.nodes)
+                }
+
+                LognBottomNav(selection: $tab)
+            }
+        }
+        .navigationBarHidden(true)
+    }
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: 14) {
+            // Título e XP compartilham a linha de base, como no documento.
+            HStack(alignment: .firstTextBaseline, spacing: 14) {
+                Text(core.viewModel.isFetching ? "Atualizando mapa" : "\(balloonsUp) balões no ar")
+                    .font(.plexSansSemiBold(21))
+                    .tracking(-0.02 * 21)
+                    .foregroundColor(LognDark.textPrimary)
+
+                Spacer(minLength: 0)
+
+                Text("\(core.viewModel.globalXp) XP")
+                    .font(.plexMono(13))
+                    .monospacedDigit()
+                    .foregroundColor(LognDark.accent)
+            }
+
+            // Entrada do perfil — o documento de gameplay não cobre este alvo, mas ele
+            // é o único caminho para conta, sync e ajustes.
+            NavigationLink(destination: ProfileHubView().environmentObject(core)) {
+                Circle()
+                    .fill(LognDark.surface)
+                    .frame(width: 32, height: 32)
+                    .overlay(Circle().stroke(LognDark.line, lineWidth: 1))
+                    .overlay(
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 13))
                             .foregroundColor(LognDark.textSecondary)
+                    )
+                    .overlay(alignment: .topTrailing) {
+                        if core.viewModel.pendingSyncCount > 0 {
+                            Circle()
+                                .fill(LognDark.warn)
+                                .frame(width: 8, height: 8)
+                                .overlay(Circle().stroke(LognDark.canvas, lineWidth: 1.5))
+                                .offset(x: 1, y: -1)
+                        }
                     }
-                    Spacer()
-                    
-                    // Profile Hub Trigger
-                    NavigationLink(destination: ProfileHubView().environmentObject(core)) {
-                        Circle()
-                            .fill(LognDark.surfaceRaised)
-                            .frame(width: 40, height: 40)
+            }
+            .accessibilityLabel("Perfil")
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 14)
+        .overlay(alignment: .bottom) {
+            Rectangle().frame(height: 1).foregroundColor(LognDark.line)
+        }
+    }
+
+    private var guestWarning: some View {
+        HStack(spacing: Space.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 11))
+            Text(Str.Dashboard.sync_guest_warning)
+                .font(LognFont.label)
+        }
+        .foregroundColor(LognDark.onAccent)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Space.sm)
+        .background(LognDark.warn)
+    }
+
+    /// Loading é skeleton, não spinner; vazio é uma frase e o CTA que resolve.
+    private var emptyState: some View {
+        VStack(spacing: Space.lg) {
+            Spacer()
+            if core.viewModel.isFetching {
+                VStack(spacing: Space.md) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: Radius.sm)
+                            .fill(LognDark.surface)
+                            .frame(height: 64)
                             .overlay(
-                                Image(systemName: "person.fill")
-                                    .foregroundColor(LognDark.textSecondary)
-                            )
-                            .overlay(
-                                Circle()
+                                RoundedRectangle(cornerRadius: Radius.sm)
                                     .stroke(LognDark.line, lineWidth: 1)
-                            )
-                            .overlay(
-                                // Sync indicator
-                                Circle()
-                                    .fill(core.viewModel.pendingSyncCount > 0 ? LognDark.warn : Color.clear)
-                                    .frame(width: 10, height: 10)
-                                    .offset(x: 12, y: -12),
-                                alignment: .center
                             )
                     }
                 }
                 .padding(.horizontal, Space.screenMargin)
-                .padding(.vertical, Space.md)
-                .background(LognDark.surface)
-                
-                // Guest Warning
-                if core.viewModel.isGuest {
-                    HStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                        Text(Str.Dashboard.sync_guest_warning)
-                            .font(LognFont.label)
-                    }
-                    .foregroundColor(LognDark.onAccent)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, Space.sm)
-                    .background(LognDark.warn)
+            } else {
+                Text(core.viewModel.displayStatus)
+                    .font(LognFont.bodyMedium)
+                    .foregroundColor(LognDark.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, Space.screenMargin)
+
+                LognButton(title: "Tentar de novo", variant: .secondary) {
+                    core.dispatch(event: .fetchNodes)
                 }
-                
-                // DAG View
-                if core.viewModel.nodes.isEmpty {
-                    Spacer()
-                    VStack(spacing: 16) {
-                        ProgressView().progressViewStyle(CircularProgressViewStyle(tint: LognDark.accent))
-                        Text(core.viewModel.displayStatus)
-                            .font(LognFont.bodyLarge)
-                            .foregroundColor(LognDark.textSecondary)
-                        
-                        LognButton(title: "Tentar Novamente", variant: .secondary) {
-                            core.dispatch(event: .fetchNodes)
-                        }
-                    }
-                    Spacer()
-                } else {
-                    SkillTreeView(nodes: core.viewModel.nodes)
-                }
+                .padding(.horizontal, Space.screenMargin)
             }
+            Spacer()
         }
-        .navigationBarHidden(true)
     }
 }
 
-// MARK: - Arena Placeholder
+// MARK: - Arena
+
 struct ArenaHostView: View {
     @EnvironmentObject var core: CoreWrapper
+    @Binding var tab: LognTab
+
     var body: some View {
         ZStack {
             LognDark.canvas.ignoresSafeArea()
-            VStack(spacing: Space.lg) {
-                Image(systemName: "flag.checkered.2.crossed")
-                    .font(.system(size: 48))
-                    .foregroundColor(LognDark.textDim)
-                Text("ARENA LOGN")
-                    .font(LognFont.headlineMedium)
-                    .foregroundColor(LognDark.textPrimary)
-                Text("Simulações de Maratona ICPC cronometradas ficarão disponíveis aqui.")
-                    .font(LognFont.bodyLarge)
-                    .foregroundColor(LognDark.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
+            VStack(spacing: 0) {
+                Spacer()
+                VStack(alignment: .leading, spacing: Space.md) {
+                    Text("ARENA")
+                        .font(LognFont.label)
+                        .foregroundColor(LognDark.textMuted)
+
+                    Text("Contests cronometrados entram aqui.")
+                        .font(.plexSansSemiBold(21))
+                        .tracking(-0.02 * 21)
+                        .foregroundColor(LognDark.textPrimary)
+
+                    Text("Por enquanto, as sessões de três minutos vivem nas trilhas.")
+                        .font(LognFont.bodyMedium)
+                        .foregroundColor(LognDark.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Space.screenMargin)
+                Spacer()
+
+                LognBottomNav(selection: $tab)
             }
         }
         .navigationBarHidden(true)
     }
 }
 
-// MARK: - Placar Placeholder
+// MARK: - Placar
+
 struct StandingsHostView: View {
     @EnvironmentObject var core: CoreWrapper
+    @Binding var tab: LognTab
+
     var body: some View {
-        StandingsView()
-            .environmentObject(core)
-            .navigationBarHidden(true)
+        VStack(spacing: 0) {
+            StandingsView().environmentObject(core)
+            LognBottomNav(selection: $tab)
+        }
+        .navigationBarHidden(true)
     }
 }
