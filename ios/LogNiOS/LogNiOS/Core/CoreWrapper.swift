@@ -34,7 +34,8 @@ public class CoreWrapper: ObservableObject {
                 contestSeconds: 0, questionSeconds: 0, isFrozen: false,
                 totalProblems: 0, solvedCount: 0, balloonStates: [],
                 selectedLine: -1, answerString: "", dropTime: "", dropSpace: "",
-                selectedTags: [], lastVerdict: "", hasTrap: false, trapCategory: "",
+                selectedTags: [], predictedOutput: "", watchVariables: [], watchNote: "",
+                lastVerdict: "", hasTrap: false, trapCategory: "",
                 trapTitle: "", trapExplanation: ""
             )
         )

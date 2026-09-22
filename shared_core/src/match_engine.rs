@@ -20,6 +20,8 @@ pub struct MatchState {
     pub is_frozen: bool,
     pub trap: Option<TrapInfo>,
     pub selection: MatchSelection,
+    /// Veredito da última submissão. Dirige a tela de veredito em tela cheia.
+    pub last_verdict: Option<VerdictCode>,
 }
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -40,6 +42,22 @@ impl Default for VerdictCode {
     fn default() -> Self { VerdictCode::Pending }
 }
 
+impl VerdictCode {
+    /// A sigla do juiz, sem tradução — é ela que a UI exibe.
+    pub fn code(&self) -> &'static str {
+        match self {
+            VerdictCode::Pending             => "",
+            VerdictCode::Accepted            => "AC",
+            VerdictCode::WrongAnswer         => "WA",
+            VerdictCode::TimeLimitExceeded   => "TLE",
+            VerdictCode::MemoryLimitExceeded => "MLE",
+            VerdictCode::RuntimeError        => "RE",
+            VerdictCode::CompileError        => "CE",
+            VerdictCode::PresentationError   => "PE",
+        }
+    }
+}
+
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
 #[facet(fg::namespace = "LogN")]
 pub struct MatchProblem {
@@ -54,6 +72,8 @@ pub struct MatchProblem {
     pub options: Vec<String>,       // Para COMPLEXITY_MATCH e TAG_THE_PATTERN
     pub correct_options: Vec<String>, // Respostas corretas
     pub max_selections: i32,        // Para TAG_THE_PATTERN
+    pub watch_variables: Vec<crate::domain::WatchVariable>, // Para DRY_RUN
+    pub watch_note: String,         // Para DRY_RUN
 }
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
@@ -72,6 +92,13 @@ pub struct MatchSelection {
     pub drop_time: Option<String>,          // COMPLEXITY_MATCH
     pub drop_space: Option<String>,         // COMPLEXITY_MATCH
     pub selected_tags: Vec<String>,         // TAG_THE_PATTERN
+    pub predicted_output: Option<String>,   // DRY_RUN
+}
+
+/// Normaliza a saída prevista do DRY_RUN: espaço em branco é ignorado, o resto não.
+/// O jogador está prevendo um valor, não formatando uma saída de juiz.
+pub fn normalize_output(s: &str) -> String {
+    s.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 /// ViewModel da partida para a UI.
@@ -100,6 +127,9 @@ pub struct MatchViewModel {
     pub drop_time: String,
     pub drop_space: String,
     pub selected_tags: Vec<String>,
+    pub predicted_output: String,         // DRY_RUN
+    pub watch_variables: Vec<crate::domain::WatchVariable>, // DRY_RUN
+    pub watch_note: String,               // DRY_RUN
     pub last_verdict: String,             // "", "AC", "WA", etc.
     pub has_trap: bool,
     pub trap_category: String,
@@ -134,6 +164,7 @@ impl MatchState {
             is_frozen: false,
             trap: None,
             selection: MatchSelection::default(),
+            last_verdict: None,
         }
     }
 
@@ -186,6 +217,15 @@ impl MatchState {
                 correct.sort();
                 selected == correct
             }
+            "DRY_RUN" => {
+                // O jogador prevê a saída; espaço em branco não conta.
+                match (&self.selection.predicted_output, &problem.expected_string) {
+                    (Some(given), Some(expected)) => {
+                        normalize_output(given) == normalize_output(expected)
+                    }
+                    _ => false,
+                }
+            }
             _ => false,
         };
 
@@ -196,6 +236,7 @@ impl MatchState {
         };
 
         self.verdicts.insert(letter, verdict.clone());
+        self.last_verdict = Some(verdict.clone());
 
         if !is_correct {
             self.lives -= 1;
@@ -206,7 +247,7 @@ impl MatchState {
                 name: "Wrong Answer".into(),
                 category: "TRAP CLÁSSICA".into(),
                 title: problem.title.replace("A · ", "").replace("B · ", "").replace("C · ", "").into(),
-                explanation: "Sua resposta foi incorreta. A estratégia escolhida não funciona para todos os casos. Tente revisar a complexidade ou os edge cases!".into(),
+                explanation: "A escolha não cobre todos os casos de entrada. Vale reler o enunciado olhando para os limites: o primeiro índice, o último, e o array vazio.".into(),
             });
         }
 
@@ -237,6 +278,7 @@ impl MatchState {
 
         let verdict = VerdictCode::TimeLimitExceeded;
         self.verdicts.insert(letter, verdict.clone());
+        self.last_verdict = Some(verdict.clone());
 
         self.lives -= 1;
         self.penalty_minutes += 20;
@@ -245,8 +287,8 @@ impl MatchState {
         self.trap = Some(TrapInfo {
             name: "Time Limit Exceeded".into(),
             category: "TIME LIMIT EXCEEDED".into(),
-            title: "O Tempo Esgotou!".into(),
-            explanation: "Você demorou mais de 60 segundos nesta questão e perdeu uma vida. A ICPC penaliza a lentidão. Tente ser mais rápido na próxima!".into(),
+            title: "O relógio da questão zerou".into(),
+            explanation: "No contest o tempo conta como resposta errada: o problema fica em aberto e a penalidade entra igual. Quando a saída não vem em um minuto, costuma ser sinal de que a abordagem é outra.".into(),
         });
 
         if self.lives > 0 {
@@ -319,7 +361,10 @@ impl MatchState {
             drop_time: self.selection.drop_time.clone().unwrap_or_default(),
             drop_space: self.selection.drop_space.clone().unwrap_or_default(),
             selected_tags: self.selection.selected_tags.clone(),
-            last_verdict: String::new(),
+            predicted_output: self.selection.predicted_output.clone().unwrap_or_default(),
+            watch_variables: problem.map(|p| p.watch_variables.clone()).unwrap_or_default(),
+            watch_note: problem.map(|p| p.watch_note.clone()).unwrap_or_default(),
+            last_verdict: self.last_verdict.as_ref().map(|v| v.code().to_string()).unwrap_or_default(),
             has_trap: self.trap.is_some(),
             trap_category: self.trap.as_ref().map(|t| t.category.clone()).unwrap_or_default(),
             trap_title: self.trap.as_ref().map(|t| t.title.clone()).unwrap_or_default(),
@@ -346,6 +391,8 @@ mod tests {
                 options: vec![],
                 correct_options: vec![],
                 max_selections: 0,
+                watch_variables: vec![],
+                watch_note: String::new(),
             },
             MatchProblem {
                 letter: "B".into(),
@@ -359,6 +406,8 @@ mod tests {
                 options: vec![],
                 correct_options: vec![],
                 max_selections: 0,
+                watch_variables: vec![],
+                watch_note: String::new(),
             },
             MatchProblem {
                 letter: "C".into(),
@@ -372,6 +421,26 @@ mod tests {
                 options: vec!["Grafos".into(), "BFS".into(), "DP".into(), "Greedy".into()],
                 correct_options: vec!["Grafos".into(), "BFS".into()],
                 max_selections: 2,
+                watch_variables: vec![],
+                watch_note: String::new(),
+            },
+            MatchProblem {
+                letter: "D".into(),
+                challenge_id: "ch4".into(),
+                template_type: "DRY_RUN".into(),
+                title: "D · Somando o Contador".into(),
+                description: "Qual o valor final de acc?".into(),
+                code_lines: vec!["var acc = 0".into()],
+                correct_line: None,
+                expected_string: Some("6".into()),
+                options: vec![],
+                correct_options: vec![],
+                max_selections: 0,
+                watch_variables: vec![crate::domain::WatchVariable {
+                    name: "acc".into(),
+                    value: "0".into(),
+                }],
+                watch_note: "antes da linha 2".into(),
             },
         ]
     }
@@ -413,6 +482,73 @@ mod tests {
 
         assert_eq!(state.lives, 0);
         assert!(!state.is_active);
+    }
+
+    /// Avança até o problema D, que é o DRY_RUN.
+    fn state_at_dry_run() -> MatchState {
+        let mut state = MatchState::new(sample_problems());
+        state.selection.selected_line = Some(1);
+        state.submit(); // A
+        state.selection.answer_string = Some("a".into());
+        state.submit(); // B
+        state.selection.selected_tags = vec!["Grafos".into(), "BFS".into()];
+        state.submit(); // C
+        assert_eq!(state.current_template_type(), "DRY_RUN");
+        state
+    }
+
+    #[test]
+    fn test_dry_run_accepts_predicted_output() {
+        let mut state = state_at_dry_run();
+        state.selection.predicted_output = Some("6".into());
+        assert_eq!(state.submit(), VerdictCode::Accepted);
+    }
+
+    #[test]
+    fn test_dry_run_ignores_surrounding_whitespace() {
+        let mut state = state_at_dry_run();
+        state.selection.predicted_output = Some("  6 \n".into());
+        assert_eq!(state.submit(), VerdictCode::Accepted);
+    }
+
+    #[test]
+    fn test_dry_run_rejects_wrong_value() {
+        let mut state = state_at_dry_run();
+        state.selection.predicted_output = Some("5".into());
+        assert_eq!(state.submit(), VerdictCode::WrongAnswer);
+    }
+
+    #[test]
+    fn test_dry_run_without_answer_is_wrong() {
+        let mut state = state_at_dry_run();
+        assert_eq!(state.submit(), VerdictCode::WrongAnswer);
+    }
+
+    #[test]
+    fn test_view_model_exposes_last_verdict() {
+        let mut state = MatchState::new(sample_problems());
+        assert_eq!(state.to_view_model().last_verdict, "");
+
+        state.selection.selected_line = Some(0); // errada
+        state.submit();
+        assert_eq!(state.to_view_model().last_verdict, "WA");
+
+        state.selection.answer_string = Some("a".into()); // certa
+        state.submit();
+        assert_eq!(state.to_view_model().last_verdict, "AC");
+    }
+
+    #[test]
+    fn test_view_model_exposes_watch_panel_only_for_dry_run() {
+        let state = MatchState::new(sample_problems());
+        // Problema A é SPOT_THE_BUG — sem painel de watch.
+        assert!(state.to_view_model().watch_variables.is_empty());
+
+        let dry = state_at_dry_run();
+        let vm = dry.to_view_model();
+        assert_eq!(vm.watch_variables.len(), 1);
+        assert_eq!(vm.watch_variables[0].name, "acc");
+        assert_eq!(vm.watch_note, "antes da linha 2");
     }
 
     #[test]

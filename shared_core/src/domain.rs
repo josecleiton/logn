@@ -76,9 +76,18 @@ mod tests {
 #[facet(fg::namespace = "LogN")]
 pub struct ChallengeValidation {
     #[serde(rename = "type")]
-    pub validation_type: String, // "LINE_MATCH" or "EXACT_MATCH"
+    pub validation_type: String, // "LINE_MATCH", "EXACT_MATCH" or "OUTPUT_MATCH" (DRY_RUN)
     pub correct_line: Option<i32>,
     pub expected_string: Option<String>,
+}
+
+/// Uma variável do painel de watch do DRY_RUN — nome e valor no estado inicial.
+/// Não entrega a resposta: diz *o que* acompanhar durante o trace.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[facet(fg::namespace = "LogN")]
+pub struct WatchVariable {
+    pub name: String,
+    pub value: String,
 }
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
@@ -89,6 +98,12 @@ pub struct ChallengeContent {
     pub code_lines: Vec<String>,
     pub options: Option<Vec<String>>,
     pub correct_options: Option<Vec<String>>,
+    /// Só em DRY_RUN: estado inicial mostrado no painel de watch.
+    #[serde(default)]
+    pub watch_variables: Option<Vec<WatchVariable>>,
+    /// Só em DRY_RUN: em que ponto o watch foi capturado, ex. "antes da linha 4".
+    #[serde(default)]
+    pub watch_note: Option<String>,
 }
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]

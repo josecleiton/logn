@@ -65,6 +65,7 @@ pub enum Event {
     MatchSetDropTime { value: String },
     MatchSetDropSpace { value: String },
     MatchToggleTag { tag: String },
+    MatchSetOutput { value: String },
     MatchSubmit { timestamp: i64 },
     MatchDismissTrap,
     MatchTimerTick,
@@ -751,6 +752,8 @@ Event::FetchChallenges => {
                             options: c.payload.content.options.clone().unwrap_or_default(),
                             correct_options: c.payload.content.correct_options.clone().unwrap_or_default(),
                             max_selections: if c.template_type == "TAG_THE_PATTERN" { c.payload.content.correct_options.as_ref().map_or(1, |o| o.len() as i32) } else { 1 },
+                            watch_variables: c.payload.content.watch_variables.clone().unwrap_or_default(),
+                            watch_note: c.payload.content.watch_note.clone().unwrap_or_default(),
                         }
                     })
                     .collect();
@@ -805,31 +808,41 @@ Event::FetchChallenges => {
                 render::render()
             }
 
+            Event::MatchSetOutput { value } => {
+                if let Some(ref mut ms) = model.match_state {
+                    ms.selection.predicted_output = Some(value);
+                }
+                render::render()
+            }
+
             Event::MatchSubmit { timestamp } => {
                 if let Some(ref mut ms) = model.match_state {
+                    // Template e letra são lidos ANTES do submit: ele avança de problema,
+                    // e o evento registrado é o do problema que acabou de ser respondido.
+                    let template = ms.current_template_type().to_string();
+                    let letter = ms.current_letter().to_string();
+
                     let verdict = ms.submit();
                     let is_correct = verdict == match_engine::VerdictCode::Accepted;
 
-                    let template = ms.current_template_type().to_string();
                     if is_correct {
                         model.global_xp += 50;
-                        if template == "SPOT_THE_BUG" {
-                            model.bugs_found += 1;
+                        match template.as_str() {
+                            "SPOT_THE_BUG" => model.bugs_found += 1,
+                            "DRY_RUN" => model.dry_runs_completed += 1,
+                            _ => {}
                         }
                     }
 
                     let mut match_ended = false;
                     let mut solved = 0;
                     if !ms.is_active {
-                        // Match ended
-                        model.dry_runs_completed += 1;
                         solved = ms.solved_count();
                         model.status = format!("Match over! {} solved", solved);
                         match_ended = true;
                     }
 
                     // Register game event for offline sync
-                    let letter = ms.current_letter().to_string();
                     let previous_hash = if model.last_hash.is_empty() {
                         "0000000000000000000000000000000000000000000000000000000000000000".to_string()
                     } else {
