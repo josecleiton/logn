@@ -18,6 +18,23 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
 2. **Offline-First via Cryptographic Chaining:** Todo evento do usuário de jogo deve possuir um Hash de integridade (`SHA-256(Hash(N-1) + Payload + Timestamp)`). O Go Backend deve apenas validar esse hash, nunca recalculá-lo para reescrever o histórico.
 3. **Persistência de Desafios:** Desafios são armazenados no PostgreSQL em Go através de uma coluna polimórfica `JSONB`. Mutações no schema de desafios devem refletir no `init.sql` os `CHECK CONSTRAINTS` de validação da estrutura JSON.
 4. **Dependências Crux FFI:** Manter o padrão de FFI nativa deste repositório: a comunicação Rust <-> Swift é trafegada *exclusivamente* via bytes `[u8]` (Bincode) passando pelas funções exportadas em `boltffi::export`. 
+5. **Toda tabela tem `created_at`. Toda tabela que sofre `UPDATE` tem `updated_at` também.**
+   `TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP` nos dois. Vale para
+   tabela nova e para `ALTER TABLE` que acrescente escrita a uma tabela que só era lida.
+
+   O motivo é depuração, não burocracia: sem isso não dá para responder "quando esta
+   linha apareceu" nem "isto mudou antes ou depois daquela migração", e as duas perguntas
+   já apareceram investigando bug de conteúdo aqui.
+
+   `updated_at` só vale se for mantido — ou um `trigger` de `BEFORE UPDATE`, ou a coluna
+   no `SET` de todo `UPDATE`. Coluna que nasce com a linha e nunca mais anda mente pior
+   que coluna nenhuma.
+
+   **Estado atual, para quem for mexer:** a regra está quase toda por cumprir. Só
+   `users`, `skill_nodes` e `refresh_tokens` têm `created_at`; **nenhuma tabela tem
+   `updated_at`**, incluindo `challenges`, `users`, `user_progress` e `user_sync_state`,
+   que sofrem `UPDATE` de verdade. `game_events` é append-only por desenho e só precisa
+   de `created_at`; `schema_migrations` resolve o dela com `applied_at`.
 
 ## 🔄 Fluxo de Trabalho do Agente
 1. Ao iniciar, revise sempre se as dependências do `Crux` e o pacote `boltffi` exigem recompilação (`cargo build --features codegen`).
