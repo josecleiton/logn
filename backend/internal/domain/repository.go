@@ -7,13 +7,20 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Repository fala com o banco por um **pool**, não por uma conexão única.
+//
+// `*pgx.Conn` não é seguro para uso concorrente: dois handlers HTTP ao mesmo tempo
+// derrubam um ao outro com `conn busy`. Como o servidor atende em paralelo por
+// natureza, a conexão única fazia requisições legítimas falharem de forma
+// intermitente — o verify de OTP recusava código válido.
 type Repository struct {
-	db *pgx.Conn
+	db *pgxpool.Pool
 }
 
-func NewRepository(db *pgx.Conn) *Repository {
+func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{db: db}
 }
 
@@ -67,7 +74,9 @@ func (r *Repository) GetUserLastHash(ctx context.Context, userID string) (string
 }
 
 func (r *Repository) GetChallenges(ctx context.Context) ([]Challenge, error) {
-	query := `SELECT id, chapter, template_type, version, payload FROM challenges ORDER BY id ASC`
+	// A coluna é node_id desde que a árvore virou DAG; `chapter` não existe e derrubava
+	// a listagem inteira com um 500.
+	query := `SELECT id, node_id, template_type, version, payload FROM challenges ORDER BY id ASC`
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err

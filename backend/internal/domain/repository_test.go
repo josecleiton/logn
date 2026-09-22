@@ -6,17 +6,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func setupTestDB(t *testing.T) *pgx.Conn {
+func setupTestDB(t *testing.T) *pgxpool.Pool {
 	// Aguarda o banco subir via docker-compose (tentativas)
 	connStr := "postgres://logn:lognpassword@localhost:5432/logndb?sslmode=disable"
-	var conn *pgx.Conn
+	var conn *pgxpool.Pool
 	var err error
 
 	for i := 0; i < 5; i++ {
-		conn, err = pgx.Connect(context.Background(), connStr)
+		conn, err = pgxpool.New(context.Background(), connStr)
 		if err == nil {
 			break
 		}
@@ -38,7 +38,7 @@ func setupTestDB(t *testing.T) *pgx.Conn {
 
 func TestRepository_InsertChallenge(t *testing.T) {
 	conn := setupTestDB(t)
-	defer conn.Close(context.Background())
+	defer conn.Close()
 
 	repo := NewRepository(conn)
 
@@ -83,7 +83,7 @@ func TestRepository_InsertChallenge(t *testing.T) {
 
 func TestRepository_InsertSyncEvents(t *testing.T) {
 	conn := setupTestDB(t)
-	defer conn.Close(context.Background())
+	defer conn.Close()
 
 	repo := NewRepository(conn)
 	ctx := context.Background()

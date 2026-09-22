@@ -8,6 +8,8 @@ struct OTPInputView: View {
     let purpose: String
     
     @State private var digits: [String] = Array(repeating: "", count: 6)
+    /// Último código já enviado, para não repetir a mesma submissão.
+    @State private var lastSubmittedCode = ""
     @FocusState private var focusedIndex: Int?
     
     var otpCode: String { digits.joined() }
@@ -59,6 +61,7 @@ struct OTPInputView: View {
                                 if otpCode.count == 6 && digits.allSatisfy({ !$0.isEmpty }) {
                                     submitOTP()
                                 }
+
                             }
                     }
                 }
@@ -117,7 +120,16 @@ struct OTPInputView: View {
         }
     }
     
+    /// Envia o código uma única vez por valor.
+    ///
+    /// Preencher os seis campos — colando ou digitando — dispara `onChange` seis vezes,
+    /// e a partir do último a condição "tudo preenchido" fica verdadeira em cada uma.
+    /// Sem esta guarda o app mandava sete requisições por código, algumas com dígitos
+    /// de uma tentativa anterior ainda no estado, e o servidor recusava as parciais.
     private func submitOTP() {
-        core.dispatch(event: LogN.Event.verifyOtp(email: email, code: otpCode, purpose: purpose))
+        let code = otpCode
+        guard code.count == 6, code != lastSubmittedCode else { return }
+        lastSubmittedCode = code
+        core.dispatch(event: LogN.Event.verifyOtp(email: email, code: code, purpose: purpose))
     }
 }

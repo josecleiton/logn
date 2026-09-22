@@ -14,9 +14,17 @@ struct LoginView: View {
     @State private var password = ""
     
     var body: some View {
+        // Sem este container os `NavigationLink` daqui não empurram nada: "Criar conta"
+        // e "Esqueci a senha" renderizavam como rótulo e não faziam nada.
+        NavigationStack {
+            content
+        }
+    }
+
+    private var content: some View {
         ZStack {
             LognDark.canvas.ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
                 BalloonMarquee()
                     .padding(.top, 14)

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/josecleiton/logn/backend/internal/domain"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/email"
 )
@@ -114,13 +114,17 @@ func main() {
 		domain.JwtSecretKey = []byte(jwtSecret)
 	}
 
-	conn, err := pgx.Connect(context.Background(), dbUrl)
+	pool, err := pgxpool.New(context.Background(), dbUrl)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
-	defer conn.Close(context.Background())
+	defer pool.Close()
 
-	repo := domain.NewRepository(conn)
+	if err := pool.Ping(context.Background()); err != nil {
+		log.Fatalf("Unable to reach database: %v\n", err)
+	}
+
+	repo := domain.NewRepository(pool)
 	mailer := email.NewMailer()
 	server := &Server{repo: repo, mailer: mailer}
 

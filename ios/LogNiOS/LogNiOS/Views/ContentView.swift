@@ -182,6 +182,8 @@ struct SkillTreeHostView: View {
             }
         }
         .navigationBarHidden(true)
+        .onAppear(perform: loadNodesIfNeeded)
+        .onChange(of: core.viewModel.hasAccessToken) { _ in loadNodesIfNeeded() }
         .sheet(isPresented: $showsProfile) {
             ProfileHubView()
                 .environmentObject(core)
@@ -189,6 +191,18 @@ struct SkillTreeHostView: View {
                 .presentationDragIndicator(.hidden)
                 .modifier(SheetCorners())
         }
+    }
+
+    /// Busca a árvore assim que a sessão existe.
+    ///
+    /// Nada disparava `fetchNodes` depois do login: entrar autenticado caía no estado
+    /// vazio e só o "Tentar de novo" carregava o mapa. O visitante não entra aqui porque
+    /// o Core já lhe entrega os nós locais.
+    private func loadNodesIfNeeded() {
+        guard core.viewModel.hasAccessToken,
+              core.viewModel.nodes.isEmpty,
+              !core.viewModel.isFetching else { return }
+        core.dispatch(event: .fetchNodes)
     }
 
     private var header: some View {
@@ -256,7 +270,9 @@ struct SkillTreeHostView: View {
                 }
                 .padding(.horizontal, Space.screenMargin)
             } else {
-                Text(core.viewModel.displayStatus)
+                // O status do Core é diagnóstico interno e vem em inglês — "Session
+                // refreshed!" aparecia aqui como se fosse a explicação do mapa vazio.
+                Text("Não consegui carregar o mapa das trilhas.")
                     .font(LognFont.bodyMedium)
                     .foregroundColor(LognDark.textSecondary)
                     .multilineTextAlignment(.center)

@@ -9,17 +9,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/josecleiton/logn/backend/internal/domain"
 )
 
-func setupTestDB(t *testing.T) *pgx.Conn {
+func setupTestDB(t *testing.T) *pgxpool.Pool {
 	connStr := "postgres://logn:lognpassword@localhost:5432/logndb?sslmode=disable"
-	var conn *pgx.Conn
+	var conn *pgxpool.Pool
 	var err error
 
 	for i := 0; i < 5; i++ {
-		conn, err = pgx.Connect(context.Background(), connStr)
+		conn, err = pgxpool.New(context.Background(), connStr)
 		if err == nil {
 			break
 		}
@@ -40,7 +40,7 @@ func setupTestDB(t *testing.T) *pgx.Conn {
 
 func TestSyncHandler(t *testing.T) {
 	conn := setupTestDB(t)
-	defer conn.Close(context.Background())
+	defer conn.Close()
 
 	repo := domain.NewRepository(conn)
 	server := &Server{repo: repo}

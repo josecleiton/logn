@@ -69,6 +69,30 @@ mod tests {
         assert!(!event.current_hash.is_empty());
         assert_eq!(event.current_hash.len(), 64); // SHA-256 len
     }
+
+    /// O contrato do `GET /api/v1/nodes` como o Go realmente responde.
+    ///
+    /// Sem `status` no JSON a lista inteira falhava no serde e o `if let Ok(..)` engolia
+    /// o erro: quem entrava autenticado via a árvore vazia e nenhuma mensagem.
+    #[test]
+    fn test_parses_nodes_without_status_from_the_backend() {
+        let body = r#"[
+            {"id":"10000000-0000-0000-0000-000000000001","name":"Nó A",
+             "description":"Simulação de algoritmos.","row":0,"column":0,
+             "required_xp":0,"prerequisites":[]},
+            {"id":"20000000-0000-0000-0000-000000000002","name":"Nó B",
+             "description":"Stacks e Queues.","row":1,"column":-1,
+             "required_xp":100,"prerequisites":["10000000-0000-0000-0000-000000000001"]}
+        ]"#;
+
+        let nodes: Vec<SkillNode> =
+            serde_json::from_slice(body.as_bytes()).expect("o payload do Go tem de desserializar");
+
+        assert_eq!(nodes.len(), 2);
+        assert_eq!(nodes[1].prerequisites, vec![nodes[0].id.clone()]);
+        // `status` é derivado em view(); o default só precisa existir para o parse passar.
+        assert_eq!(nodes[0].status, NodeStatus::Locked);
+    }
 }
 
 
@@ -123,10 +147,11 @@ pub struct Challenge {
     pub payload: ChallengePayload, // Typed for Facet
 }
 
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
 #[facet(fg::namespace = "LogN")]
 #[repr(u8)]
 pub enum NodeStatus {
+    #[default]
     Locked,
     Active,
     Completed,
@@ -192,6 +217,10 @@ pub struct SkillNode {
     pub column: i32,
     pub required_xp: i32,
     pub prerequisites: Vec<String>,
+    /// Derivado em `view()` a partir do XP e do DAG, nunca persistido: o Go não manda
+    /// este campo, e sem o `default` a lista inteira falhava no `serde` — o usuário
+    /// autenticado via uma árvore vazia sem erro nenhum aparecer.
+    #[serde(default)]
     pub status: NodeStatus,
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -76,6 +77,10 @@ func (s *Server) verifyOTPHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	valid, err := s.repo.CheckOTP(ctx, payload.Email, payload.Code, payload.Purpose)
 	if err != nil || !valid {
+		// Sem isto a causa some: código errado, expirado e e-mail inexistente
+		// devolvem a mesma coisa, e não há como diagnosticar em dev.
+		log.Printf("verify-otp recusado: email=%q purpose=%q valid=%v err=%v",
+			payload.Email, payload.Purpose, valid, err)
 		http.Error(w, "Invalid or expired OTP", http.StatusUnauthorized)
 		return
 	}

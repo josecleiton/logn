@@ -90,14 +90,14 @@ public class CoreWrapper: ObservableObject {
             case .secureStore(let operation):
                 handleSecureStore(id: request.id, operation: operation)
             case .telemetry(let operation):
-                handleTelemetry(operation: operation)
+                handleTelemetry(id: request.id, operation: operation)
             case .monitoring(let operation):
-                handleMonitoring(operation: operation)
+                handleMonitoring(id: request.id, operation: operation)
             }
         }
     }
     
-    private func handleMonitoring(operation: MonitoringOperation) {
+    private func handleMonitoring(id: UInt32, operation: MonitoringOperation) {
         switch operation {
         case .logError(let message, let details):
             print("MONITORING ERROR: \(message) - \(details)")
@@ -111,6 +111,36 @@ public class CoreWrapper: ObservableObject {
         case .endSpan(let name):
             print("MONITORING SPAN END: \(name)")
             PostHogSDK.shared.capture("span_ended", properties: ["span_name": name])
+        }
+
+        resolveUnitEffect(id: id)
+    }
+
+    private func handleTelemetry(id: UInt32, operation: TelemetryOperation) {
+        switch operation {
+        case .identify(let userId):
+            PostHogSDK.shared.identify(userId)
+        case .track(let event, let properties):
+            PostHogSDK.shared.capture(event, properties: properties)
+        }
+
+        resolveUnitEffect(id: id)
+    }
+
+    /// Devolve ao Core as capabilities cujo `Output` é `()` — telemetria e monitoramento.
+    ///
+    /// Sem isto o efeito fica pendurado para sempre. Custou o login inteiro: depois de
+    /// `TokenStored` o Core encadeia `TelemetryOperation::Identify` e só renderiza quando
+    /// recebe `TelemetrySent`, então o app autenticava, guardava o token e continuava
+    /// desenhando a tela de login, sem erro nenhum. `()` serializa em zero bytes no bincode.
+    private func resolveUnitEffect(id: UInt32) {
+        DispatchQueue.main.async {
+            do {
+                let nextEffectsBytes = self.coreFFI.resolve(id: id, data: Data())
+                try self.processEffects(nextEffectsBytes)
+            } catch {
+                print("Failed to resolve unit effect: \(error)")
+            }
         }
     }
 
@@ -242,14 +272,3 @@ public class CoreWrapper: ObservableObject {
         }
     }
 }
-    
-    private func handleTelemetry(operation: TelemetryOperation) {
-        switch operation {
-        case .identify(let userId):
-            PostHogSDK.shared.identify(userId)
-        case .track(let event, let properties):
-            PostHogSDK.shared.capture(event, properties: properties)
-
-
-        }
-    }

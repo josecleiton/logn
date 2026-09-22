@@ -1,3 +1,10 @@
+//go:build ignore
+
+// Script avulso de verificação do sync de partidas.
+// Tem `main` próprio, então fica fora do build do pacote — sem a tag acima ele
+// colide com o `main` do servidor e quebra `just run-backend`.
+// Rode com: go run test_match_sync.go
+
 package main
 
 import (

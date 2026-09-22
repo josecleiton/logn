@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestGenerateOTP(t *testing.T) {
@@ -26,11 +26,11 @@ func TestGenerateOTP(t *testing.T) {
 func TestOTPRepository(t *testing.T) {
 	// Simple validation test for our queries
 	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, "postgres://logn:lognpassword@localhost:5432/logndb?sslmode=disable")
+	conn, err := pgxpool.New(ctx, "postgres://logn:lognpassword@localhost:5432/logndb?sslmode=disable")
 	if err != nil {
 		t.Skip("Database not available for integration test")
 	}
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	repo := NewRepository(conn)
 	
