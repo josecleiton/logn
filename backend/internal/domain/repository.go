@@ -81,7 +81,11 @@ func (r *Repository) GetUserLastHash(ctx context.Context, userID string) (string
 func (r *Repository) GetChallenges(ctx context.Context) ([]Challenge, error) {
 	// A coluna é node_id desde que a árvore virou DAG; `chapter` não existe e derrubava
 	// a listagem inteira com um 500.
-	query := `SELECT id, node_id, template_type, version, payload FROM challenges ORDER BY id ASC`
+	//
+	// A ordem define as letras A, B, C da partida: o core enumera esta lista já
+	// ordenada. Ordenava por `id`, que é VARCHAR — ch_10 vinha antes de ch_2. Agora sai
+	// de position_idx, que é dado explícito (ADR 0006).
+	query := `SELECT id, node_id, template_type, version, payload FROM challenges ORDER BY node_id, position_idx`
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
