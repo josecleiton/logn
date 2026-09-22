@@ -19,6 +19,9 @@ type LoginRequest struct {
 type AuthResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+	// Quem é o dono da sessão. Sem este campo o cliente não tinha como saber, e o
+	// sync subia com o literal "user_1", que o Postgres recusa como UUID.
+	UserID string `json:"user_id"`
 }
 
 func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -79,6 +82,7 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(AuthResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+		UserID:       user.ID,
 	})
 }
 
@@ -117,6 +121,7 @@ func (s *Server) refreshHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"access_token": accessToken,
+		"user_id":      tokenRecord.UserID,
 	})
 }
 
@@ -188,6 +193,7 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(AuthResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+		UserID:       userID,
 	})
 }
 
@@ -250,5 +256,6 @@ func (s *Server) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(AuthResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+		UserID:       user.ID,
 	})
 }

@@ -14,7 +14,7 @@ import (
 )
 
 func setupTestDB(t *testing.T) *pgxpool.Pool {
-	connStr := "postgres://logn:lognpassword@localhost:5432/logndb?sslmode=disable"
+	connStr := "postgres://logn_user:logn_password@localhost:5432/logn_db?sslmode=disable"
 	var conn *pgxpool.Pool
 	var err error
 

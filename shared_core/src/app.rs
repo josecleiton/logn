@@ -36,6 +36,7 @@ pub enum Event {
         timestamp: i64,
     },
     SyncNow,
+    SyncAndLogout,
     SyncCompleted(HttpResult),
     SubmitChallengeAnswer { 
         action_id: String,
@@ -110,6 +111,8 @@ pub struct Model {
     pub dry_runs_completed: i32,
     pub match_state: Option<match_engine::MatchState>,
     pub logout_undo: Option<LogoutSnapshot>,
+    /// Marcado por `SyncAndLogout`: a saída espera a fila subir.
+    pub logout_after_sync: bool,
 }
 
 #[derive(Facet, Serialize, Deserialize, Default, Clone)]
@@ -166,6 +169,22 @@ pub const XP_PER_LEVEL: i32 = 200;
 /// Nível a partir do XP acumulado. Mora aqui, não no cliente.
 pub fn level_for_xp(xp: i32) -> i32 {
     xp.max(0) / XP_PER_LEVEL + 1
+}
+
+/// Tira o "A · " da frente do nome do problema.
+///
+/// A letra é posição na partida, não parte do nome: o mesmo desafio pode ser o A de um
+/// nó e o C de outro. O seed guardava "A · Soma de Dois Números" e o core prefixava de novo,
+/// então o enunciado abria como "A · A · SOMA DE DOIS NÚMEROS".
+pub fn strip_problem_letter(title: &str) -> String {
+    let mut chars = title.chars();
+    match (chars.next(), chars.next()) {
+        (Some(first), Some(' ')) if first.is_ascii_uppercase() => {
+            let rest = chars.as_str();
+            rest.strip_prefix("· ").unwrap_or(title).to_string()
+        }
+        _ => title.to_string(),
+    }
 }
 
 /// Primeiro nome a partir do e-mail, para a tela de saída ("Até a próxima, Rodrigo").
@@ -249,10 +268,13 @@ impl App for LogNApp {
                 match result {
                     HttpResult::Ok(response) if response.status == 200 => {
                         #[derive(Deserialize)]
-                        struct AuthResp { access_token: String, refresh_token: String }
+                        struct AuthResp { access_token: String, refresh_token: String, #[serde(default)] user_id: String }
                         
                         if let Ok(data) = serde_json::from_slice::<AuthResp>(&response.body) {
                             model.access_token = Some(data.access_token);
+                            if !data.user_id.is_empty() {
+                                model.user_id = data.user_id;
+                            }
                             model.is_guest = false;
                             // A tela de login mostra o status como erro, em vermelho: um
                             // "deu certo" ali é ruído. A prova do sucesso é o app abrir.
@@ -325,6 +347,7 @@ impl App for LogNApp {
                 model.is_guest = false;
                 model.access_token = None;
                 model.account_email = String::new();
+                model.user_id = String::new();
                 model.nodes = vec![];
                 model.challenges = vec![];
                 model.pending_events = vec![];
@@ -385,10 +408,13 @@ impl App for LogNApp {
                 match result {
                     HttpResult::Ok(response) if response.status == 200 => {
                         #[derive(Deserialize)]
-                        struct RefreshResp { access_token: String }
+                        struct RefreshResp { access_token: String, #[serde(default)] user_id: String }
                         
                         if let Ok(data) = serde_json::from_slice::<RefreshResp>(&response.body) {
                             model.access_token = Some(data.access_token);
+                            if !data.user_id.is_empty() {
+                                model.user_id = data.user_id;
+                            }
                             model.is_guest = false;
                             model.status = "Session refreshed!".to_string();
 
@@ -513,9 +539,12 @@ Event::FetchChallenges => {
                 let challenge = model.challenges.iter().find(|c| c.id == challenge_id);
                 if let Some(ch) = challenge {
                     let is_correct = if ch.template_type == "SPOT_THE_BUG" {
-                        if let Some(ref correct_line) = ch.payload.validation.correct_line {
-                            answer_json.contains(&format!("\"selected_line\": {}", correct_line)) ||
-                            answer_json.contains(&format!("\"selected_line\":{}", correct_line))
+                        if let Some(correct_line) = ch.payload.validation.correct_line {
+                            // `selected_line` vem do cliente em índice; o desafio guarda
+                            // a linha como ela aparece numerada na tela.
+                            let index = correct_line - 1;
+                            answer_json.contains(&format!("\"selected_line\": {}", index)) ||
+                            answer_json.contains(&format!("\"selected_line\":{}", index))
                         } else {
                             false
                         }
@@ -669,10 +698,13 @@ Event::FetchChallenges => {
                 match result {
                     HttpResult::Ok(response) if response.status == 200 => {
                         #[derive(Deserialize)]
-                        struct AuthResp { access_token: String, refresh_token: String }
+                        struct AuthResp { access_token: String, refresh_token: String, #[serde(default)] user_id: String }
 
                         if let Ok(data) = serde_json::from_slice::<AuthResp>(&response.body) {
                             model.access_token = Some(data.access_token);
+                            if !data.user_id.is_empty() {
+                                model.user_id = data.user_id;
+                            }
                             model.is_guest = false;
                             model.otp_verified = false;
                             model.otp_email = String::new();
@@ -713,10 +745,13 @@ Event::FetchChallenges => {
                 match result {
                     HttpResult::Ok(response) if response.status == 200 => {
                         #[derive(Deserialize)]
-                        struct AuthResp { access_token: String, refresh_token: String }
+                        struct AuthResp { access_token: String, refresh_token: String, #[serde(default)] user_id: String }
 
                         if let Ok(data) = serde_json::from_slice::<AuthResp>(&response.body) {
                             model.access_token = Some(data.access_token);
+                            if !data.user_id.is_empty() {
+                                model.user_id = data.user_id;
+                            }
                             model.is_guest = false;
                             model.otp_verified = false;
                             model.otp_email = String::new();
@@ -735,22 +770,44 @@ Event::FetchChallenges => {
                 }
                 render::render()
             }
+            // Sincroniza e só então sai.
+            //
+            // O sheet crítico mandava `SyncNow` e `Logout` em sequência: a saída
+            // esvaziava a fila antes de a resposta chegar, então um sync recusado
+            // levava o progresso junto — e a tela de despedida ainda dizia que o XP
+            // estava no servidor.
+            Event::SyncAndLogout => {
+                if model.pending_events.is_empty() {
+                    return self.update(Event::Logout, model);
+                }
+                model.logout_after_sync = true;
+                self.update(Event::SyncNow, model)
+            }
+
             Event::SyncNow => {
                 if model.is_guest && model.access_token.is_none() {
                     model.status = "Sign in to sync your progress!".to_string();
+                    model.logout_after_sync = false;
                     return Command::done();
                 }
                 if model.is_syncing || model.pending_events.is_empty() {
                     return Command::done();
                 }
-                
+
+                // Sem saber de quem é a sessão não há o que sincronizar. O código
+                // mandava o literal "user_1", que o Postgres recusa como UUID: a fila
+                // batia num 500 e o app dizia que o progresso estava salvo.
+                if model.user_id.is_empty() {
+                    model.status = "Entre de novo para sincronizar.".to_string();
+                    model.logout_after_sync = false;
+                    return render::render();
+                }
+
                 model.is_syncing = true;
                 model.status = "Syncing...".to_string();
-                
-                let user_id = if model.user_id.is_empty() { "user_1".to_string() } else { model.user_id.clone() };
-                
+
                 let payload = SyncPayload {
-                    user_id,
+                    user_id: model.user_id.clone(),
                     events: model.pending_events.clone(),
                 };
                 
@@ -771,29 +828,38 @@ Event::FetchChallenges => {
                 match result {
                     HttpResult::Ok(response) => {
                         if response.status == 200 {
-                            model.status = "Sync Successful".to_string();
+                            model.status = String::new();
                             model.pending_events.clear();
-                            
+
                             // Flush the empty queue to disk so it doesn't duplicate
                             let bytes = serde_json::to_vec(&model.pending_events).unwrap_or_default();
-                            return Command::request_from_shell(KeyValueOperation::Set {
+                            let flush = Command::request_from_shell(KeyValueOperation::Set {
                                 key: "offline_events".to_string(),
                                 value: bytes,
                             }).then_send(|_| Event::Ping); // Ping just as a dummy no-op event
+
+                            if model.logout_after_sync {
+                                model.logout_after_sync = false;
+                                // A fila subiu: agora sair é seguro.
+                                return flush.and(self.update(Event::Logout, model));
+                            }
+                            return flush;
                         } else if response.status == 409 {
-                            model.status = "Sync Conflict - Rebase Required".to_string();
+                            model.status = "Seu progresso divergiu do servidor.".to_string();
                         } else if response.status == 401 {
                             // Intercept 401 and attempt refresh
                             model.pending_retry_event = Some(Event::SyncNow);
                             return self.update(Event::AttemptRefresh, model);
                         } else {
-                            model.status = format!("Sync Failed: HTTP {}", response.status);
+                            model.status = "Não consegui enviar seu progresso agora.".to_string();
                         }
                     }
                     HttpResult::Err(_err) => {
-                        model.status = "Sync Failed: Network Error".to_string();
+                        model.status = "Sem conexão para enviar seu progresso.".to_string();
                     }
                 }
+                // Falhou: fica. Sair aqui apagaria a fila que não subiu.
+                model.logout_after_sync = false;
                 render::render()
             }
             Event::ChallengeAnswered { challenge_id, node_id, is_correct, timestamp } => {
@@ -865,10 +931,12 @@ Event::FetchChallenges => {
                             letter: letter.to_string(),
                             challenge_id: c.id.clone(),
                             template_type: c.template_type.clone(),
-                            title: format!("{} · {}", letter, c.payload.content.title),
+                            title: format!("{} · {}", letter, strip_problem_letter(&c.payload.content.title)),
                             description: c.payload.content.description.clone(),
                             code_lines: c.payload.content.code_lines.clone(),
-                            correct_line: c.payload.validation.correct_line,
+                            // O desafio guarda a linha como o jogador a lê (a partir de 1);
+                            // o motor compara com o índice que o toque devolve.
+                            correct_line: c.payload.validation.correct_line.map(|l| l - 1),
                             expected_string: c.payload.validation.expected_string.clone(),
                             options: c.payload.content.options.clone().unwrap_or_default(),
                             correct_options: c.payload.content.correct_options.clone().unwrap_or_default(),
@@ -1105,6 +1173,93 @@ mod tests {
 
 
     #[test]
+    fn test_strips_only_a_single_letter_prefix_from_the_title() {
+        assert_eq!(strip_problem_letter("A · Soma de Dois Números"), "Soma de Dois Números");
+        assert_eq!(strip_problem_letter("Soma de Dois Números"), "Soma de Dois Números");
+        // "DP" não é letra de problema; o nome fica inteiro.
+        assert_eq!(strip_problem_letter("DP · Mochila"), "DP · Mochila");
+        assert_eq!(strip_problem_letter("a · minúscula"), "a · minúscula");
+        assert_eq!(strip_problem_letter(""), "");
+    }
+
+    /// Tocar na linha do bug tem de dar Accepted.
+    ///
+    /// O desafio guarda a linha como o jogador a lê (4), o toque devolve o índice (3),
+    /// e o motor comparava um com o outro: acertar a linha certa dava Wrong Answer, e
+    /// o relatório ainda dizia "sua resposta: linha 4" — a resposta certa, recusada.
+    #[test]
+    fn test_spot_the_bug_accepts_the_line_the_player_sees() {
+        use crate::domain::{Challenge, ChallengeContent, ChallengePayload, ChallengeValidation};
+
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.challenges = vec![Challenge {
+            id: "ch_001".into(),
+            node_id: "node_1".into(),
+            template_type: "SPOT_THE_BUG".into(),
+            version: 1,
+            payload: ChallengePayload {
+                content: ChallengeContent {
+                    title: "Soma de Dois Números".into(),
+                    description: "Ache o laço infinito.".into(),
+                    code_lines: vec![
+                        "int l = 0, r = n - 1;".into(),
+                        "while (a < b) {".into(),
+                        "    int mid = l + (r - l) / 2;".into(),
+                        "    if (a >= b) {".into(),
+                    ],
+                    options: None,
+                    correct_options: None,
+                    watch_variables: None,
+                    watch_note: None,
+                },
+                validation: ChallengeValidation {
+                    validation_type: "LINE_MATCH".into(),
+                    correct_line: Some(4),
+                    expected_string: None,
+                },
+            },
+        }];
+
+        let _ = app.update(Event::StartMatch { node_id: "node_1".into() }, &mut model);
+        // A quarta linha é o índice 3, que é o que o toque manda.
+        let _ = app.update(Event::MatchSelectLine { line: 3 }, &mut model);
+        let _ = app.update(Event::MatchSubmit { timestamp: 1_700_000_000 }, &mut model);
+
+        assert_eq!(app.view(&model).match_view.last_verdict, "AC");
+    }
+
+    /// Sair com fila pendente não pode perder a fila.
+    ///
+    /// O sheet crítico mandava `SyncNow` e `Logout` em seguida, e o `Logout` limpava
+    /// `pending_events` antes da resposta chegar: sync recusado, progresso apagado, e
+    /// a despedida dizendo que estava tudo no servidor.
+    #[test]
+    fn test_sync_and_logout_keeps_the_queue_when_the_sync_fails() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("tok".into());
+        model.user_id = "66b670a2-41d2-4ba2-b863-78735b69ec7c".into();
+        model.pending_events = vec![GameEvent::new(
+            "evt_1".into(), "MATCH_ANSWER".into(), "{}".into(), 1_700_000_000,
+            "0000000000000000000000000000000000000000000000000000000000000000".into(),
+        )];
+
+        let mut cmd = app.update(Event::SyncAndLogout, &mut model);
+        let req = cmd.expect_one_effect();
+        assert!(matches!(req, Effect::Http(ref r) if r.operation.url == "/api/v1/sync"));
+
+        let failure = HttpResult::Ok(crux_http::protocol::HttpResponse {
+            status: 500, headers: vec![], body: vec![],
+        });
+        let _ = app.update(Event::SyncCompleted(failure), &mut model);
+
+        assert_eq!(model.pending_events.len(), 1, "a fila que não subiu fica");
+        assert!(model.access_token.is_some(), "e a sessão continua de pé");
+        assert!(!model.logout_after_sync);
+    }
+
+    #[test]
     fn test_display_name_takes_the_first_name_from_the_email() {
         assert_eq!(display_name_from_email("jogador@example.com"), "Rodrigo");
         assert_eq!(display_name_from_email("jogador@example.com"), "Rodrigo");
@@ -1200,7 +1355,8 @@ mod tests {
 
         let body = serde_json::to_vec(&serde_json::json!({
             "access_token": "acc_tok",
-            "refresh_token": "ref_tok"
+            "refresh_token": "ref_tok",
+            "user_id": "66b670a2-41d2-4ba2-b863-78735b69ec7c"
         })).unwrap();
         
         let result = HttpResult::Ok(crux_http::protocol::HttpResponse { status: 200, headers: vec![], body });
@@ -1223,6 +1379,8 @@ mod tests {
         // Entrar por senha também identifica a sessão: o e-mail vai para o cofre
         // junto do refresh token, e é ele que o perfil mostra na volta.
         assert_eq!(model.account_email, "test@x.com");
+        // E o id vem do servidor — sem ele o sync subia com "user_1" e o banco recusava.
+        assert_eq!(model.user_id, "66b670a2-41d2-4ba2-b863-78735b69ec7c");
 
         let kv_result = KeyValueResult::Ok { response: KeyValueResponse::Set { previous: crux_kv::Value::None } };
         let mut cmd = app.update(Event::TokenStored(kv_result), &mut model);

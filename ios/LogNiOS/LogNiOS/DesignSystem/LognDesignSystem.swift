@@ -186,6 +186,14 @@ extension View {
 
 enum Radius { static let xs: CGFloat = 2; static let sm: CGFloat = 4; static let md: CGFloat = 8 }
 
+/// Concorda o substantivo com a contagem: `1 balão`, `2 balões`, `0 balões`.
+///
+/// O app escrevia "1 balões no ar" no cabeçalho e no resumo do perfil — o primeiro
+/// balão de cada jogador aparece com o texto errado.
+func pluralPt(_ count: Int, _ singular: String, _ plural: String) -> String {
+    "\(count) \(count == 1 ? singular : plural)"
+}
+
 enum Space {
     static let xs: CGFloat = 4;  static let sm: CGFloat = 8;   static let md: CGFloat = 12
     static let lg: CGFloat = 16; static let xl: CGFloat = 24;  static let xxl: CGFloat = 32

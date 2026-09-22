@@ -205,7 +205,7 @@ struct SkillTreeHostView: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            Text(core.viewModel.isFetching ? "Atualizando mapa" : "\(balloonsUp) balões no ar")
+            Text(core.viewModel.isFetching ? "Atualizando mapa" : "\(pluralPt(balloonsUp, "balão", "balões")) no ar")
                 .font(.plexSansSemiBold(20, relativeTo: .title3))
                 .tracking(-0.02 * 20)
                 .foregroundColor(LognDark.textPrimary)

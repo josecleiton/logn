@@ -87,6 +87,8 @@ pub struct MatchProblem {
     pub title: String,
     pub description: String,
     pub code_lines: Vec<String>,
+    /// Índice da linha do bug em `code_lines`, **a partir de 0** — o mesmo que o
+    /// toque devolve. O desafio a guarda a partir de 1; a conversão é feita ao montar.
     pub correct_line: Option<i32>,
     pub expected_string: Option<String>,
     pub options: Vec<String>,       // Para COMPLEXITY_MATCH e TAG_THE_PATTERN
@@ -299,9 +301,7 @@ impl MatchState {
             self.penalty_minutes += 20;
             
             let explanation = "A escolha não cobre todos os casos de entrada. Vale reler o enunciado olhando para os limites: o primeiro índice, o último, e o array vazio.";
-            let title = problem.title.trim_start_matches(|c: char| c.is_ascii_uppercase())
-                .trim_start_matches(" · ")
-                .to_string();
+            let title = crate::app::strip_problem_letter(&problem.title);
 
             // Guarda o erro antes de limpar a seleção: a resposta dada é o que o
             // relatório mostra em "sua resposta".

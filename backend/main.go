@@ -48,6 +48,8 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	valid, err := domain.ValidateSync(payload, serverLastHash)
 	if err != nil {
 		if err.Error() == "force_rebase" {
+			log.Printf("sync rebase: user=%s eventos=%d topo_servidor=%s primeiro_previous=%s",
+				payload.UserID, len(payload.Events), serverLastHash, payload.Events[0].PreviousHash)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusConflict)
 			json.NewEncoder(w).Encode(map[string]interface{}{
@@ -58,28 +60,37 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Sem este log, um sync recusado some: o cliente só vê o número do status e
+		// o servidor não conta o motivo a ninguém.
+		log.Printf("sync recusado: user=%s eventos=%d motivo=%v", payload.UserID, len(payload.Events), err)
 		http.Error(w, "Security validation failed: "+err.Error(), http.StatusForbidden)
 		return
 	}
 
 	if !valid {
+		log.Printf("sync recusado: user=%s cadeia inválida", payload.UserID)
 		http.Error(w, "Invalid chain", http.StatusForbidden)
 		return
 	}
 
+	// Topo da cadeia depois deste sync. Devolver o topo antigo faria o cliente
+	// continuar encadeando a partir de onde o servidor já não está.
+	newTop := serverLastHash
 	if len(payload.Events) > 0 {
-		newTop := payload.Events[len(payload.Events)-1].CurrentHash
+		newTop = payload.Events[len(payload.Events)-1].CurrentHash
 		if err := s.repo.InsertSyncEvents(ctx, payload, newTop); err != nil {
+			log.Printf("sync não gravado: user=%s eventos=%d erro=%v", payload.UserID, len(payload.Events), err)
 			http.Error(w, "Failed to save events: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
+		log.Printf("sync ok: user=%s eventos=%d topo=%s", payload.UserID, len(payload.Events), newTop)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":         "success",
 		"events_applied": len(payload.Events),
-		"new_top":        serverLastHash,
+		"new_top":        newTop,
 	})
 }
 
@@ -103,7 +114,7 @@ func (s *Server) challengesHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	dbUrl := os.Getenv("DATABASE_URL")
 	if dbUrl == "" {
-		dbUrl = "postgres://logn:lognpassword@localhost:5432/logndb?sslmode=disable"
+		dbUrl = "postgres://logn_user:logn_password@localhost:5432/logn_db?sslmode=disable"
 	}
 
 	jwtSecret := os.Getenv("JWT_SECRET")

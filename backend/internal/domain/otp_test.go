@@ -26,7 +26,7 @@ func TestGenerateOTP(t *testing.T) {
 func TestOTPRepository(t *testing.T) {
 	// Simple validation test for our queries
 	ctx := context.Background()
-	conn, err := pgxpool.New(ctx, "postgres://logn:lognpassword@localhost:5432/logndb?sslmode=disable")
+	conn, err := pgxpool.New(ctx, "postgres://logn_user:logn_password@localhost:5432/logn_db?sslmode=disable")
 	if err != nil {
 		t.Skip("Database not available for integration test")
 	}

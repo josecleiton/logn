@@ -355,6 +355,15 @@ struct MatchVerdictScreen: View {
 
     private var letterColor: Color { BalloonColor.forLetter(snapshot.letter) }
 
+    /// Fecho da partida. Quem subiu todos os balões fechou o nó; quem parou no meio
+    /// deixou o nó em aberto — e dizer "em aberto" para quem zerou é mentira.
+    private var closingNote: String {
+        let solved = balloonStates.filter(\.1).count
+        return solved == balloonStates.count && !balloonStates.isEmpty
+            ? "volta para a trilha · nó completo"
+            : "volta para a trilha · nó fica em aberto"
+    }
+
     /// O shake mora aqui, no header do veredito — é onde o mock do `3b` o coloca
     /// (`gp-shake 240ms ease-out`), não na tela de questão.
     @State private var shake: CGFloat = 0
@@ -485,15 +494,17 @@ struct MatchVerdictScreen: View {
                 }
             }
 
+            // Acabou a partida, não há próximo problema: o botão prometia um e a
+            // linha abaixo dizia o contrário, na mesma tela.
             LognButton(
-                title: snapshot.isAccepted ? "Próximo problema" : "Continuar",
+                title: matchOver ? "Ver o relatório" : (snapshot.isAccepted ? "Próximo problema" : "Continuar"),
                 variant: .primary,
                 action: onContinue
             )
             .padding(.top, 18)
 
             if matchOver {
-                Text("volta para a trilha · nó fica em aberto")
+                Text(closingNote)
                     .font(.plexMono(11))
                     .foregroundColor(LognDark.textMuted)
                     .frame(maxWidth: .infinity)

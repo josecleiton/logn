@@ -96,7 +96,7 @@ struct CriticalLogoutSheet: View {
             LognDark.surfaceRaised.ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
-                Text("\(pendingCount) EVENTOS NA FILA · \(xpAtRisk) XP")
+                Text("\(pluralPt(pendingCount, "EVENTO NA FILA", "EVENTOS NA FILA")) · \(xpAtRisk) XP")
                     .font(.plexMono(10.5))
                     .tracking(0.14 * 10.5)
                     .foregroundColor(LognDark.warnInk)

@@ -73,10 +73,8 @@ struct ProfileHubView: View {
             CriticalLogoutSheet(
                 pendingCount: pending,
                 xpAtRisk: Int(vm.xpIntoLevel),
-                onSyncAndLeave: {
-                    core.dispatch(event: .syncNow)
-                    core.dispatch(event: .logout)
-                },
+                // Um evento só: quem decide sair é o core, depois da fila subir.
+                onSyncAndLeave: { core.dispatch(event: .syncAndLogout) },
                 onStay: { showsCriticalLogout = false },
                 onDiscard: { core.dispatch(event: .logout) }
             )
@@ -146,7 +144,7 @@ struct ProfileHubView: View {
                         Circle()
                             .fill(pending > 0 ? LognDark.warn : LognDark.correct)
                             .frame(width: 6, height: 6)
-                        Text(pending > 0 ? "\(pending) EVENTOS NA FILA" : "TUDO SINCRONIZADO")
+                        Text(pending > 0 ? pluralPt(pending, "EVENTO NA FILA", "EVENTOS NA FILA") : "TUDO SINCRONIZADO")
                             .font(.plexMono(10))
                             .tracking(0.12 * 10)
                             .foregroundColor(pending > 0 ? LognDark.warnInk : LognDark.textMuted)
@@ -291,7 +289,7 @@ struct ProfileHubView: View {
     }
 
     private var summary: some View {
-        Text("\(vm.challengesCompleted) desafios concluídos · \(vm.balloonsUp) balões no ar")
+        Text("\(pluralPt(Int(vm.challengesCompleted), "desafio concluído", "desafios concluídos")) · \(pluralPt(Int(vm.balloonsUp), "balão", "balões")) no ar")
             .font(.plexMono(10.5))
             .monospacedDigit()
             .foregroundColor(LognDark.textMuted)

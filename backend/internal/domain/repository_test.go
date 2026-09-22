@@ -11,7 +11,7 @@ import (
 
 func setupTestDB(t *testing.T) *pgxpool.Pool {
 	// Aguarda o banco subir via docker-compose (tentativas)
-	connStr := "postgres://logn:lognpassword@localhost:5432/logndb?sslmode=disable"
+	connStr := "postgres://logn_user:logn_password@localhost:5432/logn_db?sslmode=disable"
 	var conn *pgxpool.Pool
 	var err error
 
@@ -49,9 +49,13 @@ func TestRepository_InsertChallenge(t *testing.T) {
 		"content": {"code_lines": ["int a = 1;"]},
 		"validation": {"type": "LINE_MATCH", "correct_line": 1}
 	}`)
+	// node_id é FK para skill_nodes desde que a árvore virou DAG: precisa do UUID
+	// de um nó semeado, não de um rótulo solto.
+	const adHocNode = "10000000-0000-0000-0000-000000000001"
+
 	ch1 := Challenge{
 		ID:           "test_bug_1",
-		NodeID:      "Basics",
+		NodeID:      adHocNode,
 		TemplateType: "SPOT_THE_BUG",
 		Version:      1,
 		Payload:      validPayload,
@@ -69,7 +73,7 @@ func TestRepository_InsertChallenge(t *testing.T) {
 	}`)
 	ch2 := Challenge{
 		ID:           "test_bug_2",
-		NodeID:      "Basics",
+		NodeID:      adHocNode,
 		TemplateType: "SPOT_THE_BUG",
 		Version:      1,
 		Payload:      invalidPayload,

@@ -101,6 +101,10 @@ mod tests {
 pub struct ChallengeValidation {
     #[serde(rename = "type")]
     pub validation_type: String, // "LINE_MATCH", "EXACT_MATCH" or "OUTPUT_MATCH" (DRY_RUN)
+    /// Linha do bug **contada a partir de 1**, como a numeração que o jogador vê.
+    ///
+    /// É o número que quem escreve o desafio lê na tela; o motor trabalha em índice,
+    /// e a conversão acontece uma vez só, ao montar a partida.
     pub correct_line: Option<i32>,
     pub expected_string: Option<String>,
 }
