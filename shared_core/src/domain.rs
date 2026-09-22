@@ -175,6 +175,25 @@ pub struct ChallengePayload {
     pub validation: ChallengeValidation,
 }
 
+/// Versão do formato da trilha empacotada. Sobe quando o formato muda de um jeito que
+/// um app antigo não consegue ler — aí ele ignora a semente em vez de quebrar.
+pub const TRAIL_SEED_VERSION: i32 = 1;
+
+/// A trilha que viaja dentro do app, gerada por `just seed-bundle`.
+///
+/// Existe para a primeira abertura sem rede: sem ela, instalação nova e offline não tem
+/// conteúdo nenhum, nem para quem tem conta. É semente, não verdade — qualquer coisa
+/// vinda do servidor ou do retrato guardado é mais nova e manda.
+///
+/// Não tem `Facet` de propósito: nunca atravessa a FFI, é lida e descartada aqui dentro.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TrailSeed {
+    pub version: i32,
+    pub generated_at: String,
+    pub nodes: Vec<SkillNode>,
+    pub challenges: Vec<Challenge>,
+}
+
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
 #[facet(fg::namespace = "LogN")]
 pub struct Challenge {

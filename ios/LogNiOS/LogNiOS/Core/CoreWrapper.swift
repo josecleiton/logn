@@ -65,6 +65,10 @@ public class CoreWrapper: ObservableObject {
             scoreboard: []
         )
         updateViewModel()
+        // A trilha que viaja no bundle entra antes de tudo: instalação nova e sem rede
+        // não tem retrato guardado nem resposta do servidor, e sem isto o app abria com
+        // uma trilha de mock que não existe no banco. O Core só usa o que estiver vazio.
+        loadBundledTrail()
         // O Core não tem relógio: quem dá a hora é o shell, e sem ela ele não consegue
         // decidir se a sessão guardada ainda vale quando não há rede.
         dispatch(event: .tick(now: Int64(Date().timeIntervalSince1970)))
@@ -75,6 +79,21 @@ public class CoreWrapper: ObservableObject {
         dispatch(event: .restoreOfflineQueue)
     }
     
+    /// Lê `trail-seed.json` do bundle e entrega ao Core.
+    ///
+    /// Gerado por `just seed-bundle` a partir da própria API, então o formato é o mesmo
+    /// que o Core já lê das respostas HTTP. Ausência do arquivo não é erro fatal: o app
+    /// segue buscando pela rede, como fazia antes de a semente existir.
+    private func loadBundledTrail() {
+        guard let url = Bundle.main.url(forResource: "trail-seed", withExtension: "json"),
+              let json = try? String(contentsOf: url, encoding: .utf8)
+        else {
+            print("trail-seed.json não veio no bundle; rode `just seed-bundle`")
+            return
+        }
+        dispatch(event: .bundledTrailLoaded(json: json))
+    }
+
     public func dispatch(event: Event) {
         do {
             let bytes = try event.bincodeSerialize()

@@ -41,6 +41,10 @@ pub enum Event {
     SyncAndLogout,
     RestoreOfflineQueue,
     OfflineQueueRestored(KeyValueResult),
+    /// A trilha que viaja no bundle do app, entregue pelo shell na abertura.
+    ///
+    /// O Core não lê arquivo; quem lê é o shell, e aqui só se decide se a semente serve.
+    BundledTrailLoaded { json: String },
     /// Tocou no selo de origem. Na primeira vez de cada origem, para o relógio.
     OpenOriginSheet,
     CloseOriginSheet,
@@ -398,12 +402,13 @@ impl App for LogNApp {
                 render::render()
             }
 
+            // Visitante joga o jogo de verdade, não uma trilha inventada: os endpoints
+            // de conteúdo são públicos, e só o progresso fica sem sincronizar. Se não
+            // houver rede, a semente do bundle já encheu o modelo na abertura.
             Event::ContinueAsGuest => {
                 model.is_guest = true;
-                model.nodes = crate::mock_data::get_mock_nodes();
-                model.challenges = crate::mock_data::get_mock_challenges();
-                model.status = "Modo Visitante: Dados locais carregados".to_string();
-                render::render()
+                model.status = "Modo Visitante".to_string();
+                self.update(Event::FetchNodes, model)
             }
 
             Event::TokenStored(_) => {
@@ -513,12 +518,10 @@ impl App for LogNApp {
                     }
                 }
 
-                // Sem retrato guardado ainda, ao menos há trilha para jogar.
-                if model.nodes.is_empty() {
-                    model.nodes = crate::mock_data::get_mock_nodes();
-                    model.challenges = crate::mock_data::get_mock_challenges();
-                }
-
+                // Sem retrato guardado, quem enche o modelo é a semente do bundle, que
+                // o shell entrega na abertura. Antes entrava a trilha de mock aqui, e o
+                // jogador via Arrays & Strings e Sliding Window sem saber que aquilo não
+                // existia — pior, respondia desafios cujo node_id não está no banco.
                 Command::request_from_shell(KeyValueOperation::Get {
                     key: "account_email".to_string(),
                 })
@@ -765,10 +768,11 @@ impl App for LogNApp {
                             render::render()
                         }
                     }
+                    // Sem rede o app fica com o que já tem — semente do bundle, retrato
+                    // guardado, ou nada. Trocar por uma trilha fictícia era mentir para
+                    // o jogador e gerar evento de sync com node_id que não existe.
                     HttpResult::Err(_) => {
-                        model.status = "Offline Mode: Using Local Mock Data".to_string();
-                        model.nodes = crate::mock_data::get_mock_nodes();
-                        model.challenges = crate::mock_data::get_mock_challenges();
+                        model.status = "Offline: mantendo a trilha que já estava".to_string();
                         render::render()
                     }
                 }
@@ -813,8 +817,7 @@ Event::FetchChallenges => {
                         }
                     }
                     HttpResult::Err(_) => {
-                        model.status = "Offline Mode: Loaded Mock Challenges".to_string();
-                        model.challenges = crate::mock_data::get_mock_challenges();
+                        model.status = "Offline: mantendo os desafios que já estavam".to_string();
                     }
                 }
                 render::render()
@@ -1443,6 +1446,26 @@ Event::FetchChallenges => {
                 render::render()
             }
 
+            // A semente só preenche o que está vazio. Retrato guardado e resposta do
+            // servidor são mais novos, e sobrescrevê-los faria o app regredir de
+            // conteúdo a cada abertura.
+            Event::BundledTrailLoaded { json } => {
+                match serde_json::from_str::<crate::domain::TrailSeed>(&json) {
+                    Ok(seed) if seed.version == crate::domain::TRAIL_SEED_VERSION => {
+                        if model.nodes.is_empty() {
+                            model.nodes = seed.nodes;
+                        }
+                        if model.challenges.is_empty() {
+                            model.challenges = seed.challenges;
+                        }
+                    }
+                    // Semente de outra versão é ignorada, não é erro: o app segue
+                    // buscando pela rede como sempre buscou.
+                    _ => {}
+                }
+                render::render()
+            }
+
             // O selo de origem abre o cartão de homenagem. A primeira leitura de cada
             // origem para o relógio: ler de onde o problema veio não pode custar a
             // questão. Da segunda em diante o relógio segue, senão o cartão vira um
@@ -1792,6 +1815,23 @@ mod tests {
         );
     }
 
+    /// Uma semente mínima, na forma que `just seed-bundle` gera.
+    #[cfg(test)]
+    fn seed_json() -> String {
+        serde_json::json!({
+            "version": crate::domain::TRAIL_SEED_VERSION,
+            "generated_at": "2026-09-22T00:00:00Z",
+            "nodes": [{
+                "id": "10000000-0000-0000-0000-000000000001",
+                "name": "Nó A",
+                "description": "Descrição do nó A.",
+                "row": 0, "column": 0, "required_xp": 0, "prerequisites": []
+            }],
+            "challenges": []
+        })
+        .to_string()
+    }
+
     /// Monta um desafio com a forma que o seed do Postgres tem.
     #[cfg(test)]
     fn seeded_challenge(
@@ -1826,6 +1866,59 @@ mod tests {
                 },
             },
         }
+    }
+
+    /// A semente enche o que está vazio e não encosta no que já veio do servidor ou do
+    /// retrato — sobrescrever faria o app regredir de conteúdo a cada abertura.
+    #[test]
+    fn test_bundled_trail_seeds_but_never_overwrites() {
+        let app = LogNApp::default();
+
+        // Modelo vazio: a semente entra.
+        let mut model = Model::default();
+        let _ = app.update(Event::BundledTrailLoaded { json: seed_json() }, &mut model);
+        assert_eq!(model.nodes.len(), 1, "sem nada no modelo, a semente enche");
+
+        // Modelo com conteúdo mais novo: a semente passa sem tocar.
+        let mut model = Model::default();
+        model.nodes = vec![crate::domain::SkillNode {
+            id: "70000000-0000-0000-0000-000000000007".into(),
+            name: "Nó G".into(),
+            description: "Vindo do servidor.".into(),
+            row: 4,
+            column: 0,
+            required_xp: 60,
+            prerequisites: vec![],
+            status: Default::default(),
+        }];
+        let _ = app.update(Event::BundledTrailLoaded { json: seed_json() }, &mut model);
+        assert_eq!(model.nodes.len(), 1);
+        assert_eq!(
+            model.nodes[0].name, "Nó G",
+            "o que veio do servidor manda; a semente não regride o conteúdo"
+        );
+    }
+
+    /// Semente de outra versão é ignorada em silêncio: o app segue buscando pela rede,
+    /// que é o comportamento de antes de existir semente.
+    #[test]
+    fn test_bundled_trail_of_another_version_is_ignored() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+
+        let futura = seed_json().replace(
+            &format!("\"version\":{}", crate::domain::TRAIL_SEED_VERSION),
+            "\"version\":999",
+        );
+        let _ = app.update(Event::BundledTrailLoaded { json: futura }, &mut model);
+        assert!(model.nodes.is_empty(), "versão que o app não conhece não entra");
+
+        // E lixo no lugar da semente também não derruba nada.
+        let _ = app.update(
+            Event::BundledTrailLoaded { json: "não é json".into() },
+            &mut model,
+        );
+        assert!(model.nodes.is_empty());
     }
 
     /// Ler de onde o problema veio não pode custar a questão — mas só na primeira vez
@@ -2151,8 +2244,7 @@ mod tests {
         assert!(view.is_offline_session, "e o app sabe que ainda não falou com o servidor");
         assert!(!view.has_access_token, "sem rede não há credencial nova");
 
-        // O retrato da última vez que o servidor respondeu devolve XP e trilha desta
-        // conta; sem retrato guardado, ao menos há o que jogar.
+        // O retrato da última vez que o servidor respondeu devolve o XP desta conta.
         let snapshot = serde_json::to_vec(&serde_json::json!({
             "global_xp": 300, "bugs_found": 2, "dry_runs_completed": 1,
             "nodes": [], "challenges": []
@@ -2165,7 +2257,16 @@ mod tests {
         );
         let view = app.view(&model);
         assert_eq!(view.global_xp, 300, "offline mostra o último XP conhecido, não zero");
-        assert!(!view.nodes.is_empty(), "e há trilha para jogar");
+
+        // E quem garante trilha para jogar é a semente do bundle, não mais uma trilha
+        // de mock: o retrato pode vir sem nós, e antes disso o app inventava quatro.
+        assert!(view.nodes.is_empty(), "retrato sem nós não inventa nós");
+        let _ = app.update(
+            Event::BundledTrailLoaded { json: seed_json() },
+            &mut model,
+        );
+        let view = app.view(&model);
+        assert!(!view.nodes.is_empty(), "com a semente, há trilha para jogar");
 
         // Vencida: aí é login mesmo.
         let mut model = Model::default();

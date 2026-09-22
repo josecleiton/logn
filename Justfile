@@ -50,6 +50,11 @@ sync-env:
 	@echo "Local.xcconfig synced from .env!"
 
 
+# Empacota a trilha atual (nós + desafios) dentro do app, para a primeira abertura sem
+# rede. Precisa do backend de pé. Rode de novo depois de cada migração de conteúdo.
+seed-bundle:
+	python3 tools/seed_bundle.py
+
 # Gera as strings de internacionalização (i18n) para Swift (e futuramente Kotlin)
 i18n:
 	cargo run --manifest-path tools_i18n/Cargo.toml -- --language swift --output-dir ios/LogNiOS/LogNiOS/DesignSystem
