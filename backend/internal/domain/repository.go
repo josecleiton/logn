@@ -24,6 +24,11 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{db: db}
 }
 
+// Ping checks the database connectivity.
+func (r *Repository) Ping(ctx context.Context) error {
+	return r.db.Ping(ctx)
+}
+
 func (r *Repository) InsertChallenge(ctx context.Context, ch Challenge) error {
 	query := `INSERT INTO challenges (id, node_id, template_type, version, payload)
 			  VALUES ($1, $2, $3, $4, $5)`

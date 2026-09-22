@@ -23,6 +23,13 @@ run-backend: db-up
 test-backend:
 	cd backend && go test -v ./...
 
+# Faz o deploy do Backend para o Google Cloud Run (usando Source-to-Image)
+deploy-backend:
+	gcloud run deploy logn-backend \
+		--source ./backend \
+		--region us-east1 \
+		--allow-unauthenticated
+
 # --- Core (Rust) ---
 
 # Roda os testes da maquina de estados Crux

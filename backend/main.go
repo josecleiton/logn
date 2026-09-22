@@ -19,6 +19,20 @@ type Server struct {
 	mailer *email.Mailer
 }
 
+func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+}
+
+func (s *Server) readyHandler(w http.ResponseWriter, r *http.Request) {
+	if err := s.repo.Ping(r.Context()); err != nil {
+		http.Error(w, "Database not ready", http.StatusServiceUnavailable)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ready"))
+}
+
 func (s *Server) pingHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -165,12 +179,22 @@ func main() {
 		log.Fatalf("Unable to reach database: %v\n", err)
 	}
 
-	applied, err := schema.Migrate(context.Background(), pool)
-	if err != nil {
-		log.Fatalf("Migração falhou: %v\n", err)
+	runMigrations := os.Getenv("RUN_MIGRATIONS") == "true"
+	// Cloud Run injeta K_SERVICE. Se não estiver no Cloud Run e a variável não foi definida, roda no local
+	if os.Getenv("K_SERVICE") == "" && os.Getenv("RUN_MIGRATIONS") == "" {
+		runMigrations = true
 	}
-	for _, name := range applied {
-		log.Printf("migração aplicada: %s", name)
+
+	if runMigrations {
+		applied, err := schema.Migrate(context.Background(), pool)
+		if err != nil {
+			log.Fatalf("Migração falhou: %v\n", err)
+		}
+		for _, name := range applied {
+			log.Printf("migração aplicada: %s", name)
+		}
+	} else {
+		log.Println("Bypassing auto-migrations (RUN_MIGRATIONS != true)")
 	}
 
 	repo := domain.NewRepository(pool)
@@ -178,6 +202,8 @@ func main() {
 	server := &Server{repo: repo, mailer: mailer}
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", server.healthHandler)
+	mux.HandleFunc("GET /ready", server.readyHandler)
 	mux.HandleFunc("GET /ping", server.pingHandler)
 	mux.HandleFunc("POST /api/v1/sync", server.syncHandler)
 	mux.HandleFunc("GET /api/v1/challenges", server.challengesHandler)
@@ -192,8 +218,13 @@ func main() {
 	mux.HandleFunc("GET /api/v1/nodes", server.getNodesHandler)
 	mux.HandleFunc("GET /api/v1/progress", server.getUserProgressHandler)
 
-	log.Println("Server starting on :8080...")
-	if err := http.ListenAndServe(":8080", mux); err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("Server starting on :%s...", port)
+	if err := http.ListenAndServe(":"+port, mux); err != nil {
 		log.Fatal(err)
 	}
 }

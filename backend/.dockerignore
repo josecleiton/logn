@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+.DS_Store
+*.md
+bin/
+test_match_sync/
+# Binaries
+test_match_sync
+backend
+server
+# Docker
+docker-compose.yml
+Dockerfile
