@@ -25,5 +25,26 @@ backend/logn-backend
 *.xcconfig
 !*.xcconfig.example
 contest/
+
+# Conteúdo da trilha — vive no repositório privado logn-conteudo.
+#
+# Engenharia é pública, currículo não: enunciados, gabaritos, explicações e a árvore de
+# nós com os portões de XP. Aqui entra só migração de schema, e cada uma é liberada
+# pelo nome de propósito. Esquecer de liberar uma nova quebra o build na hora, e isso é
+# muito melhor do que vazar currículo sem ninguém notar.
+backend/schema/migrations/*.sql
+!backend/schema/migrations/0005_challenges_ordem_e_invariantes.sql
+!backend/schema/migrations/0006_spot_the_bug_exige_correct_line.sql
+!backend/schema/migrations/0010_challenges_origin.sql
+!backend/schema/migrations/0013_carimbos_de_tempo.sql
+
+# O documento que ensina a escrever desafio, e o gerador do conteúdo.
+docs/testing/prompt-seed-desafios.md
+tools/dump_conteudo.py
+
+# A trilha empacotada carrega os 36 desafios inteiros para dentro do app.
+# `just seed-bundle` a gera a partir do banco; quem clona o repositório público monta a
+# sua com o conteúdo que tiver.
+ios/LogNiOS/LogNiOS/Resources/trail-seed.json
 backend/backend
 backend/test_match_sync
