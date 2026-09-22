@@ -10,6 +10,9 @@ struct NodeSheetView: View {
     let node: SkillNode
     let incoming: [SkillNode]
     let unlocks: [SkillNode]
+    /// Quantos problemas este nó tem. Zero é estado real: a árvore é maior do que o
+    /// currículo escrito até agora.
+    let problemCount: Int
     let onStartMatch: () -> Void
 
     @Environment(\.dismiss) var dismiss
@@ -18,6 +21,11 @@ struct NodeSheetView: View {
     /// 20 · faixa 62 · 18 · CTA 52 · 22. O sheet é compacto por design — nada de
     /// esticar para preencher tela.
     static let preferredHeight: CGFloat = 365
+
+    /// O nó sem desafio ganha uma linha de explicação embaixo do botão.
+    static func preferredHeight(hasProblems: Bool) -> CGFloat {
+        hasProblems ? preferredHeight : preferredHeight + 24
+    }
 
     private var topic: LognTopic { LognTopic.of(nodeName: node.name) }
 
@@ -191,6 +199,18 @@ struct NodeSheetView: View {
     private var cta: some View {
         if node.status == .locked {
             LognButton(title: "Bloqueado", variant: .primary, action: {}, isDisabled: true)
+        } else if problemCount == 0 {
+            // Nó destravado e vazio existe: a árvore tem sete assuntos e o currículo
+            // ainda não cobre todos. O botão prometia partida e não fazia nada — para
+            // quem está jogando, um app travado. Dizer que não há é melhor.
+            VStack(spacing: 8) {
+                LognButton(title: "Sem problemas ainda", variant: .primary, action: {}, isDisabled: true)
+
+                Text("Este assunto ainda não tem desafios escritos.")
+                    .font(.plexMono(11))
+                    .foregroundColor(LognDark.textMuted)
+                    .frame(maxWidth: .infinity)
+            }
         } else {
             LognButton(
                 title: node.status == .completed ? "Jogar de novo" : "Começar partida",

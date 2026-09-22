@@ -62,12 +62,17 @@ struct SkillTreeView: View {
                     node: node,
                     incoming: nodes.filter { node.prerequisites.contains($0.id) },
                     unlocks: nodes.filter { $0.prerequisites.contains(node.id) },
+                    // Quantos problemas esse nó tem para jogar. Sem isto o sheet
+                    // prometia partida em nó vazio e o botão não fazia nada.
+                    problemCount: core.viewModel.challenges.filter { $0.nodeId == node.id }.count,
                     onStartMatch: {
                         matchNodeId = node.id
                         navigateToMatch = true
                     }
                 )
-                .presentationDetents([.height(NodeSheetView.preferredHeight)])
+                .presentationDetents([.height(NodeSheetView.preferredHeight(
+                    hasProblems: core.viewModel.challenges.contains { $0.nodeId == node.id }
+                ))])
                 .presentationDragIndicator(.hidden)
                 .modifier(SheetCorners())
             }

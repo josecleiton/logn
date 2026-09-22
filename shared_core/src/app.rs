@@ -2051,6 +2051,23 @@ mod tests {
         }
     }
 
+    /// Nó sem desafio não vira partida.
+    ///
+    /// A árvore tem sete assuntos e o currículo escrito cobre um. Sem esta guarda o
+    /// cliente navegava para uma partida sem problema nenhum e mostrava o relatório
+    /// de "0 / 0 aceitos" — a tela de fim de uma sessão que nunca começou.
+    #[test]
+    fn test_a_node_without_challenges_starts_no_match() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.challenges = vec![]; // o nó existe na árvore, o conteúdo ainda não
+
+        let _ = app.update(Event::StartMatch { node_id: "node_vazio".into() }, &mut model);
+
+        assert!(model.match_state.is_none(), "não há partida a começar");
+        assert!(!app.view(&model).match_view.is_active);
+    }
+
     #[test]
     fn test_display_name_takes_the_first_name_from_the_email() {
         assert_eq!(display_name_from_email("jogador@example.com"), "Rodrigo");
