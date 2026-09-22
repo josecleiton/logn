@@ -47,3 +47,12 @@ sync_diverged = {}
 sync_failed = {}
 sync_offline = {}
 sign_in_to_sync = {}
+
+# Origem do desafio. A chave vem do Core (a coluna `origin`); a cópia mora aqui.
+[groups.origin.keys]
+eyebrow = {}
+origin_name = {}
+origin_role = {}
+origin_body = {}
+pause_notice = {}
+close = {}

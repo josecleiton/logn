@@ -40,3 +40,11 @@ sync_diverged = "Your progress diverged from the server."
 sync_failed = "I couldn't send your progress right now."
 sync_offline = "No connection to send your progress."
 sign_in_to_sync = "Sign in to save your progress."
+
+[origin]
+eyebrow = "Where this problem came from"
+origin_name = "Farias"
+origin_role = ""
+origin_body = "Origin card: the text comes from the server."
+pause_notice = "The clock is paused while you read. This happens only this once — next time it keeps running."
+close = "Back to the match"

@@ -41,6 +41,11 @@ pub enum Event {
     SyncAndLogout,
     RestoreOfflineQueue,
     OfflineQueueRestored(KeyValueResult),
+    /// Tocou no selo de origem. Na primeira vez de cada origem, para o relógio.
+    OpenOriginSheet,
+    CloseOriginSheet,
+    OriginsSeenRestored(KeyValueResult),
+    OriginsSeenStored(KeyValueResult),
     DismissPasswordReset,
     /// O shell dá a hora ao Core: na abertura e ao voltar para o primeiro plano.
     Tick { now: i64 },
@@ -149,6 +154,14 @@ pub struct Model {
     /// dentro do prazo — num app que promete offline-first, era pedir para o jogador
     /// digitar a senha para ver o que já estava no aparelho.
     pub session_offline: bool,
+    /// Origens cujo cartão de homenagem o jogador já leu, por chave (`FARIAS`).
+    ///
+    /// A primeira leitura de cada origem pausa o relógio da questão; as seguintes não.
+    /// Sobrevive ao fechamento do app pelo `crux_kv`, senão a cortesia viraria uma
+    /// forma de parar o cronômetro quantas vezes se quisesse.
+    pub origins_seen: Vec<String>,
+    /// Origem cujo cartão está aberto agora. Vazia quando não há cartão na tela.
+    pub origin_sheet: String,
 }
 
 #[derive(Facet, Serialize, Deserialize, Default, Clone)]
@@ -1400,12 +1413,20 @@ Event::FetchChallenges => {
                 .and(render::render())
             }
 
-            // Recupera a fila que ficou no disco de uma sessão anterior.
+            // Recupera a fila que ficou no disco de uma sessão anterior, e junto com ela
+            // as origens já lidas — as duas são estado de disco e chegam pelo mesmo
+            // gatilho de abertura, então não vale um evento a mais no shell.
             Event::RestoreOfflineQueue => {
                 Command::request_from_shell(KeyValueOperation::Get {
                     key: "offline_events".to_string(),
                 })
                 .then_send(Event::OfflineQueueRestored)
+                .and(
+                    Command::request_from_shell(KeyValueOperation::Get {
+                        key: "origins_seen".to_string(),
+                    })
+                    .then_send(Event::OriginsSeenRestored),
+                )
             }
 
             Event::OfflineQueueRestored(result) => {
@@ -1422,6 +1443,67 @@ Event::FetchChallenges => {
                 render::render()
             }
 
+            // O selo de origem abre o cartão de homenagem. A primeira leitura de cada
+            // origem para o relógio: ler de onde o problema veio não pode custar a
+            // questão. Da segunda em diante o relógio segue, senão o cartão vira um
+            // botão de pausa.
+            Event::OpenOriginSheet => {
+                let origin = model
+                    .match_state
+                    .as_ref()
+                    .and_then(|ms| ms.current_problem())
+                    .map(|p| p.origin.clone())
+                    .unwrap_or_default();
+
+                if origin.is_empty() {
+                    return render::render();
+                }
+
+                let primeira_vez = !model.origins_seen.iter().any(|o| o == &origin);
+                model.origin_sheet = origin.clone();
+
+                if !primeira_vez {
+                    return render::render();
+                }
+
+                model.origins_seen.push(origin);
+                if let Some(ref mut ms) = model.match_state {
+                    ms.is_paused = true;
+                }
+
+                match serde_json::to_vec(&model.origins_seen) {
+                    Ok(bytes) => Command::request_from_shell(KeyValueOperation::Set {
+                        key: "origins_seen".to_string(),
+                        value: bytes,
+                    })
+                    .then_send(Event::OriginsSeenStored)
+                    .and(render::render()),
+                    Err(_) => render::render(),
+                }
+            }
+
+            Event::CloseOriginSheet => {
+                model.origin_sheet.clear();
+                if let Some(ref mut ms) = model.match_state {
+                    ms.is_paused = false;
+                }
+                render::render()
+            }
+
+            Event::OriginsSeenStored(_) => render::render(),
+
+            Event::OriginsSeenRestored(result) => {
+                if let KeyValueResult::Ok {
+                    response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) },
+                } = result
+                {
+                    if let Ok(seen) = serde_json::from_slice::<Vec<String>>(&bytes) {
+                        model.origins_seen = seen;
+                    }
+                }
+                render::render()
+            }
+
             Event::MatchDismissTrap => {
                 if let Some(ref mut ms) = model.match_state {
                     ms.trap = None;
@@ -1431,7 +1513,9 @@ Event::FetchChallenges => {
 
             Event::MatchTimerTick => {
                 if let Some(ref mut ms) = model.match_state {
-                    if ms.is_active {
+                    // Parado é parado: nem a questão nem a sessão andam enquanto o
+                    // cartão de origem está aberto pela primeira vez.
+                    if ms.is_active && !ms.is_paused {
                         if ms.question_seconds_remaining > 0 {
                             ms.question_seconds_remaining -= 1;
                         }
@@ -1525,7 +1609,7 @@ Event::FetchChallenges => {
                 model.logout_undo.as_ref().map(|s| s.email.as_str()).unwrap_or(&model.account_email),
             ),
             match_view: model.match_state.as_ref()
-                .map(|ms| ms.to_view_model())
+                .map(|ms| ms.to_view_model(&model.origin_sheet))
                 .unwrap_or_default(),
             // Placar e ranking ainda não têm API; os dados vivem no core para o
             // cliente seguir sendo uma camada burra, como manda a arquitetura.
@@ -1742,6 +1826,112 @@ mod tests {
                 },
             },
         }
+    }
+
+    /// Ler de onde o problema veio não pode custar a questão — mas só na primeira vez
+    /// de cada origem, senão o cartão vira um botão de pausa.
+    #[test]
+    fn test_origin_sheet_pauses_the_clock_only_the_first_time() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+
+        let mut ch = seeded_challenge(
+            "ch_004",
+            "COMPLEXITY_MATCH",
+            vec!["O(n)".into(), "O(1)".into()],
+            vec!["O(n)".into(), "O(1)".into()],
+            "Irrelevante para este teste.",
+        );
+        ch.origin = "FARIAS".into();
+        model.challenges = vec![ch];
+
+        let node = "10000000-0000-0000-0000-000000000001";
+        let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
+
+        // Primeira leitura: para o relógio e fica registrada.
+        let _ = app.update(Event::OpenOriginSheet, &mut model);
+        assert_eq!(model.origin_sheet, "FARIAS");
+        assert!(model.match_state.as_ref().unwrap().is_paused, "a primeira leitura para o relógio");
+        assert_eq!(model.origins_seen, vec!["FARIAS".to_string()]);
+
+        let antes = model.match_state.as_ref().unwrap().question_seconds_remaining;
+        let _ = app.update(Event::MatchTimerTick, &mut model);
+        assert_eq!(
+            model.match_state.as_ref().unwrap().question_seconds_remaining,
+            antes,
+            "o relógio não anda com o cartão aberto"
+        );
+
+        let _ = app.update(Event::CloseOriginSheet, &mut model);
+        assert!(model.origin_sheet.is_empty());
+        assert!(!model.match_state.as_ref().unwrap().is_paused, "fechar devolve o relógio");
+
+        let _ = app.update(Event::MatchTimerTick, &mut model);
+        assert_eq!(
+            model.match_state.as_ref().unwrap().question_seconds_remaining,
+            antes - 1,
+            "fechado, o relógio volta a andar"
+        );
+
+        // Segunda leitura da mesma origem: abre, e o relógio segue correndo.
+        let _ = app.update(Event::OpenOriginSheet, &mut model);
+        assert_eq!(model.origin_sheet, "FARIAS", "o cartão abre de novo");
+        assert!(
+            !model.match_state.as_ref().unwrap().is_paused,
+            "a cortesia vale uma vez por origem, senão vira botão de pausa"
+        );
+        assert_eq!(model.origins_seen.len(), 1, "a origem não entra duas vezes na lista");
+    }
+
+    /// O que veio do disco manda: quem já leu numa sessão anterior não ganha a pausa
+    /// de novo ao reabrir o app.
+    #[test]
+    fn test_origins_seen_survives_from_storage() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.origins_seen = vec!["FARIAS".into()];
+
+        let mut ch = seeded_challenge(
+            "ch_004",
+            "COMPLEXITY_MATCH",
+            vec!["O(n)".into(), "O(1)".into()],
+            vec!["O(n)".into(), "O(1)".into()],
+            "Irrelevante para este teste.",
+        );
+        ch.origin = "FARIAS".into();
+        model.challenges = vec![ch];
+
+        let node = "10000000-0000-0000-0000-000000000001";
+        let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
+        let _ = app.update(Event::OpenOriginSheet, &mut model);
+
+        assert_eq!(model.origin_sheet, "FARIAS");
+        assert!(
+            !model.match_state.as_ref().unwrap().is_paused,
+            "já lida numa sessão anterior: abre sem parar o relógio"
+        );
+    }
+
+    /// Desafio sem origem não tem selo, e tocar em nada não pode abrir cartão vazio.
+    #[test]
+    fn test_origin_sheet_stays_shut_without_an_origin() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.challenges = vec![seeded_challenge(
+            "ch_004",
+            "COMPLEXITY_MATCH",
+            vec!["O(n)".into(), "O(1)".into()],
+            vec!["O(n)".into(), "O(1)".into()],
+            "Irrelevante para este teste.",
+        )];
+
+        let node = "10000000-0000-0000-0000-000000000001";
+        let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
+        let _ = app.update(Event::OpenOriginSheet, &mut model);
+
+        assert!(model.origin_sheet.is_empty(), "sem origem não há cartão");
+        assert!(!model.match_state.as_ref().unwrap().is_paused, "e nada para o relógio");
+        assert!(model.origins_seen.is_empty());
     }
 
     /// COMPLEXITY_MATCH e TAG_THE_PATTERN: o motor julgava os dois e não havia

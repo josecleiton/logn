@@ -133,6 +133,20 @@ struct MatchView: View {
             .padding(.bottom, 22)
             .background(LognDark.canvas)
         }
+        // Quem manda no cartão é o Core: ele decide se esta leitura para o relógio, e
+        // arrastar para fechar precisa avisá-lo para o relógio voltar.
+        .sheet(isPresented: Binding(
+            get: { !mv.originSheet.isEmpty },
+            set: { aberto in if !aberto { core.dispatch(event: .closeOriginSheet) } }
+        )) {
+            OriginSheetView(
+                origin: mv.originSheet,
+                clockPaused: mv.originSheetPaused,
+                onClose: { core.dispatch(event: .closeOriginSheet) }
+            )
+            .presentationDetents([.large])
+            .modifier(SheetCorners())
+        }
     }
 
     /// Só SPOT_THE_BUG estica: o documento dá `flex:1` ao bloco de código dele.
@@ -148,18 +162,24 @@ struct MatchView: View {
                     .foregroundColor(LognDark.textMuted)
 
                 // Nem todo desafio nasceu aqui. Quando veio de fora, a origem fica na
-                // linha do título — atribuição que ninguém vê não é atribuição.
+                // linha do título — atribuição que ninguém vê não é atribuição — e o
+                // selo abre a história de quem escreveu o problema.
                 if !mv.currentOrigin.isEmpty {
-                    Text(mv.currentOrigin.uppercased())
-                        .font(.plexMono(10))
-                        .tracking(0.12 * 10)
-                        .foregroundColor(LognDark.accent)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: Radius.sm)
-                                .stroke(LognDark.accent.opacity(0.5), lineWidth: 1)
-                        )
+                    Button {
+                        core.dispatch(event: .openOriginSheet)
+                    } label: {
+                        Text(mv.currentOrigin.uppercased())
+                            .font(.plexMono(10))
+                            .tracking(0.12 * 10)
+                            .foregroundColor(LognDark.accent)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Radius.sm)
+                                    .stroke(LognDark.accent.opacity(0.5), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 Spacer(minLength: 0)

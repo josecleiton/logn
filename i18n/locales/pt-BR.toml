@@ -40,3 +40,11 @@ sync_diverged = "Seu progresso divergiu do servidor."
 sync_failed = "Não consegui enviar seu progresso agora."
 sync_offline = "Sem conexão para enviar seu progresso."
 sign_in_to_sync = "Entre para salvar seu progresso."
+
+[origin]
+eyebrow = "Origem do problema"
+origin_name = "Farias"
+origin_role = ""
+origin_body = "Cartão de origem: o texto vem do servidor."
+pause_notice = "O cronômetro está parado enquanto você lê. Isso acontece só desta vez — da próxima, o relógio continua correndo."
+close = "Voltar à partida"
