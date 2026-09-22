@@ -107,6 +107,12 @@ pub struct ChallengeValidation {
     /// e a conversão acontece uma vez só, ao montar a partida.
     pub correct_line: Option<i32>,
     pub expected_string: Option<String>,
+    /// O que dizer a quem errou **este** desafio.
+    ///
+    /// Sem isto os três erros de uma sessão saíam com o mesmo texto genérico, porque
+    /// o texto morava no motor. Quando falta, o motor cai no genérico.
+    #[serde(default)]
+    pub explanation: Option<String>,
 }
 
 /// Uma variável do painel de watch do DRY_RUN — nome e valor no estado inicial.

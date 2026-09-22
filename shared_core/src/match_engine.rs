@@ -27,6 +27,11 @@ pub struct MatchState {
 }
 
 /// Descreve a resposta do jogador em texto, para a revisão. Vazio quando não respondeu.
+/// Último recurso, quando o desafio não traz explicação própria. Fala do que dá para
+/// falar sem conhecer o problema: os casos de borda.
+pub const GENERIC_WRONG_ANSWER: &str =
+    "A escolha não cobre todos os casos de entrada. Vale reler o enunciado olhando para os limites: o primeiro índice, o último, e o array vazio.";
+
 fn describe_answer(template: &str, selection: &MatchSelection) -> String {
     match template {
         "SPOT_THE_BUG" => selection
@@ -91,6 +96,8 @@ pub struct MatchProblem {
     /// toque devolve. O desafio a guarda a partir de 1; a conversão é feita ao montar.
     pub correct_line: Option<i32>,
     pub expected_string: Option<String>,
+    /// Explicação própria do desafio para o erro. Vazia cai no texto genérico.
+    pub explanation: String,
     pub options: Vec<String>,       // Para COMPLEXITY_MATCH e TAG_THE_PATTERN
     pub correct_options: Vec<String>, // Respostas corretas
     pub max_selections: i32,        // Para TAG_THE_PATTERN
@@ -300,7 +307,11 @@ impl MatchState {
             self.lives -= 1;
             self.penalty_minutes += 20;
             
-            let explanation = "A escolha não cobre todos os casos de entrada. Vale reler o enunciado olhando para os limites: o primeiro índice, o último, e o array vazio.";
+            let explanation: &str = if problem.explanation.is_empty() {
+                GENERIC_WRONG_ANSWER
+            } else {
+                &problem.explanation
+            };
             let title = crate::app::strip_problem_letter(&problem.title);
 
             // Guarda o erro antes de limpar a seleção: a resposta dada é o que o
@@ -457,6 +468,7 @@ mod tests {
                 code_lines: vec!["int a = 0;".into(), "while (a < b)".into()],
                 correct_line: Some(1),
                 expected_string: None,
+                explanation: String::new(),
                 options: vec![],
                 correct_options: vec![],
                 max_selections: 0,
@@ -472,6 +484,7 @@ mod tests {
                 code_lines: vec!["int max2(int a, int b) {".into(), "    return a > b ? _____ : b;".into()],
                 correct_line: None,
                 expected_string: Some("a".into()),
+                explanation: String::new(),
                 options: vec![],
                 correct_options: vec![],
                 max_selections: 0,
@@ -487,6 +500,7 @@ mod tests {
                 code_lines: vec![],
                 correct_line: None,
                 expected_string: None,
+                explanation: String::new(),
                 options: vec!["Grafos".into(), "BFS".into(), "DP".into(), "Greedy".into()],
                 correct_options: vec!["Grafos".into(), "BFS".into()],
                 max_selections: 2,
@@ -502,6 +516,7 @@ mod tests {
                 code_lines: vec!["var acc = 0".into()],
                 correct_line: None,
                 expected_string: Some("6".into()),
+                explanation: String::new(),
                 options: vec![],
                 correct_options: vec![],
                 max_selections: 0,

@@ -155,6 +155,39 @@ type UserProgress struct {
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 }
 
+// UserStats é o que o cliente precisa para reconstruir a barra de nível ao abrir.
+//
+// Sem isto o XP vivia só na memória do app: sincronizava tudo certinho e, no login
+// seguinte, o jogador voltava para zero com os eventos parados no servidor.
+type UserStats struct {
+	GlobalXP          int            `json:"global_xp"`
+	BugsFound         int            `json:"bugs_found"`
+	DryRunsCompleted  int            `json:"dry_runs_completed"`
+	Nodes             []UserProgress `json:"nodes"`
+}
+
+func (r *Repository) GetUserStats(ctx context.Context, userID string) (UserStats, error) {
+	var stats UserStats
+
+	query := `SELECT global_xp, bugs_found, dry_runs_completed FROM users WHERE id = $1`
+	err := r.db.QueryRow(ctx, query, userID).
+		Scan(&stats.GlobalXP, &stats.BugsFound, &stats.DryRunsCompleted)
+	if err != nil {
+		return stats, err
+	}
+
+	nodes, err := r.GetUserProgress(ctx, userID)
+	if err != nil {
+		return stats, err
+	}
+	// Nunca `null` no JSON: o cliente desserializa em lista.
+	stats.Nodes = nodes
+	if stats.Nodes == nil {
+		stats.Nodes = []UserProgress{}
+	}
+	return stats, nil
+}
+
 func (r *Repository) GetSkillNodes(ctx context.Context) ([]SkillNode, error) {
 	query := `SELECT id, name, description, row_idx, col_idx, required_xp, prerequisites FROM skill_nodes ORDER BY row_idx ASC`
 	rows, err := r.db.Query(ctx, query)

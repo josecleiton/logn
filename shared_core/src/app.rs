@@ -27,6 +27,8 @@ pub enum Event {
     Logout,
     FetchChallenges,
     FetchNodes,
+    FetchProgress,
+    ProgressFetched(HttpResult),
     NodesFetched(HttpResult),
     ChallengesFetched(HttpResult),
     RegisterAction {
@@ -110,6 +112,9 @@ pub struct Model {
     pub bugs_found: i32,
     pub dry_runs_completed: i32,
     pub match_state: Option<match_engine::MatchState>,
+    /// Nó de onde a partida saiu. Vai no evento de sync para o servidor saber a que
+    /// trilha creditar o XP — sem ele `user_progress` nunca ganhava uma linha.
+    pub match_node_id: String,
     pub logout_undo: Option<LogoutSnapshot>,
     /// Marcado por `SyncAndLogout`: a saída espera a fila subir.
     pub logout_after_sync: bool,
@@ -326,8 +331,10 @@ impl App for LogNApp {
             }
 
             Event::AccountEmailStored(_) => {
+                // Entrou agora: identifica na telemetria e busca o que já está no servidor.
                 Command::request_from_shell(crate::domain::TelemetryOperation::Identify { user_id: model.user_id.clone() })
                     .then_send(|_| Event::TelemetrySent)
+                    .and(self.update(Event::FetchProgress, model))
             }
 
             Event::Logout => {
@@ -446,6 +453,51 @@ impl App for LogNApp {
                 // O 401 que disparou o refresh deixou um evento em espera.
                 if let Some(pending) = model.pending_retry_event.take() {
                     return self.update(pending, model);
+                }
+                self.update(Event::FetchProgress, model)
+            }
+
+            // Traz de volta o que já está no servidor.
+            //
+            // O XP vivia só na memória do app: o sync subia os eventos e o login
+            // seguinte abria com zero, com o progresso inteiro guardado do outro lado.
+            Event::FetchProgress => {
+                if model.access_token.is_none() {
+                    return Command::done();
+                }
+
+                let request = HttpRequest {
+                    method: "GET".to_string(),
+                    url: "/api/v1/progress".to_string(),
+                    headers: auth_headers(&model.access_token),
+                    body: vec![],
+                };
+
+                Command::request_from_shell(request).then_send(Event::ProgressFetched)
+            }
+
+            Event::ProgressFetched(result) => {
+                match result {
+                    HttpResult::Ok(response) if response.status == 200 => {
+                        #[derive(Deserialize)]
+                        struct Stats {
+                            global_xp: i32,
+                            bugs_found: i32,
+                            dry_runs_completed: i32,
+                        }
+
+                        if let Ok(stats) = serde_json::from_slice::<Stats>(&response.body) {
+                            model.global_xp = stats.global_xp;
+                            model.bugs_found = stats.bugs_found;
+                            model.dry_runs_completed = stats.dry_runs_completed;
+                        }
+                    }
+                    HttpResult::Ok(response) if response.status == 401 => {
+                        model.pending_retry_event = Some(Event::FetchProgress);
+                        return self.update(Event::AttemptRefresh, model);
+                    }
+                    // Offline ou erro: o progresso local segue valendo e sobe na fila.
+                    _ => {}
                 }
                 render::render()
             }
@@ -938,6 +990,7 @@ Event::FetchChallenges => {
                             // o motor compara com o índice que o toque devolve.
                             correct_line: c.payload.validation.correct_line.map(|l| l - 1),
                             expected_string: c.payload.validation.expected_string.clone(),
+                            explanation: c.payload.validation.explanation.clone().unwrap_or_default(),
                             options: c.payload.content.options.clone().unwrap_or_default(),
                             correct_options: c.payload.content.correct_options.clone().unwrap_or_default(),
                             max_selections: if c.template_type == "TAG_THE_PATTERN" { c.payload.content.correct_options.as_ref().map_or(1, |o| o.len() as i32) } else { 1 },
@@ -954,6 +1007,7 @@ Event::FetchChallenges => {
                 }
 
                 model.match_state = Some(match_engine::MatchState::new(problems));
+                model.match_node_id = node_id.clone();
                 model.status = "Match started!".to_string();
                 render::render()
             }
@@ -1038,7 +1092,10 @@ Event::FetchChallenges => {
                         model.last_hash.clone()
                     };
 
-                    let payload = format!(r#"{{"letter":"{}","is_correct":{},"template_type":"{}"}}"#, letter, is_correct, template);
+                    let payload = format!(
+                        r#"{{"letter":"{}","is_correct":{},"template_type":"{}","node_id":"{}"}}"#,
+                        letter, is_correct, template, model.match_node_id
+                    );
                     let action_id = format!("match_{}", timestamp);
                     let game_event = GameEvent::new(action_id.clone(), "MATCH_ANSWER".into(), payload, timestamp, previous_hash.clone());
                     model.last_hash = game_event.current_hash.clone();
@@ -1217,6 +1274,7 @@ mod tests {
                     validation_type: "LINE_MATCH".into(),
                     correct_line: Some(4),
                     expected_string: None,
+                    explanation: None,
                 },
             },
         }];
@@ -1257,6 +1315,81 @@ mod tests {
         assert_eq!(model.pending_events.len(), 1, "a fila que não subiu fica");
         assert!(model.access_token.is_some(), "e a sessão continua de pé");
         assert!(!model.logout_after_sync);
+    }
+
+    /// O progresso do servidor manda no que a tela mostra.
+    #[test]
+    fn test_progress_comes_back_from_the_server() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("tok".into());
+
+        let mut cmd = app.update(Event::FetchProgress, &mut model);
+        let req = cmd.expect_one_effect();
+        assert!(matches!(req, Effect::Http(ref r) if r.operation.url == "/api/v1/progress"));
+
+        let body = serde_json::to_vec(&serde_json::json!({
+            "global_xp": 150, "bugs_found": 1, "dry_runs_completed": 1, "nodes": []
+        })).unwrap();
+        let _ = app.update(
+            Event::ProgressFetched(HttpResult::Ok(crux_http::protocol::HttpResponse {
+                status: 200, headers: vec![], body,
+            })),
+            &mut model,
+        );
+
+        let view = app.view(&model);
+        assert_eq!(view.global_xp, 150, "entrar de novo tem de devolver o XP");
+        assert_eq!(view.bugs_found, 1);
+        assert_eq!(view.dry_runs_completed, 1);
+        assert_eq!(view.level, 1);
+        assert_eq!(view.xp_to_next_level, 50);
+    }
+
+    /// O evento de partida precisa dizer de que nó veio.
+    #[test]
+    fn test_match_answer_event_carries_the_node() {
+        use crate::domain::{Challenge, ChallengeContent, ChallengePayload, ChallengeValidation};
+
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.challenges = vec![Challenge {
+            id: "ch_001".into(),
+            node_id: "10000000-0000-0000-0000-000000000001".into(),
+            template_type: "SPOT_THE_BUG".into(),
+            version: 1,
+            payload: ChallengePayload {
+                content: ChallengeContent {
+                    title: "Soma de Dois Números".into(),
+                    description: "Ache o laço infinito.".into(),
+                    code_lines: vec!["while (a < b) {".into(), "    a = a;".into()],
+                    options: None,
+                    correct_options: None,
+                    watch_variables: None,
+                    watch_note: None,
+                },
+                validation: ChallengeValidation {
+                    validation_type: "LINE_MATCH".into(),
+                    correct_line: Some(2),
+                    expected_string: None,
+                    explanation: None,
+                },
+            },
+        }];
+
+        let _ = app.update(
+            Event::StartMatch { node_id: "10000000-0000-0000-0000-000000000001".into() },
+            &mut model,
+        );
+        let _ = app.update(Event::MatchSelectLine { line: 1 }, &mut model);
+        let _ = app.update(Event::MatchSubmit { timestamp: 1_700_000_000 }, &mut model);
+
+        let event = model.pending_events.first().expect("a resposta vira evento de sync");
+        assert!(
+            event.payload_json.contains(r#""node_id":"10000000-0000-0000-0000-000000000001""#),
+            "sem node_id o servidor não sabe a que trilha creditar: {}",
+            event.payload_json
+        );
     }
 
     #[test]

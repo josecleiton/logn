@@ -102,6 +102,36 @@ func GenerateAccessToken(userID string) (string, error) {
 	return token.SignedString(JwtSecretKey)
 }
 
+// ErrUnauthenticated cobre token ausente, malformado, expirado ou com assinatura
+// que não confere. O motivo exato não volta para o cliente de propósito.
+var ErrUnauthenticated = errors.New("unauthenticated")
+
+// UserIDFromAccessToken valida o JWT e devolve de quem ele é.
+//
+// O `/sync` confiava no `user_id` que vinha no corpo do pedido: qualquer um podia
+// escrever na cadeia de outra pessoa. Quem é o dono da sessão só pode sair daqui.
+func UserIDFromAccessToken(tokenString string) (string, error) {
+	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, ErrUnauthenticated
+		}
+		return JwtSecretKey, nil
+	}, jwt.WithValidMethods([]string{"HS256"}))
+	if err != nil || !token.Valid {
+		return "", ErrUnauthenticated
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", ErrUnauthenticated
+	}
+	userID, ok := claims["user_id"].(string)
+	if !ok || userID == "" {
+		return "", ErrUnauthenticated
+	}
+	return userID, nil
+}
+
 func GenerateRefreshToken() (string, error) {
 	b := make([]byte, 32)
 	_, err := rand.Read(b)

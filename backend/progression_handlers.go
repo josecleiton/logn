@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -28,18 +29,22 @@ func (s *Server) getUserProgressHandler(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-    
-    // In a real app we'd get the UserID from the JWT context
-    // For now, mock user_id
-	userID := "00000000-0000-0000-0000-000000000001" 
+
+	// Era um UUID fixo, escrito à mão, que não pertencia a ninguém: a rota respondia
+	// `null` para todo mundo e nenhum cliente a chamava.
+	userID, ok := authenticate(w, r)
+	if !ok {
+		return
+	}
 
 	ctx := context.Background()
-	progress, err := s.repo.GetUserProgress(ctx, userID)
+	stats, err := s.repo.GetUserStats(ctx, userID)
 	if err != nil {
+		log.Printf("progresso não lido: user=%s erro=%v", userID, err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(progress)
+	json.NewEncoder(w).Encode(stats)
 }

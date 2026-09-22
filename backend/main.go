@@ -6,10 +6,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/josecleiton/logn/backend/internal/domain"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/email"
+	"github.com/josecleiton/logn/backend/schema"
 )
 
 type Server struct {
@@ -25,9 +27,33 @@ func (s *Server) pingHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// authenticate devolve o dono do token do cabeçalho `Authorization: Bearer`.
+//
+// Responde 401 e devolve `false` quando não há token válido — o chamador só precisa
+// desistir.
+func authenticate(w http.ResponseWriter, r *http.Request) (string, bool) {
+	header := r.Header.Get("Authorization")
+	if !strings.HasPrefix(header, "Bearer ") {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return "", false
+	}
+
+	userID, err := domain.UserIDFromAccessToken(strings.TrimPrefix(header, "Bearer "))
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return "", false
+	}
+	return userID, true
+}
+
 func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, ok := authenticate(w, r)
+	if !ok {
 		return
 	}
 
@@ -36,6 +62,10 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
+
+	// O corpo do pedido não decide de quem é a cadeia. Mandava e o servidor obedecia:
+	// dava para escrever eventos na conta de qualquer um.
+	payload.UserID = userID
 
 	ctx := context.Background()
 
@@ -133,6 +163,14 @@ func main() {
 
 	if err := pool.Ping(context.Background()); err != nil {
 		log.Fatalf("Unable to reach database: %v\n", err)
+	}
+
+	applied, err := schema.Migrate(context.Background(), pool)
+	if err != nil {
+		log.Fatalf("Migração falhou: %v\n", err)
+	}
+	for _, name := range applied {
+		log.Printf("migração aplicada: %s", name)
 	}
 
 	repo := domain.NewRepository(pool)
