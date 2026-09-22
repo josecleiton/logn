@@ -7,7 +7,6 @@ struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     
     // UI State gerido puramente pelo SwiftUI
-    @AppStorage("isDarkMode") private var isDarkMode = true
     @AppStorage("hapticsEnabled") private var hapticsEnabled = true
     @AppStorage("notificationsEnabled") private var notificationsEnabled = false
     
@@ -47,15 +46,16 @@ struct SettingsView: View {
                                 .padding(.horizontal, Space.screenMargin)
                             
                             VStack(spacing: 0) {
-                                ToggleRow(title: "Modo Escuro (Dark Mode)", isOn: $isDarkMode)
-                                Divider().background(LognDark.line)
+                                // O interruptor de tema saiu: `LognLight` existe nos tokens,
+                                // mas nenhum mock desenha o app em claro, e um controle que
+                                // só mudava a status bar é pior que controle nenhum.
                                 ToggleRow(title: "Feedback Tátil (Haptics)", isOn: $hapticsEnabled)
                                 Divider().background(LognDark.line)
                                 ToggleRow(title: "Notificações Push", isOn: $notificationsEnabled)
                             }
                             .background(LognDark.surface)
-                            .cornerRadius(Radius.md)
-                            .overlay(RoundedRectangle(cornerRadius: Radius.md).stroke(LognDark.line, lineWidth: 1))
+                            .cornerRadius(Radius.sm)
+                            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
                             .padding(.horizontal, Space.screenMargin)
                         }
                         .padding(.top, Space.lg)
@@ -101,8 +101,8 @@ struct SettingsView: View {
                                     }
                                 }
                                 .background(LognDark.surface)
-                                .cornerRadius(Radius.md)
-                                .overlay(RoundedRectangle(cornerRadius: Radius.md).stroke(LognDark.line, lineWidth: 1))
+                                .cornerRadius(Radius.sm)
+                                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
                                 .padding(.horizontal, Space.screenMargin)
                             }
                         }
@@ -111,7 +111,7 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: Space.md) {
                             Text("ZONA DE PERIGO")
                                 .font(LognFont.label)
-                                .foregroundColor(LognDark.warn)
+                                .foregroundColor(LognDark.warnInk)
                                 .padding(.horizontal, Space.screenMargin)
                             
                             Button(action: {
@@ -120,15 +120,15 @@ struct SettingsView: View {
                                 HStack {
                                     Text("Excluir Conta")
                                         .font(LognFont.bodyLarge)
-                                        .foregroundColor(LognDark.warn)
+                                        .foregroundColor(LognDark.warnInk)
                                     Spacer()
                                     Image(systemName: "trash")
-                                        .foregroundColor(LognDark.warn)
+                                        .foregroundColor(LognDark.warnInk)
                                 }
                                 .padding(Space.md)
                                 .background(LognDark.surface)
-                                .cornerRadius(Radius.md)
-                                .overlay(RoundedRectangle(cornerRadius: Radius.md).stroke(LognDark.warn.opacity(0.3), lineWidth: 1))
+                                .cornerRadius(Radius.sm)
+                                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.warn.opacity(0.3), lineWidth: 1))
                                 .padding(.horizontal, Space.screenMargin)
                             }
                         }

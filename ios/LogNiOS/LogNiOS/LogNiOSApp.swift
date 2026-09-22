@@ -35,6 +35,17 @@ struct LogNiOSApp: App {
             .onOpenURL { url in
                 handleIncomingURL(url)
             }
+            .onAppear {
+                #if DEBUG
+                // Atalho de inspeção visual: `simctl launch … -LogNStartAsGuest 1` entra
+                // direto no app. Existe para conferir tela contra o design system sem
+                // depender de automação de toque; não muda nada em Release.
+                if ProcessInfo.processInfo.arguments.contains("-LogNStartAsGuest"),
+                   !core.viewModel.isGuest, !core.viewModel.hasAccessToken {
+                    core.dispatch(event: .continueAsGuest)
+                }
+                #endif
+            }
             .sheet(isPresented: $showResetPassword) {
                 if let email = resetPasswordEmail, let code = resetPasswordCode {
                     ResetPasswordView(email: email, otp: code)

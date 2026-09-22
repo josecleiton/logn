@@ -47,13 +47,14 @@ struct SkillTreeView: View {
                     }
 
                     // Legenda ancorada — explica a gramática do grafo sem tirar espaço do mapa.
-                    Text("A ETIQUETA PENDURA NO NÓ · A CORDINHA SEGUE ADIANTE")
-                        .font(.plexMono(10))
-                        .tracking(0.14 * 10)
+                    Text("CORDINHA TRACEJADA = ARESTA FECHADA")
+                        .font(.plexMono(9.5))
+                        .tracking(0.12 * 9.5)
                         .foregroundColor(LognDark.textMuted)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, Space.screenMargin)
-                        .padding(.vertical, Space.md)
+                        .padding(.horizontal, 18)
+                        .padding(.bottom, 14)
+                        .padding(.top, Space.sm)
                 }
             }
             .sheet(item: $selectedNode) { node in
@@ -166,18 +167,18 @@ struct SkillTreeLayout {
 
     func placement(for id: String) -> Placement? { placements[id] }
 
-    /// Larguras de viewBox do documento: conquistado 64, ativo 80, bloqueado 56.
+    /// Larguras de viewBox do DS v2: tamanho por importância.
     static func balloonWidth(for status: NodeStatus) -> CGFloat {
         switch status {
-        case .completed: return 64
-        case .active:    return 80
-        case .locked:    return 56
+        case .completed: return 56
+        case .active:    return 70
+        case .locked:    return 54
         }
     }
 
     /// A etiqueta do nó ativo tem duas linhas (título + `INFLANDO · n/m`).
     static func labelHeight(for status: NodeStatus) -> CGFloat {
-        status == .active ? 38 : 23
+        status == .active ? 34 : 22
     }
 
     var contentHeight: CGFloat { totalHeight }
@@ -292,9 +293,9 @@ struct SkillNodeView: View {
             // a posição só evita que ele cubra o ícone.
             if node.prerequisites.count >= 2 {
                 Text("\(node.prerequisites.count)")
-                    .font(.plexMono(9.5))
+                    .font(.plexMono(9))
                     .foregroundColor(LognDark.textSecondary)
-                    .frame(width: 19, height: 19)
+                    .frame(width: 18, height: 18)
                     .background(Circle().fill(LognDark.canvas))
                     .overlay(Circle().stroke(LognDark.lineDim, lineWidth: 1))
                     .offset(x: 5, y: 2)
@@ -341,27 +342,28 @@ struct SkillNodeView: View {
     @ViewBuilder
     private var label: some View {
         if node.status == .active {
-            VStack(spacing: 3) {
+            VStack(spacing: 2) {
                 Text(node.name)
-                    .font(.plexSansSemiBold(13.5))
+                    .font(.plexSansSemiBold(11.5))
                     .foregroundColor(LognDark.textPrimary)
+                // Glifo sobre accent usa a tinta, não o token base — regra de tinta do DS.
                 Text("INFLANDO · \(node.requiredXp) XP")
-                    .font(.plexMono(10))
-                    .tracking(0.08 * 10)
-                    .foregroundColor(LognDark.accent)
+                    .font(.plexMono(9.5))
+                    .tracking(0.08 * 9.5)
+                    .foregroundColor(LognDark.accentInk)
             }
             .fixedSize()
-            .padding(.horizontal, 11)
-            .padding(.vertical, 5)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 4)
             .background(LognDark.accentTint)
             .overlay(RoundedRectangle(cornerRadius: 3).stroke(LognDark.accent, lineWidth: 1))
             .cornerRadius(3)
         } else {
             Text(node.name)
-                .font(.plexSansSemiBold(12.5))
+                .font(.plexSansSemiBold(11.5))
                 .foregroundColor(node.status == .locked ? LognDark.textSecondary : LognDark.textPrimary)
                 .fixedSize()
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 9)
                 .padding(.vertical, 4)
                 .background(LognDark.canvas)
                 .overlay(RoundedRectangle(cornerRadius: 3).stroke(LognDark.line, lineWidth: 1))

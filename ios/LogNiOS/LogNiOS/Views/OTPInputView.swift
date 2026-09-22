@@ -19,7 +19,7 @@ struct OTPInputView: View {
             VStack(spacing: Space.xl) {
                 Image(systemName: "envelope.badge.shield.half.filled")
                     .font(.system(size: 48))
-                    .foregroundColor(LognDark.info)
+                    .foregroundColor(LognDark.infoInk)
                 
                 Text("Verification Code")
                     .font(LognFont.headlineMedium)
@@ -76,7 +76,7 @@ struct OTPInputView: View {
                 }) {
                     Label("Paste from clipboard", systemImage: "doc.on.clipboard")
                         .font(LognFont.label)
-                        .foregroundColor(LognDark.info)
+                        .foregroundColor(LognDark.infoInk)
                 }
                 .padding(.top, Space.sm)
                 
@@ -105,7 +105,7 @@ struct OTPInputView: View {
                 if !core.viewModel.displayStatus.isEmpty {
                     Text(core.viewModel.displayStatus)
                         .font(LognFont.label)
-                        .foregroundColor(core.viewModel.otpVerified ? LognDark.correct : LognDark.warn)
+                        .foregroundColor(core.viewModel.otpVerified ? LognDark.correctInk : LognDark.warnInk)
                         .padding(.top, Space.sm)
                 }
             }

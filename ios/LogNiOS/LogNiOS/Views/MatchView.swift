@@ -16,7 +16,6 @@ struct MatchView: View {
     /// Veredito congelado no instante do submit — o Core já avançou para o próximo
     /// problema quando esta tela aparece, então a letra e a sigla precisam ser guardadas.
     @State private var verdict: VerdictSnapshot?
-    @State private var shakeTrigger: CGFloat = 0
     @State private var timer: Timer?
 
     struct VerdictSnapshot {
@@ -43,6 +42,7 @@ struct MatchView: View {
             if let verdict {
                 MatchVerdictScreen(
                     snapshot: verdict,
+                    reduceMotion: reduceMotion,
                     balloonStates: balloonStates,
                     remainingSeconds: Int(mv.questionSeconds),
                     lives: Int(mv.lives),
@@ -140,7 +140,6 @@ struct MatchView: View {
             .padding(.bottom, 22)
             .background(LognDark.canvas)
         }
-        .modifier(ShakeEffect(animatableData: shakeTrigger))
     }
 
     @ViewBuilder
@@ -294,14 +293,6 @@ struct MatchView: View {
 
         UINotificationFeedbackGenerator().notificationOccurred(accepted ? .success : .error)
 
-        if !accepted {
-            if reduceMotion {
-                // `reduceMotion`: o shake vira flash de borda — quem pisca é a tela de veredito.
-            } else {
-                withAnimation(.easeOut(duration: 0.24)) { shakeTrigger += 1 }
-            }
-        }
-
         withAnimation(.easeOut(duration: 0.12)) {
             verdict = VerdictSnapshot(
                 letter: letter,
@@ -334,6 +325,7 @@ struct MatchView: View {
 /// a punição (vida, penalidade) aparece em números, não em adjetivos.
 struct MatchVerdictScreen: View {
     let snapshot: MatchView.VerdictSnapshot
+    let reduceMotion: Bool
     let balloonStates: [(Character, Bool)]
     let remainingSeconds: Int
     let lives: Int
@@ -347,6 +339,11 @@ struct MatchVerdictScreen: View {
 
     private var letterColor: Color { BalloonColor.forLetter(snapshot.letter) }
 
+    /// O shake mora aqui, no header do veredito — é onde o mock do `3b` o coloca
+    /// (`gp-shake 240ms ease-out`), não na tela de questão.
+    @State private var shake: CGFloat = 0
+    @State private var errorFlash = false
+
     var body: some View {
         VStack(spacing: 0) {
             MatchHeader(
@@ -359,6 +356,22 @@ struct MatchVerdictScreen: View {
                 currentIsAlive: snapshot.isAccepted,
                 showsBalloonRow: snapshot.isAccepted
             )
+            .modifier(ShakeEffect(animatableData: shake))
+            // `reduceMotion`: o shake vira flash de borda.
+            .overlay(alignment: .bottom) {
+                if errorFlash {
+                    Rectangle().frame(height: 2).foregroundColor(LognDark.wrong)
+                }
+            }
+            .onAppear {
+                guard !snapshot.isAccepted else { return }
+                if reduceMotion {
+                    errorFlash = true
+                    withAnimation(.easeOut(duration: 0.24).delay(0.24)) { errorFlash = false }
+                } else {
+                    withAnimation(.easeOut(duration: 0.24)) { shake += 1 }
+                }
+            }
 
             if snapshot.isAccepted { hitStage } else { missStage }
 
@@ -375,13 +388,13 @@ struct MatchVerdictScreen: View {
             Text("AC")
                 .font(.plexMonoSemiBold(54))
                 .tracking(-0.03 * 54)
-                .foregroundColor(LognDark.correct)
+                .foregroundColor(LognDark.correctInk)
                 .padding(.top, 10)
 
             Text("BALÃO \(String(snapshot.letter)) NO AR")
                 .font(.plexMono(13))
                 .tracking(0.12 * 13)
-                .foregroundColor(LognDark.correct)
+                .foregroundColor(LognDark.correctInk)
 
             Text("+\(xpAward) XP")
                 .font(.plexMonoSemiBold(20))
@@ -401,16 +414,16 @@ struct MatchVerdictScreen: View {
             Text(snapshot.code.rawValue)
                 .font(.plexMonoSemiBold(76))
                 .tracking(-0.03 * 76)
-                .foregroundColor(LognDark.wrong)
+                .foregroundColor(LognDark.wrongInk)
 
             Text(snapshot.code.meaning.uppercased())
                 .font(.plexMono(14))
                 .tracking(0.12 * 14)
-                .foregroundColor(LognDark.wrong)
+                .foregroundColor(LognDark.wrongInk)
 
             HStack(spacing: 20) {
                 Text("+20 min pen").foregroundColor(LognDark.textPrimary)
-                Text("−1 vida").foregroundColor(LognDark.wrong)
+                Text("−1 vida").foregroundColor(LognDark.wrongInk)
                 Text("0 XP").foregroundColor(LognDark.textMuted)
             }
             .font(.plexMono(12.5))
@@ -435,7 +448,7 @@ struct MatchVerdictScreen: View {
                 Text(trapCategory.uppercased())
                     .font(.plexMono(11))
                     .tracking(0.14 * 11)
-                    .foregroundColor(LognDark.wrong)
+                    .foregroundColor(LognDark.wrongInk)
 
                 if !trapTitle.isEmpty {
                     Text(trapTitle)
@@ -625,7 +638,7 @@ struct TagChip: View {
         Button(action: action) {
             Text(text)
                 .font(.plexMono(13))
-                .foregroundColor(isSelected ? LognDark.accent : LognDark.textSecondary)
+                .foregroundColor(isSelected ? LognDark.accentInk : LognDark.textSecondary)
                 .padding(.horizontal, 13)
                 .padding(.vertical, 11)
                 .background(isSelected ? LognDark.accentTint : Color.clear)

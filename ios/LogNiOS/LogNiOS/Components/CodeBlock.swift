@@ -13,7 +13,9 @@ struct CodeBlock: View {
     let selectedLine: Int?
     let onSelectLine: ((Int) -> Void)?
     /// `accent` durante a escolha; `correct`/`wrong` quando o juiz já respondeu.
+    /// É cor de **linha** — a tinta do número sai de `highlightInk`.
     let highlightColor: Color
+    let highlightInk: Color
     let fontSize: CGFloat
     let lineHeight: CGFloat
     let cornerRadius: CGFloat
@@ -29,6 +31,7 @@ struct CodeBlock: View {
         lines: [String],
         selectedLine: Int? = nil,
         highlightColor: Color = LognDark.accent,
+        highlightInk: Color = LognDark.accentInk,
         fontSize: CGFloat? = nil,
         lineHeight: CGFloat? = nil,
         cornerRadius: CGFloat? = nil,
@@ -38,6 +41,7 @@ struct CodeBlock: View {
         self.lines = lines
         self.selectedLine = selectedLine
         self.highlightColor = highlightColor
+        self.highlightInk = highlightInk
         self.onSelectLine = onSelectLine
         self.fillsHeight = fillsHeight
 
@@ -57,6 +61,7 @@ struct CodeBlock: View {
                     isSelected: index == selectedLine,
                     showsDivider: isSelectable && index < lines.count - 1,
                     highlightColor: highlightColor,
+                    highlightInk: highlightInk,
                     fontSize: fontSize,
                     lineHeight: lineHeight,
                     onTap: onSelectLine.map { handler in { handler(index) } }
@@ -84,7 +89,10 @@ private struct CodeLineRow: View {
     let code: String
     let isSelected: Bool
     let showsDivider: Bool
+    /// Cor de linha: barra lateral e fundo.
     let highlightColor: Color
+    /// Cor de tinta: o número da linha realçada, que é glifo.
+    let highlightInk: Color
     let fontSize: CGFloat
     let lineHeight: CGFloat
     let onTap: (() -> Void)?
@@ -97,7 +105,7 @@ private struct CodeLineRow: View {
             Text("\(number)")
                 .font(.plexMono(fontSize))
                 .monospacedDigit()
-                .foregroundColor(isSelected ? highlightColor : LognDark.lineDim)
+                .foregroundColor(isSelected ? highlightInk : LognDark.textMuted)
                 .frame(width: 12, alignment: .trailing)
 
             if let blankRange {

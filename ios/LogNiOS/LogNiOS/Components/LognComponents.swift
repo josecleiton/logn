@@ -109,25 +109,25 @@ struct ContestClock: View {
                 Text(formattedTime)
                     .font(.plexMonoSemiBold(28))
                     .monospacedDigit()
-                    .foregroundColor(LognDark.wrong)
+                    .foregroundColor(LognDark.wrongInk)
 
                 Text("RELÓGIO DA QUESTÃO · CRÍTICO")
                     .font(.plexMono(11))
                     .tracking(0.1 * 11)
-                    .foregroundColor(LognDark.wrong)
+                    .foregroundColor(LognDark.wrongInk)
             }
         } else {
             VStack(alignment: .leading, spacing: 6) {
                 Text(isFrozen ? "PLACAR CONGELADO" : "TEMPO RESTANTE")
                     .font(.plexMono(10.5))
                     .tracking(0.16 * 10.5)
-                    .foregroundColor(isFrozen ? LognDark.warn : LognDark.textMuted)
+                    .foregroundColor(isFrozen ? LognDark.warnInk : LognDark.textMuted)
 
                 Text(formattedTime)
                     .font(.plexMonoMedium(38))
                     .tracking(-0.01 * 38)
                     .monospacedDigit()
-                    .foregroundColor(isFrozen ? LognDark.warn : LognDark.textPrimary)
+                    .foregroundColor(isFrozen ? LognDark.warnInk : LognDark.textPrimary)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 16)
@@ -187,11 +187,23 @@ struct VerdictChip: View {
             }
         }
 
+        /// Cor de **linha**: borda, barra lateral, ícone preenchido.
         var tone: Color {
             switch self {
             case .ac:                   return LognDark.correct
             case .wa, .tle, .mle, .re:  return LognDark.wrong
             case .ce, .pe:              return LognDark.warn
+            case .judging:              return LognDark.textMuted
+            }
+        }
+
+        /// Cor de **tinta**: sigla, número, qualquer glifo. No dark coincide com `tone`;
+        /// no light escurece, porque a cor de linha não alcança 4.5:1 sobre o próprio tint.
+        var ink: Color {
+            switch self {
+            case .ac:                   return LognDark.correctInk
+            case .wa, .tle, .mle, .re:  return LognDark.wrongInk
+            case .ce, .pe:              return LognDark.warnInk
             case .judging:              return LognDark.textMuted
             }
         }
@@ -210,7 +222,7 @@ struct VerdictChip: View {
         Text(verdict.rawValue)
             .font(.plexMonoSemiBold(12))
             .tracking(0.06 * 12)
-            .foregroundColor(verdict.tone)
+            .foregroundColor(verdict.ink)
             .padding(.horizontal, 8)
             .frame(minWidth: 46, minHeight: 26)
             .background(verdict.tint)
@@ -285,12 +297,21 @@ struct MatchHeader: View {
     }
 
     /// A fileira A—M: endereço de cada problema do contest, sempre na mesma cor.
+    ///
+    /// A letra abaixo do balão cai para 8sp aqui, sob o mínimo de 11sp do DS: em fileira
+    /// densa ela é reforço visual, e o fallback acessível de verdade é o rótulo de
+    /// acessibilidade de cada balão.
     private var balloonRow: some View {
         HStack(spacing: 7) {
             ForEach(BalloonColor.all, id: \.self) { l in
-                BalloonShape(style: balloonStyle(for: l), width: 13)
-                    .accessibilityHidden(false)
-                    .accessibilityLabel(balloonDescription(for: l))
+                VStack(spacing: 2) {
+                    BalloonShape(style: balloonStyle(for: l), width: 13)
+                    Text(String(l))
+                        .font(.plexMono(8))
+                        .foregroundColor(isAccepted(l) ? BalloonColor.forLetter(l) : LognDark.textMuted)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(balloonDescription(for: l))
             }
             Spacer(minLength: 0)
         }
@@ -316,8 +337,8 @@ struct MatchHeader: View {
     private var isSolved: Bool { isAccepted(letter) }
 
     private var clockColor: Color {
-        if remainingSeconds <= 15 { return LognDark.wrong }
-        if isFrozen || remainingSeconds <= 45 { return LognDark.warn }
+        if remainingSeconds <= 15 { return LognDark.wrongInk }
+        if isFrozen || remainingSeconds <= 45 { return LognDark.warnInk }
         return LognDark.textSecondary
     }
 }

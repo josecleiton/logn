@@ -127,9 +127,10 @@ struct NodeSheetView: View {
 
             if nodes.isEmpty {
                 // Vazio nunca é ilustração: uma frase e pronto.
+                // `textDim` é só forma e placeholder — isto é texto lido.
                 Text(isUpstream ? "ponto de partida" : "fim da trilha")
                     .font(.plexSans(13.5))
-                    .foregroundColor(LognDark.textDim)
+                    .foregroundColor(LognDark.textMuted)
                     .padding(.top, 10)
             } else {
                 ForEach(Array(nodes.prefix(2).enumerated()), id: \.element.id) { index, neighbour in

@@ -19,7 +19,7 @@ struct ResetPasswordView: View {
                 // Header
                 Image(systemName: "key.fill")
                     .font(.system(size: 48))
-                    .foregroundColor(LognDark.info)
+                    .foregroundColor(LognDark.infoInk)
                 
                 Text("Reset Password")
                     .font(LognFont.headlineMedium)
@@ -72,7 +72,7 @@ struct ResetPasswordView: View {
                 if !core.viewModel.displayStatus.isEmpty {
                     Text(core.viewModel.displayStatus)
                         .font(LognFont.label)
-                        .foregroundColor(LognDark.info)
+                        .foregroundColor(LognDark.infoInk)
                 }
                 
                 Spacer()

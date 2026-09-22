@@ -97,14 +97,14 @@ struct DryRunPanel: View {
                 if !predictedOutput.isEmpty {
                     Text("espaços ignorados")
                         .font(.plexMono(10))
-                        .foregroundColor(LognDark.info)
+                        .foregroundColor(LognDark.infoInk)
                 }
             }
 
             HStack(spacing: 8) {
                 Text(">")
                     .font(.plexMono(17))
-                    .foregroundColor(LognDark.accent)
+                    .foregroundColor(LognDark.accentInk)
 
                 TextField(
                     "",

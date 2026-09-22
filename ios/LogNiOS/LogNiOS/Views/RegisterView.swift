@@ -47,7 +47,7 @@ struct RegisterView: View {
                 if !core.viewModel.displayStatus.isEmpty {
                     Text(core.viewModel.displayStatus)
                         .font(LognFont.label)
-                        .foregroundColor(LognDark.info)
+                        .foregroundColor(LognDark.infoInk)
                 }
                 
                 Spacer()

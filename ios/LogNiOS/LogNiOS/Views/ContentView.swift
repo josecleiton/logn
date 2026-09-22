@@ -5,7 +5,6 @@ import App
 struct ContentView: View {
     @EnvironmentObject var core: CoreWrapper
     @State private var tab: LognTab = .trilhas
-    @AppStorage("isDarkMode") private var isDarkMode = true
 
     var body: some View {
         // A navegação mora dentro de cada tela raiz, não em volta delas: quando a
@@ -22,7 +21,9 @@ struct ContentView: View {
             }
         }
         .tint(LognDark.accent)
-        .preferredColorScheme(isDarkMode ? .dark : .light)
+        // Dark-first e, por ora, dark-only: `LognLight` existe nos tokens mas nenhum
+        // mock desenha o app em claro, então o app não oferece a escolha.
+        .preferredColorScheme(.dark)
     }
 }
 
@@ -37,6 +38,40 @@ enum LognTab: CaseIterable {
         case .arena:   return "ARENA"
         case .placar:  return "PLACAR"
         }
+    }
+}
+
+/// Avatar de entrada do perfil: círculo 40dp com a inicial em `accentInk` sobre accent @18%,
+/// borda accent, e badge `warn` de 11dp quando há evento na fila de sync.
+struct ProfileAvatar: View {
+    /// E-mail ou nome; só a primeira letra aparece.
+    let initial: String
+    var size: CGFloat = 40
+    var hasPending: Bool = false
+
+    private var letter: String {
+        String(initial.first.map(Character.init) ?? "?").uppercased()
+    }
+
+    var body: some View {
+        Circle()
+            .fill(LognDark.accent.opacity(0.18))
+            .frame(width: size, height: size)
+            .overlay(Circle().stroke(LognDark.accent, lineWidth: 1))
+            .overlay(
+                Text(letter)
+                    .font(.plexSansSemiBold(size * 15 / 40))
+                    .foregroundColor(LognDark.accentInk)
+            )
+            .overlay(alignment: .topTrailing) {
+                if hasPending {
+                    Circle()
+                        .fill(LognDark.warn)
+                        .frame(width: 11, height: 11)
+                        .overlay(Circle().stroke(LognDark.canvas, lineWidth: 2))
+                        .offset(x: 1, y: -1)
+                }
+            }
     }
 }
 
@@ -59,11 +94,11 @@ struct LognBottomNav: View {
                     selection = item
                 } label: {
                     Text(item.title)
-                        .font(.plexMono(11))
-                        .tracking(0.1 * 11)
-                        .foregroundColor(isActive ? LognDark.accent : LognDark.textMuted)
+                        .font(.plexMono(10.5))
+                        .tracking(0.1 * 10.5)
+                        .foregroundColor(isActive ? LognDark.accentInk : LognDark.textMuted)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                        .padding(.vertical, 13)
                         .contentShape(Rectangle())
                         .overlay(alignment: .top) {
                             if isActive {
@@ -120,49 +155,31 @@ struct SkillTreeHostView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 14) {
-            // Título e XP compartilham a linha de base, como no documento.
-            HStack(alignment: .firstTextBaseline, spacing: 14) {
-                Text(core.viewModel.isFetching ? "Atualizando mapa" : "\(balloonsUp) balões no ar")
-                    .font(.plexSansSemiBold(21))
-                    .tracking(-0.02 * 21)
-                    .foregroundColor(LognDark.textPrimary)
+        HStack(spacing: 12) {
+            Text(core.viewModel.isFetching ? "Atualizando mapa" : "\(balloonsUp) balões no ar")
+                .font(.plexSansSemiBold(20, relativeTo: .title3))
+                .tracking(-0.02 * 20)
+                .foregroundColor(LognDark.textPrimary)
 
-                Spacer(minLength: 0)
+            Spacer(minLength: 0)
 
-                Text("\(core.viewModel.globalXp) XP")
-                    .font(.plexMono(13))
-                    .monospacedDigit()
-                    .foregroundColor(LognDark.accent)
-            }
+            Text("\(core.viewModel.globalXp) XP")
+                .font(.plexMono(12))
+                .monospacedDigit()
+                .foregroundColor(LognDark.accentInk)
 
-            // Entrada do perfil — o documento de gameplay não cobre este alvo, mas ele
-            // é o único caminho para conta, sync e ajustes.
             NavigationLink(destination: ProfileHubView().environmentObject(core)) {
-                Circle()
-                    .fill(LognDark.surface)
-                    .frame(width: 32, height: 32)
-                    .overlay(Circle().stroke(LognDark.line, lineWidth: 1))
-                    .overlay(
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 13))
-                            .foregroundColor(LognDark.textSecondary)
-                    )
-                    .overlay(alignment: .topTrailing) {
-                        if core.viewModel.pendingSyncCount > 0 {
-                            Circle()
-                                .fill(LognDark.warn)
-                                .frame(width: 8, height: 8)
-                                .overlay(Circle().stroke(LognDark.canvas, lineWidth: 1.5))
-                                .offset(x: 1, y: -1)
-                        }
-                    }
+                ProfileAvatar(
+                    initial: core.viewModel.isGuest ? "?" : core.viewModel.otpEmail,
+                    size: 40,
+                    hasPending: core.viewModel.pendingSyncCount > 0
+                )
             }
             .accessibilityLabel("Perfil")
         }
         .padding(.horizontal, 20)
-        .padding(.top, 18)
-        .padding(.bottom, 14)
+        .padding(.top, 16)
+        .padding(.bottom, 12)
         .overlay(alignment: .bottom) {
             Rectangle().frame(height: 1).foregroundColor(LognDark.line)
         }

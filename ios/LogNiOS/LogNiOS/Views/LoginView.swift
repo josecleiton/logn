@@ -165,7 +165,7 @@ struct LoginView: View {
                 if !core.viewModel.displayStatus.isEmpty {
                     Text(core.viewModel.displayStatus)
                         .font(.plexSans(12))
-                        .foregroundColor(LognDark.wrong)
+                        .foregroundColor(LognDark.wrongInk)
                         .padding(.top, 10)
                 }
                 

@@ -38,7 +38,7 @@ struct StandingsView: View {
                         TabButton(title: "SEDE", isSelected: selectedTab == 1) { selectedTab = 1 }
                     }
                     .background(LognDark.surfaceRaised)
-                    .cornerRadius(Radius.md)
+                    .cornerRadius(Radius.sm)
                     .padding(.horizontal, Space.screenMargin)
                 }
                 .padding(.vertical, Space.lg)

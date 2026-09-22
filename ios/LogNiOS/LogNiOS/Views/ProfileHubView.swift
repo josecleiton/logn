@@ -58,7 +58,7 @@ struct ProfileHubView: View {
                                 if core.viewModel.isGuest {
                                     Text("Progresso salvo apenas no dispositivo")
                                         .font(LognFont.bodyLarge)
-                                        .foregroundColor(LognDark.warn)
+                                        .foregroundColor(LognDark.warnInk)
                                 }
                             }
                         }
@@ -74,7 +74,7 @@ struct ProfileHubView: View {
                             HStack {
                                 Text("NÍVEL \(level)")
                                     .font(LognFont.label)
-                                    .foregroundColor(LognDark.accent)
+                                    .foregroundColor(LognDark.accentInk)
                                 Spacer()
                                 Text("\(xpInLevel) / 200 XP")
                                     .font(LognFont.label)
@@ -129,13 +129,13 @@ struct ProfileHubView: View {
                                         core.dispatch(event: .syncNow)
                                     }
                                     .font(LognFont.label)
-                                    .foregroundColor(LognDark.accent)
+                                    .foregroundColor(LognDark.accentInk)
                                 }
                             }
                             .padding(Space.md)
                             .background(LognDark.surface)
-                            .cornerRadius(Radius.md)
-                            .overlay(RoundedRectangle(cornerRadius: Radius.md).stroke(LognDark.line, lineWidth: 1))
+                            .cornerRadius(Radius.sm)
+                            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
                             .padding(.horizontal, Space.screenMargin)
                         }
                         
@@ -193,7 +193,7 @@ struct StatBox: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Space.md)
         .background(LognDark.surface)
-        .cornerRadius(Radius.md)
-        .overlay(RoundedRectangle(cornerRadius: Radius.md).stroke(LognDark.line, lineWidth: 1))
+        .cornerRadius(Radius.sm)
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
     }
 }
