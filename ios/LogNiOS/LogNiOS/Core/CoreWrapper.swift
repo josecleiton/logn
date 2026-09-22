@@ -10,7 +10,11 @@ public class CoreWrapper: ObservableObject {
     private let coreFFI = CoreFFI()
     
     @Published public var viewModel: ViewModel
-    
+
+    /// Roteamento de tela, não regra de negócio: o visitante que toca em
+    /// "Criar conta · salvar progresso" precisa cair no cadastro, não no login.
+    @Published public var wantsRegistration = false
+
     public init() {
         self.viewModel = ViewModel(
             displayStatus: "Initializing...",

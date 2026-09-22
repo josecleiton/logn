@@ -348,6 +348,7 @@ struct ProfileHubView: View {
                 .padding(.top, 8)
 
             Button {
+                core.wantsRegistration = true
                 core.dispatch(event: .logout)
             } label: {
                 Text("Criar conta · salvar progresso")

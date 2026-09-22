@@ -97,34 +97,27 @@ struct MatchView: View {
                 balloonStates: balloonStates
             )
 
-            GeometryReader { geo in
+            if fillsHeight {
+                // SPOT_THE_BUG cabe na tela, e o documento dá `flex:1` ao bloco de
+                // código: a moldura vai até o CTA. Num ScrollView isso não acontece,
+                // porque o filho recebe altura ilimitada e nunca estica.
+                VStack(alignment: .leading, spacing: 0) {
+                    problemStatement
+                    templateBody
+                        .padding(.horizontal, 14)
+                        .padding(.top, 16)
+                        .padding(.bottom, 16)
+                        .frame(maxHeight: .infinity)
+                }
+            } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(mv.currentTitle.uppercased())
-                                .font(.plexMono(11))
-                                .tracking(0.12 * 11)
-                                .foregroundColor(LognDark.textMuted)
-
-                            Text(mv.currentDescription)
-                                .font(.plexSansSemiBold(19))
-                                .lineSpacing(19 * 0.3)
-                                .foregroundColor(LognDark.textPrimary)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .padding(.top, 12)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 18)
-                        .padding(.top, 22)
-
+                        problemStatement
                         templateBody
                             .padding(.horizontal, 14)
                             .padding(.top, 16)
-                            .padding(.bottom, 16)
+                            .padding(.bottom, 24)
                     }
-                    // Trava a altura mínima no viewport para que o corpo do template
-                    // possa esticar até o CTA, como o `flex:1` do documento.
-                    .frame(minHeight: geo.size.height, alignment: .top)
                 }
             }
 
@@ -140,6 +133,29 @@ struct MatchView: View {
             .padding(.bottom, 22)
             .background(LognDark.canvas)
         }
+    }
+
+    /// Só SPOT_THE_BUG estica: o documento dá `flex:1` ao bloco de código dele.
+    private var fillsHeight: Bool { mv.currentTemplateType == "SPOT_THE_BUG" }
+
+    /// Nome do problema em `label` + o enunciado em 19sp/600.
+    private var problemStatement: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(mv.currentTitle.uppercased())
+                .font(.plexMono(11))
+                .tracking(0.12 * 11)
+                .foregroundColor(LognDark.textMuted)
+
+            Text(mv.currentDescription)
+                .font(.plexSansSemiBold(19))
+                .lineSpacing(19 * 0.3)
+                .foregroundColor(LognDark.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 12)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 18)
+        .padding(.top, 22)
     }
 
     @ViewBuilder
