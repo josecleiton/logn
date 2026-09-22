@@ -1392,6 +1392,100 @@ mod tests {
         );
     }
 
+    /// Monta um desafio com a forma que o seed do Postgres tem.
+    #[cfg(test)]
+    fn seeded_challenge(
+        id: &str,
+        template: &str,
+        options: Vec<String>,
+        correct: Vec<String>,
+        explanation: &str,
+    ) -> crate::domain::Challenge {
+        use crate::domain::{Challenge, ChallengeContent, ChallengePayload, ChallengeValidation};
+        Challenge {
+            id: id.into(),
+            node_id: "10000000-0000-0000-0000-000000000001".into(),
+            template_type: template.into(),
+            version: 1,
+            payload: ChallengePayload {
+                content: ChallengeContent {
+                    title: "Merge Sort".into(),
+                    description: "Merge Sort sobre n elementos".into(),
+                    code_lines: vec![],
+                    options: Some(options),
+                    correct_options: Some(correct),
+                    watch_variables: None,
+                    watch_note: None,
+                },
+                validation: ChallengeValidation {
+                    validation_type: template.into(),
+                    correct_line: None,
+                    expected_string: None,
+                    explanation: Some(explanation.into()),
+                },
+            },
+        }
+    }
+
+    /// COMPLEXITY_MATCH e TAG_THE_PATTERN: o motor julgava os dois e não havia
+    /// desafio nenhum que os exercitasse, então nunca tinham rodado com dado real.
+    #[test]
+    fn test_choice_templates_judge_the_seeded_shape() {
+        let app = LogNApp::default();
+
+        // Complexidade: a ordem de `correct_options` é [tempo, espaço].
+        let mut model = Model::default();
+        model.challenges = vec![seeded_challenge(
+            "ch_t04",
+            "COMPLEXITY_MATCH",
+            vec!["O(1)".into(), "O(log n)".into(), "O(n)".into(), "O(n²)".into()],
+            vec!["O(n²)".into(), "O(1)".into()],
+            "Dois laços aninhados dão O(n²) de tempo; o espaço é O(1).",
+        )];
+        let _ = app.update(Event::StartMatch { node_id: "10000000-0000-0000-0000-000000000001".into() }, &mut model);
+
+        let _ = app.update(Event::MatchSetDropTime { value: "O(1)".into() }, &mut model);
+        let _ = app.update(Event::MatchSetDropSpace { value: "O(n²)".into() }, &mut model);
+        let _ = app.update(Event::MatchSubmit { timestamp: 1_700_000_000 }, &mut model);
+        assert_eq!(app.view(&model).match_view.last_verdict, "WA", "trocar tempo e espaço é erro");
+        assert_eq!(
+            app.view(&model).match_view.trap_explanation,
+            "Dois laços aninhados dão O(n²) de tempo; o espaço é O(1).",
+            "a explicação tem de ser a do desafio, não a genérica"
+        );
+
+        let mut model = Model::default();
+        model.challenges = vec![seeded_challenge(
+            "ch_t04",
+            "COMPLEXITY_MATCH",
+            vec!["O(1)".into(), "O(n)".into(), "O(n²)".into()],
+            vec!["O(n²)".into(), "O(1)".into()],
+            "",
+        )];
+        let _ = app.update(Event::StartMatch { node_id: "10000000-0000-0000-0000-000000000001".into() }, &mut model);
+        let _ = app.update(Event::MatchSetDropTime { value: "O(n²)".into() }, &mut model);
+        let _ = app.update(Event::MatchSetDropSpace { value: "O(1)".into() }, &mut model);
+        let _ = app.update(Event::MatchSubmit { timestamp: 1_700_000_000 }, &mut model);
+        assert_eq!(app.view(&model).match_view.last_verdict, "AC");
+
+        // Tags: a ordem em que o jogador marca não importa.
+        let mut model = Model::default();
+        model.challenges = vec![seeded_challenge(
+            "ch_005",
+            "TAG_THE_PATTERN",
+            vec!["Grafos".into(), "BFS".into(), "DP".into(), "Greedy".into()],
+            vec!["Grafos".into(), "BFS".into()],
+            "",
+        )];
+        let _ = app.update(Event::StartMatch { node_id: "10000000-0000-0000-0000-000000000001".into() }, &mut model);
+        assert_eq!(app.view(&model).match_view.max_selections, 2, "duas tags, duas marcações");
+
+        let _ = app.update(Event::MatchToggleTag { tag: "BFS".into() }, &mut model);
+        let _ = app.update(Event::MatchToggleTag { tag: "Grafos".into() }, &mut model);
+        let _ = app.update(Event::MatchSubmit { timestamp: 1_700_000_000 }, &mut model);
+        assert_eq!(app.view(&model).match_view.last_verdict, "AC");
+    }
+
     #[test]
     fn test_display_name_takes_the_first_name_from_the_email() {
         assert_eq!(display_name_from_email("jogador@example.com"), "Rodrigo");
