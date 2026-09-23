@@ -518,7 +518,12 @@ impl App for LogNApp {
                     body: serde_json::to_vec(&body).unwrap_or_default(),
                 };
 
-                Command::request_from_shell(request).then_send(Event::LoginCompleted)
+                // O render vai junto com o request: sem ele o shell só recebe o
+                // `is_authenticating` quando a resposta já chegou e a flag já desligou,
+                // e o botão nunca mostra que está esperando a rede.
+                Command::request_from_shell(request)
+                    .then_send(Event::LoginCompleted)
+                    .and(render::render())
             }
 
             Event::LoginCompleted(result) => {
@@ -1161,7 +1166,9 @@ Event::FetchChallenges => {
                     }],
                     body: body.to_string().into_bytes(),
                 };
-                Command::request_from_shell(request).then_send(Event::OTPRequested)
+                Command::request_from_shell(request)
+                    .then_send(Event::OTPRequested)
+                    .and(render::render())
             }
             Event::OTPRequested(result) => {
                 model.is_authenticating = false;
@@ -1201,7 +1208,9 @@ Event::FetchChallenges => {
                     }],
                     body: body.to_string().into_bytes(),
                 };
-                Command::request_from_shell(request).then_send(Event::OTPVerified)
+                Command::request_from_shell(request)
+                    .then_send(Event::OTPVerified)
+                    .and(render::render())
             }
             Event::OTPVerified(result) => {
                 model.is_authenticating = false;
@@ -1242,7 +1251,9 @@ Event::FetchChallenges => {
                     }],
                     body: body.to_string().into_bytes(),
                 };
-                Command::request_from_shell(request).then_send(Event::RegisterCompleted)
+                Command::request_from_shell(request)
+                    .then_send(Event::RegisterCompleted)
+                    .and(render::render())
             }
             Event::RegisterCompleted(result) => {
                 model.is_authenticating = false;
@@ -1302,7 +1313,9 @@ Event::FetchChallenges => {
                     }],
                     body: body.to_string().into_bytes(),
                 };
-                Command::request_from_shell(request).then_send(Event::ResetPasswordCompleted)
+                Command::request_from_shell(request)
+                    .then_send(Event::ResetPasswordCompleted)
+                    .and(render::render())
             }
             Event::ResetPasswordCompleted(result) => {
                 model.is_authenticating = false;
@@ -2988,12 +3001,12 @@ mod tests {
         
         assert_eq!(model.otp_email, "test@example.com");
         assert!(model.is_authenticating);
-        
-        let http_req = cmd.expect_one_effect();
-        if let Effect::Http(r) = http_req {
-            assert_eq!(r.operation.url, "/api/v1/auth/request-otp");
-        } else {
-            panic!("Expected Http effect");
+
+        let effects: Vec<_> = cmd.effects().collect();
+        assert!(effects.iter().any(|e| matches!(e, Effect::Render(_))), "a espera tem de chegar à tela");
+        match effects.into_iter().find(|e| matches!(e, Effect::Http(_))) {
+            Some(Effect::Http(r)) => assert_eq!(r.operation.url, "/api/v1/auth/request-otp"),
+            _ => panic!("Expected Http effect"),
         }
 
         // 2. OTP Requested Success
@@ -3015,13 +3028,15 @@ mod tests {
         }, &mut model);
         
         assert!(model.is_authenticating);
-        
-        let http_req = cmd.expect_one_effect();
-        if let Effect::Http(r) = http_req {
-            assert_eq!(r.operation.url, "/api/v1/auth/verify-otp");
-            assert!(String::from_utf8_lossy(&r.operation.body).contains("123456"));
-        } else {
-            panic!("Expected Http effect");
+
+        let effects: Vec<_> = cmd.effects().collect();
+        assert!(effects.iter().any(|e| matches!(e, Effect::Render(_))), "a espera tem de chegar à tela");
+        match effects.into_iter().find(|e| matches!(e, Effect::Http(_))) {
+            Some(Effect::Http(r)) => {
+                assert_eq!(r.operation.url, "/api/v1/auth/verify-otp");
+                assert!(String::from_utf8_lossy(&r.operation.body).contains("123456"));
+            }
+            _ => panic!("Expected Http effect"),
         }
 
         // 4. OTP Verified Success
@@ -3043,12 +3058,13 @@ mod tests {
 
         let mut cmd = app.update(Event::Login { email: "test@x.com".into(), password_hash: "hash".into() }, &mut model);
         assert!(model.is_authenticating);
-        
-        let req = cmd.expect_one_effect();
-        if let Effect::Http(http_req) = req {
-            assert_eq!(http_req.operation.url, "/api/v1/auth/login");
-        } else {
-            panic!("Expected Http effect");
+
+        // Sem o render junto do request, o botão "Entrar" não mostra que está esperando.
+        let effects: Vec<_> = cmd.effects().collect();
+        assert!(effects.iter().any(|e| matches!(e, Effect::Render(_))), "a espera tem de chegar à tela");
+        match effects.into_iter().find(|e| matches!(e, Effect::Http(_))) {
+            Some(Effect::Http(http_req)) => assert_eq!(http_req.operation.url, "/api/v1/auth/login"),
+            _ => panic!("Expected Http effect"),
         }
 
         let body = serde_json::to_vec(&serde_json::json!({
