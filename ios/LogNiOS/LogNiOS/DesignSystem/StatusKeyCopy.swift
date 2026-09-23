@@ -35,6 +35,7 @@ extension LogN.StatusKey {
         case .syncOffline:       return Str.Status.sync_offline
         case .signInToSync:      return Str.Status.sign_in_to_sync
         case .treeUnavailable:   return Str.Dashboard.tree_unavailable
+        case .rateLimited:       return Str.Status.rate_limited
         }
     }
 

@@ -251,6 +251,9 @@ pub enum StatusKey {
     SyncOffline,
     SignInToSync,
     TreeUnavailable,
+    /// O servidor respondeu 429. Os botões que batem nele ficam travados pela
+    /// contagem do `Retry-After`, e a própria contagem aparece neles.
+    RateLimited,
 }
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]

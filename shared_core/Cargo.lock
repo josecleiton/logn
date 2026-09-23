@@ -397,6 +397,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "crux_time"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1422fd4d776ab5ad15b91ee3cee527cf43c3a23da40b01f3d64949ed90148da1"
+dependencies = [
+ "crux_core",
+ "facet",
+ "futures",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "crypto-common"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1430,6 +1443,7 @@ dependencies = [
  "crux_http",
  "crux_kv",
  "crux_macros",
+ "crux_time",
  "facet",
  "facet-generate-attrs",
  "log",

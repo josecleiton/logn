@@ -66,7 +66,9 @@ public class CoreWrapper: ObservableObject {
                 rank: 0, handle: "", university: "", solved: 0, penalty: 0,
                 isUser: true, note: ""
             ),
-            scoreboard: []
+            scoreboard: [],
+            authCooldownSeconds: 0,
+            resendCooldownSeconds: 0
         )
         updateViewModel()
         // A trilha que viaja no bundle entra antes de tudo: instalação nova e sem rede
@@ -126,7 +128,68 @@ public class CoreWrapper: ObservableObject {
                 handleTelemetry(id: request.id, operation: operation)
             case .monitoring(let operation):
                 handleMonitoring(id: request.id, operation: operation)
+            case .time(let operation):
+                handleTime(id: request.id, operation: operation)
             }
+        }
+    }
+
+    /// Temporizadores pedidos pelo Core e ainda não disparados, por id do `crux_time`.
+    private var timers: [UInt64: DispatchWorkItem] = [:]
+
+    /// A capability de tempo: a hora, e o aviso de que um prazo passou.
+    ///
+    /// O Core não tem relógio. A contagem de um 429 pede a hora aqui a cada segundo, em
+    /// vez de descontar um por tique, porque o iOS congela o app em segundo plano: quem
+    /// volta depois de um minuto tem de achar o botão liberado, não com 59 s pela frente.
+    ///
+    /// O pedido chega com os tipos do módulo `LogN`, mas a resposta só é gerada no
+    /// módulo `App`, porque nenhum tipo de `LogN` a referencia. O bincode dos dois é o
+    /// mesmo, então o id passa de um para o outro pelo valor.
+    private func handleTime(id: UInt32, operation: LogN.TimeRequest) {
+        switch operation {
+        case .now:
+            resolveTime(id: id, response: .now(instant: Self.instant(Date())))
+        case .notifyAt(let timer, let instant):
+            let at = Double(instant.seconds) + Double(instant.nanos) / 1_000_000_000
+            schedule(id: id, timer: timer.value, after: max(0, at - Date().timeIntervalSince1970)) {
+                .instantArrived(id: App.TimerId(value: timer.value))
+            }
+        case .notifyAfter(let timer, let duration):
+            schedule(id: id, timer: timer.value, after: Double(duration.nanos) / 1_000_000_000) {
+                .durationElapsed(id: App.TimerId(value: timer.value))
+            }
+        case .clear(let timer):
+            timers.removeValue(forKey: timer.value)?.cancel()
+            resolveTime(id: id, response: .cleared(id: App.TimerId(value: timer.value)))
+        }
+    }
+
+    private func schedule(
+        id: UInt32, timer: UInt64, after seconds: TimeInterval,
+        response: @escaping () -> App.TimeResponse
+    ) {
+        let work = DispatchWorkItem { [weak self] in
+            self?.timers.removeValue(forKey: timer)
+            self?.resolveTime(id: id, response: response())
+        }
+        timers[timer] = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
+    }
+
+    private static func instant(_ date: Date) -> App.Instant {
+        let t = date.timeIntervalSince1970
+        let seconds = t.rounded(.down)
+        return App.Instant(seconds: UInt64(seconds), nanos: UInt32((t - seconds) * 1_000_000_000))
+    }
+
+    private func resolveTime(id: UInt32, response: App.TimeResponse) {
+        do {
+            let bytes = try response.bincodeSerialize()
+            let nextEffectsBytes = coreFFI.resolve(id: id, data: Data(bytes))
+            try processEffects(nextEffectsBytes)
+        } catch {
+            print("Failed to resolve Time effect: \(error)")
         }
     }
     
@@ -256,9 +319,15 @@ public class CoreWrapper: ObservableObject {
             if let error = error {
                 result = .err(HttpError.io(error.localizedDescription))
             } else if let httpResponse = response as? HTTPURLResponse {
+                // Os cabeçalhos iam vazios, e o Core não tinha como ler o `Retry-After`
+                // de um 429: a contagem do botão saía sempre do valor padrão.
+                let headers = httpResponse.allHeaderFields.compactMap { key, value -> LogN.HttpHeader? in
+                    guard let name = key as? String else { return nil }
+                    return LogN.HttpHeader(name: name, value: "\(value)")
+                }
                 let res = LogN.HttpResponse(
                     status: UInt16(httpResponse.statusCode),
-                    headers: [],
+                    headers: headers,
                     body: data.map { [UInt8]($0) } ?? []
                 )
                 result = .ok(res)

@@ -87,15 +87,16 @@ struct RegisterView: View {
                 core.dispatch(event: LogN.Event.requestOtp(email: email, purpose: "verify_email"))
                 step = .otp
             }) {
-                Text(core.viewModel.isAuthenticating ? "Enviando..." : "Enviar Código")
+                Text(sendCodeLabel)
                     .font(.plexSansSemiBold(15))
-                    .foregroundColor(email.contains("@") ? LognDark.onAccent : LognDark.textDim)
+                    .monospacedDigit()
+                    .foregroundColor(canSendCode ? LognDark.onAccent : LognDark.textDim)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
-                    .background(email.contains("@") ? LognDark.accent : LognDark.buttonDisabled)
+                    .background(canSendCode ? LognDark.accent : LognDark.buttonDisabled)
                     .cornerRadius(Radius.sm)
             }
-            .disabled(!email.contains("@") || core.viewModel.isAuthenticating)
+            .disabled(!canSendCode || core.viewModel.isAuthenticating)
             .padding(.top, 4)
         }
     }
@@ -138,8 +139,11 @@ struct RegisterView: View {
                 // "Criar Conta" chegava ao servidor com o endereço no campo do OTP.
                 core.dispatch(event: .register(email: email, password: password, otp: otpCode))
             }) {
-                Text("Criar Conta")
+                Text(accountLocked
+                     ? Str.Status.wait_seconds(Int(core.viewModel.authCooldownSeconds))
+                     : "Criar Conta")
                     .font(.plexSansSemiBold(15))
+                    .monospacedDigit()
                     .foregroundColor(canRegister ? LognDark.onAccent : LognDark.textDim)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
@@ -174,6 +178,17 @@ struct RegisterView: View {
     }
     
     private var canRegister: Bool {
-        password.count >= 8 && password == confirmPassword
+        password.count >= 8 && password == confirmPassword && !accountLocked
+    }
+
+    /// Travados por um 429: o servidor mandou esperar, e o botão conta o tempo.
+    private var accountLocked: Bool { core.viewModel.authCooldownSeconds > 0 }
+    private var sendCodeLocked: Bool { core.viewModel.resendCooldownSeconds > 0 }
+
+    private var canSendCode: Bool { email.contains("@") && !sendCodeLocked }
+
+    private var sendCodeLabel: String {
+        if sendCodeLocked { return Str.Status.wait_seconds(Int(core.viewModel.resendCooldownSeconds)) }
+        return core.viewModel.isAuthenticating ? "Enviando..." : "Enviar Código"
     }
 }

@@ -4,6 +4,7 @@ use facet::Facet;
 use facet_generate_attrs as fg;
 use crux_http::protocol::{HttpRequest, HttpResult};
 use crux_kv::{KeyValueOperation, KeyValueResult, KeyValueResponse};
+use crux_time::{Time, TimeRequest};
 use crate::domain::{GameEvent, SyncPayload, Challenge, StatusKey, TelemetryOperation};
 use crate::match_engine;
 
@@ -59,6 +60,11 @@ pub enum Event {
     DismissPasswordReset,
     /// O shell dá a hora ao Core: na abertura e ao voltar para o primeiro plano.
     Tick { now: i64 },
+    /// Hora pedida pelo `crux_time` enquanto há bloqueio por 429, em segundos desde a
+    /// época. Ancora o bloqueio que acabou de começar e recalcula a contagem.
+    CooldownClock { now: i64 },
+    /// Passou um segundo de bloqueio: hora de pedir a hora de novo.
+    CooldownElapsed,
     SessionExpiryStored(KeyValueResult),
     OfflineSessionChecked(KeyValueResult),
     SnapshotSaved(KeyValueResult),
@@ -187,6 +193,109 @@ pub struct Model {
     /// Quando a semente foi gerada, em ISO 8601, como veio do asset. O cliente formata
     /// na língua dele — o Core não sabe em que idioma o app está.
     pub trail_generated_at: String,
+    /// Bloqueio do envio de código, depois de um 429 no `request-otp`.
+    ///
+    /// Só trava enviar e reenviar: quem pediu código de novo cedo demais ainda pode
+    /// digitar o que já recebeu. Travar o "Verificar" junto era punir o jogador pelo
+    /// toque a mais.
+    pub resend_cooldown: Cooldown,
+    /// Bloqueio de todas as ações de conta, depois de um 429 em qualquer outra rota de
+    /// autenticação. Esse vem do limite por IP do servidor, que vale para todas elas.
+    pub auth_cooldown: Cooldown,
+    /// Há um `notify_after` de bloqueio pendente no shell. Impede que dois 429 seguidos
+    /// ponham dois relógios para bater ao mesmo tempo.
+    pub cooldown_timer_running: bool,
+}
+
+/// Um bloqueio por 429: quantos segundos o servidor pediu e até quando isso vai.
+///
+/// `until` fica zerado entre o 429 chegar e a primeira hora do `crux_time` voltar. O
+/// Core não tem relógio, e `now` só é confiável depois de pedido: a hora da abertura
+/// pode ter horas.
+#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Cooldown {
+    pub secs: i64,
+    pub until: i64,
+}
+
+impl Cooldown {
+    fn start(secs: i64) -> Self {
+        Cooldown { secs, until: 0 }
+    }
+
+    fn is_active(&self) -> bool {
+        self.secs > 0
+    }
+
+    /// Fixa o fim do bloqueio na primeira hora que chegar, e o encerra quando passa.
+    fn advance(&mut self, now: i64) {
+        if !self.is_active() {
+            return;
+        }
+        if self.until == 0 {
+            self.until = now + self.secs;
+        }
+        if now >= self.until {
+            *self = Cooldown::default();
+        }
+    }
+
+    /// Segundos que faltam, para a tela. Antes da âncora é o que o servidor pediu.
+    fn remaining(&self, now: i64) -> u32 {
+        if !self.is_active() {
+            0
+        } else if self.until == 0 {
+            self.secs as u32
+        } else {
+            (self.until - now).max(0) as u32
+        }
+    }
+}
+
+/// Quanto o servidor mandou esperar. Sem `Retry-After` legível, um minuto, que é o que
+/// o backend usa; acima de uma hora, uma hora, para um cabeçalho torto não travar o
+/// botão pelo resto do dia.
+fn retry_after_secs(response: &crux_http::protocol::HttpResponse) -> i64 {
+    response
+        .headers
+        .iter()
+        .find(|h| h.name.eq_ignore_ascii_case("retry-after"))
+        .and_then(|h| h.value.trim().parse::<i64>().ok())
+        .filter(|s| *s > 0)
+        .map(|s| s.min(3600))
+        .unwrap_or(60)
+}
+
+/// Pede a hora ao shell para ancorar e contar um bloqueio.
+fn ask_cooldown_clock() -> Command<Effect, Event> {
+    Time::now().then_send(|t| Event::CooldownClock { now: unix_seconds(t) })
+}
+
+fn unix_seconds(t: std::time::SystemTime) -> i64 {
+    t.duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
+}
+
+/// Um 429 numa ação de conta: trava os botões e começa a contagem.
+fn rate_limited(model: &mut Model, response: &crux_http::protocol::HttpResponse, resend_only: bool) -> Command<Effect, Event> {
+    let cooldown = Cooldown::start(retry_after_secs(response));
+    if resend_only {
+        model.resend_cooldown = cooldown;
+    } else {
+        model.auth_cooldown = cooldown;
+    }
+    model.is_authenticating = false;
+    model.status = "Rate limited".to_string();
+    model.status_key = StatusKey::RateLimited;
+    ask_cooldown_clock().and(render::render())
+}
+
+/// A ação foi disparada com o bloqueio ainda correndo — toque que escapou antes da tela
+/// redesenhar. Não sai pedido nenhum: o servidor ia só devolver outro 429.
+fn still_rate_limited(model: &mut Model) -> Command<Effect, Event> {
+    model.status_key = StatusKey::RateLimited;
+    render::render()
 }
 
 #[derive(Facet, Serialize, Deserialize, Default, Clone)]
@@ -242,6 +351,12 @@ pub struct ViewModel {
     pub standings_home: Vec<crate::domain::StandingRow>,
     pub user_standing: crate::domain::StandingRow,
     pub scoreboard: Vec<crate::domain::ScoreboardRow>,
+    /// Segundos até login, verificação, cadastro e troca de senha voltarem a valer.
+    /// Zero quando não há bloqueio.
+    pub auth_cooldown_seconds: u32,
+    /// Segundos até enviar ou reenviar código voltar a valer. Inclui o bloqueio geral:
+    /// o limite por IP também barra o envio.
+    pub resend_cooldown_seconds: u32,
 }
 
 #[effect(facet_typegen)]
@@ -252,6 +367,7 @@ pub enum Effect {
     SecureStore(KeyValueOperation),
     Telemetry(crate::domain::TelemetryOperation),
     Monitoring(crate::domain::MonitoringOperation),
+    Time(TimeRequest),
 }
 
 /// XP por nível. O DS fixa a fórmula: `nível = floor(xp / 200) + 1`.
@@ -362,6 +478,9 @@ impl App for LogNApp {
             Event::Pong => Command::done(),
 
             Event::Login { email, password_hash } => {
+                if model.auth_cooldown.is_active() {
+                    return still_rate_limited(model);
+                }
                 model.is_authenticating = true;
                 model.status = "Logging in".to_string();
                 model.status_key = StatusKey::SigningIn;
@@ -414,6 +533,9 @@ impl App for LogNApp {
                             model.status_key = StatusKey::ServerUnreadable;
                             model.is_authenticating = false;
                         }
+                    }
+                    HttpResult::Ok(response) if response.status == 429 => {
+                        return rate_limited(model, &response, false);
                     }
                     HttpResult::Ok(response) if response.status == 401 => {
                         model.status_key = StatusKey::WrongCredentials;
@@ -529,6 +651,34 @@ impl App for LogNApp {
             Event::Tick { now } => {
                 model.now = now;
                 Command::done()
+            }
+
+            Event::CooldownClock { now } => {
+                model.now = now;
+                model.resend_cooldown.advance(now);
+                model.auth_cooldown.advance(now);
+
+                let active = model.resend_cooldown.is_active() || model.auth_cooldown.is_active();
+                if !active {
+                    // Acabou a espera: o aviso sai junto com a trava.
+                    if model.status_key == StatusKey::RateLimited {
+                        model.status_key = StatusKey::Silent;
+                    }
+                    return render::render();
+                }
+
+                // Um relógio só por vez, por mais 429 que cheguem enquanto ele corre.
+                if model.cooldown_timer_running {
+                    return render::render();
+                }
+                model.cooldown_timer_running = true;
+                let (tick, _handle) = Time::notify_after(std::time::Duration::from_secs(1));
+                tick.then_send(|_| Event::CooldownElapsed).and(render::render())
+            }
+
+            Event::CooldownElapsed => {
+                model.cooldown_timer_running = false;
+                ask_cooldown_clock()
             }
 
             // Grava o retrato local. Chamado depois de cada coisa que o servidor confirma.
@@ -652,8 +802,16 @@ impl App for LogNApp {
                             model.status = "Failed to parse refresh response".to_string();
                         }
                     }
-                    // Sem rede. A sessão guardada pode estar perfeitamente válida — quem
-                    // decide é o prazo, não a existência de sinal.
+                    // Sem rede, ou o servidor pedindo para esperar (429). Nos dois casos a
+                    // sessão guardada pode estar perfeitamente válida — quem decide é o
+                    // prazo. O 429 caía no braço de baixo e deslogava quem não tinha
+                    // feito nada: bastava o limite por IP estourar num Wi-Fi cheio.
+                    HttpResult::Ok(response) if response.status == 429 => {
+                        return Command::request_from_shell(KeyValueOperation::Get {
+                            key: "session_expires_at".to_string(),
+                        })
+                        .then_send(Event::OfflineSessionChecked);
+                    }
                     HttpResult::Err(_) => {
                         return Command::request_from_shell(KeyValueOperation::Get {
                             key: "session_expires_at".to_string(),
@@ -943,6 +1101,9 @@ Event::FetchChallenges => {
                 render::render()
             }
             Event::RequestOTP { email, purpose } => {
+                if model.resend_cooldown.is_active() || model.auth_cooldown.is_active() {
+                    return still_rate_limited(model);
+                }
                 model.is_authenticating = true;
                 model.otp_email = email.clone();
                 model.status = "Sending verification code".to_string();
@@ -968,6 +1129,12 @@ Event::FetchChallenges => {
                         // o rodapé de status. Sucesso é o campo de código aparecer.
                         model.status_key = StatusKey::Silent;
                     }
+                    // Pediu código de novo antes do intervalo do servidor, ou estourou o
+                    // limite por IP. Os dois voltam 429 com o mesmo corpo; trava só o
+                    // envio, porque o código que já chegou continua valendo.
+                    HttpResult::Ok(response) if response.status == 429 => {
+                        return rate_limited(model, &response, true);
+                    }
                     _ => {
                         model.status_key = StatusKey::CodeSentFailed;
                     }
@@ -975,6 +1142,9 @@ Event::FetchChallenges => {
                 render::render()
             }
             Event::VerifyOTP { email, code, purpose } => {
+                if model.auth_cooldown.is_active() {
+                    return still_rate_limited(model);
+                }
                 model.is_authenticating = true;
                 model.status = "Verifying code".to_string();
                 model.status_key = StatusKey::CheckingCode;
@@ -999,6 +1169,11 @@ Event::FetchChallenges => {
                         // A tela avança para a senha; dizer "verificado" é redundante.
                         model.status_key = StatusKey::Silent;
                     }
+                    // Não é código errado: o servidor nem conferiu. Dizer "código
+                    // inválido" aqui fazia o jogador apagar um código bom.
+                    HttpResult::Ok(response) if response.status == 429 => {
+                        return rate_limited(model, &response, false);
+                    }
                     _ => {
                         model.otp_verified = false;
                         model.status_key = StatusKey::CodeInvalid;
@@ -1007,6 +1182,9 @@ Event::FetchChallenges => {
                 render::render()
             }
             Event::Register { email, password, otp } => {
+                if model.auth_cooldown.is_active() {
+                    return still_rate_limited(model);
+                }
                 model.is_authenticating = true;
                 model.status = "Creating account".to_string();
                 model.status_key = StatusKey::CreatingAccount;
@@ -1054,6 +1232,9 @@ Event::FetchChallenges => {
                         }
                         model.status_key = StatusKey::ServerUnreadable;
                     }
+                    HttpResult::Ok(response) if response.status == 429 => {
+                        return rate_limited(model, &response, false);
+                    }
                     _ => {
                         model.status_key = StatusKey::AccountFailed;
                     }
@@ -1061,6 +1242,9 @@ Event::FetchChallenges => {
                 render::render()
             }
             Event::ResetPassword { email, new_password, otp } => {
+                if model.auth_cooldown.is_active() {
+                    return still_rate_limited(model);
+                }
                 model.is_authenticating = true;
                 model.status = "Resetting password".to_string();
                 model.status_key = StatusKey::ResettingPassword;
@@ -1106,6 +1290,9 @@ Event::FetchChallenges => {
                             }).then_send(Event::TokenStored);
                         }
                         model.status_key = StatusKey::ServerUnreadable;
+                    }
+                    HttpResult::Ok(response) if response.status == 429 => {
+                        return rate_limited(model, &response, false);
                     }
                     _ => {
                         model.status_key = StatusKey::ResetFailed;
@@ -1741,6 +1928,11 @@ Event::FetchChallenges => {
             standings_home: crate::mock_data::get_mock_standings_home(),
             user_standing: crate::mock_data::get_mock_user_standing(),
             scoreboard: crate::mock_data::get_mock_scoreboard(),
+            auth_cooldown_seconds: model.auth_cooldown.remaining(model.now),
+            resend_cooldown_seconds: model
+                .resend_cooldown
+                .remaining(model.now)
+                .max(model.auth_cooldown.remaining(model.now)),
         }
     }
 }
@@ -2860,5 +3052,159 @@ mod tests {
         } else {
             panic!("Expected Http effect re-emitting original request");
         }
+    }
+
+    fn too_many_requests(retry_after: Option<&str>) -> crux_http::protocol::HttpResponse {
+        crux_http::protocol::HttpResponse {
+            status: 429,
+            headers: retry_after
+                .map(|v| vec![crux_http::protocol::HttpHeader { name: "Retry-After".into(), value: v.into() }])
+                .unwrap_or_default(),
+            body: b"Too many requests\n".to_vec(),
+        }
+    }
+
+    /// Resolve o `Time::now` pendente no comando e devolve o evento que ele gera.
+    fn resolve_now(cmd: &mut Command<Effect, Event>, now: u64) -> Event {
+        let mut request = cmd
+            .effects()
+            .find_map(|e| match e {
+                Effect::Time(r) if r.operation == TimeRequest::Now => Some(r),
+                _ => None,
+            })
+            .expect("o bloqueio pede a hora ao shell");
+        request
+            .resolve(crux_time::TimeResponse::Now { instant: crux_time::Instant::new(now, 0) })
+            .unwrap();
+        cmd.events().next().expect("a hora volta como evento")
+    }
+
+    #[test]
+    fn test_retry_after_is_read_and_bounded() {
+        assert_eq!(retry_after_secs(&too_many_requests(Some("42"))), 42);
+        assert_eq!(retry_after_secs(&too_many_requests(None)), 60);
+        assert_eq!(retry_after_secs(&too_many_requests(Some("amanhã"))), 60);
+        assert_eq!(retry_after_secs(&too_many_requests(Some("0"))), 60);
+        assert_eq!(retry_after_secs(&too_many_requests(Some("99999"))), 3600);
+    }
+
+    /// Pedir código de novo cedo demais trava só o envio. O código que já chegou
+    /// continua valendo, e o "Verificar" não pode ficar preso junto.
+    #[test]
+    fn test_429_on_request_otp_locks_only_resend_and_counts_down() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.now = 10; // hora velha da abertura: não pode ancorar o bloqueio
+
+        let mut cmd = app.update(
+            Event::OTPRequested(HttpResult::Ok(too_many_requests(Some("60")))),
+            &mut model,
+        );
+        assert_eq!(model.status_key, StatusKey::RateLimited);
+        assert!(!model.is_authenticating);
+
+        let view = app.view(&model);
+        assert_eq!(view.resend_cooldown_seconds, 60);
+        assert_eq!(view.auth_cooldown_seconds, 0);
+
+        let clock = resolve_now(&mut cmd, 1_000);
+        let mut cmd = app.update(clock, &mut model);
+        assert_eq!(model.resend_cooldown.until, 1_060, "ancorado na hora pedida, não na da abertura");
+        assert!(
+            cmd.effects().any(|e| matches!(e, Effect::Time(r) if matches!(r.operation, TimeRequest::NotifyAfter { .. }))),
+            "com bloqueio ativo, o relógio volta a bater em um segundo"
+        );
+
+        // Trinta segundos depois, a contagem desce.
+        let _ = app.update(Event::CooldownElapsed, &mut model);
+        let _ = app.update(Event::CooldownClock { now: 1_030 }, &mut model);
+        assert_eq!(app.view(&model).resend_cooldown_seconds, 30);
+
+        // Com o envio travado, o toque não sai para o servidor.
+        let mut cmd = app.update(
+            Event::RequestOTP { email: "a@x.com".into(), purpose: "verify_email".into() },
+            &mut model,
+        );
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))));
+
+        // Mas verificar o código que já chegou continua valendo.
+        let mut cmd = app.update(
+            Event::VerifyOTP { email: "a@x.com".into(), code: "123456".into(), purpose: "verify_email".into() },
+            &mut model,
+        );
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Http(_))));
+
+        // No fim da contagem, trava e aviso saem juntos.
+        model.status_key = StatusKey::RateLimited;
+        let _ = app.update(Event::CooldownElapsed, &mut model);
+        let mut cmd = app.update(Event::CooldownClock { now: 1_060 }, &mut model);
+        assert_eq!(app.view(&model).resend_cooldown_seconds, 0);
+        assert_eq!(model.status_key, StatusKey::Silent);
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Time(_))), "sem bloqueio, o relógio para");
+    }
+
+    /// 429 no login vem do limite por IP, que vale para todas as rotas de conta.
+    #[test]
+    fn test_429_on_login_locks_every_account_action() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.is_authenticating = true;
+
+        let mut cmd = app.update(
+            Event::LoginCompleted(HttpResult::Ok(too_many_requests(Some("45")))),
+            &mut model,
+        );
+        let clock = resolve_now(&mut cmd, 2_000);
+        let _ = app.update(clock, &mut model);
+
+        let view = app.view(&model);
+        assert_eq!(view.auth_cooldown_seconds, 45);
+        assert_eq!(view.resend_cooldown_seconds, 45, "o envio de código também está barrado");
+        assert_eq!(model.status_key, StatusKey::RateLimited);
+        assert!(!model.is_authenticating);
+
+        for event in [
+            Event::Login { email: "a@x.com".into(), password_hash: "senha-forte".into() },
+            Event::RequestOTP { email: "a@x.com".into(), purpose: "verify_email".into() },
+            Event::VerifyOTP { email: "a@x.com".into(), code: "123456".into(), purpose: "verify_email".into() },
+            Event::Register { email: "a@x.com".into(), password: "senha-forte".into(), otp: "123456".into() },
+            Event::ResetPassword { email: "a@x.com".into(), new_password: "senha-forte".into(), otp: "123456".into() },
+        ] {
+            let mut cmd = app.update(event, &mut model);
+            assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))), "nada sai durante o bloqueio");
+        }
+    }
+
+    /// Dois 429 seguidos não põem dois relógios para bater.
+    #[test]
+    fn test_second_429_does_not_start_a_second_timer() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+
+        let mut cmd = app.update(Event::LoginCompleted(HttpResult::Ok(too_many_requests(Some("30")))), &mut model);
+        let clock = resolve_now(&mut cmd, 5_000);
+        let _ = app.update(clock, &mut model);
+        assert!(model.cooldown_timer_running);
+
+        let mut cmd = app.update(Event::OTPRequested(HttpResult::Ok(too_many_requests(Some("60")))), &mut model);
+        let clock = resolve_now(&mut cmd, 5_001);
+        let mut cmd = app.update(clock, &mut model);
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Time(r) if matches!(r.operation, TimeRequest::NotifyAfter { .. }))));
+    }
+
+    /// 429 no refresh não é sessão recusada. Deslogava quem não tinha feito nada,
+    /// bastava o limite por IP estourar num Wi-Fi compartilhado.
+    #[test]
+    fn test_429_on_refresh_keeps_the_session() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.session_expires_at = 9_999_999_999;
+
+        let mut cmd = app.update(Event::RefreshCompleted(HttpResult::Ok(too_many_requests(None))), &mut model);
+        assert_ne!(model.status_key, StatusKey::SessionExpired);
+        assert_eq!(model.session_expires_at, 9_999_999_999);
+        let asked_expiry = cmd.effects().any(|e| matches!(e,
+            Effect::SecureStore(r) if matches!(&r.operation, KeyValueOperation::Get { key } if key == "session_expires_at")));
+        assert!(asked_expiry, "decide pelo prazo guardado, como sem rede");
     }
 }

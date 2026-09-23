@@ -41,6 +41,8 @@ sync_failed = "Não consegui enviar seu progresso agora."
 sync_offline = "Sem conexão para enviar seu progresso."
 sign_in_to_sync = "Entre para salvar seu progresso."
 trail_from_bundle = "Trilha de %{date} · pode haver desafio novo"
+rate_limited = "Muitas tentativas seguidas. Espere a contagem para tentar de novo."
+wait_seconds = "Aguarde %{seconds} s"
 
 [leave]
 eyebrow = "Sair da partida"

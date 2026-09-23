@@ -59,8 +59,11 @@ struct ResetPasswordView: View {
                     Button(action: {
                         core.dispatch(event: .resetPassword(email: email, newPassword: password, otp: otp))
                     }) {
-                        Text("Salvar nova senha")
+                        Text(resetLocked
+                             ? Str.Status.wait_seconds(Int(core.viewModel.authCooldownSeconds))
+                             : "Salvar nova senha")
                             .font(LognFont.titleMedium)
+                            .monospacedDigit()
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, Space.md)
                             // Verde é veredito do juiz, não confirmação de formulário.
@@ -90,6 +93,9 @@ struct ResetPasswordView: View {
     }
     
     private var canSubmit: Bool {
-        password.count >= 8 && password == confirmPassword
+        password.count >= 8 && password == confirmPassword && !resetLocked
     }
+
+    /// Travado por um 429: o servidor mandou esperar, e o botão conta o tempo.
+    private var resetLocked: Bool { core.viewModel.authCooldownSeconds > 0 }
 }

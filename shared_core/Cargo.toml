@@ -37,6 +37,7 @@ pretty_env_logger = { version = "0.5", optional = true }
 sha2 = "0.11.0"
 serde_json = "1.0.151"
 crux_kv = { version = "0.14.0", features = ["facet_typegen"] }
+crux_time = { version = "0.18.0", features = ["facet_typegen"] }
 
 [dev-dependencies]
 crux_core = { version = "0.20", features = ["testing"] }

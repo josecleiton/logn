@@ -70,32 +70,45 @@ struct OTPInputView: View {
             }
             .buttonStyle(.plain)
 
-            Button(action: { submitOTP() }) {
-                Text("Verificar")
+            Button(action: { submitOTP(force: true) }) {
+                Text(verifyLocked
+                     ? Str.Status.wait_seconds(Int(core.viewModel.authCooldownSeconds))
+                     : "Verificar")
                     .font(.plexSansSemiBold(15))
-                    .foregroundColor(isComplete ? LognDark.onAccent : LognDark.textDim)
+                    .monospacedDigit()
+                    .foregroundColor(canVerify ? LognDark.onAccent : LognDark.textDim)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
-                    .background(isComplete ? LognDark.accent : LognDark.buttonDisabled)
+                    .background(canVerify ? LognDark.accent : LognDark.buttonDisabled)
                     .cornerRadius(Radius.sm)
             }
-            .disabled(!isComplete || core.viewModel.isAuthenticating)
+            .disabled(!canVerify || core.viewModel.isAuthenticating)
 
             Button(action: {
                 core.dispatch(event: LogN.Event.requestOtp(email: email, purpose: purpose))
             }) {
-                Text("Reenviar código")
+                Text(resendLocked
+                     ? Str.Status.wait_seconds(Int(core.viewModel.resendCooldownSeconds))
+                     : "Reenviar código")
                     .font(.plexSans(13.5))
-                    .foregroundColor(LognDark.textSecondary)
-                    .underline()
+                    .monospacedDigit()
+                    .foregroundColor(resendLocked ? LognDark.textDim : LognDark.textSecondary)
+                    .underline(!resendLocked)
                     .frame(minHeight: Space.minTouch)
             }
             .buttonStyle(.plain)
+            .disabled(resendLocked)
         }
         .onAppear { focusedIndex = 0 }
     }
 
     private var isComplete: Bool { otpCode.count == 6 }
+
+    /// Travado por um 429. Verificar só trava no bloqueio geral: pedir código de novo
+    /// cedo demais não invalida o que já chegou.
+    private var verifyLocked: Bool { core.viewModel.authCooldownSeconds > 0 }
+    private var resendLocked: Bool { core.viewModel.resendCooldownSeconds > 0 }
+    private var canVerify: Bool { isComplete && !verifyLocked }
 
     private func pasteFromClipboard() {
         guard let clipboard = UIPasteboard.general.string else { return }
@@ -113,9 +126,14 @@ struct OTPInputView: View {
     /// e a partir do último a condição "tudo preenchido" fica verdadeira em cada uma.
     /// Sem esta guarda o app mandava sete requisições por código, algumas com dígitos
     /// de uma tentativa anterior ainda no estado, e o servidor recusava as parciais.
-    private func submitOTP() {
+    ///
+    /// O toque no "Verificar" passa por cima da guarda (`force`): depois de um 429 o
+    /// mesmo código precisa poder subir de novo, e antes ele ficava preso como "já
+    /// enviado" mesmo sem o servidor ter chegado a conferi-lo.
+    private func submitOTP(force: Bool = false) {
         let typed = otpCode
-        guard typed.count == 6, typed != lastSubmittedCode else { return }
+        guard typed.count == 6, force || typed != lastSubmittedCode else { return }
+        guard !verifyLocked else { return }
         lastSubmittedCode = typed
         code = typed
         core.dispatch(event: LogN.Event.verifyOtp(email: email, code: typed, purpose: purpose))

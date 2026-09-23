@@ -137,15 +137,15 @@ struct LoginView: View {
                             core.dispatch(event: .login(email: email, passwordHash: password))
                         }
                     }) {
-                        Text(core.viewModel.isAuthenticating ? "Carregando..." : "Entrar")
+                        Text(signInLabel)
                             .font(.plexSansSemiBold(15))
-                            .foregroundColor(email.isEmpty || password.isEmpty ? LognDark.textDim : LognDark.onAccent)
+                            .foregroundColor(canSignIn ? LognDark.onAccent : LognDark.textDim)
                             .frame(maxWidth: .infinity)
                             .frame(height: 52)
-                            .background(email.isEmpty || password.isEmpty ? LognDark.buttonDisabled : LognDark.accent)
+                            .background(canSignIn ? LognDark.accent : LognDark.buttonDisabled)
                             .cornerRadius(Radius.sm)
                     }
-                    .disabled(email.isEmpty || password.isEmpty || core.viewModel.isAuthenticating)
+                    .disabled(!canSignIn || core.viewModel.isAuthenticating)
                     .padding(.top, 4)
                     
                     // Links
@@ -161,10 +161,14 @@ struct LoginView: View {
                                 core.dispatch(event: .requestOtp(email: email, purpose: "reset_password"))
                             }
                         }) {
-                            Text("Esqueci a senha")
+                            Text(resendLocked
+                                 ? Str.Status.wait_seconds(Int(core.viewModel.resendCooldownSeconds))
+                                 : "Esqueci a senha")
                                 .font(.plexSans(13.5))
-                                .foregroundColor(LognDark.textSecondary)
+                                .monospacedDigit()
+                                .foregroundColor(resendLocked ? LognDark.textDim : LognDark.textSecondary)
                         }
+                        .disabled(resendLocked)
                     }
                     .padding(.top, 6)
                 }
@@ -217,6 +221,17 @@ struct LoginView: View {
             }
         }
         .navigationBarHidden(true)
+    }
+
+    /// Travado por um 429: o servidor mandou esperar, e o botão conta o tempo.
+    private var signInLocked: Bool { core.viewModel.authCooldownSeconds > 0 }
+    private var resendLocked: Bool { core.viewModel.resendCooldownSeconds > 0 }
+
+    private var canSignIn: Bool { !email.isEmpty && !password.isEmpty && !signInLocked }
+
+    private var signInLabel: String {
+        if signInLocked { return Str.Status.wait_seconds(Int(core.viewModel.authCooldownSeconds)) }
+        return core.viewModel.isAuthenticating ? "Carregando..." : "Entrar"
     }
 }
 

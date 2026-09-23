@@ -48,6 +48,8 @@ sync_failed = {}
 sync_offline = {}
 sign_in_to_sync = {}
 trail_from_bundle = { placeholders = [{ name = "date", type = "text" }] }
+rate_limited = {}
+wait_seconds = { placeholders = [{ name = "seconds", type = "int" }] }
 
 # Sair da partida. O Core decide se pergunta; a cópia mora aqui.
 [groups.leave.keys]

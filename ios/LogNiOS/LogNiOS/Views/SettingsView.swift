@@ -11,7 +11,10 @@ struct SettingsView: View {
     @AppStorage("notificationsEnabled") private var notificationsEnabled = false
     
     @State private var showDeleteWarning = false
-    
+
+    /// Pedir código de troca de senha travado por um 429.
+    private var resendLocked: Bool { core.viewModel.resendCooldownSeconds > 0 }
+
     var body: some View {
         ZStack {
             LognDark.canvas.ignoresSafeArea()
@@ -76,13 +79,22 @@ struct SettingsView: View {
                                         HStack {
                                             Text("Alterar Senha")
                                                 .font(LognFont.bodyLarge)
-                                                .foregroundColor(LognDark.textPrimary)
+                                                .foregroundColor(resendLocked ? LognDark.textDim : LognDark.textPrimary)
                                             Spacer()
-                                            Image(systemName: "chevron.right")
-                                                .foregroundColor(LognDark.textMuted)
+                                            // Travado por um 429: a contagem toma o lugar da seta.
+                                            if resendLocked {
+                                                Text(Str.Status.wait_seconds(Int(core.viewModel.resendCooldownSeconds)))
+                                                    .font(.plexMono(12))
+                                                    .monospacedDigit()
+                                                    .foregroundColor(LognDark.textMuted)
+                                            } else {
+                                                Image(systemName: "chevron.right")
+                                                    .foregroundColor(LognDark.textMuted)
+                                            }
                                         }
                                         .padding(Space.md)
                                     }
+                                    .disabled(resendLocked)
                                     
                                     Divider().background(LognDark.line)
                                     
