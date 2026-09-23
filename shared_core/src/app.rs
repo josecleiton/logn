@@ -351,6 +351,11 @@ pub struct ViewModel {
     pub standings_home: Vec<crate::domain::StandingRow>,
     pub user_standing: crate::domain::StandingRow,
     pub scoreboard: Vec<crate::domain::ScoreboardRow>,
+    /// Ranking e telão são dados de exemplo, não de jogadores de verdade.
+    ///
+    /// Sem este aviso o jogador lia "você está em 42º" como fato. Quem sabe de onde os
+    /// dados vêm é o Core, então é ele quem desliga o aviso quando o placar tiver API.
+    pub standings_are_sample: bool,
     /// Segundos até login, verificação, cadastro e troca de senha voltarem a valer.
     /// Zero quando não há bloqueio.
     pub auth_cooldown_seconds: u32,
@@ -1928,6 +1933,7 @@ Event::FetchChallenges => {
             standings_home: crate::mock_data::get_mock_standings_home(),
             user_standing: crate::mock_data::get_mock_user_standing(),
             scoreboard: crate::mock_data::get_mock_scoreboard(),
+            standings_are_sample: true,
             auth_cooldown_seconds: model.auth_cooldown.remaining(model.now),
             resend_cooldown_seconds: model
                 .resend_cooldown
@@ -3077,6 +3083,15 @@ mod tests {
             .resolve(crux_time::TimeResponse::Now { instant: crux_time::Instant::new(now, 0) })
             .unwrap();
         cmd.events().next().expect("a hora volta como evento")
+    }
+
+    /// O placar ainda sai do mock. Enquanto sair, a tela tem de dizer que é exemplo.
+    #[test]
+    fn test_standings_are_flagged_as_sample_while_they_come_from_the_mock() {
+        let app = LogNApp::default();
+        let view = app.view(&Model::default());
+        assert!(view.standings_are_sample);
+        assert!(!view.scoreboard.is_empty());
     }
 
     #[test]

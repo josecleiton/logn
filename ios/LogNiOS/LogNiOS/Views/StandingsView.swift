@@ -24,6 +24,10 @@ struct StandingsView: View {
             VStack(spacing: 0) {
                 header
 
+                if core.viewModel.standingsAreSample {
+                    SampleDataNotice()
+                }
+
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(rows, id: \.handle) { row in

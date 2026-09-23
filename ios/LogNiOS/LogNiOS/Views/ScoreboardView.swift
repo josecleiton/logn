@@ -11,14 +11,7 @@ struct ScoreboardView: View {
     @EnvironmentObject var core: CoreWrapper
     @Environment(\.dismiss) private var dismiss
 
-    private enum Col {
-        static let rank: CGFloat = 52
-        static let team: CGFloat = 150
-        static let solved: CGFloat = 56
-        static let penalty: CGFloat = 68
-        static let cell: CGFloat = 44
-        static var frozen: CGFloat { rank + team }
-    }
+    private typealias Col = ScoreboardLayout
 
     private var rows: [LogN.ScoreboardRow] { core.viewModel.scoreboard }
     private var isFrozen: Bool { core.viewModel.matchView.isFrozen }
@@ -29,6 +22,10 @@ struct ScoreboardView: View {
 
             VStack(spacing: 0) {
                 contestBar
+
+                if core.viewModel.standingsAreSample {
+                    SampleDataNotice()
+                }
 
                 ScrollView(.vertical) {
                     HStack(spacing: 0) {
@@ -110,11 +107,12 @@ struct ScoreboardView: View {
 
     private var identityHeader: some View {
         HStack(spacing: 0) {
+            // O recuo fica dentro da largura da coluna, como nas linhas.
             Text("#")
-                .frame(width: Col.rank, alignment: .leading)
                 .padding(.leading, 20)
+                .frame(width: Col.rank, alignment: .leading)
             Text("EQUIPE")
-                .frame(width: Col.team - 20, alignment: .leading)
+                .frame(width: Col.team, alignment: .leading)
         }
         .font(.plexMono(10))
         .tracking(0.12 * 10)
@@ -187,12 +185,30 @@ struct ScoreboardView: View {
                     RoundedRectangle(cornerRadius: Radius.xs)
                         .stroke(ScoreCellStyle.border(state), lineWidth: 1)
                 )
+            // Sem `fixedSize`: com ele a legenda ficava mais larga que o aparelho, a tela
+            // inteira crescia junto e era centralizada, e a borda esquerda do telão saía
+            // cortada. Em 10sp, como os cabeçalhos, os quatro cabem num iPhone de 393 pt
+            // no mesmo tamanho; o encolhimento é só a reserva de aparelho mais estreito.
             Text(label)
-                .font(.plexMono(11))
+                .font(.plexMono(10))
                 .foregroundColor(LognDark.textMuted)
-                .fixedSize()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
     }
+}
+
+/// Larguras das colunas, as mesmas no cabeçalho e nas linhas.
+///
+/// As linhas repetiam os números à mão (`52`, `130`), e cabeçalho e corpo tinham
+/// divergido: um dos dois somava mais que a coluna congelada.
+enum ScoreboardLayout {
+    static let rank: CGFloat = 52
+    static let team: CGFloat = 150
+    static let solved: CGFloat = 56
+    static let penalty: CGFloat = 68
+    static let cell: CGFloat = 44
+    static var frozen: CGFloat { rank + team }
 }
 
 // MARK: - Cores das células
@@ -243,12 +259,15 @@ private struct IdentityCell: View {
 
     var body: some View {
         HStack(spacing: 0) {
+            // Recuo dentro da coluna, não por fora dela. Por fora a linha dava 214 pt
+            // numa coluna de 202, transbordava para os dois lados e o rank saía cortado
+            // na borda da tela.
             Text("\(row.rank)")
                 .font(.plexMonoSemiBold(14))
                 .monospacedDigit()
                 .foregroundColor(row.isUser ? LognDark.accentInk : LognDark.textPrimary)
-                .frame(width: 52, alignment: .leading)
                 .padding(.leading, 20)
+                .frame(width: ScoreboardLayout.rank, alignment: .leading)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(row.team)
@@ -261,8 +280,8 @@ private struct IdentityCell: View {
                     .foregroundColor(LognDark.textMuted)
                     .lineLimit(1)
             }
-            .frame(width: 130, alignment: .leading)
             .padding(.trailing, 12)
+            .frame(width: ScoreboardLayout.team, alignment: .leading)
         }
         .frame(height: 52)
         .background(row.isUser ? LognDark.accentTint : LognDark.surface)

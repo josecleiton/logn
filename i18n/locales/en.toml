@@ -43,6 +43,7 @@ sign_in_to_sync = "Sign in to save your progress."
 trail_from_bundle = "Trail from %{date} · newer problems may exist"
 rate_limited = "Too many tries in a row. Wait for the countdown to try again."
 wait_seconds = "Wait %{seconds} s"
+sample_standings = "Sample data. The ranking isn't live yet: teams, positions and numbers are made up."
 
 [leave]
 eyebrow = "Leave the match"

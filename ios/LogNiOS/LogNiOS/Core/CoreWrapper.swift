@@ -67,6 +67,7 @@ public class CoreWrapper: ObservableObject {
                 isUser: true, note: ""
             ),
             scoreboard: [],
+            standingsAreSample: true,
             authCooldownSeconds: 0,
             resendCooldownSeconds: 0
         )

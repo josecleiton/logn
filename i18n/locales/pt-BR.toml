@@ -43,6 +43,7 @@ sign_in_to_sync = "Entre para salvar seu progresso."
 trail_from_bundle = "Trilha de %{date} · pode haver desafio novo"
 rate_limited = "Muitas tentativas seguidas. Espere a contagem para tentar de novo."
 wait_seconds = "Aguarde %{seconds} s"
+sample_standings = "Dados de exemplo. O ranking ainda não está no ar: times, posições e números são fictícios."
 
 [leave]
 eyebrow = "Sair da partida"
