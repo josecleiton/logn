@@ -34,6 +34,7 @@
 		936B6709633ADF906CB1E02F /* LogNiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80804A0792E45E01C5BE3D0B /* LogNiOSApp.swift */; };
 		9B73D9EDD483D4291A531CE4 /* CodeBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8EF036E181D0306E94D226 /* CodeBlock.swift */; };
 		A7FE0DF6B468F1DB4208B401 /* SVGPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB03B22842CF2E79E83561F8 /* SVGPath.swift */; };
+		AA0490B0BA4AA0ED9BD72F41 /* SampleDataNotice.swift in Sources */ = {isa = PBXBuildFile; fileRef = C54D531EF24FAD3B3299DBF0 /* SampleDataNotice.swift */; };
 		AF4EF398751D584030B9F840 /* NodeSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9476B1DFF7AE686900CF32CD /* NodeSheetView.swift */; };
 		B118212843B83D5CB04DFAE9 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */; };
 		B25F010AFF41794BFC439A02 /* LogNCoreFFI in Frameworks */ = {isa = PBXBuildFile; productRef = 13135BDC590A9C01156FE7B3 /* LogNCoreFFI */; };
@@ -87,6 +88,7 @@
 		A4811EB169815262BA8CDC9F /* LeaveMatchSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaveMatchSheet.swift; sourceTree = "<group>"; };
 		C2638F7B390A01676A65CFD9 /* StandingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsView.swift; sourceTree = "<group>"; };
 		C4DB2DC21E3986A71469A3AA /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
+		C54D531EF24FAD3B3299DBF0 /* SampleDataNotice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleDataNotice.swift; sourceTree = "<group>"; };
 		C5B2B5EA563D4C0A69035BF3 /* ResetPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetPasswordView.swift; sourceTree = "<group>"; };
 		C5B7C9FB40CD745774D3BA3F /* IBMPlexMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Medium.ttf"; sourceTree = "<group>"; };
 		CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
@@ -186,6 +188,7 @@
 				911B685B7906CC9801E098A1 /* BalloonShape.swift */,
 				9D8EF036E181D0306E94D226 /* CodeBlock.swift */,
 				3C234F5143F4791D66EF36E0 /* LognComponents.swift */,
+				C54D531EF24FAD3B3299DBF0 /* SampleDataNotice.swift */,
 				2F017FABEBC4E5B128A074D0 /* StatusLine.swift */,
 				EB03B22842CF2E79E83561F8 /* SVGPath.swift */,
 				799B328B5FC2E3F615F7DB41 /* TopicIcon.swift */,
@@ -364,6 +367,7 @@
 				367A11F1AABAF76BBEC5269D /* RegisterView.swift in Sources */,
 				567C1D15944B685B8204F3ED /* ResetPasswordView.swift in Sources */,
 				A7FE0DF6B468F1DB4208B401 /* SVGPath.swift in Sources */,
+				AA0490B0BA4AA0ED9BD72F41 /* SampleDataNotice.swift in Sources */,
 				67E43BEE172F2659EA187C3B /* ScoreboardView.swift in Sources */,
 				BDCD280587BB96E31FE8B1FA /* SettingsView.swift in Sources */,
 				C878D3C2E023BF3402DA39A2 /* SkillTreeView.swift in Sources */,
