@@ -95,6 +95,10 @@ pub enum Event {
     /// Hora pedida ao `crux_time` para fechar a partida abandonada. `model.now` pode
     /// ter horas — é a da abertura —, e o fim da partida vai para o histórico.
     MatchAbandonedAt { solved: i32, now: i64 },
+    /// O jogador fechou o relatório pós-partida e volta para a trilha.
+    MatchReportClosed,
+    ReviewMilestonesFired(KeyValueResult),
+    ReviewMilestonesRestored(KeyValueResult),
 }
 
 /// O que o desfazer devolve. Existe só entre a saída e o jogador deixar a tela.
@@ -186,6 +190,16 @@ pub struct Model {
     /// para ler, quem desistiu não tem o que revisar e volta direto para a trilha.
     /// Volta a falso quando uma partida começa.
     pub match_left: bool,
+    /// Pedido de avaliação na loja marcado para o fechamento do relatório.
+    ///
+    /// Setado quando o jogador domina um nó de milestone, consumido em `MatchReportClosed`.
+    /// Em memória: matar o app na tela do relatório perde esse pedido, o que é aceitável.
+    pub review_prompt_pending: bool,
+    /// Milestones de domínio que já geraram um pedido de avaliação, persistidos no disco.
+    ///
+    /// Impede que adicionar um desafio a um nó já dominado dispare o mesmo milestone de novo.
+    /// Persistido via `crux_kv` para sobreviver ao fechamento do app.
+    pub review_milestones_fired: Vec<usize>,
     /// A trilha em uso veio da semente do bundle, e ninguém falou com o servidor ainda.
     ///
     /// A semente envelhece com o binário, não com o conteúdo: quem instalar hoje e
@@ -375,6 +389,7 @@ pub enum Effect {
     Telemetry(crate::domain::TelemetryOperation),
     Monitoring(crate::domain::MonitoringOperation),
     Time(TimeRequest),
+    StoreReview(crate::domain::StoreReviewOperation),
 }
 
 /// XP por nível. O DS fixa a fórmula: `nível = floor(xp / 200) + 1`.
@@ -383,6 +398,29 @@ pub const XP_PER_LEVEL: i32 = 200;
 /// Nível a partir do XP acumulado. Mora aqui, não no cliente.
 pub fn level_for_xp(xp: i32) -> i32 {
     xp.max(0) / XP_PER_LEVEL + 1
+}
+
+/// Nós dominados em que o Core dispara o pedido de avaliação na loja.
+///
+/// [2, 4, 7]: passado o nó de entrada, no meio da trilha e ao concluir tudo.
+/// São três pedidos — o limite anual da Apple, usados nos momentos mais significativos.
+pub const REVIEW_PROMPT_MILESTONES: &[usize] = &[2, 4, 7];
+
+/// Todos os desafios do nó já pagaram XP. Nó sem desafio nunca está dominado
+/// (evita verdade vazia em nós que ainda não têm conteúdo).
+pub fn node_mastered(challenges: &[Challenge], paid: &[String], node_id: &str) -> bool {
+    let node_challenges: Vec<_> = challenges.iter().filter(|c| c.node_id == node_id).collect();
+    !node_challenges.is_empty() && node_challenges.iter().all(|c| paid.contains(&c.id))
+}
+
+/// Quantos nós estão dominados (todos os desafios pagos).
+pub fn mastered_node_count(nodes: &[crate::domain::SkillNode], challenges: &[Challenge], paid: &[String]) -> usize {
+    nodes.iter().filter(|n| node_mastered(challenges, paid, &n.id)).count()
+}
+
+/// Verdadeiro quando `mastered_count` é um milestone que ainda não foi disparado.
+pub fn should_request_review(mastered_count: usize, fired: &[usize]) -> bool {
+    REVIEW_PROMPT_MILESTONES.contains(&mastered_count) && !fired.contains(&mastered_count)
 }
 
 /// Guarda o retrato local e renderiza.
@@ -688,6 +726,7 @@ impl App for LogNApp {
                 model.is_guest = false;
                 model.session_offline = false;
                 model.session_expires_at = 0;
+                model.review_prompt_pending = false;
                 // Quem conta que a saída deu certo é a tela de despedida. Deixar texto
                 // aqui fazia a tela de login abrir com "Logged out successfully" em
                 // vermelho, como se sair fosse um erro.
@@ -1460,6 +1499,7 @@ Event::FetchChallenges => {
                 // Abrir uma partida apaga o registro da saída anterior, senão a tela
                 // nova nasce achando que já a abandonaram.
                 model.match_left = false;
+                model.review_prompt_pending = false;
                 let problems: Vec<match_engine::MatchProblem> = model.challenges.iter()
                     .filter(|c| c.node_id == node_id)
                     .enumerate()
@@ -1564,12 +1604,22 @@ Event::FetchChallenges => {
                     // Paga uma vez por desafio; os contadores seguem a mesma regra. O
                     // servidor decide de novo no sync, pela tabela dele.
                     if is_correct && !challenge_id.is_empty() && !model.paid_challenges.contains(&challenge_id) {
+                        let node_id = model.match_node_id.clone();
+                        let was_mastered = node_mastered(&model.challenges, &model.paid_challenges, &node_id);
+
                         model.paid_challenges.push(challenge_id.clone());
                         model.global_xp += match_engine::XP_PER_ACCEPTED;
                         match template.as_str() {
                             "SPOT_THE_BUG" => model.bugs_found += 1,
                             "DRY_RUN" => model.dry_runs_completed += 1,
                             _ => {}
+                        }
+
+                        if !was_mastered && node_mastered(&model.challenges, &model.paid_challenges, &node_id) {
+                            let count = mastered_node_count(&model.nodes, &model.challenges, &model.paid_challenges);
+                            if should_request_review(count, &model.review_milestones_fired) {
+                                model.review_prompt_pending = true;
+                            }
                         }
                     }
 
@@ -1631,6 +1681,12 @@ Event::FetchChallenges => {
                         key: "origins_seen".to_string(),
                     })
                     .then_send(Event::OriginsSeenRestored),
+                )
+                .and(
+                    Command::request_from_shell(KeyValueOperation::Get {
+                        key: "review_milestones_fired".to_string(),
+                    })
+                    .then_send(Event::ReviewMilestonesRestored),
                 )
             }
 
@@ -1727,6 +1783,7 @@ Event::FetchChallenges => {
                 model.match_node_id.clear();
                 model.origin_sheet.clear();
                 model.match_left = true;
+                model.review_prompt_pending = false;
 
                 if answered == 0 {
                     return render::render();
@@ -1819,6 +1876,41 @@ Event::FetchChallenges => {
                 {
                     if let Ok(seen) = serde_json::from_slice::<Vec<String>>(&bytes) {
                         model.origins_seen = seen;
+                    }
+                }
+                render::render()
+            }
+
+            // O jogador fechou o relatório pós-partida e volta para a trilha.
+            // Se havia pedido de avaliação pendente, dispara e persiste o milestone.
+            Event::MatchReportClosed => {
+                if std::mem::take(&mut model.review_prompt_pending) {
+                    let count = mastered_node_count(&model.nodes, &model.challenges, &model.paid_challenges);
+                    model.review_milestones_fired.push(count);
+                    let bytes = serde_json::to_vec(&model.review_milestones_fired).unwrap_or_default();
+                    Command::notify_shell(crate::domain::StoreReviewOperation::RequestReview)
+                        .build()
+                        .and(
+                            Command::request_from_shell(KeyValueOperation::Set {
+                                key: "review_milestones_fired".to_string(),
+                                value: bytes,
+                            })
+                            .then_send(Event::ReviewMilestonesFired),
+                        )
+                } else {
+                    Command::done()
+                }
+            }
+
+            Event::ReviewMilestonesFired(_) => render::render(),
+
+            Event::ReviewMilestonesRestored(result) => {
+                if let KeyValueResult::Ok {
+                    response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) },
+                } = result
+                {
+                    if let Ok(fired) = serde_json::from_slice::<Vec<usize>>(&bytes) {
+                        model.review_milestones_fired = fired;
                     }
                 }
                 render::render()

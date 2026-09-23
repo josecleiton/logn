@@ -60,7 +60,7 @@ struct MatchView: View {
             } else if !mv.isActive && !core.viewModel.matchLeft {
                 // Relatório é para quem jogou até o fim. Quem saiu pelo X não tem o que
                 // revisar, e o `onChange` abaixo já está levando a tela de volta.
-                MatchReportView(onDismiss: { dismiss() })
+                MatchReportView(onDismiss: { core.dispatch(event: .matchReportClosed); dismiss() })
             } else {
                 playScreen
             }

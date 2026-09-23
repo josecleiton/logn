@@ -15,6 +15,11 @@ public class CoreWrapper: ObservableObject {
     /// "Criar conta · salvar progresso" precisa cair no cadastro, não no login.
     @Published public var wantsRegistration = false
 
+    /// Incrementado a cada pedido de avaliação vindo do Core. Contador em vez de Bool
+    /// para que dois pedidos consecutivos cada um acione o onChange no ContentView.
+    /// O Core envia via notify_shell — não há resolve; nunca chame coreFFI.resolve aqui.
+    @Published public private(set) var reviewRequestCount = 0
+
     public init() {
         self.viewModel = ViewModel(
             status: .silent,
@@ -132,8 +137,18 @@ public class CoreWrapper: ObservableObject {
                 handleMonitoring(id: request.id, operation: operation)
             case .time(let operation):
                 handleTime(id: request.id, operation: operation)
+            case .storeReview(let operation):
+                handleStoreReview(operation)
             }
         }
+    }
+
+    private func handleStoreReview(_ op: StoreReviewOperation) {
+        switch op {
+        case .requestReview:
+            reviewRequestCount += 1
+        }
+        // notify_shell: o Core não espera resolve. Nunca chamar resolveUnitEffect aqui.
     }
 
     /// Temporizadores pedidos pelo Core e ainda não disparados, por id do `crux_time`.

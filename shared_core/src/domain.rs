@@ -353,3 +353,16 @@ pub enum MonitoringOperation {
 impl crux_core::capability::Operation for MonitoringOperation {
     type Output = ();
 }
+
+/// Pede ao shell que ofereça a avaliação na loja (App Store / Play Store).
+/// Não tem retorno: a loja não diz se mostrou, e o Core não espera. Fire-and-forget.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum StoreReviewOperation {
+    RequestReview,
+}
+
+impl crux_core::capability::Operation for StoreReviewOperation {
+    type Output = ();
+}

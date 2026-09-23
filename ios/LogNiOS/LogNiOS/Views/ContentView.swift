@@ -1,10 +1,12 @@
 import SwiftUI
+import StoreKit
 import LogN
 import App
 
 struct ContentView: View {
     @EnvironmentObject var core: CoreWrapper
     @State private var tab: LognTab = LognTab.launchOverride ?? .trilhas
+    @Environment(\.requestReview) private var requestReview
 
     var body: some View {
         // A navegação mora dentro de cada tela raiz, não em volta delas: quando a
@@ -24,6 +26,13 @@ struct ContentView: View {
         // Dark-first e, por ora, dark-only: `LognLight` existe nos tokens mas nenhum
         // mock desenha o app em claro, então o app não oferece a escolha.
         .preferredColorScheme(.dark)
+        // O Core emite StoreReview via notify_shell após dominar um nó de milestone.
+        // O delay deixa a animação de pop do relatório terminar antes de a sheet aparecer.
+        .onChange(of: core.reviewRequestCount) { _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                requestReview()
+            }
+        }
     }
 }
 
