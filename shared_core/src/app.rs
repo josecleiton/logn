@@ -109,14 +109,26 @@ pub enum Event {
     // Logout
     UndoLogout,
     DismissLogoutNotice,
+    /// O refresh token voltou ao cofre depois de um `UndoLogout`.
+    LogoutUndone(KeyValueResult),
 }
 
 /// O que o desfazer devolve. Existe só entre a saída e o jogador deixar a tela.
+///
+/// É tudo o que `TokenCleared` apaga, disco incluído: devolver só a memória deixava
+/// a sessão viva até o app fechar e mais nada.
 #[derive(Clone, Default)]
 pub struct LogoutSnapshot {
     pub access_token: Option<String>,
+    /// O que o cofre devolveu ao apagar. `None` para visitante, que não tem.
+    pub refresh_token: Option<Vec<u8>>,
     pub was_guest: bool,
     pub email: String,
+    pub user_id: String,
+    pub session_expires_at: i64,
+    pub nodes: Vec<crate::domain::SkillNode>,
+    pub challenges: Vec<Challenge>,
+    pub pending_events: Vec<GameEvent>,
 }
 
 #[derive(Default, Clone)]
@@ -617,25 +629,31 @@ impl App for LogNApp {
                 model.status_key = StatusKey::SigningOut;
                 Command::request_from_shell(KeyValueOperation::Delete { key: "refresh_token".into() }).then_send(Event::TokenCleared)
             }
-            Event::TokenCleared(_) => {
+            Event::TokenCleared(result) => {
                 // Guarda o que dá para devolver. Sair estando sincronizado é
                 // reversível, e o DS troca o alerta de confirmação por um desfazer:
                 // alerta em toda saída treina o usuário a confirmar sem ler.
+                let refresh_token = match result {
+                    KeyValueResult::Ok {
+                        response: KeyValueResponse::Delete { previous: crux_kv::Value::Bytes(bytes) },
+                    } => Some(bytes),
+                    _ => None,
+                };
                 model.logout_undo = Some(LogoutSnapshot {
-                    access_token: model.access_token.clone(),
+                    access_token: model.access_token.take(),
+                    refresh_token,
                     was_guest: model.is_guest,
-                    email: model.account_email.clone(),
+                    email: std::mem::take(&mut model.account_email),
+                    user_id: std::mem::take(&mut model.user_id),
+                    session_expires_at: model.session_expires_at,
+                    nodes: std::mem::take(&mut model.nodes),
+                    challenges: std::mem::take(&mut model.challenges),
+                    pending_events: std::mem::take(&mut model.pending_events),
                 });
 
                 model.is_guest = false;
-                model.access_token = None;
-                model.account_email = String::new();
-                model.user_id = String::new();
                 model.session_offline = false;
                 model.session_expires_at = 0;
-                model.nodes = vec![];
-                model.challenges = vec![];
-                model.pending_events = vec![];
                 // Quem conta que a saída deu certo é a tela de despedida. Deixar texto
                 // aqui fazia a tela de login abrir com "Logged out successfully" em
                 // vermelho, como se sair fosse um erro.
@@ -644,14 +662,33 @@ impl App for LogNApp {
             }
 
             Event::UndoLogout => {
-                if let Some(snapshot) = model.logout_undo.take() {
-                    model.access_token = snapshot.access_token;
-                    model.is_guest = snapshot.was_guest;
-                    model.account_email = snapshot.email;
-                    model.status_key = StatusKey::Silent;
+                let Some(snapshot) = model.logout_undo.take() else {
+                    return render::render();
+                };
+                model.access_token = snapshot.access_token;
+                model.is_guest = snapshot.was_guest;
+                model.account_email = snapshot.email;
+                model.user_id = snapshot.user_id;
+                model.session_expires_at = snapshot.session_expires_at;
+                model.nodes = snapshot.nodes;
+                model.challenges = snapshot.challenges;
+                model.pending_events = snapshot.pending_events;
+                model.status_key = StatusKey::Silent;
+
+                // A saída apagou o refresh token do cofre. Sem regravar, o desfazer
+                // durava até o app fechar: a abertura seguinte caía no login.
+                match snapshot.refresh_token {
+                    Some(token) => Command::request_from_shell(KeyValueOperation::Set {
+                        key: "refresh_token".to_string(),
+                        value: token,
+                    })
+                    .then_send(Event::LogoutUndone)
+                    .and(render::render()),
+                    None => render::render(),
                 }
-                render::render()
             }
+
+            Event::LogoutUndone(_) => render::render(),
 
             Event::Tick { now } => {
                 model.now = now;
@@ -2036,6 +2073,74 @@ mod tests {
         assert_eq!(model.pending_events.len(), 1, "a fila que não subiu fica");
         assert!(model.access_token.is_some(), "e a sessão continua de pé");
         assert!(!model.logout_after_sync);
+    }
+
+    /// Desfazer a saída devolve a sessão inteira, inclusive a do disco.
+    ///
+    /// O desfazer devolvia só o access token em memória: o refresh token já tinha sido
+    /// apagado do cofre, e quem desfazia seguia jogando até fechar o app — na abertura
+    /// seguinte, tela de login. A trilha também voltava vazia.
+    #[test]
+    fn test_undo_logout_puts_the_refresh_token_back() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("tok".into());
+        model.user_id = "66b670a2-41d2-4ba2-b863-78735b69ec7c".into();
+        model.account_email = "jogador@example.com".into();
+        model.session_expires_at = 1_792_600_000;
+        model.nodes = vec![crate::domain::SkillNode {
+            id: "10000000-0000-0000-0000-000000000001".into(),
+            name: "Nó A".into(),
+            description: "".into(),
+            row: 0,
+            column: 0,
+            required_xp: 0,
+            prerequisites: vec![],
+            status: Default::default(),
+        }];
+
+        let mut cmd = app.update(Event::Logout, &mut model);
+        match cmd.expect_one_effect() {
+            Effect::SecureStore(r) => assert!(matches!(
+                r.operation,
+                KeyValueOperation::Delete { ref key } if key == "refresh_token"
+            )),
+            _ => panic!("esperava apagar o refresh token"),
+        }
+
+        let _ = app.update(
+            Event::TokenCleared(KeyValueResult::Ok {
+                response: KeyValueResponse::Delete {
+                    previous: crux_kv::Value::Bytes(b"refresh_guardado".to_vec()),
+                },
+            }),
+            &mut model,
+        );
+        assert!(model.access_token.is_none());
+        assert!(app.view(&model).just_logged_out);
+
+        let mut cmd = app.update(Event::UndoLogout, &mut model);
+        let req = cmd
+            .effects()
+            .find(|e| matches!(e, Effect::SecureStore(_)))
+            .expect("desfazer tem de regravar o refresh token");
+        match req {
+            Effect::SecureStore(r) => match r.operation {
+                KeyValueOperation::Set { key, value } => {
+                    assert_eq!(key, "refresh_token");
+                    assert_eq!(value, b"refresh_guardado");
+                }
+                _ => panic!("esperava gravar o refresh token"),
+            },
+            _ => unreachable!(),
+        }
+
+        assert_eq!(model.access_token.as_deref(), Some("tok"));
+        assert_eq!(model.user_id, "66b670a2-41d2-4ba2-b863-78735b69ec7c");
+        assert_eq!(model.account_email, "jogador@example.com");
+        assert_eq!(model.session_expires_at, 1_792_600_000);
+        assert_eq!(model.nodes.len(), 1, "a trilha volta junto");
+        assert!(!app.view(&model).just_logged_out);
     }
 
     /// O progresso do servidor manda no que a tela mostra.
