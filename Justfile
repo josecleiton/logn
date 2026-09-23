@@ -86,6 +86,31 @@ xcode: sync-env build-ios-ffi i18n
 open-ios: xcode
 	open ios/LogNiOS/LogNiOS.xcodeproj
 
+# Builda em Release, assina com o time do project.yml e instala no iPhone conectado.
+# Fala com o API_BASE_URL do .env (o `xcode` roda o sync-env antes), que hoje é a produção.
+# Sem argumento, instala no primeiro iPhone pareado e disponível; com argumento, no id
+# dado por `xcrun devicectl list devices`.
+# Uso: just install-ios-device            ou   just install-ios-device <id>
+install-ios-device device="": xcode
+	#!/usr/bin/env bash
+	set -euo pipefail
+	device="{{device}}"
+	if [ -z "$device" ]; then
+		json=$(mktemp)
+		xcrun devicectl list devices --json-output "$json" >/dev/null
+		device=$(python3 -c 'import json,sys; ds=json.load(open(sys.argv[1]))["result"]["devices"]; ok=[d for d in ds if d["hardwareProperties"].get("platform")=="iOS" and d["connectionProperties"].get("pairingState")=="paired" and d["connectionProperties"].get("tunnelState")!="unavailable"]; print(ok[0]["identifier"] if ok else "")' "$json")
+		rm -f "$json"
+		if [ -z "$device" ]; then
+			echo "Nenhum iPhone pareado e disponível. Conecte o aparelho e desbloqueie a tela." >&2
+			exit 1
+		fi
+	fi
+	xcodebuild -project ios/LogNiOS/LogNiOS.xcodeproj -scheme LogNiOS \
+		-configuration Release -destination 'generic/platform=iOS' \
+		-derivedDataPath ios/build/device -allowProvisioningUpdates build
+	xcrun devicectl device install app --device "$device" \
+		ios/build/device/Build/Products/Release-iphoneos/LogNiOS.app
+
 # Limpa o build do Rust e do Xcode
 clean:
 	cd shared_core && cargo clean
