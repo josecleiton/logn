@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -39,18 +40,34 @@ func (r *Repository) InsertChallenge(ctx context.Context, ch Challenge) error {
 	return err
 }
 
-func (r *Repository) InsertSyncEvents(ctx context.Context, payload SyncPayload, newTopHash string) error {
+// ErrStaleChain sinaliza que o topo da cadeia mudou entre a validação e a gravação:
+// outro sync do mesmo usuário chegou antes. O cliente trata como rebase.
+var ErrStaleChain = errors.New("sync chain moved concurrently")
+
+// InsertSyncEvents grava os eventos e avança o topo da cadeia de expectedTop para
+// newTopHash, desde que o topo ainda seja expectedTop.
+//
+// O upsert antigo sobrescrevia sem conferir. Dois syncs em paralelo validavam contra o
+// mesmo topo, gravavam os dois, e o XP dos eventos entrava em dobro. Agora o segundo a
+// chegar não acha o topo que validou e volta com ErrStaleChain.
+func (r *Repository) InsertSyncEvents(ctx context.Context, payload SyncPayload, expectedTop, newTopHash string) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
-	// Update user top hash (upsert)
+	// A linha não existir equivale a estar no gênesis. Se um sync concorrente a criou
+	// primeiro, o `WHERE` do conflito não casa e nada é afetado.
 	upsertUser := `INSERT INTO user_sync_state (user_id, last_hash) VALUES ($1, $2)
-				   ON CONFLICT (user_id) DO UPDATE SET last_hash = EXCLUDED.last_hash`
-	if _, err := tx.Exec(ctx, upsertUser, payload.UserID, newTopHash); err != nil {
+				   ON CONFLICT (user_id) DO UPDATE SET last_hash = EXCLUDED.last_hash
+				   WHERE user_sync_state.last_hash = $3`
+	tag, err := tx.Exec(ctx, upsertUser, payload.UserID, newTopHash, expectedTop)
+	if err != nil {
 		return fmt.Errorf("failed to upsert user_sync_state: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrStaleChain
 	}
 
 	for _, event := range payload.Events {
@@ -177,6 +194,14 @@ func (r *Repository) RotateRefreshToken(
 		return err
 	}
 	if tag.RowsAffected() == 0 {
+		// Token já trocado apareceu de novo: um dos dois portadores é cópia, e daqui
+		// não dá para saber qual. Derruba todas as sessões do usuário, como pede o
+		// OAuth BCP; o dono de verdade faz login outra vez, e quem copiou perde o acesso.
+		if _, err := r.db.Exec(ctx,
+			`UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1 AND revoked = FALSE`,
+			userID); err != nil {
+			return err
+		}
 		return ErrRefreshTokenAlreadyUsed
 	}
 
@@ -293,8 +318,44 @@ func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string)
 	return id, err
 }
 
-func (r *Repository) UpdateUserPassword(ctx context.Context, email, passwordHash string) error {
-	query := `UPDATE users SET password_hash = $1 WHERE email = $2`
-	_, err := r.db.Exec(ctx, query, passwordHash, email)
+// ErrUserNotFound sinaliza e-mail sem conta.
+var ErrUserNotFound = errors.New("user not found")
+
+// ResetUserPassword troca a senha e derruba todas as sessões abertas, na mesma
+// transação, e devolve o id do dono.
+//
+// Antes só trocava o hash. Quem tinha roubado a conta seguia com o refresh token, e a
+// rotação o mantinha vivo para sempre: a troca de senha não expulsava ninguém.
+func (r *Repository) ResetUserPassword(ctx context.Context, email, passwordHash string) (string, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback(ctx)
+
+	var userID string
+	err = tx.QueryRow(ctx,
+		`UPDATE users SET password_hash = $1 WHERE email = $2 RETURNING id`,
+		passwordHash, email).Scan(&userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrUserNotFound
+	}
+	if err != nil {
+		return "", err
+	}
+
+	if _, err := tx.Exec(ctx,
+		`UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1 AND revoked = FALSE`,
+		userID); err != nil {
+		return "", err
+	}
+
+	return userID, tx.Commit(ctx)
+}
+
+// UpdatePasswordHash regrava o hash de quem acabou de acertar a senha. É o que leva
+// hashes antigos para os parâmetros atuais do Argon2 sem pedir nada ao usuário.
+func (r *Repository) UpdatePasswordHash(ctx context.Context, userID, passwordHash string) error {
+	_, err := r.db.Exec(ctx, `UPDATE users SET password_hash = $1 WHERE id = $2`, passwordHash, userID)
 	return err
 }

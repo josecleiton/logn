@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -25,11 +26,28 @@ type ArgonConfig struct {
 	keyLen  uint32
 }
 
+// Parâmetros da recomendação mínima da OWASP para Argon2id: 19 MiB, duas passadas,
+// uma thread.
+//
+// Eram 64 MiB por hash. Sem limite de concorrência, cinquenta logins simultâneos
+// pediam mais de 3 GB e derrubavam a instância. Hash antigo continua verificando, porque
+// os parâmetros viajam dentro dele, e é refeito com estes no próximo login que acertar
+// (NeedsRehash).
 var argonCfg = &ArgonConfig{
-	time:    1,
-	memory:  64 * 1024,
-	threads: 4,
+	time:    2,
+	memory:  19 * 1024,
+	threads: 1,
 	keyLen:  32,
+}
+
+// argonSlots limita quantos hashes rodam ao mesmo tempo. O resto espera na fila, e a
+// memória de pico fica em slots × 19 MiB, qualquer que seja o tráfego.
+var argonSlots = make(chan struct{}, 4)
+
+func argonIDKey(password, salt []byte, timeCost, memory uint32, threads uint8, keyLen uint32) []byte {
+	argonSlots <- struct{}{}
+	defer func() { <-argonSlots }()
+	return argon2.IDKey(password, salt, timeCost, memory, threads, keyLen)
 }
 
 // GenerateFromPassword hashes a password using Argon2id.
@@ -39,7 +57,7 @@ func HashPassword(password string) (string, error) {
 		return "", err
 	}
 
-	hash := argon2.IDKey([]byte(password), salt, argonCfg.time, argonCfg.memory, argonCfg.threads, argonCfg.keyLen)
+	hash := argonIDKey([]byte(password), salt, argonCfg.time, argonCfg.memory, argonCfg.threads, argonCfg.keyLen)
 
 	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
 	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
@@ -82,12 +100,46 @@ func ComparePasswordAndHash(password, encodedHash string) (bool, error) {
 		return false, err
 	}
 
-	hashToCompare := argon2.IDKey([]byte(password), salt, timeCost, memory, threads, uint32(len(decodedHash)))
+	hashToCompare := argonIDKey([]byte(password), salt, timeCost, memory, threads, uint32(len(decodedHash)))
 
 	if subtle.ConstantTimeCompare(decodedHash, hashToCompare) == 1 {
 		return true, nil
 	}
 	return false, nil
+}
+
+// NeedsRehash diz se o hash foi feito com parâmetros diferentes dos atuais.
+func NeedsRehash(encodedHash string) bool {
+	vals := strings.Split(encodedHash, "$")
+	if len(vals) != 6 {
+		return true
+	}
+	var memory, timeCost uint32
+	var threads uint8
+	if _, err := fmt.Sscanf(vals[3], "m=%d,t=%d,p=%d", &memory, &timeCost, &threads); err != nil {
+		return true
+	}
+	return memory != argonCfg.memory || timeCost != argonCfg.time || threads != argonCfg.threads
+}
+
+var (
+	dummyHashOnce sync.Once
+	dummyHash     string
+)
+
+// DummyHash é o hash que o login compara quando não há senha de verdade para comparar:
+// e-mail inexistente ou conta sem senha. Assim a resposta leva o mesmo tempo nos dois
+// casos e não entrega quem tem conta.
+//
+// Era uma string fixa no handler, e ia ficar para trás na primeira troca de
+// parâmetros. Gerado aqui, acompanha argonCfg sozinho.
+func DummyHash() string {
+	dummyHashOnce.Do(func() {
+		secret := make([]byte, 32)
+		_, _ = rand.Read(secret)
+		dummyHash, _ = HashPassword(base64.RawStdEncoding.EncodeToString(secret))
+	})
+	return dummyHash
 }
 
 // JWT Generation

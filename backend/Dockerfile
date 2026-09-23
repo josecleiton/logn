@@ -19,15 +19,12 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server .
 
 # Run stage
-# We use Alpine instead of scratch to have access to CA certificates (for outbound HTTPS)
-# and a shell (useful for debugging, though scratch could also be used for minimal footprint)
-FROM alpine:3.19
+# Distroless estático: traz certificados de CA e tzdata, e nada além disso — sem shell,
+# sem gerenciador de pacotes. Era alpine:3.19, fora de suporte desde novembro de 2025,
+# rodando como root. A tag `nonroot` roda com o usuário 65532.
+FROM gcr.io/distroless/static-debian12:nonroot
 
-WORKDIR /root/
-
-# Install CA certificates for TLS (important if the app makes outbound HTTPS calls)
-# and tzdata for timezone configuration
-RUN apk --no-cache add ca-certificates tzdata
+WORKDIR /app
 
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /app/server .

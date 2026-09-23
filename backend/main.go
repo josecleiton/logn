@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/josecleiton/logn/backend/internal/domain"
@@ -81,11 +83,12 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	// dava para escrever eventos na conta de qualquer um.
 	payload.UserID = userID
 
-	ctx := context.Background()
+	ctx := r.Context()
 
 	serverLastHash, err := s.repo.GetUserLastHash(ctx, payload.UserID)
 	if err != nil {
-		http.Error(w, "Failed to get user state: "+err.Error(), http.StatusInternalServerError)
+		log.Printf("sync sem estado: user=%s erro=%v", payload.UserID, err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -94,20 +97,14 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 		if err.Error() == "force_rebase" {
 			log.Printf("sync rebase: user=%s eventos=%d topo_servidor=%s primeiro_previous=%s",
 				payload.UserID, len(payload.Events), serverLastHash, payload.Events[0].PreviousHash)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusConflict)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"status":         "rebase_required",
-				"server_top":     serverLastHash,
-				"events_applied": 0,
-			})
+			writeRebaseRequired(w, serverLastHash)
 			return
 		}
 
 		// Sem este log, um sync recusado some: o cliente só vê o número do status e
 		// o servidor não conta o motivo a ninguém.
 		log.Printf("sync recusado: user=%s eventos=%d motivo=%v", payload.UserID, len(payload.Events), err)
-		http.Error(w, "Security validation failed: "+err.Error(), http.StatusForbidden)
+		http.Error(w, "Security validation failed", http.StatusForbidden)
 		return
 	}
 
@@ -122,9 +119,20 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	newTop := serverLastHash
 	if len(payload.Events) > 0 {
 		newTop = payload.Events[len(payload.Events)-1].CurrentHash
-		if err := s.repo.InsertSyncEvents(ctx, payload, newTop); err != nil {
+		if err := s.repo.InsertSyncEvents(ctx, payload, serverLastHash, newTop); err != nil {
+			if errors.Is(err, domain.ErrStaleChain) {
+				// Outro sync do mesmo usuário gravou entre a leitura e esta escrita.
+				// O topo que ele deixou é o ponto de onde o cliente refaz a fila.
+				top, topErr := s.repo.GetUserLastHash(ctx, payload.UserID)
+				if topErr == nil {
+					log.Printf("sync concorrente: user=%s eventos=%d topo=%s", payload.UserID, len(payload.Events), top)
+					writeRebaseRequired(w, top)
+					return
+				}
+				err = topErr
+			}
 			log.Printf("sync não gravado: user=%s eventos=%d erro=%v", payload.UserID, len(payload.Events), err)
-			http.Error(w, "Failed to save events: "+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Failed to save events", http.StatusInternalServerError)
 			return
 		}
 		log.Printf("sync ok: user=%s eventos=%d topo=%s", payload.UserID, len(payload.Events), newTop)
@@ -138,16 +146,26 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func writeRebaseRequired(w http.ResponseWriter, serverTop string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":         "rebase_required",
+		"server_top":     serverTop,
+		"events_applied": 0,
+	})
+}
+
 func (s *Server) challengesHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	ctx := context.Background()
-	challenges, err := s.repo.GetChallenges(ctx)
+	challenges, err := s.repo.GetChallenges(r.Context())
 	if err != nil {
-		http.Error(w, "Failed to get challenges: "+err.Error(), http.StatusInternalServerError)
+		log.Printf("desafios não lidos: erro=%v", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -206,19 +224,26 @@ func main() {
 	mailer := email.NewMailer()
 	server := &Server{repo: repo, mailer: mailer}
 
+	// Rotas de autenticação passam por um limite por IP. Nenhuma tinha limite, e é
+	// por elas que se força senha, se varre OTP e se dispara e-mail. Trinta por
+	// minuto folga para quem erra digitando e para vários aparelhos atrás do mesmo NAT.
+	authLimiter := newRateLimiter(30, time.Minute)
+	auth := func(h http.HandlerFunc) http.HandlerFunc {
+		return authLimiter.wrap(limitBody(authBodyLimit, h))
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", server.healthHandler)
 	mux.HandleFunc("GET /ready", server.readyHandler)
 	mux.HandleFunc("GET /ping", server.pingHandler)
-	mux.HandleFunc("POST /api/v1/sync", server.syncHandler)
+	mux.HandleFunc("POST /api/v1/sync", limitBody(syncBodyLimit, server.syncHandler))
 	mux.HandleFunc("GET /api/v1/challenges", server.challengesHandler)
-	mux.HandleFunc("POST /api/v1/auth/login", server.loginHandler)
-	mux.HandleFunc("POST /api/v1/auth/refresh", server.refreshHandler)
-	mux.HandleFunc("POST /api/v1/auth/request-otp", server.requestOTPHandler)
-	mux.HandleFunc("POST /api/v1/auth/verify-otp", server.verifyOTPHandler)
-	mux.HandleFunc("POST /api/v1/auth/register", server.registerHandler)
-	mux.HandleFunc("POST /api/v1/auth/reset-password", server.resetPasswordHandler)
-
+	mux.HandleFunc("POST /api/v1/auth/login", auth(server.loginHandler))
+	mux.HandleFunc("POST /api/v1/auth/refresh", auth(server.refreshHandler))
+	mux.HandleFunc("POST /api/v1/auth/request-otp", auth(server.requestOTPHandler))
+	mux.HandleFunc("POST /api/v1/auth/verify-otp", auth(server.verifyOTPHandler))
+	mux.HandleFunc("POST /api/v1/auth/register", auth(server.registerHandler))
+	mux.HandleFunc("POST /api/v1/auth/reset-password", auth(server.resetPasswordHandler))
 
 	mux.HandleFunc("GET /api/v1/nodes", server.getNodesHandler)
 	mux.HandleFunc("GET /api/v1/progress", server.getUserProgressHandler)
@@ -228,8 +253,20 @@ func main() {
 		port = "8080"
 	}
 
+	// ListenAndServe puro não tem timeout nenhum: um cliente que manda o cabeçalho a
+	// conta-gotas segura a conexão para sempre.
+	httpServer := &http.Server{
+		Addr:              ":" + port,
+		Handler:           withGzip(mux),
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    16 << 10,
+	}
+
 	log.Printf("Server starting on :%s...", port)
-	if err := http.ListenAndServe(":"+port, withGzip(mux)); err != nil {
+	if err := httpServer.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }

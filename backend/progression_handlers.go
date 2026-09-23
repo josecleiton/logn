@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -13,8 +12,7 @@ func (s *Server) getNodesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := context.Background()
-	nodes, err := s.repo.GetSkillNodes(ctx)
+	nodes, err := s.repo.GetSkillNodes(r.Context())
 	if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
@@ -37,8 +35,7 @@ func (s *Server) getUserProgressHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	ctx := context.Background()
-	stats, err := s.repo.GetUserStats(ctx, userID)
+	stats, err := s.repo.GetUserStats(r.Context(), userID)
 	if err != nil {
 		log.Printf("progresso não lido: user=%s erro=%v", userID, err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)

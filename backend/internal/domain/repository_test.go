@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -148,7 +149,7 @@ func TestRepository_InsertSyncEvents(t *testing.T) {
 		Events: []GameEvent{event1},
 	}
 
-	err = repo.InsertSyncEvents(ctx, payload, event1.CurrentHash)
+	err = repo.InsertSyncEvents(ctx, payload, lastHash, event1.CurrentHash)
 	if err != nil {
 		t.Fatalf("Expected successful sync insert, got: %v", err)
 	}
@@ -157,5 +158,34 @@ func TestRepository_InsertSyncEvents(t *testing.T) {
 	newHash, err := repo.GetUserLastHash(ctx, userID)
 	if err != nil || newHash != event1.CurrentHash {
 		t.Fatalf("Expected updated hash %s, got %s (err: %v)", event1.CurrentHash, newHash, err)
+	}
+
+	// 4. Um segundo sync que validou contra o topo antigo não grava. É o que acontece
+	// com dois syncs em paralelo: o segundo contaria o XP de novo.
+	stale := GameEvent{
+		ID:           "evt_stale",
+		EventType:    "SOLVE",
+		PayloadJSON:  "{}",
+		Timestamp:    1600000001,
+		PreviousHash: lastHash,
+	}
+	stale.CurrentHash = ComputeHash(stale, stale.PreviousHash)
+	err = repo.InsertSyncEvents(ctx, SyncPayload{UserID: userID, Events: []GameEvent{stale}}, lastHash, stale.CurrentHash)
+	if !errors.Is(err, ErrStaleChain) {
+		t.Fatalf("esperava ErrStaleChain para topo antigo, veio: %v", err)
+	}
+	if top, _ := repo.GetUserLastHash(ctx, userID); top != event1.CurrentHash {
+		t.Fatalf("o topo não podia ter andado: %s", top)
+	}
+
+	// 5. O mesmo id de evento em outro usuário não colide. O cliente gera ids a
+	// partir do timestamp, e com a chave global um jogador travava o sync do outro.
+	other := "user_456"
+	otherGenesis, _ := repo.GetUserLastHash(ctx, other)
+	twin := event1
+	twin.CurrentHash = ComputeHash(twin, otherGenesis)
+	err = repo.InsertSyncEvents(ctx, SyncPayload{UserID: other, Events: []GameEvent{twin}}, otherGenesis, twin.CurrentHash)
+	if err != nil {
+		t.Fatalf("mesmo id em outro usuário devia gravar, veio: %v", err)
 	}
 }

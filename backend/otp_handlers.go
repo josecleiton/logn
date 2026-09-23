@@ -1,8 +1,8 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -22,20 +22,35 @@ func (s *Server) requestOTPHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var payload RequestOTPPayload
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || payload.Email == "" {
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	email, err := domain.NormalizeEmail(payload.Email)
+	if err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 
 	// For MVP, default purpose
 	if payload.Purpose == "" {
-		payload.Purpose = "verify_email"
+		payload.Purpose = domain.OTPPurposeVerifyEmail
+	}
+	if !domain.ValidOTPPurpose(payload.Purpose) {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
 	}
 
-	ctx := context.Background()
 	code := domain.GenerateOTP()
 
-	if err := s.repo.SaveOTP(ctx, payload.Email, code, payload.Purpose, 15*time.Minute); err != nil {
+	if err := s.repo.SaveOTP(r.Context(), email, code, payload.Purpose, 15*time.Minute); err != nil {
+		if errors.Is(err, domain.ErrOTPCooldown) {
+			w.Header().Set("Retry-After", "60")
+			http.Error(w, "Too many requests", http.StatusTooManyRequests)
+			return
+		}
+		log.Printf("otp não gravado: purpose=%s erro=%v", payload.Purpose, err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
@@ -43,10 +58,9 @@ func (s *Server) requestOTPHandler(w http.ResponseWriter, r *http.Request) {
 	// Send Email asynchronously
 	go func(email, purpose, otp string) {
 		if err := s.mailer.SendOTP(email, purpose, otp); err != nil {
-			// Log error via telemetry/logger in real prod app
-			_ = err 
+			log.Printf("otp não enviado: purpose=%s erro=%v", purpose, err)
 		}
-	}(payload.Email, payload.Purpose, code)
+	}(email, payload.Purpose, code)
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "otp_sent"})
@@ -71,16 +85,21 @@ func (s *Server) verifyOTPHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if payload.Purpose == "" {
-		payload.Purpose = "verify_email"
+		payload.Purpose = domain.OTPPurposeVerifyEmail
 	}
 
-	ctx := context.Background()
-	valid, err := s.repo.CheckOTP(ctx, payload.Email, payload.Code, payload.Purpose)
+	email, err := domain.NormalizeEmail(payload.Email)
+	if err != nil || !domain.ValidOTPPurpose(payload.Purpose) {
+		http.Error(w, "Invalid or expired OTP", http.StatusUnauthorized)
+		return
+	}
+
+	valid, err := s.repo.CheckOTP(r.Context(), email, payload.Code, payload.Purpose)
 	if err != nil || !valid {
 		// Sem isto a causa some: código errado, expirado e e-mail inexistente
-		// devolvem a mesma coisa, e não há como diagnosticar em dev.
-		log.Printf("verify-otp recusado: email=%q purpose=%q valid=%v err=%v",
-			payload.Email, payload.Purpose, valid, err)
+		// devolvem a mesma coisa, e não há como diagnosticar em dev. O e-mail fica
+		// fora do log: é dado pessoal, e o propósito já basta para achar o fluxo.
+		log.Printf("verify-otp recusado: purpose=%q valid=%v err=%v", payload.Purpose, valid, err)
 		http.Error(w, "Invalid or expired OTP", http.StatusUnauthorized)
 		return
 	}
