@@ -1,10 +1,8 @@
 // Package schema aplica as migrações do banco no boot do servidor.
 //
-// O `init.sql` só roda quando o Postgres sobe com volume vazio. Toda alteração de
-// schema feita depois disso vinha sendo aplicada à mão no banco de quem estava
-// desenvolvendo — e não chegava a mais ninguém. Os arquivos de `migrations/` rodam
-// em ordem de nome, uma vez cada, com o que já rodou registrado em
-// `schema_migrations`.
+// Os arquivos de `migrations/` são o schema inteiro, a partir da 0000 — banco vazio
+// sai daqui pronto, sem script de init à parte. Rodam em ordem de nome, uma vez
+// cada, com o que já rodou registrado em `schema_migrations`.
 //
 // Convenção: `NNNN_descricao.sql`, numeração crescente, nunca editar um arquivo já
 // aplicado — escreva o próximo.

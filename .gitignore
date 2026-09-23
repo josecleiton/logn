@@ -33,6 +33,7 @@ contest/
 # pelo nome de propósito. Esquecer de liberar uma nova quebra o build na hora, e isso é
 # muito melhor do que vazar currículo sem ninguém notar.
 backend/schema/migrations/*.sql
+!backend/schema/migrations/0000_schema_inicial.sql
 !backend/schema/migrations/0005_challenges_ordem_e_invariantes.sql
 !backend/schema/migrations/0006_spot_the_bug_exige_correct_line.sql
 !backend/schema/migrations/0010_challenges_origin.sql

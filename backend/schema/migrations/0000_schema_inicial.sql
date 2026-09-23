@@ -1,3 +1,12 @@
+-- O schema de partida, antes de qualquer migração: era o `init.sql`, que só rodava
+-- quando o Postgres local subia com volume vazio. Em qualquer outro banco alguém
+-- tinha de lembrar de aplicá-lo à mão antes da 0005, e esquecer quebrava a 0005 na
+-- primeira linha.
+--
+-- Tudo aqui é `IF NOT EXISTS` de propósito: bancos criados pelo `init.sql` já têm
+-- estas tabelas e não têm a 0000 em `schema_migrations`. Nesses, ela passa sem mexer
+-- em nada e fica registrada.
+
 -- 1. Tabelas Independentes
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -49,7 +58,7 @@ CREATE TABLE IF NOT EXISTS user_progress (
     PRIMARY KEY (user_id, node_id)
 );
 
-CREATE TABLE challenges (
+CREATE TABLE IF NOT EXISTS challenges (
     id VARCHAR(50) PRIMARY KEY,
     node_id UUID REFERENCES skill_nodes(id) NOT NULL,
     template_type VARCHAR(50) NOT NULL,
@@ -104,12 +113,12 @@ CREATE TABLE challenges (
 );
 
 -- Tabela simplificada para guardar o Sync (Mini-Git)
-CREATE TABLE user_sync_state (
+CREATE TABLE IF NOT EXISTS user_sync_state (
     user_id VARCHAR(50) PRIMARY KEY,
     last_hash VARCHAR(64) NOT NULL
 );
 
-CREATE TABLE game_events (
+CREATE TABLE IF NOT EXISTS game_events (
     id VARCHAR(50) PRIMARY KEY,
     user_id VARCHAR(50) REFERENCES user_sync_state(user_id),
     event_type VARCHAR(50) NOT NULL,

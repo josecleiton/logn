@@ -33,7 +33,7 @@ func main() {
 	defer conn.Close(ctx)
 
 	repo := domain.NewRepository(conn)
-	userID := "00000000-0000-0000-0000-000000000001" // Mock user ID created by init.sql
+	userID := "00000000-0000-0000-0000-000000000001" // Mock user: nenhuma migração cria, insira à mão antes de rodar
 
 	// Check initial stats
 	var globalXP, bugsFound, dryRuns int

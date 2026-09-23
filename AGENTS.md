@@ -16,7 +16,7 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
 ## 🚨 Regras Rígidas de Implementação
 1. **Zero Colisão de Nomes no Crux:** Qualquer novo tipo (Model, Event, ViewModel) adicionado em Rust deve possuir a anotação `#[derive(Facet)]` e `#[facet(fg::namespace = "LogN")]` para o *typegen* respeitar o namespace no iOS/Android.
 2. **Offline-First via Cryptographic Chaining:** Todo evento do usuário de jogo deve possuir um Hash de integridade (`SHA-256(Hash(N-1) + Payload + Timestamp)`). O Go Backend deve apenas validar esse hash, nunca recalculá-lo para reescrever o histórico.
-3. **Persistência de Desafios:** Desafios são armazenados no PostgreSQL em Go através de uma coluna polimórfica `JSONB`. Mutações no schema de desafios devem refletir no `init.sql` os `CHECK CONSTRAINTS` de validação da estrutura JSON.
+3. **Persistência de Desafios:** Desafios são armazenados no PostgreSQL em Go através de uma coluna polimórfica `JSONB`. Mutações no schema de desafios vão numa migração nova em `backend/schema/migrations/` (a `0000` é o schema de partida; nunca edite uma já aplicada), acompanhadas dos `CHECK CONSTRAINTS` de validação da estrutura JSON. Migração de schema nova precisa ser liberada pelo nome no `.gitignore`.
 4. **Dependências Crux FFI:** Manter o padrão de FFI nativa deste repositório: a comunicação Rust <-> Swift é trafegada *exclusivamente* via bytes `[u8]` (Bincode) passando pelas funções exportadas em `boltffi::export`. 
 5. **Toda tabela tem `created_at`. Toda tabela que sofre `UPDATE` tem `updated_at` também.**
    `TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP` nos dois. Vale para
