@@ -487,6 +487,15 @@ impl MatchState {
         self.verdicts.values().all(|v| *v == VerdictCode::Accepted)
     }
 
+    /// Problemas que o jogador respondeu — certo ou errado. Estourar o tempo não conta:
+    /// ninguém enviou nada.
+    pub fn answered_count(&self) -> i32 {
+        self.verdicts
+            .values()
+            .filter(|v| !matches!(v, VerdictCode::Pending | VerdictCode::TimeLimitExceeded))
+            .count() as i32
+    }
+
     pub fn solved_count(&self) -> i32 {
         self.verdicts.values().filter(|v| **v == VerdictCode::Accepted).count() as i32
     }

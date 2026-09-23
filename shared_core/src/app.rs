@@ -97,6 +97,9 @@ pub enum Event {
     DismissLogoutNotice,
     /// O refresh token voltou ao cofre depois de um `UndoLogout`.
     LogoutUndone(KeyValueResult),
+    /// Hora pedida ao `crux_time` para fechar a partida abandonada. `model.now` pode
+    /// ter horas — é a da abertura —, e o fim da partida vai para o histórico.
+    MatchAbandonedAt { solved: i32, now: i64 },
 }
 
 /// O que o desfazer devolve. Existe só entre a saída e o jogador deixar a tela.
@@ -1735,12 +1738,54 @@ Event::FetchChallenges => {
 
             // Sair não custa XP: ele entra por resposta aceita e já foi para a fila.
             // O que acaba é a partida.
+            //
+            // A partida abandonada fecha com `MATCH_END` e `abandoned`, para quem ler o
+            // histórico saber que ela existiu e como terminou — sem isso, só a partida
+            // jogada até o fim tinha fim. Não é derrota nem vitória; o que ela vale para
+            // quem ler, o flag deixa decidir depois. Quem entrou e saiu sem responder
+            // nada não gera evento: é o nó aberto por engano, não uma partida.
             Event::ConfirmLeaveMatch => {
+                let answered = model.match_state.as_ref().map_or(0, |ms| ms.answered_count());
+                let solved = model.match_state.as_ref().map_or(0, |ms| ms.solved_count());
+
                 model.match_state = None;
                 model.match_node_id.clear();
                 model.origin_sheet.clear();
                 model.match_left = true;
-                render::render()
+
+                if answered == 0 {
+                    return render::render();
+                }
+
+                Time::now()
+                    .then_send(move |t| Event::MatchAbandonedAt { solved, now: unix_seconds(t) })
+                    .and(render::render())
+            }
+
+            Event::MatchAbandonedAt { solved, now } => {
+                let previous_hash = if model.last_hash.is_empty() {
+                    "0000000000000000000000000000000000000000000000000000000000000000".to_string()
+                } else {
+                    model.last_hash.clone()
+                };
+                let end_event = GameEvent::new(
+                    format!("match_{}_left", now),
+                    "MATCH_END".into(),
+                    format!(r#"{{"solved":{},"abandoned":true}}"#, solved),
+                    now,
+                    previous_hash,
+                );
+                model.last_hash = end_event.current_hash.clone();
+                model.pending_events.push(end_event);
+
+                // Não passa por `QueueSavedForSync`: ele manda telemetria de resposta
+                // lendo o último evento da fila, e a saída não é resposta.
+                let bytes = serde_json::to_vec(&model.pending_events).unwrap_or_default();
+                Command::request_from_shell(KeyValueOperation::Set {
+                    key: "offline_events".to_string(),
+                    value: bytes,
+                })
+                .then_send(|_| Event::SyncNow)
             }
 
             // O selo de origem abre o cartão de homenagem. A primeira leitura de cada
@@ -2532,6 +2577,48 @@ mod tests {
         let _ = app.update(Event::ConfirmLeaveMatch, &mut model);
         assert!(model.match_state.is_none(), "confirmar encerra a partida");
         assert!(model.match_node_id.is_empty(), "e solta o nó de onde ela saiu");
+    }
+
+    /// Sair de uma partida respondida fecha o contest com `MATCH_END` abandonado; sair
+    /// sem ter respondido nada não deixa rastro.
+    #[test]
+    fn test_leaving_a_played_match_closes_it_as_abandoned() {
+        let app = LogNApp::default();
+        let node = "10000000-0000-0000-0000-000000000001";
+        let desafio = || vec![seeded_challenge(
+            "ch_004", "COMPLEXITY_MATCH",
+            vec!["O(n)".into(), "O(1)".into()],
+            vec!["O(n)".into(), "O(1)".into()],
+            "Irrelevante para este teste.",
+        )];
+
+        // Entrou e saiu: nada na fila.
+        let mut model = Model::default();
+        model.challenges = desafio();
+        let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
+        let mut cmd = app.update(Event::ConfirmLeaveMatch, &mut model);
+        assert!(model.pending_events.is_empty(), "nó aberto por engano não é partida");
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Time(_))));
+
+        // Respondeu errado e saiu: a resposta e o fim vão para a fila, encadeados.
+        let mut model = Model::default();
+        model.challenges = desafio();
+        let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
+        let _ = app.update(Event::MatchSetDropTime { value: "O(1)".into() }, &mut model);
+        let _ = app.update(Event::MatchSetDropSpace { value: "O(n)".into() }, &mut model);
+        let _ = app.update(Event::MatchSubmit { timestamp: 1_700_000_000 }, &mut model);
+        let answer_hash = model.last_hash.clone();
+
+        let mut cmd = app.update(Event::ConfirmLeaveMatch, &mut model);
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Time(_))), "o fim pede a hora de agora");
+        let _ = app.update(Event::MatchAbandonedAt { solved: 0, now: 1_700_000_050 }, &mut model);
+
+        let end = model.pending_events.last().expect("a saída vira evento");
+        assert_eq!(end.event_type, "MATCH_END");
+        assert_eq!(end.payload_json, r#"{"solved":0,"abandoned":true}"#);
+        assert_eq!(end.timestamp, 1_700_000_050);
+        assert_eq!(end.previous_hash, answer_hash, "encadeado na resposta que veio antes");
+        assert_eq!(model.last_hash, end.current_hash);
     }
 
     /// A semente envelhece com o binário, não com o conteúdo: quem instala e fica
