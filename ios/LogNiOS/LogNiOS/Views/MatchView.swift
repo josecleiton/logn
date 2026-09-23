@@ -108,27 +108,23 @@ struct MatchView: View {
             )
 
             if fillsHeight {
-                // SPOT_THE_BUG cabe na tela, e o documento dá `flex:1` ao bloco de
-                // código: a moldura vai até o CTA. Num ScrollView isso não acontece,
-                // porque o filho recebe altura ilimitada e nunca estica.
-                VStack(alignment: .leading, spacing: 0) {
-                    problemStatement
-                    templateBody
-                        .padding(.horizontal, 14)
-                        .padding(.top, 16)
-                        .padding(.bottom, 16)
-                        .frame(maxHeight: .infinity)
-                }
-            } else {
-                ScrollView {
+                // SPOT_THE_BUG: o documento dá `flex:1` ao bloco de código, a moldura
+                // vai até o CTA. Num ScrollView isso não acontece, porque o filho recebe
+                // altura ilimitada e nunca estica. Mas código longo, ou tela pequena,
+                // passava por baixo do botão: não cabendo, rola como os outros.
+                ViewThatFits(in: .vertical) {
                     VStack(alignment: .leading, spacing: 0) {
                         problemStatement
                         templateBody
                             .padding(.horizontal, 14)
                             .padding(.top, 16)
-                            .padding(.bottom, 24)
+                            .padding(.bottom, 16)
+                            .frame(maxHeight: .infinity)
                     }
+                    scrollingBody
                 }
+            } else {
+                scrollingBody
             }
 
             // CTA ancorado — nomeia a escolha, para que um toque errado seja reversível.
@@ -172,6 +168,18 @@ struct MatchView: View {
             )
             .presentationDetents([.medium, .large])
             .modifier(SheetCorners())
+        }
+    }
+
+    private var scrollingBody: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                problemStatement
+                templateBody
+                    .padding(.horizontal, 14)
+                    .padding(.top, 16)
+                    .padding(.bottom, 24)
+            }
         }
     }
 
@@ -541,6 +549,8 @@ struct MatchVerdictScreen: View {
             .font(.plexMono(12.5))
             .padding(.top, 22)
         }
+        .padding(.vertical, 16)
+        .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(LognDark.tintErr)
         .accessibilityElement(children: .ignore)
@@ -556,28 +566,11 @@ struct MatchVerdictScreen: View {
             // No acerto o palco já diz tudo (sigla, balão, XP) — o painel é só o CTA.
             // O documento põe a posição no placar aqui; o Core ainda não expõe standings.
             if !snapshot.isAccepted {
-                // A causa, nunca o julgamento.
-                Text(trapCategory.uppercased())
-                    .font(.plexMono(11))
-                    .tracking(0.14 * 11)
-                    .foregroundColor(LognDark.wrongInk)
-
-                if !trapTitle.isEmpty {
-                    Text(trapTitle)
-                        .font(.plexSans(15, relativeTo: .callout))
-                        .lineSpacing(23 - 15)
-                        .foregroundColor(LognDark.textPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 10)
-                }
-
-                if !trapExplanation.isEmpty {
-                    Text(trapExplanation)
-                        .font(.plexSans(14, relativeTo: .subheadline))
-                        .lineSpacing(22 - 14)
-                        .foregroundColor(LognDark.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 10)
+                // Explicação longa empurrava o CTA para fora da tela. Cabendo, o texto
+                // fica solto; não cabendo, só ele rola e o botão continua à vista.
+                ViewThatFits(in: .vertical) {
+                    trapText
+                    ScrollView(showsIndicators: true) { trapText }
                 }
             }
 
@@ -609,6 +602,38 @@ struct MatchVerdictScreen: View {
                 .foregroundColor(snapshot.isAccepted ? LognDark.lineStrong : LognDark.lineStrong)
         }
         .shadow(color: .black.opacity(0.65), radius: 48, y: -16)
+        // O painel reclama o espaço antes do palco; o palco não encolhe abaixo do
+        // próprio conteúdo (`fixedSize` lá dentro), então a sigla nunca some.
+        .layoutPriority(1)
+    }
+
+    private var trapText: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // A causa, nunca o julgamento.
+            Text(trapCategory.uppercased())
+                .font(.plexMono(11))
+                .tracking(0.14 * 11)
+                .foregroundColor(LognDark.wrongInk)
+
+            if !trapTitle.isEmpty {
+                Text(trapTitle)
+                    .font(.plexSans(15, relativeTo: .callout))
+                    .lineSpacing(23 - 15)
+                    .foregroundColor(LognDark.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 10)
+            }
+
+            if !trapExplanation.isEmpty {
+                Text(trapExplanation)
+                    .font(.plexSans(14, relativeTo: .subheadline))
+                    .lineSpacing(22 - 14)
+                    .foregroundColor(LognDark.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 10)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
