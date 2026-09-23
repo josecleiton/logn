@@ -72,6 +72,7 @@ public class CoreWrapper: ObservableObject {
             resendCooldownSeconds: 0
         )
         updateViewModel()
+        prepareKeychain()
         // A trilha que viaja no bundle entra antes de tudo: instalação nova e sem rede
         // não tem retrato guardado nem resposta do servidor, e sem isto o app abria com
         // uma trilha de mock que não existe no banco. O Core só usa o que estiver vazio.
@@ -241,45 +242,86 @@ public class CoreWrapper: ObservableObject {
         }
     }
 
+    /// Chaves que são credencial e por isso vão para o Keychain.
+    ///
+    /// O resto do que passa pelo `SecureStore` — fila offline, retrato da trilha, e-mail,
+    /// prazo da sessão — continua em `UserDefaults`: são blobs que não autenticam ninguém,
+    /// e a fila e o retrato crescem além do que o Keychain foi feito para guardar.
+    private static let keychainKeys: Set<String> = ["refresh_token"]
+
+    /// Marca, em `UserDefaults`, que esta instalação já passou por `prepareKeychain`.
+    private static let keychainPreparedKey = "keychain_prepared"
+
+    /// Acerta o Keychain antes de o Core pedir a primeira chave.
+    ///
+    /// Duas situações, e as duas só se resolvem na primeira abertura:
+    /// - Instalação que veio da versão que guardava o token em `UserDefaults`: o token
+    ///   muda para o Keychain e sai de lá, senão a atualização deslogava todo mundo.
+    /// - Reinstalação: o Keychain sobrevive à desinstalação e o `UserDefaults` não.
+    ///   Sem apagar, quem removeu o app para sair da conta voltava logado, com fila e
+    ///   retrato zerados.
+    private func prepareKeychain() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: Self.keychainPreparedKey) else { return }
+
+        for key in Self.keychainKeys {
+            if let legacy = defaults.string(forKey: key) {
+                Keychain.write(Array(legacy.utf8), forKey: key)
+                defaults.removeObject(forKey: key)
+            } else {
+                Keychain.remove(forKey: key)
+            }
+        }
+        defaults.set(true, forKey: Self.keychainPreparedKey)
+    }
+
+    private func storedBytes(forKey key: String) -> [UInt8]? {
+        if Self.keychainKeys.contains(key) {
+            return Keychain.read(forKey: key)
+        }
+        return UserDefaults.standard.string(forKey: key).map { Array($0.utf8) }
+    }
+
+    private func store(_ bytes: [UInt8], forKey key: String) {
+        if Self.keychainKeys.contains(key) {
+            Keychain.write(bytes, forKey: key)
+        } else {
+            UserDefaults.standard.set(String(bytes: bytes, encoding: .utf8) ?? "", forKey: key)
+        }
+    }
+
+    private func removeStored(forKey key: String) {
+        if Self.keychainKeys.contains(key) {
+            Keychain.remove(forKey: key)
+        } else {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+    }
+
     private func handleSecureStore(id: UInt32, operation: LogN.KeyValueOperation) {
         let result: LogN.KeyValueResult
-        
-        // Simulating Secure Vault with UserDefaults for MVP
+
+        func value(_ bytes: [UInt8]?) -> LogN.Value {
+            bytes.map { LogN.Value.bytes($0) } ?? LogN.Value.none
+        }
+
         switch operation {
         case .get(let key):
-            if let strValue = UserDefaults.standard.string(forKey: key) {
-                let bytes = Array(strValue.utf8)
-                result = .ok(response: LogN.KeyValueResponse.get(value: LogN.Value.bytes(bytes)))
-            } else {
-                result = .ok(response: LogN.KeyValueResponse.get(value: LogN.Value.none))
-            }
+            result = .ok(response: LogN.KeyValueResponse.get(value: value(storedBytes(forKey: key))))
         case .set(let key, let valueBytes):
-            let valueStr = String(bytes: valueBytes, encoding: .utf8) ?? ""
-            let previousStr = UserDefaults.standard.string(forKey: key)
-            
-            UserDefaults.standard.set(valueStr, forKey: key)
-            
-            if let prev = previousStr {
-                result = .ok(response: LogN.KeyValueResponse.set(previous: LogN.Value.bytes(Array(prev.utf8))))
-            } else {
-                result = .ok(response: LogN.KeyValueResponse.set(previous: LogN.Value.none))
-            }
+            let previous = storedBytes(forKey: key)
+            store(valueBytes, forKey: key)
+            result = .ok(response: LogN.KeyValueResponse.set(previous: value(previous)))
         case .delete(let key):
-            let previousStr = UserDefaults.standard.string(forKey: key)
-            UserDefaults.standard.removeObject(forKey: key)
-            
-            if let prev = previousStr {
-                result = .ok(response: LogN.KeyValueResponse.delete(previous: LogN.Value.bytes(Array(prev.utf8))))
-            } else {
-                result = .ok(response: LogN.KeyValueResponse.delete(previous: LogN.Value.none))
-            }
+            let previous = storedBytes(forKey: key)
+            removeStored(forKey: key)
+            result = .ok(response: LogN.KeyValueResponse.delete(previous: value(previous)))
         case .listKeys(_, _):
             result = .err(error: LogN.KeyValueError.io(message: "listKeys unsupported"))
         case .exists(let key):
-            let exists = UserDefaults.standard.object(forKey: key) != nil
-            result = .ok(response: LogN.KeyValueResponse.exists(isPresent: exists))
+            result = .ok(response: LogN.KeyValueResponse.exists(isPresent: storedBytes(forKey: key) != nil))
         }
-        
+
         DispatchQueue.main.async {
             self.resolveSecureStore(id: id, result: result)
         }
@@ -372,6 +414,63 @@ public class CoreWrapper: ObservableObject {
             }
         } catch {
             print("Failed to deserialize ViewModel: \(error)")
+        }
+    }
+}
+
+/// Item genérico de senha no Keychain, um por chave do `SecureStore`.
+///
+/// `AfterFirstUnlockThisDeviceOnly`: o refresh pode rodar com a tela bloqueada depois do
+/// primeiro desbloqueio, e o token não viaja em backup para outro aparelho — lá ele
+/// seria uma sessão que ninguém abriu.
+private enum Keychain {
+    private static var service: String {
+        Bundle.main.bundleIdentifier ?? "LogN"
+    }
+
+    private static func query(forKey key: String) -> [String: Any] {
+        [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key,
+        ]
+    }
+
+    static func read(forKey key: String) -> [UInt8]? {
+        var query = query(forKey: key)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status == errSecSuccess, let data = item as? Data else {
+            if status != errSecItemNotFound {
+                print("Keychain read failed for \(key): \(status)")
+            }
+            return nil
+        }
+        return Array(data)
+    }
+
+    static func write(_ bytes: [UInt8], forKey key: String) {
+        let attributes: [String: Any] = [
+            kSecValueData as String: Data(bytes),
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
+        var status = SecItemUpdate(query(forKey: key) as CFDictionary, attributes as CFDictionary)
+        if status == errSecItemNotFound {
+            let insert = query(forKey: key).merging(attributes) { _, new in new }
+            status = SecItemAdd(insert as CFDictionary, nil)
+        }
+        if status != errSecSuccess {
+            print("Keychain write failed for \(key): \(status)")
+        }
+    }
+
+    static func remove(forKey key: String) {
+        let status = SecItemDelete(query(forKey: key) as CFDictionary)
+        if status != errSecSuccess && status != errSecItemNotFound {
+            print("Keychain delete failed for \(key): \(status)")
         }
     }
 }
