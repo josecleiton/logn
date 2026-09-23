@@ -72,12 +72,6 @@ pub enum Event {
     RotatedTokenStored(KeyValueResult),
     AttemptRefreshDone,
     SyncCompleted(HttpResult),
-    SubmitChallengeAnswer { 
-        action_id: String,
-        challenge_id: String, 
-        answer_json: String, 
-        timestamp: i64, 
-    },
     RequestOTP { email: String, purpose: String },
     OTPRequested(HttpResult),
     VerifyOTP { email: String, code: String, purpose: String },
@@ -86,14 +80,6 @@ pub enum Event {
     RegisterCompleted(HttpResult),
     ResetPassword { email: String, new_password: String, otp: String },
     ResetPasswordCompleted(HttpResult),
-    ChallengeAnswered { challenge_id: String, node_id: String, is_correct: bool, timestamp: i64 },
-    QueueLoadedForHash {
-        challenge_id: String,
-        node_id: String,
-        is_correct: bool,
-        timestamp: i64,
-        result: KeyValueResult,
-    },
     QueueSavedForSync(KeyValueResult),
     // Match Events
     StartMatch { node_id: String },
@@ -1065,67 +1051,6 @@ Event::FetchChallenges => {
                 }
                 render::render()
             }
-            Event::SubmitChallengeAnswer { action_id, challenge_id, answer_json, timestamp } => {
-                let challenge = model.challenges.iter().find(|c| c.id == challenge_id);
-                if let Some(ch) = challenge {
-                    let is_correct = if ch.template_type == "SPOT_THE_BUG" {
-                        if let Some(correct_line) = ch.payload.validation.correct_line {
-                            // `selected_line` vem do cliente em índice; o desafio guarda
-                            // a linha como ela aparece numerada na tela.
-                            let index = correct_line - 1;
-                            answer_json.contains(&format!("\"selected_line\": {}", index)) ||
-                            answer_json.contains(&format!("\"selected_line\":{}", index))
-                        } else {
-                            false
-                        }
-                    } else if ch.template_type == "FILL_IN_THE_BLANK" {
-                        if let Some(ref expected) = ch.payload.validation.expected_string {
-                            answer_json.contains(&format!("\"answer_string\": \"{}\"", expected)) ||
-                            answer_json.contains(&format!("\"answer_string\":\"{}\"", expected))
-                        } else {
-                            false
-                        }
-                    } else {
-                        false
-                    };
-
-                    let status_str = if is_correct { "Correct!" } else { "Incorrect!" };
-                    model.status = format!("Challenge {}: {}", challenge_id, status_str);
-
-                    let mut enriched_payload = answer_json.clone();
-                    enriched_payload.pop(); // Remove closing brace
-                    enriched_payload.push_str(&format!(", \"is_correct\": {}, \"challenge_id\": \"{}\", \"node_id\": \"{}\"}}", is_correct, challenge_id, ch.node_id));
-
-                    let previous_hash = if model.last_hash.is_empty() {
-                        "0000000000000000000000000000000000000000000000000000000000000000".to_string()
-                    } else {
-                        model.last_hash.clone()
-                    };
-
-                    let game_event = GameEvent::new(
-                        action_id,
-                        "CHALLENGE_ANSWER".to_string(),
-                        enriched_payload,
-                        timestamp,
-                        previous_hash,
-                    );
-
-                    model.last_hash = game_event.current_hash.clone();
-                    model.pending_events.push(game_event);
-                    
-                    let mut props = std::collections::HashMap::new();
-                    props.insert("challenge_id".to_string(), challenge_id.clone());
-                    props.insert("is_correct".to_string(), is_correct.to_string());
-                    
-                    return Command::request_from_shell(crate::domain::TelemetryOperation::Track { 
-                        event: "Challenge Answered".to_string(), 
-                        properties: props 
-                    }).then_send(|_| Event::TelemetrySent);
-                } else {
-                    model.status = "Challenge not found!".to_string();
-                }
-                render::render()
-            }
             Event::RegisterAction { action_id, action_type, payload_json, timestamp } => {
                 let previous_hash = if model.last_hash.is_empty() {
                     "0000000000000000000000000000000000000000000000000000000000000000".to_string()
@@ -1486,49 +1411,6 @@ Event::FetchChallenges => {
                 model.logout_after_sync = false;
                 render::render()
             }
-            Event::ChallengeAnswered { challenge_id, node_id, is_correct, timestamp } => {
-                Command::request_from_shell(KeyValueOperation::Get {
-                    key: "offline_events".to_string(),
-                }).then_send(move |result| Event::QueueLoadedForHash {
-                    challenge_id: challenge_id.clone(),
-                    node_id: node_id.clone(),
-                    is_correct,
-                    timestamp,
-                    result,
-                })
-            }
-            Event::QueueLoadedForHash { challenge_id, node_id, is_correct, timestamp, result } => {
-                let mut queue: Vec<GameEvent> = Vec::new();
-                
-                if let KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } = result {
-                    if let Ok(parsed) = serde_json::from_slice(&bytes) {
-                        queue = parsed;
-                    }
-                }
-                
-                let previous_hash = queue.last().map(|e| e.current_hash.clone()).unwrap_or_else(|| "0000000000000000000000000000000000000000000000000000000000000000".to_string());
-                
-                let action_id = format!("evt_{}", timestamp);
-                let payload_json = format!(r#"{{"challenge_id":"{}","node_id":"{}","is_correct":{}}}"#, challenge_id, node_id, is_correct);
-                
-                let event = GameEvent::new(
-                    action_id,
-                    "CHALLENGE_ANSWERED".to_string(),
-                    payload_json,
-                    timestamp,
-                    previous_hash
-                );
-                
-                queue.push(event);
-                
-                model.pending_events = queue.clone();
-                
-                let bytes = serde_json::to_vec(&queue).unwrap_or_default();
-                Command::request_from_shell(KeyValueOperation::Set {
-                    key: "offline_events".to_string(),
-                    value: bytes,
-                }).then_send(Event::QueueSavedForSync)
-            }
             Event::QueueSavedForSync(_) => {
                 if let Some(event) = model.pending_events.last() {
                     let is_correct = event.payload_json.contains("\"is_correct\":true");
@@ -1691,9 +1573,8 @@ Event::FetchChallenges => {
 
                 // A fila vai para o disco a cada resposta.
                 //
-                // O caminho antigo (`ChallengeAnswered`) já gravava; o da partida, que
-                // é o que o app usa, só empilhava na memória. Fechar o app entre a
-                // resposta e o sync apagava tudo — o oposto de offline-first.
+                // Só empilhar na memória não basta: fechar o app entre a resposta e o
+                // sync apagava tudo — o oposto de offline-first.
                 let bytes = serde_json::to_vec(&model.pending_events).unwrap_or_default();
                 Command::request_from_shell(KeyValueOperation::Set {
                     key: "offline_events".to_string(),
@@ -2023,7 +1904,6 @@ mod tests {
             id: "ch_001".into(),
             node_id: "node_1".into(),
             template_type: "SPOT_THE_BUG".into(),
-            version: 1,
             origin: String::new(),
             payload: ChallengePayload {
                 content: ChallengeContent {
@@ -2196,7 +2076,6 @@ mod tests {
             id: "ch_001".into(),
             node_id: "10000000-0000-0000-0000-000000000001".into(),
             template_type: "SPOT_THE_BUG".into(),
-            version: 1,
             origin: String::new(),
             payload: ChallengePayload {
                 content: ChallengeContent {
@@ -2264,7 +2143,6 @@ mod tests {
             id: id.into(),
             node_id: "10000000-0000-0000-0000-000000000001".into(),
             template_type: template.into(),
-            version: 1,
             origin: String::new(),
             payload: ChallengePayload {
                 content: ChallengeContent {
@@ -2704,7 +2582,6 @@ mod tests {
             id: "ch_001".into(),
             node_id: "node_1".into(),
             template_type: "SPOT_THE_BUG".into(),
-            version: 1,
             origin: String::new(),
             payload: ChallengePayload {
                 content: ChallengeContent {

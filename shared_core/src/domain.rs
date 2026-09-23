@@ -3,16 +3,6 @@ use facet_generate_attrs as fg;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[facet(fg::namespace = "LogN")]
-#[repr(C)]
-pub enum TemplateType {
-    FillInTheBlank,
-    SpotTheBug,
-    ComplexityMatch,
-    TagThePattern,
-}
-
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
 #[facet(fg::namespace = "LogN")]
 pub struct GameEvent {
@@ -207,7 +197,6 @@ pub struct Challenge {
     pub id: String,
     pub node_id: String,
     pub template_type: String,
-    pub version: i32,
     pub payload: ChallengePayload, // Typed for Facet
     /// De onde o desafio veio, quando não foi escrito para o LogN — hoje só `FARIAS`,
     /// a origem registrada no conteúdo. Vazio é o caso comum, e o

@@ -33,10 +33,10 @@ func (r *Repository) Ping(ctx context.Context) error {
 func (r *Repository) InsertChallenge(ctx context.Context, ch Challenge) error {
 	// position_idx é NOT NULL desde que a ordem das letras virou dado em vez de efeito
 	// do sort do id; origin é nula para o desafio que nasceu aqui.
-	query := `INSERT INTO challenges (id, node_id, template_type, version, payload, position_idx, origin)
-			  VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, ''))`
+	query := `INSERT INTO challenges (id, node_id, template_type, payload, position_idx, origin)
+			  VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''))`
 	_, err := r.db.Exec(ctx, query,
-		ch.ID, ch.NodeID, ch.TemplateType, ch.Version, ch.Payload, ch.PositionIdx, ch.Origin)
+		ch.ID, ch.NodeID, ch.TemplateType, ch.Payload, ch.PositionIdx, ch.Origin)
 	return err
 }
 
@@ -107,7 +107,7 @@ func (r *Repository) GetChallenges(ctx context.Context) ([]Challenge, error) {
 	// de position_idx, que é dado explícito (ADR 0006).
 	// position_idx vai junto: a coluna decide a ordem aqui, e o JSON a anunciava sem
 	// nunca preenchê-la — a trilha empacotada saía com zero em todos os desafios.
-	query := `SELECT id, node_id, template_type, version, payload, position_idx, COALESCE(origin, '')
+	query := `SELECT id, node_id, template_type, payload, position_idx, COALESCE(origin, '')
 			  FROM challenges ORDER BY node_id, position_idx`
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
@@ -118,7 +118,7 @@ func (r *Repository) GetChallenges(ctx context.Context) ([]Challenge, error) {
 	var challenges []Challenge
 	for rows.Next() {
 		var ch Challenge
-		if err := rows.Scan(&ch.ID, &ch.NodeID, &ch.TemplateType, &ch.Version, &ch.Payload, &ch.PositionIdx, &ch.Origin); err != nil {
+		if err := rows.Scan(&ch.ID, &ch.NodeID, &ch.TemplateType, &ch.Payload, &ch.PositionIdx, &ch.Origin); err != nil {
 			return nil, err
 		}
 		challenges = append(challenges, ch)

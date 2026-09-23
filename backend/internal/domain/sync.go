@@ -13,7 +13,6 @@ type Challenge struct {
 	ID           string          `json:"id" db:"id"`
 	NodeID       string          `json:"node_id" db:"node_id"`
 	TemplateType string          `json:"template_type" db:"template_type"`
-	Version      int             `json:"version" db:"version"`
 	Payload      json.RawMessage `json:"payload" db:"payload"`
 	// Posição dentro do nó, a partir de 1. É ela que vira a letra A, B, C da partida.
 	PositionIdx int `json:"position_idx" db:"position_idx"`

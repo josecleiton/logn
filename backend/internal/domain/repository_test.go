@@ -76,7 +76,6 @@ func TestRepository_InsertChallenge(t *testing.T) {
 		ID:           "test_bug_1",
 		NodeID:      adHocNode,
 		TemplateType: "SPOT_THE_BUG",
-		Version:      1,
 		Payload:      validPayload,
 		PositionIdx:  90, // fora da faixa dos seeds, para não colidir no UNIQUE do nó
 	}
@@ -98,7 +97,6 @@ func TestRepository_InsertChallenge(t *testing.T) {
 		ID:           "test_bug_2",
 		NodeID:      adHocNode,
 		TemplateType: "SPOT_THE_BUG",
-		Version:      1,
 		Payload:      invalidPayload,
 		PositionIdx:  91,
 	}
