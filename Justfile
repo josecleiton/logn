@@ -28,9 +28,11 @@ test-backend:
 migrate-prod:
 	cd backend && RUN_MIGRATIONS=true MIGRATE_ONLY=true go run .
 
-# Faz o deploy do Backend para o Google Cloud Run (usando Source-to-Image)
+# Faz o deploy do Backend para o Google Cloud Run, a partir do Dockerfile de backend/.
+# Variáveis, secrets e probes vivem no serviço `logn` e são mantidas a cada deploy.
+# As migrações não sobem junto: rode `just migrate-prod` antes, da sua máquina.
 deploy-backend:
-	gcloud run deploy logn-backend \
+	gcloud run deploy logn \
 		--source ./backend \
 		--region us-east1 \
 		--allow-unauthenticated
