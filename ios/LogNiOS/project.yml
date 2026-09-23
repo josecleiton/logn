@@ -31,6 +31,7 @@ targets:
       DEVELOPMENT_TEAM: $(DEVELOPMENT_TEAM)
       INFOPLIST_KEY_CFBundleDisplayName: LogN
       INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.educational-games"
+      INFOPLIST_KEY_LSApplicationSecondaryCategoryType: "public.app-category.education"
     info:
       path: LogNiOS/Info.plist
       properties:
