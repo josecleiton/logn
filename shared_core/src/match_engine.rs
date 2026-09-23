@@ -417,16 +417,27 @@ impl MatchState {
         self.lives -= 1;
         self.penalty_minutes += 20;
 
-        let explanation = "No contest o tempo conta como resposta errada: o problema fica em aberto e a penalidade entra igual. Quando a saída não vem em um minuto, costuma ser sinal de que a abordagem é outra.";
+        // O relógio estourar não muda o que o desafio tinha para ensinar, e quem
+        // perdeu a vida no tempo é justamente quem ainda não sabe a resposta. O
+        // cartão traz o enquadramento do contest e, em seguida, a explicação do
+        // próprio problema — antes ela era descartada, e o estouro de tempo era o
+        // único jeito de errar sem aprender nada.
+        const CONTEXTO_TLE: &str = "No contest o tempo conta como resposta errada: o problema fica em aberto e a penalidade entra igual.";
+        let explanation = if problem.explanation.trim().is_empty() {
+            CONTEXTO_TLE.to_string()
+        } else {
+            format!("{} {}", CONTEXTO_TLE, problem.explanation.trim())
+        };
+
         // Antes de limpar a seleção, para o relatório saber o que estava escolhido.
-        self.record_error(&problem, &verdict, explanation);
+        self.record_error(&problem, &verdict, &explanation);
         self.selection = MatchSelection::default();
 
         self.trap = Some(TrapInfo {
             name: "Time Limit Exceeded".into(),
             category: "TIME LIMIT EXCEEDED".into(),
             title: "O relógio da questão zerou".into(),
-            explanation: explanation.into(),
+            explanation,
         });
 
         if self.lives > 0 {
@@ -760,6 +771,50 @@ mod tests {
         assert_eq!(state.errors.len(), 1);
         assert_eq!(state.errors[0].verdict, "TLE");
         assert_eq!(state.errors[0].given_answer, "linha 1");
+    }
+
+    #[test]
+    fn test_timeout_still_teaches_the_challenge_explanation() {
+        // O estouro de tempo trocava a explicação do desafio por um texto genérico
+        // sobre o relógio, então errar por tempo era o único jeito de errar sem
+        // aprender nada. O cartão traz os dois, nessa ordem.
+        let mut problems = sample_problems();
+        problems[0].explanation =
+            "Explicação do desafio de teste.".into();
+
+        let mut state = MatchState::new(problems);
+        state.submit_tle();
+
+        let trap = state.trap.as_ref().expect("o TLE tem de montar o cartão");
+        assert!(
+            trap.explanation.contains("penalidade entra igual"),
+            "o enquadramento do contest continua no cartão: {}",
+            trap.explanation
+        );
+        assert!(
+            trap.explanation.contains("Explicação do desafio de teste"),
+            "a explicação do desafio tem de sobreviver ao estouro: {}",
+            trap.explanation
+        );
+        assert_eq!(
+            state.errors[0].explanation, trap.explanation,
+            "o relatório pós-partida mostra o mesmo texto do cartão"
+        );
+    }
+
+    #[test]
+    fn test_timeout_without_explanation_keeps_only_the_generic_text() {
+        // `sample_problems` nasce com a explicação vazia, que é o caso do desafio
+        // que não trouxe uma: aí o cartão fica só com o enquadramento, sem sobra.
+        let mut state = MatchState::new(sample_problems());
+        state.submit_tle();
+
+        let trap = state.trap.as_ref().unwrap();
+        assert!(trap.explanation.contains("penalidade entra igual"));
+        assert!(
+            !trap.explanation.ends_with(' '),
+            "sem espaço pendurado quando não há o que emendar"
+        );
     }
 
     #[test]
