@@ -42,6 +42,7 @@ backend/schema/migrations/*.sql
 !backend/schema/migrations/0032_xp_paga_uma_vez.sql
 !backend/schema/migrations/0033_challenges_sem_version.sql
 !backend/schema/migrations/0034_created_at_obrigatorio.sql
+!backend/schema/migrations/0036_dry_run_cabe_na_cabeca.sql
 
 # Gerado por just codegen
 ios/SharedCore/
