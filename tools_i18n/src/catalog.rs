@@ -269,10 +269,26 @@ impl Catalog {
     fn validate(&self) -> Result<()> {
         let mut problems = Vec::new();
 
+        let reserved_words = [
+            "continue", "default", "in", "as", "is", "for", "while", "do", "if", "else", "switch", "case", "break", "return", "class", "struct", "enum", "func", "fun", "val", "var", "let", "guard", "defer", "typealias", "object", "when"
+        ];
+
         let declared: BTreeMap<String, &Key> = self
             .groups
             .iter()
             .flat_map(|group| {
+                for key in &group.keys {
+                    if reserved_words.contains(&key.name.as_str()) {
+                        problems.push(format!("key `{}.{}` uses reserved word `{}`", group.name, key.name, key.name));
+                    }
+                    if key.plural {
+                        let ints = key.placeholders.iter().filter(|p| p.kind == PlaceholderKind::Int).count();
+                        if key.placeholders.len() != 1 || ints != 1 {
+                            problems.push(format!("key `{}.{}` is plural but does not have exactly one `int` placeholder", group.name, key.name));
+                        }
+                    }
+                }
+
                 group
                     .keys
                     .iter()

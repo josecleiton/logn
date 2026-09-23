@@ -68,7 +68,7 @@ struct RegisterView: View {
     
     private var emailStep: some View {
         VStack(spacing: Space.sm) {
-            TextField("e-mail", text: $email)
+            TextField(Str.Register.email_prompt, text: $email)
                 .textContentType(.emailAddress)
                 .keyboardType(.emailAddress)
                 .autocapitalization(.none)
@@ -108,7 +108,7 @@ struct RegisterView: View {
     
     private var passwordStep: some View {
         VStack(spacing: Space.sm) {
-            SecureField("senha (mín 8 chars)", text: $password)
+            SecureField(Str.Register.password_prompt, text: $password)
                 .textContentType(.newPassword)
                 .font(.plexMono(14))
                 .foregroundColor(LognDark.textPrimary)
@@ -121,7 +121,7 @@ struct RegisterView: View {
                         .stroke(LognDark.line, lineWidth: 1)
                 )
             
-            SecureField("confirmar senha", text: $confirmPassword)
+            SecureField(Str.Register.confirm_prompt, text: $confirmPassword)
                 .textContentType(.newPassword)
                 .font(.plexMono(14))
                 .foregroundColor(LognDark.textPrimary)
@@ -141,7 +141,7 @@ struct RegisterView: View {
             }) {
                 Text(accountLocked
                      ? Str.Status.wait_seconds(Int(core.viewModel.authCooldownSeconds))
-                     : "Criar Conta")
+                     : Str.Register.create_account)
                     .font(.plexSansSemiBold(15))
                     .monospacedDigit()
                     .foregroundColor(canRegister ? LognDark.onAccent : LognDark.textDim)
@@ -159,17 +159,17 @@ struct RegisterView: View {
     
     private var stepTitle: String {
         switch step {
-        case .email: return "Criar Conta"
-        case .otp: return "Verificar e-mail"
-        case .password: return "Definir Senha"
+        case .email: return Str.Register.create_account
+        case .otp: return Str.Register.verify_email
+        case .password: return Str.Register.set_password
         }
     }
     
     private var stepSubtitle: String {
         switch step {
-        case .email: return "Para salvar seu progresso"
-        case .otp: return "Digite o código enviado para \(email)"
-        case .password: return "Escolha sua senha"
+        case .email: return Str.Register.reason_email
+        case .otp: return Str.Register.reason_otp(email)
+        case .password: return Str.Register.reason_password
         }
     }
     
@@ -189,6 +189,6 @@ struct RegisterView: View {
 
     private var sendCodeLabel: String {
         if sendCodeLocked { return Str.Status.wait_seconds(Int(core.viewModel.resendCooldownSeconds)) }
-        return core.viewModel.isAuthenticating ? "Enviando..." : "Enviar Código"
+        return core.viewModel.isAuthenticating ? Str.Register.sending : Str.Register.send_code
     }
 }

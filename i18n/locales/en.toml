@@ -1,22 +1,18 @@
+
 [app]
 name = "LogN"
-subtitle = "Master technology bit by bit"
-
-[login]
-sign_in_apple = "Sign in with Apple"
-sign_in_google = "Sign in with Google"
-sign_in_github = "Sign in with GitHub"
-action_sign_in = "Sign In"
-or_separator = "or"
-continue_as_guest = "Play as Guest"
 
 [dashboard]
-fetching = "Fetching challenges..."
 syncing = "Syncing..."
-loaded = "Challenges loaded"
 sync_guest_warning = "Sign in to sync your progress"
 tree_unavailable = "I couldn't load the trail map."
 offline_session = "Offline · your progress goes up when the network returns"
+balloons_up = { one = "%{count} balloon up", other = "%{count} balloons up" }
+map_updating = "Updating map"
+map_failed = "I couldn't load the trail map."
+try_again = "Try again"
+arena_desc = "Timed contests land here."
+arena_sub = "For now, the three-minute sessions live on the trails."
 
 [status]
 signing_in = "Signing in…"
@@ -78,3 +74,201 @@ origin_role = ""
 origin_body = "Origin card: the text comes from the server."
 pause_notice = "The clock is paused while you read. This happens only this once — next time it keeps running."
 close = "Back to the match"
+
+[info_plist]
+NSLocalNetworkUsageDescription = "We need access to the local network to find the app instance."
+
+[node]
+completed = "COMPLETED"
+active = "INFLATING · %{xp} XP"
+locked = "LOCKED"
+locked_prereq = "LOCKED · %{missing} PREREQ"
+prereq = "PREREQ"
+unlocks = "UNLOCKS"
+upstream = "VEM DE"
+downstream = "DESTRAVA"
+start_point = "trailhead"
+end_point = "trail end"
+no_problems = "No problems yet"
+no_problems_desc = "I haven't written challenges for this topic yet."
+
+[tree]
+edge_legend = "DASHED LINE = CLOSED EDGE"
+node_completed = "%{name}, completed, %{solved} of %{total} problems solved"
+node_active = "%{name}, in progress, %{solved} of %{total} problems solved"
+node_locked = "%{name}, locked"
+node_locked_prereq = "%{name}, locked, %{missing} prerequisites"
+
+[arena]
+drag_block = "DRAG THE BLOCK"
+select_up_to = "SELECT UP TO %{max}"
+time_axis = "TIME"
+space_axis = "SPACE"
+confirm_line = "Submit line %{line}"
+confirm_answer = "Submit answer"
+confirm_tags = { one = "Submit %{count} tag", other = "Submit %{count} tags" }
+confirm_complexity = "Submit complexity"
+confirm_output = "Submit output"
+confirm = "Submit"
+back_to_trail = "back to trail · node completed"
+back_to_trail_open = "back to trail · node remains open"
+gap_to_fill = "gap to fill"
+drop_here = "drop here"
+drop_here_accessibility = "drop here"
+filled_accessibility = "filled with %{value}"
+
+[match]
+balloon_up = "BALLOON %{letter} UP"
+xp_earned = "+%{xp} XP"
+accepted_accessibility = "Accepted. Balloon %{letter} up. Plus %{xp} XP."
+penalty_minutes = "+20 min pen"
+lost_life = "−1 life"
+zero_xp = "0 XP"
+failed_accessibility = "%{code}, %{meaning}. Plus 20 penalty minutes, minus one life."
+view_report = "View report"
+next_problem = "Next problem"
+keep_going = "Continue"
+got_it = "Got it"
+contest_over = "CONTEST OVER"
+report_stats = "/ %{accepted} accepted · %{penalty} pen"
+problem_status = "problem %{letter}, %{status}"
+review = "REVIEW"
+review_errors = { one = "REVIEW · %{count} ERROR", other = "REVIEW · %{count} ERRORS" }
+no_errors = "No errors this session."
+your_answer = "your answer: %{answer}"
+error_accessibility = "problem %{letter}, %{title}, %{code}, %{meaning}"
+
+[verdict]
+accepted = "accepted"
+failed = "tried, no AC"
+frozen = "submitted after freeze"
+untried = "not tried"
+
+[hud]
+lives = { one = "%{count} life", other = "%{count} lives" }
+
+[dry_run]
+watch = "WATCH"
+watch_accessibility = "%{name} is %{value}"
+expected_output = "EXPECTED OUTPUT"
+ignored_spaces = "spaces ignored"
+tap_to_type = "tap to type"
+output_accessibility = "expected output"
+
+[tabs]
+trails = "TRAILS"
+arena = "ARENA"
+standings = "STANDINGS"
+
+[profile]
+guest_mode = "GUEST MODE"
+guest_sub = "NO ACCOUNT · LOCAL ONLY"
+all_synced = "FULLY SYNCED"
+queued_events = { one = "%{count} EVENT QUEUED", other = "%{count} EVENTS QUEUED" }
+local_xp_only = "%{xp} XP exist only on this device."
+pending_events = { one = "%{count} event waiting to sync", other = "%{count} events waiting to sync" }
+retry = "Retry"
+level = "LEVEL"
+level_word = "level"
+xp_to_next = "%{xp} XP to level %{next}"
+level_accessibility = "level %{level}, %{xp} XP, %{missing} missing for level %{next}"
+total_xp = "TOTAL XP"
+bugs = "BUGS"
+dry_runs = "DRY RUNS"
+stats_summary = "%{challenges} · %{balloons} up"
+has_account = "I already have an account"
+sign_out = "Sign out"
+manage_account = "Manage account"
+guest_risk = "Your progress lives only on this device"
+guest_risk_desc = "Creating an account inherits the %{xp} XP, %{balloons} balloons, and %{challenges} challenges you've already solved. Reinstalling or switching devices without an account wipes everything."
+create_account = "Create account · save progress"
+challenges_completed = { one = "%{count} challenge completed", other = "%{count} challenges completed" }
+
+[logout]
+server_safe = "Your %{xp} XP are on the server. Signing in again brings everything back."
+sign_in_again = "Sign in again"
+undo_logout = "signed out by mistake? undo"
+see_you = "See you next time"
+see_you_name = "See you next time, %{name}"
+risk_summary = "%{events} · %{xp} XP"
+save_before = "Let's save before you go"
+save_desc = "This progress hasn't reached the server yet. Syncing takes a few seconds and you lose nothing."
+sync_and_leave = "Sync and sign out"
+stay_connected = "Stay connected"
+leave_and_drop = "Sign out and drop %{xp} XP"
+change_email = "Change e-mail"
+change_password = "Change password"
+download_data = "Download my data"
+download_sub = "JSON with XP, trails, and submissions"
+back = "Back"
+irreversible = "IRREVERSIBLE"
+delete_account = "Delete account"
+delete_desc = "Wipes your e-mail, %{xp} XP, trails, and submission history from the server. None of this comes back."
+delete_button = "Delete my account"
+delete_prompt = "asks for your password and the word EXCLUIR"
+
+[account]
+manage = "Manage account"
+
+[login]
+slogan = "REDUCE THE COMPLEXITY OF YOUR SOLUTIONS"
+sign_in_apple = "Continue with Apple"
+sign_in_google = "Continue with Google"
+sign_in_github = "Continue with GitHub"
+or_email = "OR WITH E-MAIL"
+email_prompt = "e-mail"
+password_prompt = "password"
+create_account = "Create account"
+forgot_password = "Forgot password"
+guest_mode = "Play as guest"
+without_saving = "without saving"
+core_ready = "CORE READY"
+loading = "Loading..."
+sign_in = "Sign in"
+
+[register]
+email_prompt = "e-mail"
+password_prompt = "password (min 8 chars)"
+confirm_prompt = "confirm password"
+create_account = "Create Account"
+verify_email = "Verify e-mail"
+set_password = "Set Password"
+reason_email = "To save your progress"
+reason_otp = "Enter the code sent to %{email}"
+reason_password = "Choose your password"
+sending = "Sending..."
+send_code = "Send Code"
+
+[reset]
+title = "Reset password"
+subtitle = "Choose a new password for\n%{email}"
+password_prompt = "new password · min 8 characters"
+confirm_prompt = "confirm password"
+save_password = "Save new password"
+
+[otp]
+digit_accessibility = "digit %{index} of 6"
+paste_code = "Paste code"
+verify = "Verify"
+resend_code = "Resend code"
+
+[scoreboard]
+close = "Close"
+frozen = "FROZEN"
+rank = "#"
+team = "TEAM"
+slv = "SLV"
+pen = "PEN"
+legend_accepted = "accepted · attempts / minute"
+legend_failed = "tried, no AC"
+legend_frozen = "submitted after freeze"
+legend_untried = "not tried"
+cell_accessibility = "problem %{letter}, %{status}"
+
+[standings]
+title = "Standings"
+global_tab = "Global"
+full_screen = "VIEW FULL SCREEN"
+row_accessibility = "%{rank}º, %{handle}, %{university}, %{solved} accepted, %{penalty} penalty"
+row_accessibility_user = "your position, %{rank}º, %{handle}, %{university}, %{solved} accepted, %{penalty} penalty"
+you = "you"

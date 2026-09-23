@@ -120,7 +120,7 @@ struct ProfileHubView: View {
 
             VStack(alignment: .leading, spacing: 0) {
                 if isGuest {
-                    Text("MODO VISITANTE")
+                    Text(Str.Profile.guest_mode)
                         .font(.plexMono(11))
                         .tracking(0.1 * 11)
                         .foregroundColor(LognDark.textSecondary)
@@ -128,7 +128,7 @@ struct ProfileHubView: View {
                         .padding(.vertical, 4)
                         .overlay(RoundedRectangle(cornerRadius: Radius.xs).stroke(LognDark.lineStrong, lineWidth: 1))
 
-                    Text("SEM CONTA · SÓ NESTE APARELHO")
+                    Text(Str.Profile.guest_sub)
                         .font(.plexMono(10))
                         .tracking(0.12 * 10)
                         .foregroundColor(LognDark.textMuted)
@@ -144,7 +144,7 @@ struct ProfileHubView: View {
                         Circle()
                             .fill(pending > 0 ? LognDark.warn : LognDark.correct)
                             .frame(width: 6, height: 6)
-                        Text(pending > 0 ? pluralPt(pending, "EVENTO NA FILA", "EVENTOS NA FILA") : "TUDO SINCRONIZADO")
+                        Text(pending > 0 ? Str.Profile.queued_events(pending) : Str.Profile.all_synced)
                             .font(.plexMono(10))
                             .tracking(0.12 * 10)
                             .foregroundColor(pending > 0 ? LognDark.warnInk : LognDark.textMuted)
@@ -161,13 +161,13 @@ struct ProfileHubView: View {
     private var queueCard: some View {
         HStack(spacing: 11) {
             VStack(alignment: .leading, spacing: 0) {
-                Text("\(vm.globalXp) XP ainda só existem neste aparelho.")
+                Text(Str.Profile.local_xp_only(Int(vm.globalXp)))
                     .font(.plexSans(13.5, relativeTo: .footnote))
                     .lineSpacing(19 - 13.5)
                     .foregroundColor(LognDark.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("\(pending) evento\(pending == 1 ? "" : "s") aguardando envio")
+                Text(Str.Profile.pending_events(pending))
                     .font(.plexMono(10.5))
                     .foregroundColor(LognDark.textSecondary)
                     .padding(.top, 4)
@@ -176,7 +176,7 @@ struct ProfileHubView: View {
             Button {
                 core.dispatch(event: .syncNow)
             } label: {
-                Text(vm.isSyncing ? "…" : "Tentar")
+                Text(vm.isSyncing ? "…" : Str.Profile.retry)
                     .font(.plexMonoMedium(11.5))
                     .foregroundColor(LognDark.warnInk)
                     .frame(height: 34)
@@ -203,7 +203,7 @@ struct ProfileHubView: View {
                     .tracking(-0.035 * 44)
                     .monospacedDigit()
                     .foregroundColor(LognDark.textPrimary)
-                Text("NÍVEL")
+                Text(Str.Profile.level)
                     .font(.plexMono(11))
                     .tracking(0.14 * 11)
                     .foregroundColor(LognDark.textMuted)
@@ -230,7 +230,7 @@ struct ProfileHubView: View {
                 .frame(height: 4)
                 .padding(.top, 6)
 
-                Text("\(vm.xpToNextLevel) XP para o nível \(vm.level + 1)")
+                Text(Str.Profile.xp_to_next(Int(vm.xpToNextLevel), Int(vm.level + 1)))
                     .font(.plexMono(9.5))
                     .monospacedDigit()
                     .foregroundColor(LognDark.textMuted)
@@ -241,7 +241,7 @@ struct ProfileHubView: View {
         .padding(.top, 20)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "nível \(vm.level), \(vm.globalXp) XP, faltam \(vm.xpToNextLevel) para o nível \(vm.level + 1)"
+            Str.Profile.level_accessibility(Int(vm.level), Int(vm.globalXp), Int(vm.xpToNextLevel), Int(vm.level + 1))
         )
     }
 
@@ -254,9 +254,9 @@ struct ProfileHubView: View {
 
     private var statsGrid: some View {
         HStack(spacing: 1) {
-            statCell("XP TOTAL", "\(vm.globalXp)", nil)
-            statCell("BUGS", "\(vm.bugsFound)", "spot the bug")
-            statCell("DRY RUNS", "\(vm.dryRunsCompleted)", "trace")
+            statCell(Str.Profile.total_xp, "\(vm.globalXp)", nil)
+            statCell(Str.Profile.bugs, "\(vm.bugsFound)", "spot the bug")
+            statCell(Str.Profile.dry_runs, "\(vm.dryRunsCompleted)", "trace")
         }
         .background(LognDark.line)
         .cornerRadius(Radius.sm)
@@ -289,7 +289,7 @@ struct ProfileHubView: View {
     }
 
     private var summary: some View {
-        Text("\(pluralPt(Int(vm.challengesCompleted), "desafio concluído", "desafios concluídos")) · \(pluralPt(Int(vm.balloonsUp), "balão", "balões")) no ar")
+        Text("\(Str.Profile.challenges_completed(Int(vm.challengesCompleted))) · \(Str.Dashboard.balloons_up(Int(vm.balloonsUp)))")
             .font(.plexMono(10.5))
             .monospacedDigit()
             .foregroundColor(LognDark.textMuted)
@@ -306,7 +306,7 @@ struct ProfileHubView: View {
             Button {
                 core.dispatch(event: .logout)
             } label: {
-                Text("Já tenho conta")
+                Text(Str.Profile.has_account)
                     .font(.plexSans(14, relativeTo: .subheadline))
                     .foregroundColor(LognDark.textSecondary)
                     .frame(maxWidth: .infinity, minHeight: 42)
@@ -329,7 +329,7 @@ struct ProfileHubView: View {
                     if pending > 0 {
                         Circle().fill(LognDark.warn).frame(width: 7, height: 7)
                     }
-                    Text("Sair da conta")
+                    Text(Str.Profile.sign_out)
                         .font(.plexSansMedium(15))
                         .foregroundColor(LognDark.textPrimary)
                 }
@@ -345,7 +345,7 @@ struct ProfileHubView: View {
                     Image(systemName: "lock")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(LognDark.textMuted)
-                    Text("Gerenciar conta")
+                    Text(Str.Profile.manage_account)
                         .font(.plexSans(13.5, relativeTo: .footnote))
                         .foregroundColor(LognDark.textSecondary)
                 }
@@ -359,13 +359,13 @@ struct ProfileHubView: View {
     /// Nomeia o risco e o ganho em números reais — nunca um "crie sua conta" genérico.
     private var conversionCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Seu progresso vive só neste aparelho")
+            Text(Str.Profile.guest_risk)
                 .font(.plexSansSemiBold(16, relativeTo: .headline))
                 .lineSpacing(16 * 0.3)
                 .foregroundColor(LognDark.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text("Criar conta herda os \(vm.globalXp) XP, os \(vm.balloonsUp) balões e os \(vm.challengesCompleted) desafios que você já resolveu. Reinstalar ou trocar de aparelho sem conta apaga tudo.")
+            Text(Str.Profile.guest_risk_desc(Int(vm.globalXp), Int(vm.balloonsUp), Int(vm.challengesCompleted)))
                 .font(.plexSans(13.5, relativeTo: .footnote))
                 .lineSpacing(20 - 13.5)
                 .foregroundColor(LognDark.textSecondary)
@@ -376,7 +376,7 @@ struct ProfileHubView: View {
                 core.wantsRegistration = true
                 core.dispatch(event: .logout)
             } label: {
-                Text("Criar conta · salvar progresso")
+                Text(Str.Profile.create_account)
                     .font(.plexSansSemiBold(15, relativeTo: .callout))
                     .foregroundColor(LognDark.onAccent)
                     .frame(maxWidth: .infinity, minHeight: 50)

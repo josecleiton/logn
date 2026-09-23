@@ -47,7 +47,7 @@ struct SkillTreeView: View {
                     }
 
                     // Legenda ancorada — explica a gramática do grafo sem tirar espaço do mapa.
-                    Text("CORDINHA TRACEJADA = ARESTA FECHADA")
+                    Text(Str.Tree.edge_legend)
                         .font(.plexMono(9.5))
                         .tracking(0.12 * 9.5)
                         .foregroundColor(LognDark.textMuted)
@@ -354,7 +354,7 @@ struct SkillNodeView: View {
                     .foregroundColor(LognDark.textPrimary)
                 // Glifo sobre accent usa a tinta, não o token base — regra de tinta do DS.
                 Text(node.problemsSolved.isEmpty
-                     ? "INFLANDO · \(node.requiredXp) XP"
+                     ? Str.Node.active(Int(node.requiredXp))
                      : Str.Solved.inflating(solvedCount, node.problemsSolved.count))
                     .font(.plexMono(9.5))
                     .tracking(0.08 * 9.5)
@@ -405,17 +405,17 @@ struct SkillNodeView: View {
         switch node.status {
         case .completed:
             return node.problemsSolved.isEmpty
-                ? "\(node.name), conquistado"
-                : "\(node.name), conquistado, \(Str.Solved.node_accessibility(solvedCount, node.problemsSolved.count))"
+                ? Str.Tree.node_completed(node.name, Int(solvedCount), Int(node.problemsSolved.count))
+                : Str.Tree.node_completed(node.name, Int(solvedCount), Int(node.problemsSolved.count))
         case .active:
             state = node.problemsSolved.isEmpty
-                ? "em curso"
-                : "em curso, \(Str.Solved.node_accessibility(solvedCount, node.problemsSolved.count))"
+                ? Str.Tree.node_active(node.name, Int(solvedCount), Int(node.problemsSolved.count))
+                : Str.Tree.node_active(node.name, Int(solvedCount), Int(node.problemsSolved.count))
         case .locked:
             let missing = node.prerequisites.count
-            state = missing >= 2 ? "bloqueado, \(missing) pré-requisitos" : "bloqueado"
+            state = missing >= 2 ? Str.Tree.node_locked_prereq(node.name, Int(missing)) : Str.Tree.node_locked(node.name)
         }
-        return "\(node.name), \(state)"
+        return state
     }
 }
 

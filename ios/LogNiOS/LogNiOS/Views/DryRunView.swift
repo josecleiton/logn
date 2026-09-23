@@ -33,7 +33,7 @@ struct DryRunPanel: View {
     private var watchPanel: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                Text("WATCH")
+                Text(Str.Dry_run.watch)
                     .font(.plexMono(10))
                     .tracking(0.14 * 10)
                     .foregroundColor(LognDark.textMuted)
@@ -72,7 +72,7 @@ struct DryRunPanel: View {
                         }
                     }
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(variable.name) vale \(variable.value)")
+                    .accessibilityLabel(Str.Dry_run.watch_accessibility(variable.name, variable.value))
                 }
             }
         }
@@ -86,7 +86,7 @@ struct DryRunPanel: View {
     private var outputPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Text("SAÍDA PREVISTA")
+                Text(Str.Dry_run.expected_output)
                     .font(.plexMono(10))
                     .tracking(0.14 * 10)
                     .foregroundColor(LognDark.textMuted)
@@ -95,7 +95,7 @@ struct DryRunPanel: View {
 
                 // A sanitização é visível: o jogador sabe que espaço não conta.
                 if !predictedOutput.isEmpty {
-                    Text("espaços ignorados")
+                    Text(Str.Dry_run.ignored_spaces)
                         .font(.plexMono(10))
                         .foregroundColor(LognDark.infoInk)
                 }
@@ -109,7 +109,7 @@ struct DryRunPanel: View {
                 TextField(
                     "",
                     text: Binding(get: { predictedOutput }, set: onOutputChange),
-                    prompt: Text("toque para digitar")
+                    prompt: Text(Str.Dry_run.tap_to_type)
                         .font(.plexMono(17))
                         .foregroundColor(LognDark.textDim)
                 )
@@ -134,6 +134,6 @@ struct DryRunPanel: View {
         )
         .contentShape(Rectangle())
         .onTapGesture { isTyping = true }
-        .accessibilityLabel("saída prevista")
+        .accessibilityLabel(Str.Dry_run.output_accessibility)
     }
 }

@@ -34,9 +34,9 @@ enum LognTab: CaseIterable {
 
     var title: String {
         switch self {
-        case .trilhas: return "TRILHAS"
-        case .arena:   return "ARENA"
-        case .placar:  return "PLACAR"
+        case .trilhas: return Str.Tabs.trails
+        case .arena:   return Str.Tabs.arena
+        case .placar:  return Str.Tabs.standings
         }
     }
 
@@ -215,7 +215,7 @@ struct SkillTreeHostView: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            Text(core.viewModel.isFetching ? "Atualizando mapa" : "\(pluralPt(balloonsUp, "balão", "balões")) no ar")
+            Text(core.viewModel.isFetching ? Str.Dashboard.map_updating : Str.Dashboard.balloons_up(balloonsUp))
                 .font(.plexSansSemiBold(20, relativeTo: .title3))
                 .tracking(-0.02 * 20)
                 .foregroundColor(LognDark.textPrimary)
@@ -242,7 +242,7 @@ struct SkillTreeHostView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Perfil")
+            .accessibilityLabel(Str.Profile.guest_mode)
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
@@ -347,13 +347,13 @@ struct SkillTreeHostView: View {
             } else {
                 // O status do Core é diagnóstico interno e vem em inglês — "Session
                 // refreshed!" aparecia aqui como se fosse a explicação do mapa vazio.
-                Text("Não consegui carregar o mapa das trilhas.")
+                Text(Str.Dashboard.map_failed)
                     .font(LognFont.bodyMedium)
                     .foregroundColor(LognDark.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, Space.screenMargin)
 
-                LognButton(title: "Tentar de novo", variant: .secondary) {
+                LognButton(title: Str.Dashboard.try_again, variant: .secondary) {
                     core.dispatch(event: .fetchNodes)
                 }
                 .padding(.horizontal, Space.screenMargin)
@@ -375,16 +375,16 @@ struct ArenaHostView: View {
             VStack(spacing: 0) {
                 Spacer()
                 VStack(alignment: .leading, spacing: Space.md) {
-                    Text("ARENA")
+                    Text(Str.Tabs.arena)
                         .lognLabel()
                         .foregroundColor(LognDark.textMuted)
 
-                    Text("Contests cronometrados entram aqui.")
+                    Text(Str.Dashboard.arena_desc)
                         .font(.plexSansSemiBold(21))
                         .tracking(-0.02 * 21)
                         .foregroundColor(LognDark.textPrimary)
 
-                    Text("Por enquanto, as sessões de três minutos vivem nas trilhas.")
+                    Text(Str.Dashboard.arena_sub)
                         .font(LognFont.bodyMedium)
                         .foregroundColor(LognDark.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)

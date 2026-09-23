@@ -22,17 +22,17 @@ struct ResetPasswordView: View {
                     // Azul é informação; o que a tela pede é ação, e ação é o acento.
                     .foregroundColor(LognDark.accentInk)
                 
-                Text("Redefinir senha")
+                Text(Str.Reset.title)
                     .font(LognFont.headlineMedium)
                     .foregroundColor(LognDark.textPrimary)
                 
-                Text("Escolha uma nova senha para\n\(email)")
+                Text(Str.Reset.subtitle(email))
                     .font(LognFont.bodyLarge)
                     .foregroundColor(LognDark.textSecondary)
                     .multilineTextAlignment(.center)
                 
                 VStack(spacing: Space.md) {
-                    SecureField("nova senha · mínimo 8 caracteres", text: $password)
+                    SecureField(Str.Reset.password_prompt, text: $password)
                         .textContentType(.newPassword)
                         .font(LognFont.bodyLarge)
                         .foregroundColor(LognDark.textPrimary)
@@ -44,7 +44,7 @@ struct ResetPasswordView: View {
                                 .stroke(LognDark.lineDim, lineWidth: 1)
                         )
                     
-                    SecureField("confirmar senha", text: $confirmPassword)
+                    SecureField(Str.Reset.confirm_prompt, text: $confirmPassword)
                         .textContentType(.newPassword)
                         .font(LognFont.bodyLarge)
                         .foregroundColor(LognDark.textPrimary)
@@ -61,7 +61,7 @@ struct ResetPasswordView: View {
                     }) {
                         Text(resetLocked
                              ? Str.Status.wait_seconds(Int(core.viewModel.authCooldownSeconds))
-                             : "Salvar nova senha")
+                             : Str.Reset.save_password)
                             .font(LognFont.titleMedium)
                             .monospacedDigit()
                             .frame(maxWidth: .infinity)

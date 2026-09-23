@@ -64,7 +64,7 @@ struct ScoreboardView: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(LognDark.textMuted)
             }
-            .accessibilityLabel("Fechar")
+            .accessibilityLabel(Str.Scoreboard.close)
 
             Text(core.viewModel.contestName)
                 .font(.plexMonoSemiBold(13))
@@ -73,7 +73,7 @@ struct ScoreboardView: View {
                 .lineLimit(1)
 
             if isFrozen {
-                Text("CONGELADO")
+                Text(Str.Scoreboard.frozen)
                     .font(.plexMono(11))
                     .tracking(0.1 * 11)
                     .foregroundColor(LognDark.warnInk)
@@ -108,10 +108,10 @@ struct ScoreboardView: View {
     private var identityHeader: some View {
         HStack(spacing: 0) {
             // O recuo fica dentro da largura da coluna, como nas linhas.
-            Text("#")
+            Text(Str.Scoreboard.rank)
                 .padding(.leading, 20)
                 .frame(width: Col.rank, alignment: .leading)
-            Text("EQUIPE")
+            Text(Str.Scoreboard.team)
                 .frame(width: Col.team, alignment: .leading)
         }
         .font(.plexMono(10))
@@ -127,8 +127,8 @@ struct ScoreboardView: View {
 
     private var problemHeader: some View {
         HStack(spacing: 0) {
-            Text("SLV").frame(width: Col.solved)
-            Text("PEN").frame(width: Col.penalty)
+            Text(Str.Scoreboard.slv).frame(width: Col.solved)
+            Text(Str.Scoreboard.pen).frame(width: Col.penalty)
 
             ForEach(BalloonColor.all, id: \.self) { letter in
                 VStack(spacing: 3) {
@@ -158,14 +158,14 @@ struct ScoreboardView: View {
     private var legend: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 20) {
-                legendItem(.accepted, "aceito · tentativas / minuto")
+                legendItem(.accepted, Str.Scoreboard.legend_accepted)
                 Spacer(minLength: 0)
-                legendItem(.failed, "tentado, sem AC")
+                legendItem(.failed, Str.Scoreboard.legend_failed)
             }
             HStack(spacing: 20) {
-                legendItem(.frozen, "submetido após o congelamento")
+                legendItem(.frozen, Str.Scoreboard.legend_frozen)
                 Spacer(minLength: 0)
-                legendItem(.untried, "não tentado")
+                legendItem(.untried, Str.Scoreboard.legend_untried)
             }
         }
         .padding(.horizontal, 20)
@@ -244,10 +244,10 @@ enum ScoreCellStyle {
 
     static func describe(_ state: LogN.ScoreCellState) -> String {
         switch state {
-        case .accepted: return "aceito"
-        case .failed:   return "tentado, sem AC"
-        case .frozen:   return "submetido após o congelamento"
-        case .untried:  return "não tentado"
+        case .accepted: return Str.Verdict.accepted
+        case .failed:   return Str.Verdict.failed
+        case .frozen:   return Str.Verdict.frozen
+        case .untried:  return Str.Verdict.untried
         }
     }
 }
@@ -356,6 +356,6 @@ private struct ScoreCellView: View {
         )
         .padding(.horizontal, 2)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("problema \(letter), \(ScoreCellStyle.describe(cell.state))")
+        .accessibilityLabel(Str.Scoreboard.cell_accessibility(String(letter), ScoreCellStyle.describe(cell.state)))
     }
 }

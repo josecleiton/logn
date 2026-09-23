@@ -248,7 +248,7 @@ struct MatchView: View {
             VStack(alignment: .leading, spacing: 16) {
                 CodeBlock(lines: mv.currentCodeLines)
 
-                Text("ARRASTE O BLOCO")
+                Text(Str.Arena.drag_block)
                     .font(.plexMono(11))
                     .tracking(0.12 * 11)
                     .foregroundColor(LognDark.textMuted)
@@ -273,13 +273,13 @@ struct MatchView: View {
                 }
 
                 labelledDrop(
-                    "TEMPO",
+                    Str.Arena.time_axis,
                     value: mv.dropTime,
                     onDrop: { core.dispatch(event: .matchSetDropTime(value: $0)) },
                     onRemove: { core.dispatch(event: .matchSetDropTime(value: "")) }
                 )
                 labelledDrop(
-                    "ESPAÇO",
+                    Str.Arena.space_axis,
                     value: mv.dropSpace,
                     onDrop: { core.dispatch(event: .matchSetDropSpace(value: $0)) },
                     onRemove: { core.dispatch(event: .matchSetDropSpace(value: "")) }
@@ -299,7 +299,7 @@ struct MatchView: View {
                     CodeBlock(lines: mv.currentCodeLines)
                 }
 
-                Text("SELECIONE ATÉ \(mv.maxSelections)")
+                Text(Str.Arena.select_up_to(Int(mv.maxSelections)))
                     .font(.plexMono(11))
                     .tracking(0.12 * 11)
                     .foregroundColor(LognDark.textMuted)
@@ -360,19 +360,19 @@ struct MatchView: View {
     private var buttonTitle: String {
         switch mv.currentTemplateType {
         case "SPOT_THE_BUG":
-            return mv.selectedLine >= 0 ? "Confirmar linha \(mv.selectedLine + 1)" : "Confirmar"
+            return mv.selectedLine >= 0 ? Str.Arena.confirm_line(Int(mv.selectedLine) + 1) : Str.Arena.confirm
         case "FILL_IN_THE_BLANK":
-            return "Confirmar resposta"
+            return Str.Arena.confirm_answer
         case "TAG_THE_PATTERN":
             return mv.selectedTags.isEmpty
-                ? "Confirmar"
-                : "Confirmar \(mv.selectedTags.count) tag\(mv.selectedTags.count == 1 ? "" : "s")"
+                ? Str.Arena.confirm
+                : Str.Arena.confirm_tags(mv.selectedTags.count)
         case "COMPLEXITY_MATCH":
-            return "Confirmar complexidade"
+            return Str.Arena.confirm_complexity
         case "DRY_RUN":
-            return "Confirmar saída"
+            return Str.Arena.confirm_output
         default:
-            return "Confirmar"
+            return Str.Arena.confirm
         }
     }
 
@@ -437,8 +437,8 @@ struct MatchVerdictScreen: View {
     private var closingNote: String {
         let solved = balloonStates.filter(\.1).count
         return solved == balloonStates.count && !balloonStates.isEmpty
-            ? "volta para a trilha · nó completo"
-            : "volta para a trilha · nó fica em aberto"
+            ? Str.Arena.back_to_trail
+            : Str.Arena.back_to_trail_open
     }
 
     /// O shake mora aqui, no header do veredito — é onde o mock do `3b` o coloca
@@ -493,13 +493,13 @@ struct MatchVerdictScreen: View {
                 .foregroundColor(LognDark.correctInk)
                 .padding(.top, 10)
 
-            Text("BALÃO \(String(snapshot.letter)) NO AR")
+            Text(Str.Match.balloon_up(String(snapshot.letter)))
                 .font(.plexMono(13))
                 .tracking(0.12 * 13)
                 .foregroundColor(LognDark.correctInk)
 
             if xpAward > 0 {
-                Text("+\(xpAward) XP")
+                Text(Str.Match.xp_earned(Int(xpAward)))
                     .font(.plexMonoSemiBold(20))
                     .foregroundColor(LognDark.textPrimary)
                     .padding(.top, 18)
@@ -515,7 +515,7 @@ struct MatchVerdictScreen: View {
         .background(LognDark.tintOk)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(xpAward > 0
-            ? "Accepted. Balão \(snapshot.letter) no ar. Mais \(xpAward) XP."
+            ? Str.Match.accepted_accessibility(String(snapshot.letter), Int(xpAward))
             : Str.Solved.verdict_accessibility(String(snapshot.letter)))
     }
 
@@ -534,9 +534,9 @@ struct MatchVerdictScreen: View {
                 .foregroundColor(LognDark.wrongInk)
 
             HStack(spacing: 20) {
-                Text("+20 min pen").foregroundColor(LognDark.textPrimary)
-                Text("−1 vida").foregroundColor(LognDark.wrongInk)
-                Text("0 XP").foregroundColor(LognDark.textMuted)
+                Text(Str.Match.penalty_minutes).foregroundColor(LognDark.textPrimary)
+                Text(Str.Match.lost_life).foregroundColor(LognDark.wrongInk)
+                Text(Str.Match.zero_xp).foregroundColor(LognDark.textMuted)
             }
             .font(.plexMono(12.5))
             .padding(.top, 22)
@@ -545,7 +545,7 @@ struct MatchVerdictScreen: View {
         .background(LognDark.tintErr)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(snapshot.code.rawValue), \(snapshot.code.meaning). Mais 20 minutos de penalidade, menos uma vida."
+            Str.Match.failed_accessibility(snapshot.code.rawValue, snapshot.code.meaning)
         )
     }
 
@@ -584,7 +584,7 @@ struct MatchVerdictScreen: View {
             // Acabou a partida, não há próximo problema: o botão prometia um e a
             // linha abaixo dizia o contrário, na mesma tela.
             LognButton(
-                title: matchOver ? "Ver o relatório" : (snapshot.isAccepted ? "Próximo problema" : "Continuar"),
+                title: matchOver ? Str.Match.view_report : (snapshot.isAccepted ? Str.Match.next_problem : Str.Match.keep_going),
                 variant: .primary,
                 action: onContinue
             )
@@ -629,7 +629,7 @@ struct MatchReportView: View {
         VStack(spacing: 0) {
             header
             ScrollView { review }
-            LognButton(title: "Entendi", variant: .primary, action: onDismiss)
+            LognButton(title: Str.Match.got_it, variant: .primary, action: onDismiss)
                 .padding(.horizontal, Space.screenMargin)
                 .padding(.top, Space.md)
                 .padding(.bottom, Space.xl)
@@ -639,7 +639,7 @@ struct MatchReportView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("CONTEST ENCERRADO")
+            Text(Str.Match.contest_over)
                 .font(.plexMono(11))
                 .tracking(0.14 * 11)
                 .foregroundColor(LognDark.textMuted)
@@ -651,7 +651,7 @@ struct MatchReportView: View {
                     .monospacedDigit()
                     .foregroundColor(LognDark.textPrimary)
 
-                Text("/ \(mv.totalProblems) aceitos · \(mv.penaltyMinutes) pen")
+                Text(Str.Match.report_stats(Int(mv.totalProblems), Int(mv.penaltyMinutes)))
                     .font(.plexMono(15))
                     .monospacedDigit()
                     .foregroundColor(LognDark.textMuted)
@@ -678,7 +678,7 @@ struct MatchReportView: View {
                     }
                     .opacity(accepted ? 1 : 0.55)
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("problema \(letter), \(accepted ? "aceito" : "em aberto")")
+                    .accessibilityLabel(Str.Match.problem_status(String(letter), accepted ? Str.Verdict.accepted : Str.Verdict.untried))
                 }
                 Spacer(minLength: 0)
             }
@@ -715,14 +715,14 @@ struct MatchReportView: View {
         let errors = mv.errors
 
         return VStack(alignment: .leading, spacing: 10) {
-            Text(errors.isEmpty ? "REVISÃO" : "REVISÃO · \(errors.count) ERRO\(errors.count == 1 ? "" : "S")")
+            Text(errors.isEmpty ? Str.Match.review : Str.Match.review_errors(errors.count))
                 .font(.plexMono(11))
                 .tracking(0.12 * 11)
                 .foregroundColor(LognDark.textMuted)
 
             if errors.isEmpty {
                 // Empty state: uma frase, nunca uma ilustração.
-                Text("Nenhum erro nesta sessão.")
+                Text(Str.Match.no_errors)
                     .font(LognFont.bodyMedium)
                     .foregroundColor(LognDark.textSecondary)
             } else {
@@ -760,7 +760,7 @@ struct ErrorReviewCard: View {
             }
 
             if !error.givenAnswer.isEmpty {
-                Text("sua resposta: \(error.givenAnswer)")
+                Text(Str.Match.your_answer(error.givenAnswer))
                     .font(.plexMono(12))
                     .foregroundColor(LognDark.textMuted)
                     .padding(.top, 6)
@@ -782,7 +782,7 @@ struct ErrorReviewCard: View {
         .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "problema \(error.letter), \(error.title), \(verdict.rawValue), \(verdict.meaning)"
+            Str.Match.error_accessibility(error.letter, error.title, verdict.rawValue, verdict.meaning)
         )
     }
 }

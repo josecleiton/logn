@@ -40,6 +40,15 @@ backend/schema/migrations/*.sql
 !backend/schema/migrations/0013_carimbos_de_tempo.sql
 !backend/schema/migrations/0031_endurece_autenticacao.sql
 !backend/schema/migrations/0032_xp_paga_uma_vez.sql
+!backend/schema/migrations/0033_challenges_sem_version.sql
+!backend/schema/migrations/0034_created_at_obrigatorio.sql
+
+# Gerado por just codegen
+ios/SharedCore/
+ios/LogNiOS/LogNiOS/DesignSystem/Localizable.xcstrings
+ios/LogNiOS/LogNiOS/DesignSystem/Strings.swift
+ios/LogNiOS/LogNiOS/DesignSystem/StringsMappers.swift
+ios/LogNiOS/LogNiOS/DesignSystem/InfoPlist/
 
 # O documento que ensina a escrever desafio, e o gerador do conteúdo.
 docs/testing/prompt-seed-desafios.md

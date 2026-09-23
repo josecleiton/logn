@@ -115,9 +115,9 @@ struct NodeSheetView: View {
 
     private var stateLabel: String {
         switch node.status {
-        case .completed: return "CONQUISTADO"
-        case .active:    return "INFLANDO · \(node.requiredXp) XP"
-        case .locked:    return "BLOQUEADO"
+        case .completed: return Str.Node.completed
+        case .active:    return Str.Node.active(Int(node.requiredXp))
+        case .locked:    return Str.Node.locked
         }
     }
 
@@ -135,8 +135,8 @@ struct NodeSheetView: View {
 
     private var neighbourhood: some View {
         HStack(alignment: .top, spacing: 20) {
-            column(title: "VEM DE", nodes: incoming, isUpstream: true)
-            column(title: "DESTRAVA", nodes: unlocks, isUpstream: false)
+            column(title: Str.Node.upstream, nodes: incoming, isUpstream: true)
+            column(title: Str.Node.downstream, nodes: unlocks, isUpstream: false)
         }
     }
 
@@ -150,7 +150,7 @@ struct NodeSheetView: View {
             if nodes.isEmpty {
                 // Vazio nunca é ilustração: uma frase e pronto.
                 // `textDim` é só forma e placeholder — isto é texto lido.
-                Text(isUpstream ? "ponto de partida" : "fim da trilha")
+                Text(isUpstream ? Str.Node.start_point : Str.Node.end_point)
                     .font(.plexSans(13.5, relativeTo: .footnote))
                     .foregroundColor(LognDark.textMuted)
                     .padding(.top, 10)
@@ -234,7 +234,7 @@ struct NodeSheetView: View {
 
     private var statStrip: some View {
         HStack(spacing: 1) {
-            statCell("PRÉ-REQ", "\(node.prerequisites.count)")
+            statCell(Str.Node.prereq, "\(node.prerequisites.count)")
             // Destravado, o número que importa é quanto o nó ainda paga. Bloqueado, é o
             // portão.
             if showsProblems {
@@ -242,7 +242,7 @@ struct NodeSheetView: View {
             } else {
                 statCell("XP", "\(node.requiredXp)")
             }
-            statCell("DESTRAVA", "\(unlocks.count)")
+            statCell(Str.Node.unlocks, "\(unlocks.count)")
         }
         .background(LognDark.line)
         .cornerRadius(Radius.sm)
@@ -278,15 +278,15 @@ struct NodeSheetView: View {
     @ViewBuilder
     private var cta: some View {
         if node.status == .locked {
-            LognButton(title: "Bloqueado", variant: .primary, action: {}, isDisabled: true)
+            LognButton(title: Str.Node.locked, variant: .primary, action: {}, isDisabled: true)
         } else if problemCount == 0 {
             // Nó destravado e vazio existe: a árvore tem sete assuntos e o currículo
             // ainda não cobre todos. O botão prometia partida e não fazia nada — para
             // quem está jogando, um app travado. Dizer que não há é melhor.
             VStack(spacing: 8) {
-                LognButton(title: "Sem problemas ainda", variant: .primary, action: {}, isDisabled: true)
+                LognButton(title: Str.Node.no_problems, variant: .primary, action: {}, isDisabled: true)
 
-                Text("Este assunto ainda não tem desafios escritos.")
+                Text(Str.Node.no_problems_desc)
                     .font(.plexMono(11))
                     .foregroundColor(LognDark.textMuted)
                     .frame(maxWidth: .infinity)

@@ -1,22 +1,18 @@
+
 [app]
 name = "LogN"
-subtitle = "Domine a tecnologia bit a bit"
-
-[login]
-sign_in_apple = "Entrar com a Apple"
-sign_in_google = "Entrar com o Google"
-sign_in_github = "Entrar com o GitHub"
-action_sign_in = "Entrar"
-or_separator = "ou"
-continue_as_guest = "Jogar como Visitante"
 
 [dashboard]
-fetching = "Buscando desafios..."
 syncing = "Sincronizando..."
-loaded = "Desafios carregados"
 sync_guest_warning = "Faça login para salvar seu progresso"
 tree_unavailable = "Não consegui carregar o mapa das trilhas."
 offline_session = "Sem conexão · seu progresso sobe quando a rede voltar"
+balloons_up = { one = "%{count} balão no ar", other = "%{count} balões no ar" }
+map_updating = "Atualizando mapa"
+map_failed = "Não consegui carregar o mapa das trilhas."
+try_again = "Tentar de novo"
+arena_desc = "Contests cronometrados entram aqui."
+arena_sub = "Por enquanto, as sessões de três minutos vivem nas trilhas."
 
 [status]
 signing_in = "Entrando…"
@@ -78,3 +74,201 @@ origin_role = ""
 origin_body = "Cartão de origem: o texto vem do servidor."
 pause_notice = "O cronômetro está parado enquanto você lê. Isso acontece só desta vez — da próxima, o relógio continua correndo."
 close = "Voltar à partida"
+
+[info_plist]
+NSLocalNetworkUsageDescription = "Precisamos de acesso à rede local para encontrar a instância do app."
+
+[node]
+completed = "CONQUISTADO"
+active = "INFLANDO · %{xp} XP"
+locked = "BLOQUEADO"
+locked_prereq = "BLOQUEADO, %{missing} PRÉ-REQ"
+prereq = "PRÉ-REQ"
+unlocks = "DESTRAVA"
+upstream = "VEM DE"
+downstream = "DESTRAVA"
+start_point = "ponto de partida"
+end_point = "fim da trilha"
+no_problems = "Sem problemas ainda"
+no_problems_desc = "Este assunto ainda não tem desafios escritos."
+
+[tree]
+edge_legend = "CORDINHA TRACEJADA = ARESTA FECHADA"
+node_completed = "%{name}, conquistado, %{solved} de %{total} problemas resolvidos"
+node_active = "%{name}, em curso, %{solved} de %{total} problemas resolvidos"
+node_locked = "%{name}, bloqueado"
+node_locked_prereq = "%{name}, bloqueado, %{missing} pré-requisitos"
+
+[arena]
+drag_block = "ARRASTE O BLOCO"
+select_up_to = "SELECIONE ATÉ %{max}"
+time_axis = "TEMPO"
+space_axis = "ESPAÇO"
+confirm_line = "Confirmar linha %{line}"
+confirm_answer = "Confirmar resposta"
+confirm_tags = { one = "Confirmar %{count} tag", other = "Confirmar %{count} tags" }
+confirm_complexity = "Confirmar complexidade"
+confirm_output = "Confirmar saída"
+confirm = "Confirmar"
+back_to_trail = "volta para a trilha · nó completo"
+back_to_trail_open = "volta para a trilha · nó fica em aberto"
+gap_to_fill = "lacuna a preencher"
+drop_here = "solte aqui"
+drop_here_accessibility = "solte aqui"
+filled_accessibility = "preenchido com %{value}"
+
+[match]
+balloon_up = "BALÃO %{letter} NO AR"
+xp_earned = "+%{xp} XP"
+accepted_accessibility = "Accepted. Balão %{letter} no ar. Mais %{xp} XP."
+penalty_minutes = "+20 min pen"
+lost_life = "−1 vida"
+zero_xp = "0 XP"
+failed_accessibility = "%{code}, %{meaning}. Mais 20 minutos de penalidade, menos uma vida."
+view_report = "Ver o relatório"
+next_problem = "Próximo problema"
+keep_going = "Continuar"
+got_it = "Entendi"
+contest_over = "CONTEST ENCERRADO"
+report_stats = "/ %{accepted} aceitos · %{penalty} pen"
+problem_status = "problema %{letter}, %{status}"
+review = "REVISÃO"
+review_errors = { one = "REVISÃO · %{count} ERRO", other = "REVISÃO · %{count} ERROS" }
+no_errors = "Nenhum erro nesta sessão."
+your_answer = "sua resposta: %{answer}"
+error_accessibility = "problema %{letter}, %{title}, %{code}, %{meaning}"
+
+[verdict]
+accepted = "aceito"
+failed = "tentado, sem AC"
+frozen = "submetido após o congelamento"
+untried = "não tentado"
+
+[hud]
+lives = { one = "%{count} vida", other = "%{count} vidas" }
+
+[dry_run]
+watch = "WATCH"
+watch_accessibility = "%{name} vale %{value}"
+expected_output = "SAÍDA PREVISTA"
+ignored_spaces = "espaços ignorados"
+tap_to_type = "toque para digitar"
+output_accessibility = "saída prevista"
+
+[tabs]
+trails = "TRILHAS"
+arena = "ARENA"
+standings = "PLACAR"
+
+[profile]
+guest_mode = "MODO VISITANTE"
+guest_sub = "SEM CONTA · SÓ NESTE APARELHO"
+all_synced = "TUDO SINCRONIZADO"
+queued_events = { one = "%{count} EVENTO NA FILA", other = "%{count} EVENTOS NA FILA" }
+local_xp_only = "%{xp} XP ainda só existem neste aparelho."
+pending_events = { one = "%{count} evento aguardando envio", other = "%{count} eventos aguardando envio" }
+retry = "Tentar"
+level = "NÍVEL"
+level_word = "nível"
+xp_to_next = "%{xp} XP para o nível %{next}"
+level_accessibility = "nível %{level}, %{xp} XP, faltam %{missing} para o nível %{next}"
+total_xp = "XP TOTAL"
+bugs = "BUGS"
+dry_runs = "DRY RUNS"
+stats_summary = "%{challenges} · %{balloons} no ar"
+has_account = "Já tenho conta"
+sign_out = "Sair da conta"
+manage_account = "Gerenciar conta"
+guest_risk = "Seu progresso vive só neste aparelho"
+guest_risk_desc = "Criar conta herda os %{xp} XP, os %{balloons} balões e os %{challenges} desafios que você já resolveu. Reinstalar ou trocar de aparelho sem conta apaga tudo."
+create_account = "Criar conta · salvar progresso"
+challenges_completed = { one = "%{count} desafio concluído", other = "%{count} desafios concluídos" }
+
+[logout]
+server_safe = "Seus %{xp} XP estão no servidor. Entrar de novo traz tudo de volta."
+sign_in_again = "Entrar de novo"
+undo_logout = "saiu por engano? desfazer"
+see_you = "Até a próxima"
+see_you_name = "Até a próxima, %{name}"
+risk_summary = "%{events} · %{xp} XP"
+save_before = "Vamos salvar antes de sair"
+save_desc = "Esse progresso ainda não chegou ao servidor. Sincronizar leva alguns segundos e você não perde nada."
+sync_and_leave = "Sincronizar e sair"
+stay_connected = "Continuar conectado"
+leave_and_drop = "Sair e descartar %{xp} XP"
+change_email = "Trocar e-mail"
+change_password = "Trocar senha"
+download_data = "Baixar meus dados"
+download_sub = "JSON com XP, trilhas e submissões"
+back = "Voltar"
+irreversible = "IRREVERSÍVEL"
+delete_account = "Excluir conta"
+delete_desc = "Apaga o e-mail, os %{xp} XP, as trilhas e o histórico de submissões do servidor. Nada disso volta."
+delete_button = "Excluir minha conta"
+delete_prompt = "pede a senha e a palavra EXCLUIR"
+
+[account]
+manage = "Gerenciar conta"
+
+[login]
+slogan = "REDUCE THE COMPLEXITY OF YOUR SOLUTIONS"
+sign_in_apple = "Continuar com a Apple"
+sign_in_google = "Continuar com o Google"
+sign_in_github = "Continuar com o GitHub"
+or_email = "OU COM E-MAIL"
+email_prompt = "e-mail"
+password_prompt = "senha"
+create_account = "Criar conta"
+forgot_password = "Esqueci a senha"
+guest_mode = "Jogar como visitante"
+without_saving = "sem salvar"
+core_ready = "CORE PRONTO"
+loading = "Carregando..."
+sign_in = "Entrar"
+
+[register]
+email_prompt = "e-mail"
+password_prompt = "senha (mín 8 chars)"
+confirm_prompt = "confirmar senha"
+create_account = "Criar Conta"
+verify_email = "Verificar e-mail"
+set_password = "Definir Senha"
+reason_email = "Para salvar seu progresso"
+reason_otp = "Digite o código enviado para %{email}"
+reason_password = "Escolha sua senha"
+sending = "Enviando..."
+send_code = "Enviar Código"
+
+[reset]
+title = "Redefinir senha"
+subtitle = "Escolha uma nova senha para\n%{email}"
+password_prompt = "nova senha · mínimo 8 caracteres"
+confirm_prompt = "confirmar senha"
+save_password = "Salvar nova senha"
+
+[otp]
+digit_accessibility = "dígito %{index} de 6"
+paste_code = "Colar o código"
+verify = "Verificar"
+resend_code = "Reenviar código"
+
+[scoreboard]
+close = "Fechar"
+frozen = "CONGELADO"
+rank = "#"
+team = "EQUIPE"
+slv = "SLV"
+pen = "PEN"
+legend_accepted = "aceito · tentativas / minuto"
+legend_failed = "tentado, sem AC"
+legend_frozen = "submetido após o congelamento"
+legend_untried = "não tentado"
+cell_accessibility = "problema %{letter}, %{status}"
+
+[standings]
+title = "Standings"
+global_tab = "Global"
+full_screen = "VER O TELÃO COMPLETO"
+row_accessibility = "%{rank}º, %{handle}, %{university}, %{solved} aceitos, %{penalty} de penalidade"
+row_accessibility_user = "sua posição, %{rank}º, %{handle}, %{university}, %{solved} aceitos, %{penalty} de penalidade"
+you = "você"

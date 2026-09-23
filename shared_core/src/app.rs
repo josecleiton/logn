@@ -32,12 +32,7 @@ pub enum Event {
     ProgressFetched(HttpResult),
     NodesFetched(HttpResult),
     ChallengesFetched(HttpResult),
-    RegisterAction {
-        action_id: String,
-        action_type: String,
-        payload_json: String,
-        timestamp: i64,
-    },
+
     SyncNow,
     SyncAndLogout,
     RestoreOfflineQueue,
@@ -1105,27 +1100,7 @@ Event::FetchChallenges => {
                 }
                 render::render()
             }
-            Event::RegisterAction { action_id, action_type, payload_json, timestamp } => {
-                let previous_hash = if model.last_hash.is_empty() {
-                    "0000000000000000000000000000000000000000000000000000000000000000".to_string()
-                } else {
-                    model.last_hash.clone()
-                };
 
-                let game_event = GameEvent::new(
-                    action_id,
-                    action_type,
-                    payload_json,
-                    timestamp,
-                    previous_hash,
-                );
-
-                model.last_hash = game_event.current_hash.clone();
-                model.pending_events.push(game_event);
-                model.status = "Action Registered".to_string();
-
-                render::render()
-            }
             Event::RequestOTP { email, purpose } => {
                 if model.resend_cooldown.is_active() || model.auth_cooldown.is_active() {
                     return still_rate_limited(model);

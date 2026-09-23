@@ -2,29 +2,24 @@ source_language = "en"
 
 [groups.app.keys]
 name = {}
-subtitle = {}
-
-[groups.login.keys]
-sign_in_apple = {}
-sign_in_google = {}
-sign_in_github = {}
-action_sign_in = {}
-or_separator = {}
-continue_as_guest = {}
 
 [groups.dashboard.keys]
-fetching = {}
 syncing = {}
-loaded = {}
 sync_guest_warning = {}
 tree_unavailable = {}
 offline_session = {}
-
 # O que o Core tem a dizer ao jogador.
 #
 # O Core manda a **chave** (`StatusKey`), nunca a frase: quem traduz é o cliente.
 # Antes ele escrevia a frase pronta, e a tela de login abria com "Logged out
 # successfully" em inglês, no vermelho de erro, num app em português.
+balloons_up = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+map_updating = {}
+map_failed = {}
+try_again = {}
+arena_desc = {}
+arena_sub = {}
+
 [groups.status.keys]
 signing_in = {}
 wrong_credentials = {}
@@ -51,8 +46,8 @@ trail_from_bundle = { placeholders = [{ name = "date", type = "text" }] }
 rate_limited = {}
 wait_seconds = { placeholders = [{ name = "seconds", type = "int" }] }
 sample_standings = {}
-
 # Sair da partida. O Core decide se pergunta; a cópia mora aqui.
+
 [groups.leave.keys]
 eyebrow = {}
 solved = { placeholders = [{ name = "solved", type = "int" }, { name = "total", type = "int" }] }
@@ -60,9 +55,9 @@ body = {}
 stay = {}
 confirm = {}
 accessibility = {}
-
 # Desafio que já rendeu XP. Rejogar não paga de novo, e a trilha, o sheet do nó, o
 # veredito e o relatório dizem isso — sem aviso, o XP parado parece defeito.
+
 [groups.solved.keys]
 inflating = { placeholders = [{ name = "solved", type = "int" }, { name = "total", type = "int" }] }
 node_accessibility = { placeholders = [{ name = "solved", type = "int" }, { name = "total", type = "int" }] }
@@ -80,8 +75,8 @@ verdict = {}
 verdict_accessibility = { placeholders = [{ name = "letter", type = "text" }] }
 report_xp = { placeholders = [{ name = "xp", type = "int" }] }
 report_repeated = { plural = true, placeholders = [{ name = "count", type = "int" }] }
-
 # Origem do desafio. A chave vem do Core (a coluna `origin`); a cópia mora aqui.
+
 [groups.origin.keys]
 eyebrow = {}
 origin_name = {}
@@ -89,3 +84,204 @@ origin_role = {}
 origin_body = {}
 pause_notice = {}
 close = {}
+
+[groups.info_plist]
+info_plist = true
+
+[groups.info_plist.keys]
+NSLocalNetworkUsageDescription = {}
+
+[groups.node.keys]
+completed = {}
+active = { placeholders = [{ name = "xp", type = "int" }] }
+locked = {}
+locked_prereq = { placeholders = [{ name = "missing", type = "int" }] }
+prereq = {}
+unlocks = {}
+upstream = {}
+downstream = {}
+start_point = {}
+end_point = {}
+no_problems = {}
+no_problems_desc = {}
+
+[groups.tree.keys]
+edge_legend = {}
+node_completed = { placeholders = [{ name = "name", type = "text" }, { name = "solved", type = "int" }, { name = "total", type = "int" }] }
+node_active = { placeholders = [{ name = "name", type = "text" }, { name = "solved", type = "int" }, { name = "total", type = "int" }] }
+node_locked = { placeholders = [{ name = "name", type = "text" }] }
+node_locked_prereq = { placeholders = [{ name = "name", type = "text" }, { name = "missing", type = "int" }] }
+
+[groups.arena.keys]
+drag_block = {}
+select_up_to = { placeholders = [{ name = "max", type = "int" }] }
+time_axis = {}
+space_axis = {}
+confirm_line = { placeholders = [{ name = "line", type = "int" }] }
+confirm_answer = {}
+confirm_tags = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+confirm_complexity = {}
+confirm_output = {}
+confirm = {}
+back_to_trail = {}
+back_to_trail_open = {}
+gap_to_fill = {}
+drop_here = {}
+drop_here_accessibility = {}
+filled_accessibility = { placeholders = [{ name = "value", type = "text" }] }
+
+[groups.match.keys]
+balloon_up = { placeholders = [{ name = "letter", type = "text" }] }
+xp_earned = { placeholders = [{ name = "xp", type = "int" }] }
+accepted_accessibility = { placeholders = [{ name = "letter", type = "text" }, { name = "xp", type = "int" }] }
+penalty_minutes = {}
+lost_life = {}
+zero_xp = {}
+failed_accessibility = { placeholders = [{ name = "code", type = "text" }, { name = "meaning", type = "text" }] }
+view_report = {}
+next_problem = {}
+keep_going = {}
+got_it = {}
+contest_over = {}
+report_stats = { placeholders = [{ name = "accepted", type = "int" }, { name = "penalty", type = "int" }] }
+problem_status = { placeholders = [{ name = "letter", type = "text" }, { name = "status", type = "text" }] }
+review = {}
+review_errors = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+no_errors = {}
+your_answer = { placeholders = [{ name = "answer", type = "text" }] }
+error_accessibility = { placeholders = [{ name = "letter", type = "text" }, { name = "title", type = "text" }, { name = "code", type = "text" }, { name = "meaning", type = "text" }] }
+
+[groups.verdict.keys]
+accepted = {}
+failed = {}
+frozen = {}
+untried = {}
+
+[groups.hud.keys]
+lives = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+
+[groups.dry_run.keys]
+watch = {}
+watch_accessibility = { placeholders = [{ name = "name", type = "text" }, { name = "value", type = "text" }] }
+expected_output = {}
+ignored_spaces = {}
+tap_to_type = {}
+output_accessibility = {}
+
+[groups.tabs.keys]
+trails = {}
+arena = {}
+standings = {}
+
+[groups.profile.keys]
+guest_mode = {}
+guest_sub = {}
+all_synced = {}
+queued_events = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+local_xp_only = { placeholders = [{ name = "xp", type = "int" }] }
+pending_events = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+retry = {}
+level = {}
+level_word = {}
+xp_to_next = { placeholders = [{ name = "xp", type = "int" }, { name = "next", type = "int" }] }
+level_accessibility = { placeholders = [{ name = "level", type = "int" }, { name = "xp", type = "int" }, { name = "missing", type = "int" }, { name = "next", type = "int" }] }
+total_xp = {}
+bugs = {}
+dry_runs = {}
+stats_summary = { placeholders = [{ name = "challenges", type = "text" }, { name = "balloons", type = "text" }] }
+has_account = {}
+sign_out = {}
+manage_account = {}
+guest_risk = {}
+guest_risk_desc = { placeholders = [{ name = "xp", type = "int" }, { name = "balloons", type = "int" }, { name = "challenges", type = "int" }] }
+create_account = {}
+challenges_completed = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+
+[groups.logout.keys]
+server_safe = { placeholders = [{ name = "xp", type = "int" }] }
+sign_in_again = {}
+undo_logout = {}
+see_you = {}
+see_you_name = { placeholders = [{ name = "name", type = "text" }] }
+risk_summary = { placeholders = [{ name = "events", type = "text" }, { name = "xp", type = "int" }] }
+save_before = {}
+save_desc = {}
+sync_and_leave = {}
+stay_connected = {}
+leave_and_drop = { placeholders = [{ name = "xp", type = "int" }] }
+change_email = {}
+change_password = {}
+download_data = {}
+download_sub = {}
+back = {}
+irreversible = {}
+delete_account = {}
+delete_desc = { placeholders = [{ name = "xp", type = "int" }] }
+delete_button = {}
+delete_prompt = {}
+
+[groups.account.keys]
+manage = {}
+
+[groups.register.keys]
+email_prompt = {}
+password_prompt = {}
+confirm_prompt = {}
+create_account = {}
+verify_email = {}
+set_password = {}
+reason_email = {}
+reason_otp = { placeholders = [{ name = "email", type = "text" }] }
+reason_password = {}
+sending = {}
+send_code = {}
+
+[groups.reset.keys]
+title = {}
+subtitle = { placeholders = [{ name = "email", type = "text" }] }
+password_prompt = {}
+confirm_prompt = {}
+save_password = {}
+
+[groups.otp.keys]
+digit_accessibility = { placeholders = [{ name = "index", type = "int" }] }
+paste_code = {}
+verify = {}
+resend_code = {}
+
+[groups.scoreboard.keys]
+close = {}
+frozen = {}
+rank = {}
+team = {}
+slv = {}
+pen = {}
+legend_accepted = {}
+legend_failed = {}
+legend_frozen = {}
+legend_untried = {}
+cell_accessibility = { placeholders = [{ name = "letter", type = "text" }, { name = "status", type = "text" }] }
+
+[groups.standings.keys]
+title = {}
+global_tab = {}
+full_screen = {}
+row_accessibility = { placeholders = [{ name = "rank", type = "int" }, { name = "handle", type = "text" }, { name = "university", type = "text" }, { name = "solved", type = "int" }, { name = "penalty", type = "int" }] }
+row_accessibility_user = { placeholders = [{ name = "rank", type = "int" }, { name = "handle", type = "text" }, { name = "university", type = "text" }, { name = "solved", type = "int" }, { name = "penalty", type = "int" }] }
+you = {}
+
+[groups.login.keys]
+slogan = {}
+sign_in_apple = {}
+sign_in_google = {}
+sign_in_github = {}
+or_email = {}
+email_prompt = {}
+password_prompt = {}
+create_account = {}
+forgot_password = {}
+guest_mode = {}
+without_saving = {}
+core_ready = {}
+loading = {}
+sign_in = {}

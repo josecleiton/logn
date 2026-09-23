@@ -63,7 +63,9 @@ i18n:
 
 # --- iOS (Swift) ---
 
-# Gera a ponte FFI em Swift (Facet + Bincode) e joga na pasta do iOS
+# Gera a ponte FFI em Swift (Facet + Bincode) e joga na pasta do iOS.
+# ATENÇÃO: este target sozinho deixa a biblioteca estática (.a) velha.
+# O caminho normal para compilar tudo junto é o `build-ios-ffi`.
 codegen:
 	cd shared_core && cargo run --bin codegen --features codegen -- --language swift --output-dir ../ios/SharedCore
 
@@ -75,8 +77,13 @@ build-ios-ffi: codegen
 	cd shared_core && cargo build --target x86_64-apple-ios --release
 	mkdir -p shared_core/target/universal-sim
 	lipo -create -output shared_core/target/universal-sim/libshared_core.a shared_core/target/aarch64-apple-ios-sim/release/libshared_core.a shared_core/target/x86_64-apple-ios/release/libshared_core.a
-	cp shared_core/target/aarch64-apple-ios/release/libshared_core.a ios/LogNCoreFFI/LogNCoreFFI.xcframework/ios-arm64/libshared_core.a
-	cp shared_core/target/universal-sim/libshared_core.a ios/LogNCoreFFI/LogNCoreFFI.xcframework/ios-arm64_x86_64-simulator/libshared_core.a
+	
+	# Monta o XCFramework do zero
+	rm -rf ios/LogNCoreFFI/LogNCoreFFI.xcframework
+	mkdir -p shared_core/target/headers/shared_core
+	cp ios/LogNCoreFFI/Sources/boltffi.h shared_core/target/headers/shared_core/shared_core.h
+	echo 'module LogNCoreFFIFFI { header "shared_core/shared_core.h" export * }' > shared_core/target/headers/module.modulemap
+	xcodebuild -create-xcframework -library shared_core/target/aarch64-apple-ios/release/libshared_core.a -headers shared_core/target/headers -library shared_core/target/universal-sim/libshared_core.a -headers shared_core/target/headers -output ios/LogNCoreFFI/LogNCoreFFI.xcframework
 
 # Gera o projeto Xcode (.xcodeproj) usando o XcodeGen
 xcode: sync-env build-ios-ffi i18n

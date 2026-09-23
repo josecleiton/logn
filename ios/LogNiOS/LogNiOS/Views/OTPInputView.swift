@@ -47,7 +47,7 @@ struct OTPInputView: View {
                         )
                         .keyboardType(.numberPad)
                         .focused($focusedIndex, equals: index)
-                        .accessibilityLabel("dígito \(index + 1) de 6")
+                        .accessibilityLabel(Str.Otp.digit_accessibility(index + 1))
                         .onChange(of: digits[index]) { newVal in
                             if newVal.count > 1 {
                                 digits[index] = String(newVal.last!)
@@ -63,7 +63,7 @@ struct OTPInputView: View {
             }
 
             Button(action: pasteFromClipboard) {
-                Label("Colar o código", systemImage: "doc.on.clipboard")
+                Label(Str.Otp.paste_code, systemImage: "doc.on.clipboard")
                     .lognLabel()
                     .foregroundColor(LognDark.textSecondary)
                     .frame(minHeight: Space.minTouch)
@@ -73,7 +73,7 @@ struct OTPInputView: View {
             Button(action: { submitOTP(force: true) }) {
                 Text(verifyLocked
                      ? Str.Status.wait_seconds(Int(core.viewModel.authCooldownSeconds))
-                     : "Verificar")
+                     : Str.Otp.verify)
                     .font(.plexSansSemiBold(15))
                     .monospacedDigit()
                     .foregroundColor(canVerify ? LognDark.onAccent : LognDark.textDim)
@@ -89,7 +89,7 @@ struct OTPInputView: View {
             }) {
                 Text(resendLocked
                      ? Str.Status.wait_seconds(Int(core.viewModel.resendCooldownSeconds))
-                     : "Reenviar código")
+                     : Str.Otp.resend_code)
                     .font(.plexSans(13.5))
                     .monospacedDigit()
                     .foregroundColor(resendLocked ? LognDark.textDim : LognDark.textSecondary)

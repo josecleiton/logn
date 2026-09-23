@@ -4,11 +4,7 @@ import LogN
 struct LoginView: View {
     @EnvironmentObject var core: CoreWrapper
     
-    private let ssoData: [SSOProvider] = [
-        SSOProvider(id: "Apple", title: "Continuar com a Apple", isApple: true),
-        SSOProvider(id: "GoogleIcon", title: "Continuar com o Google", isApple: false),
-        SSOProvider(id: "GitHubIcon", title: "Continuar com o GitHub", isApple: false)
-    ]
+
     
     @State private var email = ""
     @State private var password = ""
@@ -35,7 +31,7 @@ struct LoginView: View {
                 VStack(spacing: 12) {
                     BrandLockup(fontSize: 40)
                     
-                    Text("REDUCE THE COMPLEXITY OF YOUR SOLUTIONS")
+                    Text(Str.Login.slogan)
                         .font(.plexMono(11))
                         .tracking(0.16 * 11) // letter-spacing: 0.16em
                         .foregroundColor(LognDark.textSecondary)
@@ -51,7 +47,7 @@ struct LoginView: View {
                             Image(systemName: "applelogo")
                                 .font(.system(size: 20))
                                 .foregroundColor(.black)
-                            Text("Continuar com a Apple")
+                            Text(Str.Login.sign_in_apple)
                                 .font(.plexSansMedium(15))
                                 .foregroundColor(.black)
                         }
@@ -69,7 +65,7 @@ struct LoginView: View {
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 20, height: 20)
-                            Text("Continuar com o Google")
+                            Text(Str.Login.sign_in_google)
                                 .font(.plexSansMedium(15))
                                 .foregroundColor(LognDark.textPrimary)
                         }
@@ -87,7 +83,7 @@ struct LoginView: View {
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 20, height: 20)
-                            Text("Continuar com o GitHub")
+                            Text(Str.Login.sign_in_github)
                                 .font(.plexSansMedium(15))
                                 .foregroundColor(LognDark.textPrimary)
                         }
@@ -101,7 +97,7 @@ struct LoginView: View {
                     // Divider
                     HStack(spacing: 12) {
                         Rectangle().fill(LognDark.line).frame(height: 1)
-                        Text("OU COM E-MAIL")
+                        Text(Str.Login.or_email)
                             .font(.plexMono(10))
                             .tracking(0.14 * 10)
                             .foregroundColor(LognDark.textMuted)
@@ -110,7 +106,7 @@ struct LoginView: View {
                     .padding(.vertical, 8)
                     
                     // E-mail field
-                    TextField("", text: $email, prompt: Text("e-mail").foregroundColor(LognDark.textDim))
+                    TextField("", text: $email, prompt: Text(Str.Login.email_prompt).foregroundColor(LognDark.textDim))
                         .font(.plexMono(14))
                         .padding(.horizontal, 14)
                         .frame(height: 52)
@@ -122,7 +118,7 @@ struct LoginView: View {
                         .keyboardType(.emailAddress)
                         
                     // Password field
-                    SecureField("", text: $password, prompt: Text("senha").foregroundColor(LognDark.textDim))
+                    SecureField("", text: $password, prompt: Text(Str.Login.password_prompt).foregroundColor(LognDark.textDim))
                         .font(.plexMono(14))
                         .padding(.horizontal, 14)
                         .frame(height: 52)
@@ -151,7 +147,7 @@ struct LoginView: View {
                     // Links
                     HStack {
                         NavigationLink(destination: RegisterView().environmentObject(core)) {
-                            Text("Criar conta")
+                            Text(Str.Login.create_account)
                                 .font(.plexSans(13.5))
                                 .foregroundColor(LognDark.textSecondary)
                         }
@@ -163,7 +159,7 @@ struct LoginView: View {
                         }) {
                             Text(resendLocked
                                  ? Str.Status.wait_seconds(Int(core.viewModel.resendCooldownSeconds))
-                                 : "Esqueci a senha")
+                                 : Str.Login.forgot_password)
                                 .font(.plexSans(13.5))
                                 .monospacedDigit()
                                 .foregroundColor(resendLocked ? LognDark.textDim : LognDark.textSecondary)
@@ -187,10 +183,10 @@ struct LoginView: View {
                         core.dispatch(event: .continueAsGuest)
                     }) {
                         VStack(spacing: 2) {
-                            Text("Jogar como visitante")
+                            Text(Str.Login.guest_mode)
                                 .font(.plexSansSemiBold(14))
                                 .foregroundColor(LognDark.textPrimary)
-                            Text("sem salvar")
+                            Text(Str.Login.without_saving)
                                 .font(.plexMono(10.5))
                                 .foregroundColor(LognDark.textMuted)
                         }
@@ -209,7 +205,7 @@ struct LoginView: View {
                         Circle()
                             .fill(LognDark.correct) // 3DD68C
                             .frame(width: 6, height: 6)
-                        Text("CORE PRONTO")
+                        Text(Str.Login.core_ready)
                             .font(.plexMono(10))
                             .tracking(0.1 * 10)
                             .foregroundColor(LognDark.textMuted)
@@ -231,12 +227,7 @@ struct LoginView: View {
 
     private var signInLabel: String {
         if signInLocked { return Str.Status.wait_seconds(Int(core.viewModel.authCooldownSeconds)) }
-        return core.viewModel.isAuthenticating ? "Carregando..." : "Entrar"
+        return core.viewModel.isAuthenticating ? Str.Login.loading : Str.Login.sign_in
     }
 }
 
-struct SSOProvider: Identifiable {
-    let id: String
-    let title: String
-    let isApple: Bool
-}

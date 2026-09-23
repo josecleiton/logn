@@ -28,7 +28,7 @@ struct LogoutNoticeView: View {
                         .foregroundColor(LognDark.textPrimary)
                         .multilineTextAlignment(.center)
 
-                    Text("Seus \(vm.globalXp) XP estão no servidor. Entrar de novo traz tudo de volta.")
+                    Text(Str.Logout.server_safe(Int(vm.globalXp)))
                         .font(.plexSans(14, relativeTo: .subheadline))
                         .lineSpacing(21 - 14)
                         .foregroundColor(LognDark.textSecondary)
@@ -42,7 +42,7 @@ struct LogoutNoticeView: View {
                     Button {
                         core.dispatch(event: .dismissLogoutNotice)
                     } label: {
-                        Text("Entrar de novo")
+                        Text(Str.Logout.sign_in_again)
                             .font(.plexSansSemiBold(15, relativeTo: .callout))
                             .foregroundColor(LognDark.onAccent)
                             .frame(maxWidth: .infinity, minHeight: 50)
@@ -58,7 +58,7 @@ struct LogoutNoticeView: View {
                             Image(systemName: "arrow.counterclockwise")
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(LognDark.textMuted)
-                            Text("saiu por engano? desfazer")
+                            Text(Str.Logout.undo_logout)
                                 .font(.plexMono(11.5))
                                 .foregroundColor(LognDark.textSecondary)
                         }
@@ -74,7 +74,7 @@ struct LogoutNoticeView: View {
     }
 
     private var farewell: String {
-        vm.displayName.isEmpty ? "Até a próxima" : "Até a próxima, \(vm.displayName)"
+        vm.displayName.isEmpty ? Str.Logout.see_you : Str.Logout.see_you_name(vm.displayName)
     }
 }
 
@@ -96,18 +96,18 @@ struct CriticalLogoutSheet: View {
             LognDark.surfaceRaised.ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
-                Text("\(pluralPt(pendingCount, "EVENTO NA FILA", "EVENTOS NA FILA")) · \(xpAtRisk) XP")
+                Text(Str.Logout.risk_summary(Str.Profile.queued_events(pendingCount), xpAtRisk))
                     .font(.plexMono(10.5))
                     .tracking(0.14 * 10.5)
                     .foregroundColor(LognDark.warnInk)
 
-                Text("Vamos salvar antes de sair")
+                Text(Str.Logout.save_before)
                     .font(.plexSansSemiBold(18, relativeTo: .headline))
                     .lineSpacing(18 * 0.3)
                     .foregroundColor(LognDark.textPrimary)
                     .padding(.top, 9)
 
-                Text("Esse progresso ainda não chegou ao servidor. Sincronizar leva alguns segundos e você não perde nada.")
+                Text(Str.Logout.save_desc)
                     .font(.plexSans(14, relativeTo: .subheadline))
                     .lineSpacing(21 - 14)
                     .foregroundColor(LognDark.textSecondary)
@@ -115,7 +115,7 @@ struct CriticalLogoutSheet: View {
                     .padding(.top, 9)
 
                 Button(action: onSyncAndLeave) {
-                    Text("Sincronizar e sair")
+                    Text(Str.Logout.sync_and_leave)
                         .font(.plexSansSemiBold(15, relativeTo: .callout))
                         .foregroundColor(LognDark.onAccent)
                         .frame(maxWidth: .infinity, minHeight: 50)
@@ -126,7 +126,7 @@ struct CriticalLogoutSheet: View {
                 .padding(.top, 18)
 
                 Button(action: onStay) {
-                    Text("Continuar conectado")
+                    Text(Str.Logout.stay_connected)
                         .font(.plexSansMedium(15))
                         .foregroundColor(LognDark.textPrimary)
                         .frame(maxWidth: .infinity, minHeight: 48)
@@ -137,7 +137,7 @@ struct CriticalLogoutSheet: View {
 
                 // Texto, não botão: a perda deixa de ser o caminho padrão.
                 Button(action: onDiscard) {
-                    Text("Sair e descartar \(xpAtRisk) XP")
+                    Text(Str.Logout.leave_and_drop(xpAtRisk))
                         .font(.plexSans(13.5, relativeTo: .footnote))
                         .foregroundColor(LognDark.wrongInk)
                         .frame(maxWidth: .infinity, minHeight: 42)
@@ -172,9 +172,9 @@ struct ManageAccountView: View {
                 header
 
                 VStack(spacing: 10) {
-                    actionRow("Trocar e-mail", sub: core.viewModel.accountEmail)
-                    actionRow("Trocar senha", sub: nil)
-                    actionRow("Baixar meus dados", sub: "JSON com XP, trilhas e submissões")
+                    actionRow(Str.Logout.change_email, sub: core.viewModel.accountEmail)
+                    actionRow(Str.Logout.change_password, sub: nil)
+                    actionRow(Str.Logout.download_data, sub: Str.Logout.download_sub)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 18)
@@ -196,9 +196,9 @@ struct ManageAccountView: View {
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(LognDark.textSecondary)
             }
-            .accessibilityLabel("Voltar")
+            .accessibilityLabel(Str.Logout.back)
 
-            Text("Gerenciar conta")
+            Text(Str.Account.manage)
                 .font(.plexSansSemiBold(17))
                 .foregroundColor(LognDark.textPrimary)
 
@@ -242,31 +242,31 @@ struct ManageAccountView: View {
     /// e nesse caso só dentro do bloco de confirmação — nunca no repouso da tela.
     private var deletionBlock: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("IRREVERSÍVEL")
+            Text(Str.Logout.irreversible)
                 .font(.plexMono(10.5))
                 .tracking(0.14 * 10.5)
                 .foregroundColor(LognDark.wrongInk)
 
-            Text("Excluir conta")
+            Text(Str.Logout.delete_account)
                 .font(.plexSansSemiBold(15, relativeTo: .callout))
                 .foregroundColor(LognDark.textPrimary)
                 .padding(.top, 8)
 
-            Text("Apaga o e-mail, os \(core.viewModel.globalXp) XP, as trilhas e o histórico de submissões do servidor. Nada disso volta.")
+            Text(Str.Logout.delete_desc(Int(core.viewModel.globalXp)))
                 .font(.plexSans(13, relativeTo: .footnote))
                 .lineSpacing(19 - 13)
                 .foregroundColor(LognDark.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 7)
 
-            Text("Excluir minha conta")
+            Text(Str.Logout.delete_button)
                 .font(.plexSansSemiBold(14.5))
                 .foregroundColor(LognDark.wrongInk)
                 .frame(maxWidth: .infinity, minHeight: 46)
                 .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.wrong, lineWidth: 1))
                 .padding(.top, 14)
 
-            Text("pede a senha e a palavra EXCLUIR")
+            Text(Str.Logout.delete_prompt)
                 .font(.plexMono(10.5))
                 .foregroundColor(LognDark.textMuted)
                 .frame(maxWidth: .infinity)

@@ -30,11 +30,7 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    no `SET` de todo `UPDATE`. Coluna que nasce com a linha e nunca mais anda mente pior
    que coluna nenhuma.
 
-   **Estado atual, para quem for mexer:** a regra está quase toda por cumprir. Só
-   `users`, `skill_nodes` e `refresh_tokens` têm `created_at`; **nenhuma tabela tem
-   `updated_at`**, incluindo `challenges`, `users`, `user_progress` e `user_sync_state`,
-   que sofrem `UPDATE` de verdade. `game_events` é append-only por desenho e só precisa
-   de `created_at`; `schema_migrations` resolve o dela com `applied_at`.
+   **Estado atual, para quem for mexer:** a regra está cumprida desde a `0013_carimbos_de_tempo.sql`. Toda tabela tem `created_at` (agora com `NOT NULL` aplicado pela 0034). `users`, `skill_nodes`, `refresh_tokens`, `otps`, `user_progress`, `challenges` e `user_sync_state` têm `updated_at` mantido pelo trigger `trg_<tabela>_updated_at`, que chama `set_updated_at()` — a função já existe, tabela nova só cria o trigger dela. Ficam só com `created_at` as que nunca sofrem `UPDATE`: `game_events` (append-only por desenho, ADR 0002) e `user_paid_challenges` (0032). `schema_migrations` resolve com `applied_at`. Em `otps` o `updated_at` anda a cada tentativa errada; por isso o intervalo entre envios usa `sent_at` (0031), não ele.
 
 6. **Todo texto que o jogador lê ou ouve sai do catálogo de i18n, nunca de literal no código.**
    Vale para rótulo, botão, legenda, veredito e `accessibilityLabel`, em qualquer cliente.

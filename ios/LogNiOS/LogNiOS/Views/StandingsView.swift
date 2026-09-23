@@ -45,14 +45,14 @@ struct StandingsView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Standings")
+            Text(Str.Standings.title)
                 .font(.plexSansSemiBold(22, relativeTo: .title2))
                 .tracking(-0.02 * 22)
                 .foregroundColor(LognDark.textPrimary)
                 .padding(.bottom, 14)
 
             HStack(spacing: 20) {
-                tabButton("Global", .global)
+                tabButton(Str.Standings.global_tab, .global)
                 tabButton(core.viewModel.userStanding.university, .home)
                 Spacer(minLength: 0)
             }
@@ -88,7 +88,7 @@ struct StandingsView: View {
 
     private var scoreboardLink: some View {
         NavigationLink(destination: ScoreboardView().environmentObject(core)) {
-            Text("VER O TELÃO COMPLETO")
+            Text(Str.Standings.full_screen)
                 .lognLabel()
                 .foregroundColor(LognDark.accentInk)
                 .frame(maxWidth: .infinity)
@@ -109,7 +109,7 @@ struct StandingRowView: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Text("\(row.rank)")
+            Text("\(Int(row.rank))")
                 .font(.plexMono(13))
                 .monospacedDigit()
                 .foregroundColor(row.isUser ? LognDark.accentInk : LognDark.textMuted)
@@ -129,7 +129,7 @@ struct StandingRowView: View {
 
             Spacer(minLength: 0)
 
-            Text("\(row.solved) · \(row.penalty)")
+            Text("\(Int(row.solved)) · \(Int(row.penalty))")
                 .font(row.isUser ? .plexMonoSemiBold(14) : .plexMono(14))
                 .monospacedDigit()
                 .foregroundColor(LognDark.textPrimary)
@@ -149,8 +149,7 @@ struct StandingRowView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(row.isUser ? "sua posição, " : "")\(row.rank)º, \(row.handle), \(row.university), "
-            + "\(row.solved) aceitos, \(row.penalty) de penalidade"
+            row.isUser ? Str.Standings.row_accessibility_user(Int(row.rank), row.handle, row.university, Int(row.solved), Int(row.penalty)) : Str.Standings.row_accessibility(Int(row.rank), row.handle, row.university, Int(row.solved), Int(row.penalty))
         )
     }
 
