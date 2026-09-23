@@ -229,7 +229,7 @@ func main() {
 	}
 
 	log.Printf("Server starting on :%s...", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+	if err := http.ListenAndServe(":"+port, withGzip(mux)); err != nil {
 		log.Fatal(err)
 	}
 }
