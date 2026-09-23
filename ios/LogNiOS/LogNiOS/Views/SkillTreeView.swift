@@ -71,7 +71,8 @@ struct SkillTreeView: View {
                     }
                 )
                 .presentationDetents([.height(NodeSheetView.preferredHeight(
-                    hasProblems: core.viewModel.challenges.contains { $0.nodeId == node.id }
+                    problemCount: core.viewModel.challenges.filter { $0.nodeId == node.id }.count,
+                    isLocked: node.status == .locked
                 ))])
                 .presentationDragIndicator(.hidden)
                 .modifier(SheetCorners())
@@ -352,7 +353,9 @@ struct SkillNodeView: View {
                     .font(.plexSansSemiBold(11.5))
                     .foregroundColor(LognDark.textPrimary)
                 // Glifo sobre accent usa a tinta, não o token base — regra de tinta do DS.
-                Text("INFLANDO · \(node.requiredXp) XP")
+                Text(node.problemsSolved.isEmpty
+                     ? "INFLANDO · \(node.requiredXp) XP"
+                     : Str.Solved.inflating(solvedCount, node.problemsSolved.count))
                     .font(.plexMono(9.5))
                     .tracking(0.08 * 9.5)
                     .foregroundColor(LognDark.accentInk)
@@ -364,17 +367,35 @@ struct SkillNodeView: View {
             .overlay(RoundedRectangle(cornerRadius: 3).stroke(LognDark.accent, lineWidth: 1))
             .cornerRadius(3)
         } else {
-            Text(node.name)
-                .font(.plexSansSemiBold(11.5))
-                .foregroundColor(node.status == .locked ? LognDark.textSecondary : LognDark.textPrimary)
-                .fixedSize()
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4)
-                .background(LognDark.canvas)
-                .overlay(RoundedRectangle(cornerRadius: 3).stroke(LognDark.line, lineWidth: 1))
-                .cornerRadius(3)
+            HStack(spacing: 6) {
+                Text(node.name)
+                    .font(.plexSansSemiBold(11.5))
+                    .foregroundColor(node.status == .locked ? LognDark.textSecondary : LognDark.textPrimary)
+                // Quantos problemas do nó já renderam XP. No bloqueado, 0/5 é ruído.
+                if node.status != .locked && !node.problemsSolved.isEmpty {
+                    HStack(spacing: 3) {
+                        if allSolved {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 8, weight: .bold))
+                        }
+                        Text("\(solvedCount)/\(node.problemsSolved.count)")
+                            .font(.plexMono(10))
+                            .monospacedDigit()
+                    }
+                    .foregroundColor(allSolved ? LognDark.correct : LognDark.textSecondary)
+                }
+            }
+            .fixedSize()
+            .padding(.horizontal, 9)
+            .padding(.vertical, 4)
+            .background(LognDark.canvas)
+            .overlay(RoundedRectangle(cornerRadius: 3).stroke(LognDark.line, lineWidth: 1))
+            .cornerRadius(3)
         }
     }
+
+    private var solvedCount: Int { node.problemsSolved.filter { $0 }.count }
+    private var allSolved: Bool { !node.problemsSolved.isEmpty && solvedCount == node.problemsSolved.count }
 
     // MARK: Acessibilidade
 
@@ -382,8 +403,14 @@ struct SkillNodeView: View {
     private var accessibilityDescription: String {
         let state: String
         switch node.status {
-        case .completed: return "\(node.name), conquistado"
-        case .active:    state = "em curso"
+        case .completed:
+            return node.problemsSolved.isEmpty
+                ? "\(node.name), conquistado"
+                : "\(node.name), conquistado, \(Str.Solved.node_accessibility(solvedCount, node.problemsSolved.count))"
+        case .active:
+            state = node.problemsSolved.isEmpty
+                ? "em curso"
+                : "em curso, \(Str.Solved.node_accessibility(solvedCount, node.problemsSolved.count))"
         case .locked:
             let missing = node.prerequisites.count
             state = missing >= 2 ? "bloqueado, \(missing) pré-requisitos" : "bloqueado"

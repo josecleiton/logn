@@ -144,6 +144,12 @@ pub struct Model {
     pub global_xp: i32,
     pub bugs_found: i32,
     pub dry_runs_completed: i32,
+    /// Desafios que já renderam XP. Rejogar um deles não paga de novo.
+    ///
+    /// Sem isto, repetir o nó 1 abria o nó 7: os portões da trilha eram de moagem, não
+    /// de conhecimento. Quem manda é o servidor — o login devolve a lista —, e o Core
+    /// guarda a cópia para decidir sozinho enquanto está offline.
+    pub paid_challenges: Vec<String>,
     pub match_state: Option<match_engine::MatchState>,
     /// Nó de onde a partida saiu. Vai no evento de sync para o servidor saber a que
     /// trilha creditar o XP — sem ele `user_progress` nunca ganhava uma linha.
@@ -387,6 +393,7 @@ fn save_offline_snapshot(model: &Model) -> Command<Effect, Event> {
         global_xp: model.global_xp,
         bugs_found: model.bugs_found,
         dry_runs_completed: model.dry_runs_completed,
+        paid_challenge_ids: model.paid_challenges.clone(),
         nodes: model.nodes.clone(),
         challenges: model.challenges.clone(),
     };
@@ -395,6 +402,41 @@ fn save_offline_snapshot(model: &Model) -> Command<Effect, Event> {
         value: serde_json::to_vec(&snapshot).unwrap_or_default(),
     })
     .then_send(Event::SnapshotSaved)
+}
+
+/// Credita no modelo os aceitos que ainda estão na fila de sync e que a lista de pagos
+/// não conhece: XP, contadores e o próprio desafio.
+///
+/// Chamado logo depois de o XP e a lista virem de quem não viu a fila — o servidor ou
+/// o retrato. Sem isto, reabrir o app com respostas na fila mostrava o desafio como
+/// resolvido e o XP dele sumido, e como rejogar não paga mais, ele não voltava até o
+/// sync. Só conta o que não está na lista, então não paga duas vezes.
+fn credit_queued_answers(model: &mut Model) {
+    let queued: Vec<(String, String)> = model
+        .pending_events
+        .iter()
+        .filter(|e| e.event_type == "MATCH_ANSWER")
+        .filter_map(|e| serde_json::from_str::<serde_json::Value>(&e.payload_json).ok())
+        .filter(|p| p["is_correct"] == serde_json::Value::Bool(true))
+        .filter_map(|p| {
+            let id = p["challenge_id"].as_str()?.to_string();
+            let template = p["template_type"].as_str().unwrap_or_default().to_string();
+            (!id.is_empty()).then_some((id, template))
+        })
+        .collect();
+
+    for (id, template) in queued {
+        if model.paid_challenges.contains(&id) {
+            continue;
+        }
+        model.paid_challenges.push(id);
+        model.global_xp += match_engine::XP_PER_ACCEPTED;
+        match template.as_str() {
+            "SPOT_THE_BUG" => model.bugs_found += 1,
+            "DRY_RUN" => model.dry_runs_completed += 1,
+            _ => {}
+        }
+    }
 }
 
 /// O retrato local da conta: o que a tela precisa quando não há rede.
@@ -406,6 +448,9 @@ struct OfflineSnapshot {
     global_xp: i32,
     bugs_found: i32,
     dry_runs_completed: i32,
+    /// `default`: o retrato gravado antes desta regra não tem o campo.
+    #[serde(default)]
+    paid_challenge_ids: Vec<String>,
     nodes: Vec<crate::domain::SkillNode>,
     challenges: Vec<Challenge>,
 }
@@ -723,6 +768,8 @@ impl App for LogNApp {
                         model.global_xp = snap.global_xp;
                         model.bugs_found = snap.bugs_found;
                         model.dry_runs_completed = snap.dry_runs_completed;
+                        model.paid_challenges = snap.paid_challenge_ids;
+                        credit_queued_answers(model);
                         if !snap.nodes.is_empty() {
                             model.nodes = snap.nodes;
                             model.challenges = snap.challenges;
@@ -938,12 +985,16 @@ impl App for LogNApp {
                             global_xp: i32,
                             bugs_found: i32,
                             dry_runs_completed: i32,
+                            #[serde(default)]
+                            paid_challenge_ids: Vec<String>,
                         }
 
                         if let Ok(stats) = serde_json::from_slice::<Stats>(&response.body) {
                             model.global_xp = stats.global_xp;
                             model.bugs_found = stats.bugs_found;
                             model.dry_runs_completed = stats.dry_runs_completed;
+                            model.paid_challenges = stats.paid_challenge_ids;
+                            credit_queued_answers(model);
                             return save_offline_snapshot(model);
                         }
                     }
@@ -1458,6 +1509,7 @@ Event::FetchChallenges => {
                             }),
                             watch_variables: c.payload.content.watch_variables.clone().unwrap_or_default(),
                             watch_note: c.payload.content.watch_note.clone().unwrap_or_default(),
+                            already_paid: model.paid_challenges.contains(&c.id),
                         }
                     })
                     .collect();
@@ -1526,12 +1578,16 @@ Event::FetchChallenges => {
                     // e o evento registrado é o do problema que acabou de ser respondido.
                     let template = ms.current_template_type().to_string();
                     let letter = ms.current_letter().to_string();
+                    let challenge_id = ms.current_problem().map(|p| p.challenge_id.clone()).unwrap_or_default();
 
                     let verdict = ms.submit();
                     let is_correct = verdict == match_engine::VerdictCode::Accepted;
 
-                    if is_correct {
-                        model.global_xp += 50;
+                    // Paga uma vez por desafio; os contadores seguem a mesma regra. O
+                    // servidor decide de novo no sync, pela tabela dele.
+                    if is_correct && !challenge_id.is_empty() && !model.paid_challenges.contains(&challenge_id) {
+                        model.paid_challenges.push(challenge_id.clone());
+                        model.global_xp += match_engine::XP_PER_ACCEPTED;
                         match template.as_str() {
                             "SPOT_THE_BUG" => model.bugs_found += 1,
                             "DRY_RUN" => model.dry_runs_completed += 1,
@@ -1555,8 +1611,8 @@ Event::FetchChallenges => {
                     };
 
                     let payload = format!(
-                        r#"{{"letter":"{}","is_correct":{},"template_type":"{}","node_id":"{}"}}"#,
-                        letter, is_correct, template, model.match_node_id
+                        r#"{{"letter":"{}","is_correct":{},"template_type":"{}","node_id":"{}","challenge_id":"{}"}}"#,
+                        letter, is_correct, template, model.match_node_id, challenge_id
                     );
                     let action_id = format!("match_{}", timestamp);
                     let game_event = GameEvent::new(action_id.clone(), "MATCH_ANSWER".into(), payload, timestamp, previous_hash.clone());
@@ -1608,6 +1664,7 @@ Event::FetchChallenges => {
                             // encadeia a partir do gênesis e o servidor pede rebase.
                             model.last_hash = queue[queue.len() - 1].current_hash.clone();
                             model.pending_events = queue;
+                            credit_queued_answers(model);
                         }
                     }
                 }
@@ -1815,6 +1872,15 @@ Event::FetchChallenges => {
             }
         }
 
+        // Problema a problema, na ordem das letras da partida — a mesma ordem em que
+        // `StartMatch` as distribui.
+        for node in computed_nodes.iter_mut() {
+            node.problems_solved = model.challenges.iter()
+                .filter(|c| c.node_id == node.id)
+                .map(|c| model.paid_challenges.contains(&c.id))
+                .collect();
+        }
+
         // "N balões no ar" conta nós conquistados, não problemas aceitos.
         let balloons_up = computed_nodes
             .iter()
@@ -1990,6 +2056,7 @@ mod tests {
             required_xp: 0,
             prerequisites: vec![],
             status: Default::default(),
+            problems_solved: vec![],
         }];
 
         let mut cmd = app.update(Event::Logout, &mut model);
@@ -2112,6 +2179,154 @@ mod tests {
         );
     }
 
+    /// Rejogar um desafio que já pagou não paga de novo — nem XP, nem contador.
+    ///
+    /// Cada aceito somava 50, e repetir o nó 1 abria o nó 7.
+    #[test]
+    fn test_a_challenge_pays_only_the_first_time() {
+        use crate::domain::{Challenge, ChallengeContent, ChallengePayload, ChallengeValidation};
+        const NODE: &str = "10000000-0000-0000-0000-000000000001";
+
+        let bug = |id: &str| Challenge {
+            id: id.into(),
+            node_id: NODE.into(),
+            template_type: "SPOT_THE_BUG".into(),
+            origin: String::new(),
+            payload: ChallengePayload {
+                content: ChallengeContent {
+                    title: "Soma de Dois Números".into(),
+                    description: "Ache o laço infinito.".into(),
+                    code_lines: vec!["while (a < b) {".into(), "    a = a;".into()],
+                    options: None,
+                    correct_options: None,
+                    watch_variables: None,
+                    watch_note: None,
+                    seconds: None,
+                },
+                validation: ChallengeValidation {
+                    validation_type: "LINE_MATCH".into(),
+                    correct_line: Some(2),
+                    expected_string: None,
+                    explanation: None,
+                },
+            },
+        };
+
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.challenges = vec![bug("ch_001"), bug("ch_002")];
+        model.nodes = vec![crate::domain::SkillNode {
+            id: NODE.into(),
+            name: "Nó A".into(),
+            description: "".into(),
+            row: 0,
+            column: 0,
+            required_xp: 0,
+            prerequisites: vec![],
+            status: Default::default(),
+            problems_solved: vec![],
+        }];
+
+        let play = |model: &mut Model, first_ts: i64| {
+            let _ = app.update(Event::StartMatch { node_id: NODE.into() }, model);
+            for i in 0..2 {
+                let _ = app.update(Event::MatchSelectLine { line: 1 }, model);
+                let _ = app.update(Event::MatchSubmit { timestamp: first_ts + i }, model);
+            }
+        };
+
+        play(&mut model, 1_700_000_000);
+        assert_eq!(model.global_xp, 100);
+        assert_eq!(model.bugs_found, 2);
+        let view = app.view(&model);
+        assert_eq!(view.nodes[0].problems_solved, vec![true, true]);
+        assert_eq!(view.match_view.xp_earned, 100);
+
+        play(&mut model, 1_700_000_100);
+        assert_eq!(model.global_xp, 100, "rejogar não paga XP");
+        assert_eq!(model.bugs_found, 2, "o bug já tinha sido achado");
+        let view = app.view(&model);
+        assert_eq!(view.match_view.xp_earned, 0);
+        assert!(view.match_view.balloon_states.iter().all(|b| b.is_accepted && b.already_paid));
+
+        let last = model.pending_events.iter().rev()
+            .find(|e| e.event_type == "MATCH_ANSWER")
+            .expect("a resposta vira evento de sync");
+        assert!(
+            last.payload_json.contains(r#""challenge_id":"ch_002""#),
+            "sem challenge_id o servidor não sabe se já pagou: {}",
+            last.payload_json
+        );
+    }
+
+    /// O que está na fila o servidor ainda não viu: continua pago depois do login, e o
+    /// XP dele continua na conta. Sem isto, o desafio aparecia resolvido e o XP sumido —
+    /// e como rejogar não paga mais, ele não voltava até o sync.
+    #[test]
+    fn test_paid_challenges_from_the_server_keep_the_queued_ones() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("tok".into());
+        let genesis = "0".repeat(64);
+        model.pending_events = vec![
+            GameEvent::new("match_1".into(), "MATCH_ANSWER".into(),
+                r#"{"is_correct":true,"template_type":"DRY_RUN","challenge_id":"ch_fila"}"#.into(), 1, genesis.clone()),
+            GameEvent::new("match_2".into(), "MATCH_ANSWER".into(),
+                r#"{"is_correct":false,"challenge_id":"ch_errado"}"#.into(), 2, genesis),
+        ];
+
+        let body = serde_json::to_vec(&serde_json::json!({
+            "global_xp": 50, "bugs_found": 1, "dry_runs_completed": 0, "nodes": [],
+            "paid_challenge_ids": ["ch_servidor"]
+        })).unwrap();
+        let _ = app.update(
+            Event::ProgressFetched(HttpResult::Ok(crux_http::protocol::HttpResponse {
+                status: 200, headers: vec![], body,
+            })),
+            &mut model,
+        );
+
+        assert_eq!(model.paid_challenges, vec!["ch_servidor".to_string(), "ch_fila".to_string()]);
+        assert_eq!(model.global_xp, 100, "os 50 do servidor mais os 50 da fila");
+        assert_eq!(model.dry_runs_completed, 1);
+
+        // Chegar de novo não paga duas vezes: a fila já está na lista.
+        let body = serde_json::to_vec(&serde_json::json!({
+            "global_xp": 100, "bugs_found": 1, "dry_runs_completed": 1, "nodes": [],
+            "paid_challenge_ids": ["ch_servidor", "ch_fila"]
+        })).unwrap();
+        let _ = app.update(
+            Event::ProgressFetched(HttpResult::Ok(crux_http::protocol::HttpResponse {
+                status: 200, headers: vec![], body,
+            })),
+            &mut model,
+        );
+        assert_eq!(model.global_xp, 100);
+    }
+
+    /// Visitante não tem retrato: reabrir o app com a fila cheia devolve o XP dela.
+    #[test]
+    fn test_reopening_with_a_queue_gives_its_xp_back() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let queue = vec![GameEvent::new("match_1".into(), "MATCH_ANSWER".into(),
+            r#"{"is_correct":true,"template_type":"SPOT_THE_BUG","challenge_id":"ch_001"}"#.into(),
+            1, "0".repeat(64))];
+
+        let _ = app.update(
+            Event::OfflineQueueRestored(KeyValueResult::Ok {
+                response: KeyValueResponse::Get {
+                    value: crux_kv::Value::Bytes(serde_json::to_vec(&queue).unwrap()),
+                },
+            }),
+            &mut model,
+        );
+
+        assert_eq!(model.global_xp, 50);
+        assert_eq!(model.bugs_found, 1);
+        assert_eq!(model.paid_challenges, vec!["ch_001".to_string()]);
+    }
+
     /// Uma semente mínima, na forma que `just seed-bundle` gera.
     #[cfg(test)]
     fn seed_json() -> String {
@@ -2187,6 +2402,7 @@ mod tests {
             required_xp: 60,
             prerequisites: vec![],
             status: Default::default(),
+            problems_solved: vec![],
         }];
         let _ = app.update(Event::BundledTrailLoaded { json: seed_json() }, &mut model);
         assert_eq!(model.nodes.len(), 1);

@@ -137,7 +137,13 @@ pub struct MatchProblem {
     pub seconds: i32,
     pub watch_variables: Vec<crate::domain::WatchVariable>, // Para DRY_RUN
     pub watch_note: String,         // Para DRY_RUN
+    /// O desafio já rendeu XP antes desta partida. Aceitar de novo não paga, e o
+    /// relatório diz isso em vez de deixar o `+0` parecer defeito.
+    pub already_paid: bool,
 }
+
+/// XP de um aceito que ainda não tinha pago. O servidor aplica a mesma regra.
+pub const XP_PER_ACCEPTED: i32 = 50;
 
 /// Um erro da sessão, guardado para a revisão do relatório pós-partida.
 /// Um por problema errado — o relatório lista todos, não só o último.
@@ -211,6 +217,8 @@ pub struct MatchViewModel {
     pub total_problems: i32,
     pub solved_count: i32,
     pub balloon_states: Vec<BalloonState>,
+    /// XP que a partida rendeu: só os aceitos que ainda não tinham pago.
+    pub xp_earned: i32,
     pub selected_line: i32,              // -1 = nenhuma
     pub answer_string: String,
     pub drop_time: String,
@@ -232,6 +240,8 @@ pub struct MatchViewModel {
 pub struct BalloonState {
     pub letter: String,
     pub is_accepted: bool,
+    /// Já tinha rendido XP antes desta partida.
+    pub already_paid: bool,
 }
 
 impl MatchState {
@@ -491,8 +501,12 @@ impl MatchState {
             BalloonState {
                 letter: p.letter.clone(),
                 is_accepted: self.verdicts.get(&letter) == Some(&VerdictCode::Accepted),
+                already_paid: p.already_paid,
             }
         }).collect();
+        let xp_earned = balloon_states.iter()
+            .filter(|b| b.is_accepted && !b.already_paid)
+            .count() as i32 * XP_PER_ACCEPTED;
 
         MatchViewModel {
             is_active: self.is_active,
@@ -517,6 +531,7 @@ impl MatchState {
             total_problems: self.problems.len() as i32,
             solved_count: self.solved_count(),
             balloon_states,
+            xp_earned,
             selected_line: self.selection.selected_line.unwrap_or(-1),
             answer_string: self.selection.answer_string.clone().unwrap_or_default(),
             drop_time: self.selection.drop_time.clone().unwrap_or_default(),
@@ -558,6 +573,7 @@ mod tests {
                 seconds: 60,
                 watch_variables: vec![],
                 watch_note: String::new(),
+                already_paid: false,
             },
             MatchProblem {
                 letter: "B".into(),
@@ -576,6 +592,7 @@ mod tests {
                 seconds: 60,
                 watch_variables: vec![],
                 watch_note: String::new(),
+                already_paid: false,
             },
             MatchProblem {
                 letter: "C".into(),
@@ -594,6 +611,7 @@ mod tests {
                 seconds: 60,
                 watch_variables: vec![],
                 watch_note: String::new(),
+                already_paid: false,
             },
             MatchProblem {
                 letter: "D".into(),
@@ -615,6 +633,7 @@ mod tests {
                     value: "0".into(),
                 }],
                 watch_note: "antes da linha 2".into(),
+                already_paid: false,
             },
         ]
     }

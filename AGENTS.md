@@ -36,6 +36,22 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    que sofrem `UPDATE` de verdade. `game_events` é append-only por desenho e só precisa
    de `created_at`; `schema_migrations` resolve o dela com `applied_at`.
 
+6. **Todo texto que o jogador lê ou ouve sai do catálogo de i18n, nunca de literal no código.**
+   Vale para rótulo, botão, legenda, veredito e `accessibilityLabel`, em qualquer cliente.
+   A chave vai em `i18n/keys.toml` (com `placeholders` tipados e `plural = true` quando o
+   número muda a frase), o texto em `i18n/locales/pt-BR.toml` **e** `en.toml`, e
+   `just i18n` gera os acessores — no iOS, `Str.<Grupo>.<chave>`. O Core manda chave
+   (`StatusKey`), nunca frase: ele não sabe em que língua o app está.
+
+   Nome de chave não pode ser palavra reservada do Swift ou do Kotlin (`continue`,
+   `default`, `in`…): vira identificador no código gerado.
+
+   **Estado atual, para quem for mexer:** várias telas ainda têm literal em português
+   (`INFLANDO`, `CONQUISTADO`, `VEM DE`, `CONTEST ENCERRADO`, …). Isso é dívida, não
+   padrão a seguir. String nova entra no catálogo; string velha que você tocar, migre
+   junto. O simulador em inglês denuncia o que ficou de fora: a tela sai metade em cada
+   língua.
+
 ## 🔄 Fluxo de Trabalho do Agente
 1. Ao iniciar, revise sempre se as dependências do `Crux` e o pacote `boltffi` exigem recompilação (`cargo build --features codegen`).
 2. Atualize o `codegen` e rode-o se você tocar nas definições de tipagem (`shared_core/src/bin/codegen.rs`).

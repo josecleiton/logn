@@ -53,6 +53,24 @@ stay = "Continuar jogando"
 confirm = "Sair mesmo assim"
 accessibility = "Sair da partida"
 
+[solved]
+inflating = "INFLANDO · %{solved}/%{total} RESOLVIDOS"
+node_accessibility = "%{solved} de %{total} problemas resolvidos"
+problems = "PROBLEMAS"
+count = "%{solved} de %{total} resolvidos"
+done = "FEITO"
+worth = "+%{xp} XP"
+problem_done_accessibility = "problema %{letter}, já resolvido"
+problem_open_accessibility = "problema %{letter}, vale %{xp} XP"
+in_play = "EM JOGO"
+start = "Começar partida"
+resume = "Continuar"
+replay = "Jogar de novo"
+verdict = "JÁ RESOLVIDO · SEM XP"
+verdict_accessibility = "Aceito. Balão %{letter} no ar. Já resolvido antes, sem XP."
+report_xp = "+%{xp} XP"
+report_repeated = { one = "%{count} já resolvido antes, sem XP", other = "%{count} já resolvidos antes, sem XP" }
+
 [origin]
 eyebrow = "Origem do problema"
 origin_name = "Farias"

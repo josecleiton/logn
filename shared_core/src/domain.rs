@@ -320,6 +320,11 @@ pub struct SkillNode {
     /// autenticado via uma árvore vazia sem erro nenhum aparecer.
     #[serde(default)]
     pub status: NodeStatus,
+    /// Um por problema do nó, na ordem das letras: `true` quando ele já rendeu XP.
+    /// Derivado em `view()`, como `status`. É o que a trilha conta (`3/5`) e o que o
+    /// sheet desenha balão a balão.
+    #[serde(default)]
+    pub problems_solved: Vec<bool>,
 }
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]

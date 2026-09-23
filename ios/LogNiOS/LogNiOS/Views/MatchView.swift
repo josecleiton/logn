@@ -51,7 +51,9 @@ struct MatchView: View {
                     trapTitle: mv.trapTitle,
                     trapExplanation: mv.trapExplanation,
                     matchOver: !mv.isActive,
-                    xpAward: 50,
+                    // Aceito de desafio que já pagou não paga de novo: o veredito não
+                    // pode prometer o XP que não vai entrar.
+                    xpAward: mv.balloonStates.first { $0.letter == String(verdict.letter) }?.alreadyPaid == true ? 0 : 50,
                     onContinue: dismissVerdict
                 )
                 .transition(.opacity)
@@ -496,15 +498,25 @@ struct MatchVerdictScreen: View {
                 .tracking(0.12 * 13)
                 .foregroundColor(LognDark.correctInk)
 
-            Text("+\(xpAward) XP")
-                .font(.plexMonoSemiBold(20))
-                .foregroundColor(LognDark.textPrimary)
-                .padding(.top, 18)
+            if xpAward > 0 {
+                Text("+\(xpAward) XP")
+                    .font(.plexMonoSemiBold(20))
+                    .foregroundColor(LognDark.textPrimary)
+                    .padding(.top, 18)
+            } else {
+                Text(Str.Solved.verdict)
+                    .font(.plexMono(13))
+                    .tracking(0.12 * 13)
+                    .foregroundColor(LognDark.textMuted)
+                    .padding(.top, 18)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(LognDark.tintOk)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Accepted. Balão \(snapshot.letter) no ar. Mais \(xpAward) XP.")
+        .accessibilityLabel(xpAward > 0
+            ? "Accepted. Balão \(snapshot.letter) no ar. Mais \(xpAward) XP."
+            : Str.Solved.verdict_accessibility(String(snapshot.letter)))
     }
 
     // MARK: Palco do erro
@@ -671,6 +683,8 @@ struct MatchReportView: View {
                 Spacer(minLength: 0)
             }
             .padding(.top, 14)
+
+            xpLine.padding(.top, 12)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
@@ -680,6 +694,21 @@ struct MatchReportView: View {
         .overlay(alignment: .bottom) {
             Rectangle().frame(height: 1).foregroundColor(LognDark.line)
         }
+    }
+
+    /// O XP da partida, e por que ele não é aceitos × 50 quando não é.
+    ///
+    /// Aceito que já tinha pago não paga de novo. Sem dizer isso, o jogador que rejoga
+    /// um nó vê o XP parado e conclui que o app quebrou.
+    private var xpLine: some View {
+        let repeated = mv.balloonStates.filter { $0.isAccepted && $0.alreadyPaid }.count
+        var text = Str.Solved.report_xp(Int(mv.xpEarned))
+        if repeated > 0 {
+            text += " · " + Str.Solved.report_repeated(repeated)
+        }
+        return Text(text)
+            .font(.plexMono(11))
+            .foregroundColor(mv.xpEarned > 0 ? LognDark.textSecondary : LognDark.textMuted)
     }
 
     private var review: some View {

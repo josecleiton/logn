@@ -240,6 +240,9 @@ type UserStats struct {
 	BugsFound        int            `json:"bugs_found"`
 	DryRunsCompleted int            `json:"dry_runs_completed"`
 	Nodes            []UserProgress `json:"nodes"`
+	// Desafios que já renderam XP. O cliente precisa deles para não prometer XP de novo
+	// por um desafio que o servidor não vai pagar, inclusive depois de trocar de aparelho.
+	PaidChallengeIDs []string `json:"paid_challenge_ids"`
 }
 
 func (r *Repository) GetUserStats(ctx context.Context, userID string) (UserStats, error) {
@@ -261,7 +264,22 @@ func (r *Repository) GetUserStats(ctx context.Context, userID string) (UserStats
 	if stats.Nodes == nil {
 		stats.Nodes = []UserProgress{}
 	}
-	return stats, nil
+
+	rows, err := r.db.Query(ctx,
+		`SELECT challenge_id FROM user_paid_challenges WHERE user_id = $1 ORDER BY challenge_id`, userID)
+	if err != nil {
+		return stats, err
+	}
+	defer rows.Close()
+	stats.PaidChallengeIDs = []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return stats, err
+		}
+		stats.PaidChallengeIDs = append(stats.PaidChallengeIDs, id)
+	}
+	return stats, rows.Err()
 }
 
 func (r *Repository) GetSkillNodes(ctx context.Context) ([]SkillNode, error) {

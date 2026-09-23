@@ -27,6 +27,24 @@ func (r *Repository) ProcessEventXP(ctx context.Context, tx pgx.Tx, userID strin
 			return nil
 		}
 
+		// Paga uma vez por desafio. Rejogar um nó pagava de novo, e os portões da trilha
+		// viravam moagem. Resposta sem `challenge_id` não tem como provar que é a
+		// primeira, então não paga: é o evento de um app anterior a esta regra.
+		if payload.ChallengeID == "" {
+			return nil
+		}
+		paid, err := tx.Exec(ctx, `
+			INSERT INTO user_paid_challenges (user_id, challenge_id)
+			VALUES ($1, $2)
+			ON CONFLICT (user_id, challenge_id) DO NOTHING`,
+			userID, payload.ChallengeID)
+		if err != nil {
+			return fmt.Errorf("failed to record paid challenge: %w", err)
+		}
+		if paid.RowsAffected() == 0 {
+			return nil
+		}
+
 		bugsEarned := 0
 		if payload.TemplateType == "SPOT_THE_BUG" {
 			bugsEarned = 1

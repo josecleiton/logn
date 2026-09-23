@@ -39,6 +39,7 @@ backend/schema/migrations/*.sql
 !backend/schema/migrations/0010_challenges_origin.sql
 !backend/schema/migrations/0013_carimbos_de_tempo.sql
 !backend/schema/migrations/0031_endurece_autenticacao.sql
+!backend/schema/migrations/0032_xp_paga_uma_vez.sql
 
 # O documento que ensina a escrever desafio, e o gerador do conteúdo.
 docs/testing/prompt-seed-desafios.md

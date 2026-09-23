@@ -61,6 +61,26 @@ stay = {}
 confirm = {}
 accessibility = {}
 
+# Desafio que já rendeu XP. Rejogar não paga de novo, e a trilha, o sheet do nó, o
+# veredito e o relatório dizem isso — sem aviso, o XP parado parece defeito.
+[groups.solved.keys]
+inflating = { placeholders = [{ name = "solved", type = "int" }, { name = "total", type = "int" }] }
+node_accessibility = { placeholders = [{ name = "solved", type = "int" }, { name = "total", type = "int" }] }
+problems = {}
+count = { placeholders = [{ name = "solved", type = "int" }, { name = "total", type = "int" }] }
+done = {}
+worth = { placeholders = [{ name = "xp", type = "int" }] }
+problem_done_accessibility = { placeholders = [{ name = "letter", type = "text" }] }
+problem_open_accessibility = { placeholders = [{ name = "letter", type = "text" }, { name = "xp", type = "int" }] }
+in_play = {}
+start = {}
+resume = {}
+replay = {}
+verdict = {}
+verdict_accessibility = { placeholders = [{ name = "letter", type = "text" }] }
+report_xp = { placeholders = [{ name = "xp", type = "int" }] }
+report_repeated = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+
 # Origem do desafio. A chave vem do Core (a coluna `origin`); a cópia mora aqui.
 [groups.origin.keys]
 eyebrow = {}

@@ -53,6 +53,24 @@ stay = "Keep playing"
 confirm = "Leave anyway"
 accessibility = "Leave the match"
 
+[solved]
+inflating = "INFLATING · %{solved}/%{total} SOLVED"
+node_accessibility = "%{solved} of %{total} problems solved"
+problems = "PROBLEMS"
+count = "%{solved} of %{total} solved"
+done = "DONE"
+worth = "+%{xp} XP"
+problem_done_accessibility = "problem %{letter}, already solved"
+problem_open_accessibility = "problem %{letter}, worth %{xp} XP"
+in_play = "IN PLAY"
+start = "Start match"
+resume = "Continue"
+replay = "Play again"
+verdict = "SOLVED BEFORE · NO XP"
+verdict_accessibility = "Accepted. Balloon %{letter} up. Solved before, no XP."
+report_xp = "+%{xp} XP"
+report_repeated = { one = "%{count} solved before, no XP", other = "%{count} solved before, no XP" }
+
 [origin]
 eyebrow = "Where this problem came from"
 origin_name = "Farias"
