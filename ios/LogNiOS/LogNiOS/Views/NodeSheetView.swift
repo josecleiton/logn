@@ -37,7 +37,7 @@ struct NodeSheetView: View {
     private var openCount: Int { node.problemsSolved.count - solvedCount }
     private var showsProblems: Bool { node.status != .locked && !node.problemsSolved.isEmpty }
 
-    private var topic: LognTopic { LognTopic.of(nodeName: node.name) }
+    private var topic: LognTopic { LognTopic.of(node: node) }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -159,8 +159,8 @@ struct NodeSheetView: View {
                 ForEach(Array(nodes.prefix(2).enumerated()), id: \.element.id) { index, neighbour in
                     HStack(spacing: 9) {
                         TopicIcon(
-                            topic: LognTopic.of(nodeName: neighbour.name),
-                            color: isUpstream ? LognTopic.of(nodeName: neighbour.name).color : LognDark.textMuted,
+                            topic: LognTopic.of(node: neighbour),
+                            color: isUpstream ? LognTopic.of(node: neighbour).color : LognDark.textMuted,
                             size: 17
                         )
                         Text(neighbour.name)

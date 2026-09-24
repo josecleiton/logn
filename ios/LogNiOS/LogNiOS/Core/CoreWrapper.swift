@@ -53,7 +53,7 @@ public class CoreWrapper: ObservableObject {
             passwordResetDone: false,
             displayName: "",
             matchView: MatchViewModel(
-                isActive: false, currentLetter: "", currentTitle: "", currentDescription: .findTheBug,
+                isActive: false, currentLetter: "", currentTitle: "", currentDescription: "",
                 currentTemplateType: "", currentCodeLines: [], currentOptions: [],
                 maxSelections: 0, currentOrigin: "", originSheet: "", originSheetPaused: false,
                 leavePending: false, solvedSoFar: 0,
@@ -62,7 +62,7 @@ public class CoreWrapper: ObservableObject {
                 totalProblems: 0, solvedCount: 0, balloonStates: [], xpEarned: 0,
                 selectedLine: -1, answerString: "", dropTime: "", dropSpace: "",
                 selectedTags: [], predictedOutput: "", watchVariables: [], watchNote: "",
-                lastVerdict: "", errors: [], hasTrap: false, trapCategory: "",
+                lastVerdict: "", errors: [], hasTrap: false, trapKind: .wrongAnswer,
                 trapTitle: "", trapExplanation: ""
             ),
             contestName: "",

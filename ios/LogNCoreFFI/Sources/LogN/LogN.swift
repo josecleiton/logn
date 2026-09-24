@@ -174,7 +174,10 @@ public struct Challenge: Hashable, Equatable {
 
 public struct ChallengeContent: Hashable, Equatable {
     public var title: String
-    public var description: TrapKey
+    /// O enunciado, em texto, na língua em que o servidor mandou. Chegou a ser uma
+    /// chave do catálogo (`TrapKey`), e aí nenhum desafio de verdade desserializava:
+    /// o conteúdo vem do servidor, não do catálogo da interface.
+    public var description: String
     public var codeLines: [String]
     public var options: [String]?
     public var correctOptions: [String]?
@@ -189,7 +192,7 @@ public struct ChallengeContent: Hashable, Equatable {
     /// obrigar um número por desafio faz todo mundo copiar o do vizinho.
     public var seconds: Int32?
 
-    public init(title: String, description: TrapKey, codeLines: [String], options: [String]?, correctOptions: [String]?, watchVariables: [WatchVariable]?, watchNote: String?, seconds: Int32?) {
+    public init(title: String, description: String, codeLines: [String], options: [String]?, correctOptions: [String]?, watchVariables: [WatchVariable]?, watchNote: String?, seconds: Int32?) {
         self.title = title
         self.description = description
         self.codeLines = codeLines
@@ -203,7 +206,7 @@ public struct ChallengeContent: Hashable, Equatable {
     public func serialize<S: Serializer>(serializer: S) throws {
         try serializer.increase_container_depth()
         try serializer.serialize_str(value: self.title)
-        try self.description.serialize(serializer: serializer)
+        try serializer.serialize_str(value: self.description)
         try serializeArray(value: self.codeLines, serializer: serializer) { item, serializer in
             try serializer.serialize_str(value: item)
         }
@@ -240,7 +243,7 @@ public struct ChallengeContent: Hashable, Equatable {
     public static func deserialize<D: Deserializer>(deserializer: D) throws -> ChallengeContent {
         try deserializer.increase_container_depth()
         let title = try deserializer.deserialize_str()
-        let description = try LogN.TrapKey.deserialize(deserializer: deserializer)
+        let description = try deserializer.deserialize_str()
         let codeLines = try deserializeArray(deserializer: deserializer) { deserializer in
             try deserializer.deserialize_str()
         }
@@ -1852,15 +1855,21 @@ public struct MatchError: Hashable, Equatable {
     public var title: String
     /// Sigla do juiz: `WA`, `TLE`, …
     public var verdict: String
-    /// O que o jogador respondeu, já em texto legível.
+    /// O que o jogador respondeu, quando é texto (opção, saída, tags). Vazio no
+    /// SPOT_THE_BUG, que usa `given_line`.
     public var givenAnswer: String
+    /// Linha escolhida no SPOT_THE_BUG, a partir de 1. -1 quando não se aplica.
+    public var givenLine: Int32
+    /// A explicação do próprio desafio, crua — pode vir vazia. O cliente completa com a
+    /// frase genérica ou com o enquadramento do estouro de tempo, na língua dele.
     public var explanation: String
 
-    public init(letter: String, title: String, verdict: String, givenAnswer: String, explanation: String) {
+    public init(letter: String, title: String, verdict: String, givenAnswer: String, givenLine: Int32, explanation: String) {
         self.letter = letter
         self.title = title
         self.verdict = verdict
         self.givenAnswer = givenAnswer
+        self.givenLine = givenLine
         self.explanation = explanation
     }
 
@@ -1870,6 +1879,7 @@ public struct MatchError: Hashable, Equatable {
         try serializer.serialize_str(value: self.title)
         try serializer.serialize_str(value: self.verdict)
         try serializer.serialize_str(value: self.givenAnswer)
+        try serializer.serialize_i32(value: self.givenLine)
         try serializer.serialize_str(value: self.explanation)
         try serializer.decrease_container_depth()
     }
@@ -1886,9 +1896,10 @@ public struct MatchError: Hashable, Equatable {
         let title = try deserializer.deserialize_str()
         let verdict = try deserializer.deserialize_str()
         let givenAnswer = try deserializer.deserialize_str()
+        let givenLine = try deserializer.deserialize_i32()
         let explanation = try deserializer.deserialize_str()
         try deserializer.decrease_container_depth()
-        return MatchError(letter: letter, title: title, verdict: verdict, givenAnswer: givenAnswer, explanation: explanation)
+        return MatchError(letter: letter, title: title, verdict: verdict, givenAnswer: givenAnswer, givenLine: givenLine, explanation: explanation)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> MatchError {
@@ -1906,7 +1917,7 @@ public struct MatchViewModel: Hashable, Equatable {
     public var isActive: Bool
     public var currentLetter: String
     public var currentTitle: String
-    public var currentDescription: TrapKey
+    public var currentDescription: String
     public var currentTemplateType: String
     public var currentCodeLines: [String]
     public var currentOptions: [String]
@@ -1945,11 +1956,11 @@ public struct MatchViewModel: Hashable, Equatable {
     public var lastVerdict: String
     public var errors: [MatchError]
     public var hasTrap: Bool
-    public var trapCategory: String
+    public var trapKind: TrapKind
     public var trapTitle: String
     public var trapExplanation: String
 
-    public init(isActive: Bool, currentLetter: String, currentTitle: String, currentDescription: TrapKey, currentTemplateType: String, currentCodeLines: [String], currentOptions: [String], maxSelections: Int32, currentOrigin: String, originSheet: String, originSheetPaused: Bool, leavePending: Bool, solvedSoFar: Int32, lives: Int32, maxLives: Int32, penaltyMinutes: Int32, contestSeconds: Int32, questionSeconds: Int32, isFrozen: Bool, totalProblems: Int32, solvedCount: Int32, balloonStates: [BalloonState], xpEarned: Int32, selectedLine: Int32, answerString: String, dropTime: String, dropSpace: String, selectedTags: [String], predictedOutput: String, watchVariables: [WatchVariable], watchNote: String, lastVerdict: String, errors: [MatchError], hasTrap: Bool, trapCategory: String, trapTitle: String, trapExplanation: String) {
+    public init(isActive: Bool, currentLetter: String, currentTitle: String, currentDescription: String, currentTemplateType: String, currentCodeLines: [String], currentOptions: [String], maxSelections: Int32, currentOrigin: String, originSheet: String, originSheetPaused: Bool, leavePending: Bool, solvedSoFar: Int32, lives: Int32, maxLives: Int32, penaltyMinutes: Int32, contestSeconds: Int32, questionSeconds: Int32, isFrozen: Bool, totalProblems: Int32, solvedCount: Int32, balloonStates: [BalloonState], xpEarned: Int32, selectedLine: Int32, answerString: String, dropTime: String, dropSpace: String, selectedTags: [String], predictedOutput: String, watchVariables: [WatchVariable], watchNote: String, lastVerdict: String, errors: [MatchError], hasTrap: Bool, trapKind: TrapKind, trapTitle: String, trapExplanation: String) {
         self.isActive = isActive
         self.currentLetter = currentLetter
         self.currentTitle = currentTitle
@@ -1984,7 +1995,7 @@ public struct MatchViewModel: Hashable, Equatable {
         self.lastVerdict = lastVerdict
         self.errors = errors
         self.hasTrap = hasTrap
-        self.trapCategory = trapCategory
+        self.trapKind = trapKind
         self.trapTitle = trapTitle
         self.trapExplanation = trapExplanation
     }
@@ -1994,7 +2005,7 @@ public struct MatchViewModel: Hashable, Equatable {
         try serializer.serialize_bool(value: self.isActive)
         try serializer.serialize_str(value: self.currentLetter)
         try serializer.serialize_str(value: self.currentTitle)
-        try self.currentDescription.serialize(serializer: serializer)
+        try serializer.serialize_str(value: self.currentDescription)
         try serializer.serialize_str(value: self.currentTemplateType)
         try serializeArray(value: self.currentCodeLines, serializer: serializer) { item, serializer in
             try serializer.serialize_str(value: item)
@@ -2037,7 +2048,7 @@ public struct MatchViewModel: Hashable, Equatable {
             try item.serialize(serializer: serializer)
         }
         try serializer.serialize_bool(value: self.hasTrap)
-        try serializer.serialize_str(value: self.trapCategory)
+        try self.trapKind.serialize(serializer: serializer)
         try serializer.serialize_str(value: self.trapTitle)
         try serializer.serialize_str(value: self.trapExplanation)
         try serializer.decrease_container_depth()
@@ -2054,7 +2065,7 @@ public struct MatchViewModel: Hashable, Equatable {
         let isActive = try deserializer.deserialize_bool()
         let currentLetter = try deserializer.deserialize_str()
         let currentTitle = try deserializer.deserialize_str()
-        let currentDescription = try LogN.TrapKey.deserialize(deserializer: deserializer)
+        let currentDescription = try deserializer.deserialize_str()
         let currentTemplateType = try deserializer.deserialize_str()
         let currentCodeLines = try deserializeArray(deserializer: deserializer) { deserializer in
             try deserializer.deserialize_str()
@@ -2097,11 +2108,11 @@ public struct MatchViewModel: Hashable, Equatable {
             try LogN.MatchError.deserialize(deserializer: deserializer)
         }
         let hasTrap = try deserializer.deserialize_bool()
-        let trapCategory = try deserializer.deserialize_str()
+        let trapKind = try LogN.TrapKind.deserialize(deserializer: deserializer)
         let trapTitle = try deserializer.deserialize_str()
         let trapExplanation = try deserializer.deserialize_str()
         try deserializer.decrease_container_depth()
-        return MatchViewModel(isActive: isActive, currentLetter: currentLetter, currentTitle: currentTitle, currentDescription: currentDescription, currentTemplateType: currentTemplateType, currentCodeLines: currentCodeLines, currentOptions: currentOptions, maxSelections: maxSelections, currentOrigin: currentOrigin, originSheet: originSheet, originSheetPaused: originSheetPaused, leavePending: leavePending, solvedSoFar: solvedSoFar, lives: lives, maxLives: maxLives, penaltyMinutes: penaltyMinutes, contestSeconds: contestSeconds, questionSeconds: questionSeconds, isFrozen: isFrozen, totalProblems: totalProblems, solvedCount: solvedCount, balloonStates: balloonStates, xpEarned: xpEarned, selectedLine: selectedLine, answerString: answerString, dropTime: dropTime, dropSpace: dropSpace, selectedTags: selectedTags, predictedOutput: predictedOutput, watchVariables: watchVariables, watchNote: watchNote, lastVerdict: lastVerdict, errors: errors, hasTrap: hasTrap, trapCategory: trapCategory, trapTitle: trapTitle, trapExplanation: trapExplanation)
+        return MatchViewModel(isActive: isActive, currentLetter: currentLetter, currentTitle: currentTitle, currentDescription: currentDescription, currentTemplateType: currentTemplateType, currentCodeLines: currentCodeLines, currentOptions: currentOptions, maxSelections: maxSelections, currentOrigin: currentOrigin, originSheet: originSheet, originSheetPaused: originSheetPaused, leavePending: leavePending, solvedSoFar: solvedSoFar, lives: lives, maxLives: maxLives, penaltyMinutes: penaltyMinutes, contestSeconds: contestSeconds, questionSeconds: questionSeconds, isFrozen: isFrozen, totalProblems: totalProblems, solvedCount: solvedCount, balloonStates: balloonStates, xpEarned: xpEarned, selectedLine: selectedLine, answerString: answerString, dropTime: dropTime, dropSpace: dropSpace, selectedTags: selectedTags, predictedOutput: predictedOutput, watchVariables: watchVariables, watchNote: watchNote, lastVerdict: lastVerdict, errors: errors, hasTrap: hasTrap, trapKind: trapKind, trapTitle: trapTitle, trapExplanation: trapExplanation)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> MatchViewModel {
@@ -2435,6 +2446,10 @@ public struct SkillNode: Hashable, Equatable {
     public var column: Int32
     public var requiredXp: Int32
     public var prerequisites: [String]
+    /// Assunto do nó, neutro (`adhoc`, `graphs`): decide cor e ícone no cliente, que
+    /// antes adivinhava pelo nome — e o nome agora muda com a língua. Vazio quando o
+    /// servidor ou o retrato antigo não mandam.
+    public var topic: String
     /// Derivado em `view()` a partir do XP e do DAG, nunca persistido: o Go não manda
     /// este campo, e sem o `default` a lista inteira falhava no `serde` — o usuário
     /// autenticado via uma árvore vazia sem erro nenhum aparecer.
@@ -2444,7 +2459,7 @@ public struct SkillNode: Hashable, Equatable {
     /// sheet desenha balão a balão.
     public var problemsSolved: [Bool]
 
-    public init(id: String, name: String, description: String, row: Int32, column: Int32, requiredXp: Int32, prerequisites: [String], status: NodeStatus, problemsSolved: [Bool]) {
+    public init(id: String, name: String, description: String, row: Int32, column: Int32, requiredXp: Int32, prerequisites: [String], topic: String, status: NodeStatus, problemsSolved: [Bool]) {
         self.id = id
         self.name = name
         self.description = description
@@ -2452,6 +2467,7 @@ public struct SkillNode: Hashable, Equatable {
         self.column = column
         self.requiredXp = requiredXp
         self.prerequisites = prerequisites
+        self.topic = topic
         self.status = status
         self.problemsSolved = problemsSolved
     }
@@ -2467,6 +2483,7 @@ public struct SkillNode: Hashable, Equatable {
         try serializeArray(value: self.prerequisites, serializer: serializer) { item, serializer in
             try serializer.serialize_str(value: item)
         }
+        try serializer.serialize_str(value: self.topic)
         try self.status.serialize(serializer: serializer)
         try serializeArray(value: self.problemsSolved, serializer: serializer) { item, serializer in
             try serializer.serialize_bool(value: item)
@@ -2491,12 +2508,13 @@ public struct SkillNode: Hashable, Equatable {
         let prerequisites = try deserializeArray(deserializer: deserializer) { deserializer in
             try deserializer.deserialize_str()
         }
+        let topic = try deserializer.deserialize_str()
         let status = try LogN.NodeStatus.deserialize(deserializer: deserializer)
         let problemsSolved = try deserializeArray(deserializer: deserializer) { deserializer in
             try deserializer.deserialize_bool()
         }
         try deserializer.decrease_container_depth()
-        return SkillNode(id: id, name: name, description: description, row: row, column: column, requiredXp: requiredXp, prerequisites: prerequisites, status: status, problemsSolved: problemsSolved)
+        return SkillNode(id: id, name: name, description: description, row: row, column: column, requiredXp: requiredXp, prerequisites: prerequisites, topic: topic, status: status, problemsSolved: problemsSolved)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> SkillNode {
@@ -2571,6 +2589,13 @@ public struct StandingRow: Hashable, Equatable {
     }
 }
 
+/// O que o Core tem a dizer ao jogador, como **chave**, não como frase.
+/// 
+/// O Core escrevia a frase pronta em `status`, e ela vazava para a tela: a de login
+/// abria com "Logged out successfully", em inglês, no vermelho de erro, num app em
+/// português. A cópia vive em `i18n/locales/`; o cliente resolve a chave.
+/// 
+/// `Silent` é o estado normal — a maior parte do que acontece não precisa ser narrada.
 indirect public enum StatusKey: Hashable, Equatable {
     case silent
     case signingIn
@@ -2598,6 +2623,13 @@ indirect public enum StatusKey: Hashable, Equatable {
     /// O servidor respondeu 429. Os botões que batem nele ficam travados pela
     /// contagem do `Retry-After`, e a própria contagem aparece neles.
     case rateLimited
+    /// Os quatro abaixo vêm do código de erro da API (`invalid_email`,
+    /// `password_too_short`, `password_too_long`, `email_taken`). Antes todos viravam
+    /// "não deu para criar a conta", sem dizer o que corrigir.
+    case invalidEmail
+    case passwordTooShort
+    case passwordTooLong
+    case emailTaken
 
     public func serialize<S: Serializer>(serializer: S) throws {
         try serializer.increase_container_depth()
@@ -2650,6 +2682,14 @@ indirect public enum StatusKey: Hashable, Equatable {
             try serializer.serialize_variant_index(value: 22)
         case .rateLimited:
             try serializer.serialize_variant_index(value: 23)
+        case .invalidEmail:
+            try serializer.serialize_variant_index(value: 24)
+        case .passwordTooShort:
+            try serializer.serialize_variant_index(value: 25)
+        case .passwordTooLong:
+            try serializer.serialize_variant_index(value: 26)
+        case .emailTaken:
+            try serializer.serialize_variant_index(value: 27)
         }
         try serializer.decrease_container_depth()
     }
@@ -2736,6 +2776,18 @@ indirect public enum StatusKey: Hashable, Equatable {
         case 23:
             try deserializer.decrease_container_depth()
             return .rateLimited
+        case 24:
+            try deserializer.decrease_container_depth()
+            return .invalidEmail
+        case 25:
+            try deserializer.decrease_container_depth()
+            return .passwordTooShort
+        case 26:
+            try deserializer.decrease_container_depth()
+            return .passwordTooLong
+        case 27:
+            try deserializer.decrease_container_depth()
+            return .emailTaken
         default: throw DeserializationError.invalidInput(issue: "Unknown variant index for StatusKey: \(index)")
         }
     }
@@ -2970,42 +3022,19 @@ public struct TimerId: Hashable, Equatable {
     }
 }
 
-/// O que o Core tem a dizer ao jogador, como **chave**, não como frase.
-/// 
-/// O Core escrevia a frase pronta em `status`, e ela vazava para a tela: a de login
-/// abria com "Logged out successfully", em inglês, no vermelho de erro, num app em
-/// português. A cópia vive em `i18n/locales/`; o cliente resolve a chave.
-/// 
-/// `Silent` é o estado normal — a maior parte do que acontece não precisa ser narrada.
-indirect public enum TrapKey: Hashable, Equatable {
-    case findTheBug
-    case completeTheLine
-    case finalValueOfAcc
-    case complexity
-    case findTheCrash
-    case nullTerminatedString
-    case dynamicSubarrays
-    case twoPointers
+/// Por que o cartão de armadilha abriu. O texto do cartão sai do catálogo do cliente:
+/// o Core escrevia "TRAP CLÁSSICA" e "O relógio da questão zerou" em português.
+indirect public enum TrapKind: Hashable, Equatable {
+    case wrongAnswer
+    case timeLimit
 
     public func serialize<S: Serializer>(serializer: S) throws {
         try serializer.increase_container_depth()
         switch self {
-        case .findTheBug:
+        case .wrongAnswer:
             try serializer.serialize_variant_index(value: 0)
-        case .completeTheLine:
+        case .timeLimit:
             try serializer.serialize_variant_index(value: 1)
-        case .finalValueOfAcc:
-            try serializer.serialize_variant_index(value: 2)
-        case .complexity:
-            try serializer.serialize_variant_index(value: 3)
-        case .findTheCrash:
-            try serializer.serialize_variant_index(value: 4)
-        case .nullTerminatedString:
-            try serializer.serialize_variant_index(value: 5)
-        case .dynamicSubarrays:
-            try serializer.serialize_variant_index(value: 6)
-        case .twoPointers:
-            try serializer.serialize_variant_index(value: 7)
         }
         try serializer.decrease_container_depth()
     }
@@ -3016,39 +3045,21 @@ indirect public enum TrapKey: Hashable, Equatable {
         return serializer.get_bytes()
     }
 
-    public static func deserialize<D: Deserializer>(deserializer: D) throws -> TrapKey {
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> TrapKind {
         let index = try deserializer.deserialize_variant_index()
         try deserializer.increase_container_depth()
         switch index {
         case 0:
             try deserializer.decrease_container_depth()
-            return .findTheBug
+            return .wrongAnswer
         case 1:
             try deserializer.decrease_container_depth()
-            return .completeTheLine
-        case 2:
-            try deserializer.decrease_container_depth()
-            return .finalValueOfAcc
-        case 3:
-            try deserializer.decrease_container_depth()
-            return .complexity
-        case 4:
-            try deserializer.decrease_container_depth()
-            return .findTheCrash
-        case 5:
-            try deserializer.decrease_container_depth()
-            return .nullTerminatedString
-        case 6:
-            try deserializer.decrease_container_depth()
-            return .dynamicSubarrays
-        case 7:
-            try deserializer.decrease_container_depth()
-            return .twoPointers
-        default: throw DeserializationError.invalidInput(issue: "Unknown variant index for TrapKey: \(index)")
+            return .timeLimit
+        default: throw DeserializationError.invalidInput(issue: "Unknown variant index for TrapKind: \(index)")
         }
     }
 
-    public static func bincodeDeserialize(input: [UInt8]) throws -> TrapKey {
+    public static func bincodeDeserialize(input: [UInt8]) throws -> TrapKind {
         let deserializer = BincodeDeserializer.init(input: input);
         let obj = try deserialize(deserializer: deserializer)
         if deserializer.get_buffer_offset() < input.count {

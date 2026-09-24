@@ -32,18 +32,11 @@ pub struct MatchState {
     pub errors: Vec<MatchError>,
 }
 
-/// Descreve a resposta do jogador em texto, para a revisão. Vazio quando não respondeu.
-/// Último recurso, quando o desafio não traz explicação própria. Fala do que dá para
-/// falar sem conhecer o problema: os casos de borda.
-pub const GENERIC_WRONG_ANSWER: &str =
-    "A escolha não cobre todos os casos de entrada. Vale reler o enunciado olhando para os limites: o primeiro índice, o último, e o array vazio.";
-
+/// Descreve a resposta do jogador, para a revisão. Vazio quando não respondeu, e vazio
+/// no SPOT_THE_BUG: a linha vai em `MatchError::given_line`, e o cliente escreve
+/// "linha N" na língua dele — o Core escrevia "linha", em português, para todo mundo.
 fn describe_answer(template: &str, selection: &MatchSelection) -> String {
     match template {
-        "SPOT_THE_BUG" => selection
-            .selected_line
-            .map(|l| format!("linha {}", l + 1))
-            .unwrap_or_default(),
         "FILL_IN_THE_BLANK" => selection.answer_string.clone().unwrap_or_default(),
         "DRY_RUN" => selection.predicted_output.clone().unwrap_or_default(),
         "COMPLEXITY_MATCH" => match (&selection.drop_time, &selection.drop_space) {
@@ -118,7 +111,7 @@ pub struct MatchProblem {
     pub challenge_id: String,
     pub template_type: String,
     pub title: String,
-    pub description: crate::domain::TrapKey,
+    pub description: String,
     pub code_lines: Vec<String>,
     /// Índice da linha do bug em `code_lines`, **a partir de 0** — o mesmo que o
     /// toque devolve. O desafio a guarda a partir de 1; a conversão é feita ao montar.
@@ -154,17 +147,34 @@ pub struct MatchError {
     pub title: String,
     /// Sigla do juiz: `WA`, `TLE`, …
     pub verdict: String,
-    /// O que o jogador respondeu, já em texto legível.
+    /// O que o jogador respondeu, quando é texto (opção, saída, tags). Vazio no
+    /// SPOT_THE_BUG, que usa `given_line`.
     pub given_answer: String,
+    /// Linha escolhida no SPOT_THE_BUG, a partir de 1. -1 quando não se aplica.
+    pub given_line: i32,
+    /// A explicação do próprio desafio, crua — pode vir vazia. O cliente completa com a
+    /// frase genérica ou com o enquadramento do estouro de tempo, na língua dele.
     pub explanation: String,
+}
+
+/// Por que o cartão de armadilha abriu. O texto do cartão sai do catálogo do cliente:
+/// o Core escrevia "TRAP CLÁSSICA" e "O relógio da questão zerou" em português.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum TrapKind {
+    #[default]
+    WrongAnswer,
+    TimeLimit,
 }
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
 #[facet(fg::namespace = "LogN")]
 pub struct TrapInfo {
-    pub name: String,
-    pub category: String,   // ex: "TRAP CLÁSSICA"
+    pub kind: TrapKind,
+    /// Título do problema na resposta errada; vazio no estouro de tempo.
     pub title: String,
+    /// A explicação do desafio, crua — pode vir vazia.
     pub explanation: String,
 }
 
@@ -191,7 +201,7 @@ pub struct MatchViewModel {
     pub is_active: bool,
     pub current_letter: String,
     pub current_title: String,
-    pub current_description: crate::domain::TrapKey,
+    pub current_description: String,
     pub current_template_type: String,
     pub current_code_lines: Vec<String>,
     pub current_options: Vec<String>,
@@ -230,7 +240,7 @@ pub struct MatchViewModel {
     pub last_verdict: String,             // "", "AC", "WA", etc.
     pub errors: Vec<MatchError>,          // revisão do relatório pós-partida
     pub has_trap: bool,
-    pub trap_category: String,
+    pub trap_kind: TrapKind,
     pub trap_title: String,
     pub trap_explanation: String,
 }
@@ -289,6 +299,10 @@ impl MatchState {
             title: problem.title.clone(),
             verdict: verdict.code().to_string(),
             given_answer: describe_answer(&problem.template_type, &self.selection),
+            given_line: match (problem.template_type.as_str(), self.selection.selected_line) {
+                ("SPOT_THE_BUG", Some(l)) => l + 1,
+                _ => -1,
+            },
             explanation: explanation.to_string(),
         });
     }
@@ -376,23 +390,15 @@ impl MatchState {
             self.lives -= 1;
             self.penalty_minutes += 20;
             
-            let explanation: &str = if problem.explanation.is_empty() {
-                GENERIC_WRONG_ANSWER
-            } else {
-                &problem.explanation
-            };
+            // Explicação crua: sem ela, o cliente mostra a frase genérica do catálogo.
+            let explanation = problem.explanation.trim().to_string();
             let title = crate::app::strip_problem_letter(&problem.title);
 
             // Guarda o erro antes de limpar a seleção: a resposta dada é o que o
             // relatório mostra em "sua resposta".
-            self.record_error(&problem, &verdict, explanation);
+            self.record_error(&problem, &verdict, &explanation);
 
-            self.trap = Some(TrapInfo {
-                name: "Wrong Answer".into(),
-                category: "TRAP CLÁSSICA".into(),
-                title,
-                explanation: explanation.into(),
-            });
+            self.trap = Some(TrapInfo { kind: TrapKind::WrongAnswer, title, explanation });
         }
 
         // Limpa seleção e avança
@@ -429,26 +435,16 @@ impl MatchState {
 
         // O relógio estourar não muda o que o desafio tinha para ensinar, e quem
         // perdeu a vida no tempo é justamente quem ainda não sabe a resposta. O
-        // cartão traz o enquadramento do contest e, em seguida, a explicação do
-        // próprio problema — antes ela era descartada, e o estouro de tempo era o
-        // único jeito de errar sem aprender nada.
-        const CONTEXTO_TLE: &str = "No contest o tempo conta como resposta errada: o problema fica em aberto e a penalidade entra igual.";
-        let explanation = if problem.explanation.trim().is_empty() {
-            CONTEXTO_TLE.to_string()
-        } else {
-            format!("{} {}", CONTEXTO_TLE, problem.explanation.trim())
-        };
+        // cartão traz o enquadramento do contest (do catálogo, no cliente) e, em
+        // seguida, a explicação do próprio problema — antes ela era descartada, e o
+        // estouro de tempo era o único jeito de errar sem aprender nada.
+        let explanation = problem.explanation.trim().to_string();
 
         // Antes de limpar a seleção, para o relatório saber o que estava escolhido.
         self.record_error(&problem, &verdict, &explanation);
         self.selection = MatchSelection::default();
 
-        self.trap = Some(TrapInfo {
-            name: "Time Limit Exceeded".into(),
-            category: "TIME LIMIT EXCEEDED".into(),
-            title: "O relógio da questão zerou".into(),
-            explanation,
-        });
+        self.trap = Some(TrapInfo { kind: TrapKind::TimeLimit, title: String::new(), explanation });
 
         if self.lives > 0 {
             self.advance();
@@ -552,7 +548,7 @@ impl MatchState {
             last_verdict: self.last_verdict.as_ref().map(|v| v.code().to_string()).unwrap_or_default(),
             errors: self.errors.clone(),
             has_trap: self.trap.is_some(),
-            trap_category: self.trap.as_ref().map(|t| t.category.clone()).unwrap_or_default(),
+            trap_kind: self.trap.as_ref().map(|t| t.kind.clone()).unwrap_or_default(),
             trap_title: self.trap.as_ref().map(|t| t.title.clone()).unwrap_or_default(),
             trap_explanation: self.trap.as_ref().map(|t| t.explanation.clone()).unwrap_or_default(),
         }
@@ -570,7 +566,7 @@ mod tests {
                 challenge_id: "ch1".into(),
                 template_type: "SPOT_THE_BUG".into(),
                 title: "A · Soma de Dois Números".into(),
-                description: crate::domain::TrapKey::FindTheBug,
+                description: "Encontre o bug.".into(),
                 code_lines: vec!["int a = 0;".into(), "while (a < b)".into()],
                 correct_line: Some(1),
                 expected_string: None,
@@ -589,7 +585,7 @@ mod tests {
                 challenge_id: "ch2".into(),
                 template_type: "FILL_IN_THE_BLANK".into(),
                 title: "B · Maior de Dois".into(),
-                description: crate::domain::TrapKey::CompleteTheLine,
+                description: "Complete o retorno.".into(),
                 code_lines: vec!["int max2(int a, int b) {".into(), "    return a > b ? _____ : b;".into()],
                 correct_line: None,
                 expected_string: Some("a".into()),
@@ -608,7 +604,7 @@ mod tests {
                 challenge_id: "ch3".into(),
                 template_type: "TAG_THE_PATTERN".into(),
                 title: "C · Maior de Três".into(),
-                description: crate::domain::TrapKey::FindTheBug,
+                description: "Qual pattern?".into(),
                 code_lines: vec![],
                 correct_line: None,
                 expected_string: None,
@@ -627,7 +623,7 @@ mod tests {
                 challenge_id: "ch4".into(),
                 template_type: "DRY_RUN".into(),
                 title: "D · Somando o Contador".into(),
-                description: crate::domain::TrapKey::FinalValueOfAcc,
+                description: "Qual o valor final de acc?".into(),
                 code_lines: vec!["var acc = 0".into()],
                 correct_line: None,
                 expected_string: Some("6".into()),
@@ -764,8 +760,9 @@ mod tests {
         let e = &state.errors[0];
         assert_eq!(e.letter, "A");
         assert_eq!(e.verdict, "WA");
-        assert_eq!(e.given_answer, "linha 1", "a linha é exibida 1-based");
-        assert!(!e.explanation.is_empty());
+        assert_eq!(e.given_line, 1, "a linha vai 1-based");
+        assert_eq!(e.given_answer, "", "no SPOT a resposta é a linha; o cliente escreve \"linha N\"");
+        assert!(e.explanation.is_empty(), "sem explicação no desafio, vai vazia: o cliente põe a genérica");
     }
 
     #[test]
@@ -787,6 +784,7 @@ mod tests {
         assert_eq!(state.errors.len(), 2);
         assert_eq!(state.errors[1].letter, "B");
         assert_eq!(state.errors[1].given_answer, "errado");
+        assert_eq!(state.errors[1].given_line, -1, "FILL não tem linha");
         assert_eq!(state.to_view_model("").errors.len(), 2);
     }
 
@@ -798,7 +796,7 @@ mod tests {
 
         assert_eq!(state.errors.len(), 1);
         assert_eq!(state.errors[0].verdict, "TLE");
-        assert_eq!(state.errors[0].given_answer, "linha 1");
+        assert_eq!(state.errors[0].given_line, 1);
     }
 
     #[test]
@@ -814,35 +812,27 @@ mod tests {
         state.submit_tle();
 
         let trap = state.trap.as_ref().expect("o TLE tem de montar o cartão");
-        assert!(
-            trap.explanation.contains("penalidade entra igual"),
-            "o enquadramento do contest continua no cartão: {}",
-            trap.explanation
-        );
-        assert!(
-            trap.explanation.contains("Explicação do desafio de teste"),
-            "a explicação do desafio tem de sobreviver ao estouro: {}",
-            trap.explanation
-        );
+        assert_eq!(trap.kind, TrapKind::TimeLimit, "o cliente põe o enquadramento do contest pelo tipo");
+        assert_eq!(trap.explanation, "Explicação do desafio de teste.",
+            "a explicação do desafio tem de sobreviver ao estouro");
         assert_eq!(
             state.errors[0].explanation, trap.explanation,
             "o relatório pós-partida mostra o mesmo texto do cartão"
         );
+        assert_eq!(state.to_view_model("").trap_kind, TrapKind::TimeLimit);
     }
 
+    /// Nenhuma frase em português sai do motor: o cartão leva tipo, título e a
+    /// explicação do desafio, e o cliente monta o texto pelo catálogo.
     #[test]
-    fn test_timeout_without_explanation_keeps_only_the_generic_text() {
-        // `sample_problems` nasce com a explicação vazia, que é o caso do desafio
-        // que não trouxe uma: aí o cartão fica só com o enquadramento, sem sobra.
+    fn test_trap_carries_no_fixed_text() {
         let mut state = MatchState::new(sample_problems());
-        state.submit_tle();
-
+        state.selection.selected_line = Some(0);
+        state.submit();
         let trap = state.trap.as_ref().unwrap();
-        assert!(trap.explanation.contains("penalidade entra igual"));
-        assert!(
-            !trap.explanation.ends_with(' '),
-            "sem espaço pendurado quando não há o que emendar"
-        );
+        assert_eq!(trap.kind, TrapKind::WrongAnswer);
+        assert_eq!(trap.title, "Soma de Dois Números", "o título do problema, sem a letra");
+        assert!(trap.explanation.is_empty(), "sem explicação no desafio: o cliente põe a genérica");
     }
 
     #[test]

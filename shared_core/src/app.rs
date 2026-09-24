@@ -230,6 +230,11 @@ pub struct Model {
     pub legal_versions: Vec<(String, u32)>,
     /// País considerado na confirmação de idade, como o shell informou. Vai no cadastro.
     pub legal_country: String,
+    /// A semente do bundle, com as três línguas. Guardada para trocar de língua sem rede.
+    pub bundled_seed: Option<crate::domain::TrailSeed>,
+    /// Em que língua está o conteúdo que o modelo tem agora (`pt-BR`, `en`, `es`).
+    /// Vazio antes de qualquer conteúdo chegar.
+    pub content_locale: String,
     /// Idade mínima do país, como o servidor disse. 0 = ainda não se sabe.
     pub min_age: u32,
     /// Até quando a conta cuja exclusão acabou de ser pedida pode ser recuperada, em
@@ -486,6 +491,7 @@ fn save_offline_snapshot(model: &Model) -> Command<Effect, Event> {
         paid_challenge_ids: model.paid_challenges.clone(),
         nodes: model.nodes.clone(),
         challenges: model.challenges.clone(),
+        locale: model.content_locale.clone(),
     };
     Command::request_from_shell(KeyValueOperation::Set {
         key: "offline_snapshot".to_string(),
@@ -543,6 +549,9 @@ struct OfflineSnapshot {
     paid_challenge_ids: Vec<String>,
     nodes: Vec<crate::domain::SkillNode>,
     challenges: Vec<Challenge>,
+    /// Língua do conteúdo guardado. Vazio é o retrato de antes das línguas: pt-BR.
+    #[serde(default)]
+    locale: String,
 }
 
 /// Tira o "A · " da frente do nome do problema.
@@ -624,11 +633,61 @@ const DEFAULT_MIN_AGE: u32 = 13;
 /// mesma chave ao iniciar o PostHog, antes de o Core existir.
 const ANALYTICS_DISABLED_KEY: &str = "analytics_disabled";
 
+/// Põe no modelo a trilha da semente na língua pedida, ou em português se ela faltar.
+fn apply_seed(model: &mut Model, locale: &str) {
+    let Some(seed) = model.bundled_seed.as_ref() else { return };
+    let (used, trail) = match seed.locales.get(locale) {
+        Some(t) => (locale.to_string(), t.clone()),
+        None => match seed.locales.get("pt-BR") {
+            Some(t) => ("pt-BR".to_string(), t.clone()),
+            None => return,
+        },
+    };
+    model.nodes = trail.nodes;
+    model.challenges = trail.challenges;
+    model.content_locale = used;
+    model.trail_from_bundle = true;
+}
+
+/// A língua do conteúdo que o servidor mandou, do `Content-Language`. Servidor antigo
+/// não manda: vale a língua pedida.
+fn content_language(response: &crux_http::protocol::HttpResponse, asked: &str) -> String {
+    response
+        .headers
+        .iter()
+        .find(|h| h.name.eq_ignore_ascii_case("content-language"))
+        .map(|h| served_locale(h.value.trim()).to_string())
+        .unwrap_or_else(|| served_locale(asked).to_string())
+}
+
 /// Parte do corpo das respostas de login e troca de senha que o Core lê além da sessão.
 #[derive(Deserialize, Default)]
 struct RestoredFlag {
     #[serde(default)]
     account_restored: bool,
+}
+
+/// O código estável de um erro da API (`{"code": "email_taken", ...}`). O Core decide
+/// por ele, e nunca pela frase: `message` é para log, e servidor antigo mandava texto
+/// solto, que aqui vira `None`.
+fn api_code(body: &[u8]) -> Option<String> {
+    #[derive(Deserialize)]
+    struct ApiError { code: String }
+    serde_json::from_slice::<ApiError>(body).ok().map(|e| e.code)
+}
+
+/// O que dizer quando cadastro, envio de código ou troca de senha foi recusado por um
+/// dado que a pessoa pode corrigir. `None` para o resto, e quem chama cai na mensagem
+/// genérica da ação.
+fn status_for_input_error(body: &[u8]) -> Option<StatusKey> {
+    match api_code(body)?.as_str() {
+        "invalid_email" => Some(StatusKey::InvalidEmail),
+        "password_too_short" => Some(StatusKey::PasswordTooShort),
+        "password_too_long" => Some(StatusKey::PasswordTooLong),
+        "email_taken" => Some(StatusKey::EmailTaken),
+        "otp_invalid" => Some(StatusKey::CodeInvalid),
+        _ => None,
+    }
 }
 
 /// Lê `account_restored` do corpo. O servidor antigo não manda o campo: vale falso.
@@ -641,9 +700,10 @@ fn legal_versions_complete(versions: &[(String, u32)]) -> bool {
     LEGAL_KINDS.iter().all(|k| versions.iter().any(|(kind, _)| kind == k))
 }
 
-/// A língua em que o jogador leu os documentos, na forma do banco. É a língua do app,
-/// que o shell informa por `SetLocale`; sem ela, o português, que é o que prevalece.
-fn legal_locale(app_locale: &str) -> &'static str {
+/// A língua servida para a língua do app, na forma do banco: `pt-BR`, `en` ou `es`. É a
+/// língua em que o jogador leu os documentos e em que o conteúdo da trilha chega. Sem
+/// língua conhecida, o português, que é o que prevalece.
+fn served_locale(app_locale: &str) -> &'static str {
     let base = app_locale.split(['-', '_']).next().unwrap_or("").to_ascii_lowercase();
     match base.as_str() {
         "en" => "en",
@@ -654,7 +714,7 @@ fn legal_locale(app_locale: &str) -> &'static str {
 
 /// O aceite que vai no corpo do cadastro: um por documento, na versão vigente.
 fn legal_acceptances(versions: &[(String, u32)], app_locale: &str) -> serde_json::Value {
-    let locale = legal_locale(app_locale);
+    let locale = served_locale(app_locale);
     serde_json::Value::Array(
         LEGAL_KINDS
             .iter()
@@ -678,6 +738,13 @@ impl App for LogNApp {
             }
             Event::SetLocale(lang) => {
                 model.locale = lang;
+                // A língua mudou com conteúdo já na tela: troca pelo da semente, que vale
+                // sem rede, e pede ao servidor o da língua nova.
+                let wanted = served_locale(&model.locale);
+                if !model.content_locale.is_empty() && model.content_locale != wanted {
+                    apply_seed(model, wanted);
+                    return self.update(Event::FetchNodes, model).and(render::render());
+                }
                 Command::done()
             }
             Event::Ping => {
@@ -944,9 +1011,14 @@ impl App for LogNApp {
                         model.dry_runs_completed = snap.dry_runs_completed;
                         model.paid_challenges = snap.paid_challenge_ids;
                         credit_queued_answers(model);
-                        if !snap.nodes.is_empty() {
+                        let snap_locale = if snap.locale.is_empty() { "pt-BR".to_string() } else { snap.locale };
+                        // Retrato em outra língua (o app mudou de língua sem rede): o XP e
+                        // os desafios pagos valem, o texto não. Fica a semente, que já
+                        // entrou na língua certa, até a próxima busca com rede.
+                        if !snap.nodes.is_empty() && snap_locale == served_locale(&model.locale) {
                             model.nodes = snap.nodes;
                             model.challenges = snap.challenges;
+                            model.content_locale = snap_locale;
                             // O retrato é o que o servidor respondeu por esta conta, e
                             // é mais novo que a semente por definição.
                             model.trail_from_bundle = false;
@@ -1208,6 +1280,7 @@ impl App for LogNApp {
                                 // com sobra da semente.
                                 model.nodes = nodes;
                                 model.trail_from_bundle = false;
+                                model.content_locale = content_language(&response, &model.locale);
                                 model.status = "Skill tree loaded".to_string();
                             } else {
                                 model.status = "Failed to parse nodes".to_string();
@@ -1255,6 +1328,7 @@ Event::FetchChallenges => {
                             if let Ok(challenges) = serde_json::from_slice::<Vec<Challenge>>(&response.body) {
                                 model.challenges = challenges;
                                 model.trail_from_bundle = false;
+                                model.content_locale = content_language(&response, &model.locale);
                                 model.status = "Challenges loaded".to_string();
                                 // Nós e desafios confirmados pelo servidor: é o momento
                                 // de guardar o retrato que vai servir sem rede.
@@ -1305,13 +1379,19 @@ Event::FetchChallenges => {
                         // o rodapé de status. Sucesso é o campo de código aparecer.
                         model.status_key = StatusKey::Silent;
                     }
-                    // Pediu código de novo antes do intervalo do servidor, ou estourou o
-                    // limite por IP. Os dois voltam 429 com o mesmo corpo; trava só o
-                    // envio, porque o código que já chegou continua valendo.
+                    // Pediu código de novo antes do intervalo do servidor
+                    // (`otp_resend_too_soon`): trava só o envio, porque o código que já
+                    // chegou continua valendo. O limite por IP (`rate_limited`) barra
+                    // todas as rotas de conta, e trava tudo. Servidor antigo, sem código,
+                    // fica como era: só o envio.
                     HttpResult::Ok(response) if response.status == 429 => {
-                        return rate_limited(model, &response, true);
+                        let resend_only = api_code(&response.body).as_deref() != Some("rate_limited");
+                        return rate_limited(model, &response, resend_only);
                     }
-                    _ => {
+                    HttpResult::Ok(response) => {
+                        model.status_key = status_for_input_error(&response.body).unwrap_or(StatusKey::CodeSentFailed);
+                    }
+                    HttpResult::Err(_) => {
                         model.status_key = StatusKey::CodeSentFailed;
                     }
                 }
@@ -1420,14 +1500,20 @@ Event::FetchChallenges => {
                     HttpResult::Ok(response) if response.status == 429 => {
                         return rate_limited(model, &response, false);
                     }
-                    HttpResult::Ok(response) if response.status == 409 && response.body.starts_with(b"legal_version_outdated") => {
+                    // O prefixo de texto é o servidor antigo, de antes dos códigos.
+                    HttpResult::Ok(response) if response.status == 409
+                        && (api_code(&response.body).as_deref() == Some("legal_version_outdated")
+                            || response.body.starts_with(b"legal_version_outdated")) => {
                         // Saiu versão nova dos documentos enquanto a tela estava
                         // aberta. Busca a vigente; o próximo toque já aceita a certa.
                         model.status_key = StatusKey::AccountFailed;
                         let country = model.legal_country.clone();
                         return self.update(Event::FetchLegalVersions { country }, model).and(render::render());
                     }
-                    _ => {
+                    HttpResult::Ok(response) => {
+                        model.status_key = status_for_input_error(&response.body).unwrap_or(StatusKey::AccountFailed);
+                    }
+                    HttpResult::Err(_) => {
                         model.status_key = StatusKey::AccountFailed;
                     }
                 }
@@ -1639,7 +1725,10 @@ Event::FetchChallenges => {
                     HttpResult::Ok(response) if response.status == 429 => {
                         return rate_limited(model, &response, false);
                     }
-                    _ => {
+                    HttpResult::Ok(response) => {
+                        model.status_key = status_for_input_error(&response.body).unwrap_or(StatusKey::ResetFailed);
+                    }
+                    HttpResult::Err(_) => {
                         model.status_key = StatusKey::ResetFailed;
                     }
                 }
@@ -2012,19 +2101,29 @@ Event::FetchChallenges => {
             Event::BundledTrailLoaded { json } => {
                 match serde_json::from_str::<crate::domain::TrailSeed>(&json) {
                     Ok(seed) if seed.version == crate::domain::TRAIL_SEED_VERSION => {
+                        model.trail_generated_at = seed.generated_at.clone();
+                        let locale = served_locale(&model.locale);
+                        let (used, trail) = match seed.locales.get(locale) {
+                            Some(t) => (locale.to_string(), t.clone()),
+                            None => ("pt-BR".to_string(), seed.locales.get("pt-BR").cloned().unwrap_or_default()),
+                        };
+                        // Só enche o que está vazio: o que veio do servidor ou do retrato
+                        // é mais novo que a semente e manda.
                         let encheu = model.nodes.is_empty() || model.challenges.is_empty();
                         if model.nodes.is_empty() {
-                            model.nodes = seed.nodes;
+                            model.nodes = trail.nodes;
                         }
                         if model.challenges.is_empty() {
-                            model.challenges = seed.challenges;
+                            model.challenges = trail.challenges;
                         }
                         // Só marca quando a semente de fato entrou. Se o retrato já
                         // tinha enchido tudo, o jogador não está vendo conteúdo velho.
                         if encheu {
                             model.trail_from_bundle = true;
-                            model.trail_generated_at = seed.generated_at;
+                            model.content_locale = used;
                         }
+                        // Fica guardada: trocar a língua sem rede busca a trilha aqui.
+                        model.bundled_seed = Some(seed);
                     }
                     // Semente de outra versão é ignorada, não é erro: o app segue
                     // buscando pela rede como sempre buscou.
@@ -2393,7 +2492,7 @@ mod tests {
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
-                    description: crate::domain::TrapKey::FindTheBug,
+                    description: "Ache o laço infinito.".into(),
                     code_lines: vec![
                         "int l = 0, r = n - 1;".into(),
                         "while (a < b) {".into(),
@@ -2474,6 +2573,7 @@ mod tests {
             column: 0,
             required_xp: 0,
             prerequisites: vec![],
+            topic: String::new(),
             status: Default::default(),
             problems_solved: vec![],
         }];
@@ -2567,7 +2667,7 @@ mod tests {
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
-                    description: crate::domain::TrapKey::FindTheBug,
+                    description: "Ache o laço infinito.".into(),
                     code_lines: vec!["while (a < b) {".into(), "    a = a;".into()],
                     options: None,
                     correct_options: None,
@@ -2615,7 +2715,7 @@ mod tests {
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
-                    description: crate::domain::TrapKey::FindTheBug,
+                    description: "Ache o laço infinito.".into(),
                     code_lines: vec!["while (a < b) {".into(), "    a = a;".into()],
                     options: None,
                     correct_options: None,
@@ -2643,6 +2743,7 @@ mod tests {
             column: 0,
             required_xp: 0,
             prerequisites: vec![],
+            topic: String::new(),
             status: Default::default(),
             problems_solved: vec![],
         }];
@@ -2750,16 +2851,19 @@ mod tests {
     /// Uma semente mínima, na forma que `just seed-bundle` gera.
     #[cfg(test)]
     fn seed_json() -> String {
+        let node = |name: &str| serde_json::json!({
+            "id": "10000000-0000-0000-0000-000000000001",
+            "name": name,
+            "description": "Descrição do nó A.",
+            "row": 0, "column": 0, "required_xp": 0, "prerequisites": [], "topic": "adhoc"
+        });
         serde_json::json!({
             "version": crate::domain::TRAIL_SEED_VERSION,
             "generated_at": "2026-09-22T00:00:00Z",
-            "nodes": [{
-                "id": "10000000-0000-0000-0000-000000000001",
-                "name": "Nó A",
-                "description": "Descrição do nó A.",
-                "row": 0, "column": 0, "required_xp": 0, "prerequisites": []
-            }],
-            "challenges": []
+            "locales": {
+                "pt-BR": { "nodes": [node("Nó A")], "challenges": [] },
+                "es": { "nodes": [node("Nó A y Big-O")], "challenges": [] }
+            }
         })
         .to_string()
     }
@@ -2782,7 +2886,7 @@ mod tests {
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Merge Sort".into(),
-                    description: crate::domain::TrapKey::FindTheBug,
+                    description: "Merge Sort sobre n elementos".into(),
                     code_lines: vec![],
                     options: Some(options),
                     correct_options: Some(correct),
@@ -2821,6 +2925,7 @@ mod tests {
             column: 0,
             required_xp: 60,
             prerequisites: vec![],
+            topic: String::new(),
             status: Default::default(),
             problems_solved: vec![],
         }];
@@ -2830,6 +2935,140 @@ mod tests {
             model.nodes[0].name, "Nó G",
             "o que veio do servidor manda; a semente não regride o conteúdo"
         );
+    }
+
+    /// A semente traz as três línguas: entra a do app, e português quando a do app
+    /// não veio no bundle.
+    #[test]
+    fn test_seed_picks_the_app_language_and_falls_back_to_portuguese() {
+        let app = LogNApp::default();
+
+        let mut model = Model::default();
+        model.locale = "es-AR".into();
+        let _ = app.update(Event::BundledTrailLoaded { json: seed_json() }, &mut model);
+        assert_eq!(model.nodes[0].name, "Nó A y Big-O");
+        assert_eq!(model.content_locale, "es");
+
+        // A semente de teste não tem inglês.
+        let mut model = Model::default();
+        model.locale = "en-US".into();
+        let _ = app.update(Event::BundledTrailLoaded { json: seed_json() }, &mut model);
+        assert_eq!(model.nodes[0].name, "Nó A");
+        assert_eq!(
+            model.content_locale, "pt-BR",
+            "o modelo diz a língua do que tem, não a que pediu"
+        );
+    }
+
+    /// Um retrato gravado em português antes de o app mudar para espanhol sem rede.
+    #[cfg(test)]
+    fn snapshot_in(locale: Option<&str>) -> Vec<u8> {
+        let mut snap = serde_json::json!({
+            "global_xp": 340, "bugs_found": 2, "dry_runs_completed": 1,
+            "paid_challenge_ids": ["ch_001"],
+            "nodes": [{
+                "id": "20000000-0000-0000-0000-000000000002",
+                "name": "Nó B", "description": "Do servidor.",
+                "row": 1, "column": -1, "required_xp": 100, "prerequisites": []
+            }],
+            "challenges": []
+        });
+        if let Some(l) = locale {
+            snap["locale"] = serde_json::json!(l);
+        }
+        serde_json::to_vec(&snap).unwrap()
+    }
+
+    #[cfg(test)]
+    fn restore(app: &LogNApp, model: &mut Model, bytes: Vec<u8>) {
+        let _ = app.update(
+            Event::SnapshotRestored(KeyValueResult::Ok {
+                response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) },
+            }),
+            model,
+        );
+    }
+
+    /// Retrato em outra língua: o progresso é da conta e vale, o texto não. Ficaria
+    /// português na tela de um app em espanhol até a próxima busca com rede.
+    #[test]
+    fn test_snapshot_in_another_language_keeps_progress_not_text() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.locale = "es".into();
+        let _ = app.update(Event::BundledTrailLoaded { json: seed_json() }, &mut model);
+
+        restore(&app, &mut model, snapshot_in(Some("pt-BR")));
+        assert_eq!(model.global_xp, 340);
+        assert_eq!(model.paid_challenges, vec!["ch_001".to_string()]);
+        assert_eq!(model.nodes[0].name, "Nó A y Big-O", "fica a semente em espanhol");
+        assert_eq!(model.content_locale, "es");
+        assert!(model.trail_from_bundle);
+    }
+
+    /// Retrato gravado antes de existir o campo foi gravado em português, que era a
+    /// única língua do conteúdo.
+    #[test]
+    fn test_snapshot_without_language_counts_as_portuguese() {
+        let app = LogNApp::default();
+
+        let mut model = Model::default();
+        restore(&app, &mut model, snapshot_in(None));
+        assert_eq!(model.nodes[0].name, "Nó B");
+        assert_eq!(model.content_locale, "pt-BR");
+
+        let mut model = Model::default();
+        model.locale = "en".into();
+        restore(&app, &mut model, snapshot_in(None));
+        assert!(model.nodes.is_empty(), "retrato antigo não põe português num app em inglês");
+        assert_eq!(model.global_xp, 340);
+    }
+
+    /// Trocar a língua com a trilha na tela troca o texto na hora, pela semente, e pede
+    /// ao servidor o da língua nova.
+    #[test]
+    fn test_changing_language_swaps_to_the_seed_and_fetches() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let _ = app.update(Event::BundledTrailLoaded { json: seed_json() }, &mut model);
+        assert_eq!(model.content_locale, "pt-BR");
+
+        let mut cmd = app.update(Event::SetLocale("es-MX".into()), &mut model);
+        assert_eq!(model.nodes[0].name, "Nó A y Big-O");
+        assert_eq!(model.content_locale, "es");
+        let pediu = cmd.effects().any(|e| matches!(
+            e,
+            Effect::Http(ref r) if r.operation.url == "/api/v1/nodes"
+                && r.operation.headers.iter().any(|h| h.name == "Accept-Language" && h.value.starts_with("es"))
+        ));
+        assert!(pediu, "e busca os nós na língua nova");
+
+        // Mesma língua em outra região: nada muda, nada se busca.
+        let mut cmd = app.update(Event::SetLocale("es-AR".into()), &mut model);
+        assert!(cmd.effects().next().is_none());
+    }
+
+    /// A língua do conteúdo é a que o servidor diz que mandou, não a que se pediu: quem
+    /// decide o que serve é ele, e o Core só registra.
+    #[test]
+    fn test_content_language_comes_from_the_response() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.locale = "es".into();
+        let response = |headers: Vec<crux_http::protocol::HttpHeader>| {
+            Event::NodesFetched(HttpResult::Ok(crux_http::protocol::HttpResponse {
+                status: 200, headers, body: b"[]".to_vec(),
+            }))
+        };
+
+        let _ = app.update(response(vec![crux_http::protocol::HttpHeader {
+            name: "content-language".into(), value: "pt-BR".into(),
+        }]), &mut model);
+        assert_eq!(model.content_locale, "pt-BR");
+
+        // Servidor antigo, sem o cabeçalho: vale o que se pediu.
+        let _ = app.update(response(vec![]), &mut model);
+        assert_eq!(model.content_locale, "es");
     }
 
     /// O relógio da questão sai do template, e o da sessão sai da soma.
@@ -3264,7 +3503,7 @@ mod tests {
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
-                    description: crate::domain::TrapKey::FindTheBug,
+                    description: "Ache o laço infinito.".into(),
                     code_lines: vec!["while (a < b) {".into(), "    a = a;".into()],
                     options: None,
                     correct_options: None,
@@ -3899,6 +4138,101 @@ mod tests {
         assert!(asked_expiry, "decide pelo prazo guardado, como sem rede");
     }
 
+    /// Desafios como o servidor manda: enunciado em texto livre, TAG com rótulos e DRY
+    /// com watch. O enunciado chegou a ser tipado como chave do catálogo (`TrapKey`), e
+    /// nenhuma resposta de verdade desserializava — a lista inteira caía, e os testes
+    /// não viam porque as sementes de teste vinham sem desafio nenhum.
+    #[test]
+    fn test_real_challenges_deserialize() {
+        let body = r#"[
+          {"id":"ch_t05","node_id":"10000000-0000-0000-0000-000000000001","template_type":"TAG_THE_PATTERN","origin":"",
+           "payload":{"content":{"title":"Padrão de Solução","options":["Tag A","Tag B","Tag C"],"code_lines":[],
+             "description":"Marque os dois rótulos que descrevem a solução deste exercício.",
+             "correct_options":["Tag A","Tag B"]},
+             "validation":{"type":"TAG_MATCH","explanation":"Os dois rótulos juntos descrevem a solução esperada."}}},
+          {"id":"ch_t06","node_id":"20000000-0000-0000-0000-000000000002","template_type":"DRY_RUN","origin":"FARIAS",
+           "payload":{"content":{"title":"Dobrando o Valor","code_lines":["int x = 3;","x = x * 2;"],
+             "watch_note":"antes da linha 2","description":"Quanto vale x no fim?",
+             "watch_variables":[{"name":"x","value":"3"}]},
+             "validation":{"type":"OUTPUT_MATCH","explanation":"A segunda linha dobra o três.","trace_cells":1,"expected_string":"6"}}}
+        ]"#;
+        let challenges: Vec<Challenge> = serde_json::from_str(body).expect("desafio real desserializa");
+        assert_eq!(challenges.len(), 2);
+        assert_eq!(challenges[0].payload.content.description, "Marque os dois rótulos que descrevem a solução deste exercício.");
+
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let _ = app.update(Event::ChallengesFetched(HttpResult::Ok(crux_http::protocol::HttpResponse {
+            status: 200, headers: vec![], body: body.as_bytes().to_vec(),
+        })), &mut model);
+        assert_eq!(model.challenges.len(), 2, "o Core aceita a lista que o servidor manda");
+    }
+
+    fn api_error(status: u16, code: &str) -> HttpResult {
+        HttpResult::Ok(crux_http::protocol::HttpResponse {
+            status,
+            headers: vec![crux_http::protocol::HttpHeader { name: "Retry-After".into(), value: "30".into() }],
+            body: format!(r#"{{"code":"{code}","message":"x"}}"#).into_bytes(),
+        })
+    }
+
+    /// Cadastro recusado por dado que a pessoa pode corrigir diz qual dado. Antes tudo
+    /// virava "não deu para criar a conta".
+    #[test]
+    fn test_register_errors_say_what_to_fix() {
+        let app = LogNApp::default();
+        for (status, code, want) in [
+            (409, "email_taken", StatusKey::EmailTaken),
+            (400, "invalid_email", StatusKey::InvalidEmail),
+            (400, "password_too_short", StatusKey::PasswordTooShort),
+            (400, "password_too_long", StatusKey::PasswordTooLong),
+            (401, "otp_invalid", StatusKey::CodeInvalid),
+            (400, "age_not_confirmed", StatusKey::AccountFailed),
+            (500, "internal", StatusKey::AccountFailed),
+        ] {
+            let mut model = Model::default();
+            let _ = app.update(Event::RegisterCompleted(api_error(status, code)), &mut model);
+            assert_eq!(model.status_key, want, "{code}");
+        }
+
+        let mut model = Model::default();
+        let _ = app.update(Event::ResetPasswordCompleted(api_error(400, "password_too_long")), &mut model);
+        assert_eq!(model.status_key, StatusKey::PasswordTooLong);
+
+        let mut model = Model::default();
+        let _ = app.update(Event::OTPRequested(api_error(400, "invalid_email")), &mut model);
+        assert_eq!(model.status_key, StatusKey::InvalidEmail);
+    }
+
+    /// 429 no envio de código: reenvio cedo demais trava só o reenvio; o limite por IP
+    /// trava todas as ações de conta.
+    #[test]
+    fn test_otp_429_codes_lock_different_things() {
+        let app = LogNApp::default();
+
+        let mut model = Model::default();
+        let mut cmd = app.update(Event::OTPRequested(api_error(429, "otp_resend_too_soon")), &mut model);
+        let clock = resolve_now(&mut cmd, 1_000);
+        let _ = app.update(clock, &mut model);
+        assert_eq!(app.view(&model).resend_cooldown_seconds, 30, "o reenvio fica travado");
+        assert_eq!(app.view(&model).auth_cooldown_seconds, 0, "reenvio cedo demais não trava o login");
+
+        let mut model = Model::default();
+        let mut cmd = app.update(Event::OTPRequested(api_error(429, "rate_limited")), &mut model);
+        let clock = resolve_now(&mut cmd, 1_000);
+        let _ = app.update(clock, &mut model);
+        assert_eq!(app.view(&model).auth_cooldown_seconds, 30, "limite por IP trava tudo");
+    }
+
+    /// O 409 de termos chega em JSON com código; o de texto é o servidor antigo.
+    #[test]
+    fn test_legal_outdated_in_json() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let mut cmd = app.update(Event::RegisterCompleted(api_error(409, "legal_version_outdated")), &mut model);
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Http(ref r) if r.operation.url.starts_with("/api/v1/legal/current"))));
+    }
+
     fn legal_current(body: &str) -> HttpResult {
         HttpResult::Ok(crux_http::protocol::HttpResponse { status: 200, headers: vec![], body: body.as_bytes().to_vec() })
     }
@@ -3960,13 +4294,13 @@ mod tests {
     }
 
     #[test]
-    fn test_legal_locale_falls_back_to_portuguese() {
-        assert_eq!(legal_locale("pt-BR"), "pt-BR");
-        assert_eq!(legal_locale("pt_PT"), "pt-BR");
-        assert_eq!(legal_locale("EN"), "en");
-        assert_eq!(legal_locale("es_AR"), "es");
-        assert_eq!(legal_locale("fr"), "pt-BR");
-        assert_eq!(legal_locale(""), "pt-BR");
+    fn test_served_locale_falls_back_to_portuguese() {
+        assert_eq!(served_locale("pt-BR"), "pt-BR");
+        assert_eq!(served_locale("pt_PT"), "pt-BR");
+        assert_eq!(served_locale("EN"), "en");
+        assert_eq!(served_locale("es_AR"), "es");
+        assert_eq!(served_locale("fr"), "pt-BR");
+        assert_eq!(served_locale(""), "pt-BR");
     }
 
     /// Resposta ilegível ou falha de rede não apaga versões que já se sabiam, nem marca

@@ -46,6 +46,10 @@ sync_offline = {}
 sign_in_to_sync = {}
 trail_from_bundle = { placeholders = [{ name = "date", type = "text" }] }
 rate_limited = {}
+invalid_email = {}
+password_too_short = {}
+password_too_long = {}
+email_taken = {}
 wait_seconds = { placeholders = [{ name = "seconds", type = "int" }] }
 sample_standings = {}
 # Sair da partida. O Core decide se pergunta; a cópia mora aqui.
@@ -133,6 +137,15 @@ drop_here_accessibility = {}
 filled_accessibility = { placeholders = [{ name = "value", type = "text" }] }
 
 [groups.match.keys]
+# O cartão de armadilha e a revisão: o Core manda o tipo e a explicação do desafio, e o
+# texto em volta mora aqui. "Wrong Answer" e "Time Limit Exceeded" são termos do juiz e
+# ficam iguais nas três línguas, como as siglas.
+trap_classic = {}
+tle_category = {}
+tle_title = {}
+tle_context = {}
+generic_wrong_answer = {}
+line_number = { placeholders = [{ name = "line", type = "int" }] }
 blank_accessibility = {}
 clock_critical = {}
 problem_letter = { placeholders = [{ name = "letter", type = "text" }] }
@@ -318,20 +331,6 @@ without_saving = {}
 core_ready = {}
 loading = {}
 sign_in = {}
-
-[enums."LogN.TrapKey"]
-
-[groups.trap]
-enum = "LogN.TrapKey"
-[groups.trap.keys]
-findTheBug = {}
-completeTheLine = {}
-finalValueOfAcc = {}
-complexity = {}
-findTheCrash = {}
-nullTerminatedString = {}
-dynamicSubarrays = {}
-twoPointers = {}
 
 
 

@@ -146,7 +146,10 @@ pub struct WatchVariable {
 #[facet(fg::namespace = "LogN")]
 pub struct ChallengeContent {
     pub title: String,
-    pub description: TrapKey,
+    /// O enunciado, em texto, na língua em que o servidor mandou. Chegou a ser uma
+    /// chave do catálogo (`TrapKey`), e aí nenhum desafio de verdade desserializava:
+    /// o conteúdo vem do servidor, não do catálogo da interface.
+    pub description: String,
     pub code_lines: Vec<String>,
     pub options: Option<Vec<String>>,
     pub correct_options: Option<Vec<String>>,
@@ -174,7 +177,9 @@ pub struct ChallengePayload {
 
 /// Versão do formato da trilha empacotada. Sobe quando o formato muda de um jeito que
 /// um app antigo não consegue ler — aí ele ignora a semente em vez de quebrar.
-pub const TRAIL_SEED_VERSION: i32 = 1;
+///
+/// 2: a semente leva as três línguas, uma trilha por língua em `locales`.
+pub const TRAIL_SEED_VERSION: i32 = 2;
 
 /// A trilha que viaja dentro do app, gerada por `just seed-bundle`.
 ///
@@ -187,6 +192,14 @@ pub const TRAIL_SEED_VERSION: i32 = 1;
 pub struct TrailSeed {
     pub version: i32,
     pub generated_at: String,
+    /// A trilha em cada língua (`pt-BR`, `en`, `es`), como a API a serve nela. A
+    /// estrutura é a mesma nas três; muda o texto.
+    pub locales: std::collections::BTreeMap<String, SeedTrail>,
+}
+
+/// A trilha de uma língua dentro da semente.
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct SeedTrail {
     pub nodes: Vec<SkillNode>,
     pub challenges: Vec<Challenge>,
 }
@@ -212,21 +225,6 @@ pub struct Challenge {
 /// português. A cópia vive em `i18n/locales/`; o cliente resolve a chave.
 ///
 /// `Silent` é o estado normal — a maior parte do que acontece não precisa ser narrada.
-#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
-#[facet(fg::namespace = "LogN")]
-#[repr(u8)]
-pub enum TrapKey {
-    #[default]
-    FindTheBug,
-    CompleteTheLine,
-    FinalValueOfAcc,
-    Complexity,
-    FindTheCrash,
-    NullTerminatedString,
-    DynamicSubarrays,
-    TwoPointers,
-}
-
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
 #[facet(fg::namespace = "LogN")]
 #[repr(u8)]
@@ -258,6 +256,13 @@ pub enum StatusKey {
     /// O servidor respondeu 429. Os botões que batem nele ficam travados pela
     /// contagem do `Retry-After`, e a própria contagem aparece neles.
     RateLimited,
+    /// Os quatro abaixo vêm do código de erro da API (`invalid_email`,
+    /// `password_too_short`, `password_too_long`, `email_taken`). Antes todos viravam
+    /// "não deu para criar a conta", sem dizer o que corrigir.
+    InvalidEmail,
+    PasswordTooShort,
+    PasswordTooLong,
+    EmailTaken,
 }
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
@@ -330,6 +335,11 @@ pub struct SkillNode {
     pub column: i32,
     pub required_xp: i32,
     pub prerequisites: Vec<String>,
+    /// Assunto do nó, neutro (`adhoc`, `graphs`): decide cor e ícone no cliente, que
+    /// antes adivinhava pelo nome — e o nome agora muda com a língua. Vazio quando o
+    /// servidor ou o retrato antigo não mandam.
+    #[serde(default)]
+    pub topic: String,
     /// Derivado em `view()` a partir do XP e do DAG, nunca persistido: o Go não manda
     /// este campo, e sem o `default` a lista inteira falhava no `serde` — o usuário
     /// autenticado via uma árvore vazia sem erro nenhum aparecer.

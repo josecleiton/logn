@@ -72,9 +72,9 @@ struct MatchView: View {
                     remainingSeconds: Int(mv.questionSeconds),
                     lives: Int(mv.lives),
                     maxLives: Int(mv.maxLives),
-                    trapCategory: mv.trapCategory,
-                    trapTitle: mv.trapTitle,
-                    trapExplanation: mv.trapExplanation,
+                    trapCategory: TrapCopy.category(mv.trapKind),
+                    trapTitle: TrapCopy.title(mv.trapKind, problemTitle: mv.trapTitle),
+                    trapExplanation: TrapCopy.explanation(mv.trapKind, challengeExplanation: mv.trapExplanation),
                     matchOver: !mv.isActive,
                     // Aceito de desafio que já pagou não paga de novo: o veredito não
                     // pode prometer o XP que não vai entrar.
@@ -240,7 +240,7 @@ struct MatchView: View {
                 Spacer(minLength: 0)
             }
 
-            Text(mv.currentDescription.trap)
+            Text(mv.currentDescription)
                 .font(.plexSansSemiBold(19, relativeTo: .title3))
                 .lineSpacing(19 * 0.3)
                 .foregroundColor(LognDark.textPrimary)
@@ -788,6 +788,17 @@ struct MatchReportView: View {
 struct ErrorReviewCard: View {
     let error: LogN.MatchError
 
+    /// A linha do SPOT_THE_BUG vem como número, e "linha N" sai na língua do app.
+    private var givenAnswer: String {
+        error.givenLine >= 0 ? Str.Match.line_number(Int(error.givenLine)) : error.givenAnswer
+    }
+
+    /// O mesmo texto do cartão de armadilha que a pessoa viu na hora.
+    private var explanation: String {
+        TrapCopy.explanation(error.verdict == "TLE" ? .timeLimit : .wrongAnswer,
+                             challengeExplanation: error.explanation)
+    }
+
     private var verdict: VerdictChip.Verdict { VerdictChip.Verdict(code: error.verdict) }
 
     var body: some View {
@@ -805,15 +816,15 @@ struct ErrorReviewCard: View {
                     .foregroundColor(verdict.ink)
             }
 
-            if !error.givenAnswer.isEmpty {
-                Text(Str.Match.your_answer(error.givenAnswer))
+            if !givenAnswer.isEmpty {
+                Text(Str.Match.your_answer(givenAnswer))
                     .font(.plexMono(12))
                     .foregroundColor(LognDark.textMuted)
                     .padding(.top, 6)
             }
 
-            if !error.explanation.isEmpty {
-                Text(error.explanation)
+            if !explanation.isEmpty {
+                Text(explanation)
                     .font(.plexSans(13, relativeTo: .footnote))
                     .lineSpacing(13 * 0.5)
                     .foregroundColor(LognDark.textSecondary)
@@ -830,6 +841,31 @@ struct ErrorReviewCard: View {
         .accessibilityLabel(
             Str.Match.error_accessibility(error.letter, error.title, verdict.rawValue, verdict.meaning)
         )
+    }
+}
+
+/// O texto do cartão de armadilha, a partir do que o Core manda: o tipo, o título do
+/// problema e a explicação do desafio, crua. O Core escrevia as frases em português;
+/// agora elas saem do catálogo, na língua do app.
+enum TrapCopy {
+    static func category(_ kind: LogN.TrapKind) -> String {
+        kind == .timeLimit ? Str.Match.tle_category : Str.Match.trap_classic
+    }
+
+    static func title(_ kind: LogN.TrapKind, problemTitle: String) -> String {
+        kind == .timeLimit ? Str.Match.tle_title : problemTitle
+    }
+
+    /// Resposta errada: a explicação do desafio, ou a genérica quando ele não trouxe.
+    /// Estouro de tempo: o enquadramento do contest e, em seguida, a explicação.
+    static func explanation(_ kind: LogN.TrapKind, challengeExplanation: String) -> String {
+        let own = challengeExplanation.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch kind {
+        case .timeLimit:
+            return own.isEmpty ? Str.Match.tle_context : "\(Str.Match.tle_context) \(own)"
+        case .wrongAnswer:
+            return own.isEmpty ? Str.Match.generic_wrong_answer : own
+        }
     }
 }
 
@@ -899,7 +935,7 @@ struct DropZone: View {
             RoundedRectangle(cornerRadius: Radius.xs)
                 .stroke(strokeColor, style: StrokeStyle(lineWidth: 1, dash: isFilled ? [] : [4]))
 
-            Text(isFilled ? value : "solte aqui")
+            Text(isFilled ? value : Str.Arena.drop_here)
                 .font(.plexMono(isFilled ? 14 : 13))
                 .foregroundColor(isFilled ? LognDark.textPrimary : LognDark.textDim)
         }
@@ -915,7 +951,7 @@ struct DropZone: View {
             }
             return true
         }
-        .accessibilityLabel(isFilled ? "preenchido com \(value)" : "solte aqui")
+        .accessibilityLabel(isFilled ? Str.Arena.filled_accessibility(value) : Str.Arena.drop_here_accessibility)
     }
 
     private var fillColor: Color {

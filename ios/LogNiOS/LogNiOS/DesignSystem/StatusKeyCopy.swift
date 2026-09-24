@@ -37,6 +37,10 @@ extension LogN.StatusKey {
         case .signInToSync:      return Str.Status.sign_in_to_sync
         case .treeUnavailable:   return Str.Dashboard.tree_unavailable
         case .rateLimited:       return Str.Status.rate_limited
+        case .invalidEmail:      return Str.Status.invalid_email
+        case .passwordTooShort:  return Str.Status.password_too_short
+        case .passwordTooLong:   return Str.Status.password_too_long
+        case .emailTaken:        return Str.Status.email_taken
         }
     }
 

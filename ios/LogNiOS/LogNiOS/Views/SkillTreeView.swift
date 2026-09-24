@@ -247,7 +247,7 @@ struct SkillTreeEdges: View {
                     // cordinha leva a cor do assunto do pai.
                     context.stroke(
                         path,
-                        with: .color(LognTopic.of(nodeName: edge.parent.name).color.opacity(0.8)),
+                        with: .color(LognTopic.of(node: edge.parent).color.opacity(0.8)),
                         style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
                     )
                 }
@@ -262,7 +262,7 @@ struct SkillNodeView: View {
     let node: SkillNode
     let placement: SkillTreeLayout.Placement
 
-    private var topic: LognTopic { LognTopic.of(nodeName: node.name) }
+    private var topic: LognTopic { LognTopic.of(node: node) }
 
     var body: some View {
         VStack(spacing: 0) {
