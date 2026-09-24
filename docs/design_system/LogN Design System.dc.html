@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:var(--canvas,#0B0C0D); font-family:'IBM Plex Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#FF7A45; text-decoration:none; }
+  a:hover { color:#FF9B73; }
+  ::selection { background:#FF7A45; color:#160B05; }
+  @keyframes logn-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)} }
+  @keyframes logn-pop { 0%{transform:scale(1)} 50%{transform:scale(1.18)} 100%{transform:scale(1)} }
+</style>
+</helmet>
+
+<div style="--accent:{{ accent }}; --canvas:{{ t.canvas }}; --surface:{{ t.surface }}; --surface2:{{ t.surface2 }}; --line:{{ t.line }}; --line2:{{ t.line2 }}; --text:{{ t.text }}; --text2:{{ t.text2 }}; --text3:{{ t.text3 }}; --textDim:{{ t.textDim }}; --lineDim:{{ t.lineDim }}; --heartOff:{{ t.heartOff }}; --rowline:{{ t.rowline }}; --btnOff:{{ t.btnOff }}; --correct:{{ t.correct }}; --wrong:{{ t.wrong }}; --warn:{{ t.warn }}; --info:{{ t.info }}; --tintOk:{{ t.tintOk }}; --tintErr:{{ t.tintErr }}; --synKw:{{ t.synKw }}; --synFn:{{ t.synFn }}; --shadowSoft:{{ t.shadowSoft }}; --shadowSheet:{{ t.shadowSheet }}; background:var(--canvas,#0B0C0D); color:var(--text,#EDEEEF); padding:0 0 120px; min-height:100%;">
+
+  <header style="max-width:1180px; margin:0 auto; padding:72px 32px 56px; border-bottom:1px solid var(--line,#24282D);">
+    <div style="display:flex; align-items:baseline; gap:14px; font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D);">
+      <span style="color:var(--accent,#FF7A45);">Impecable</span><span>/</span><span>Design System v1.0</span>
+    </div>
+    <h1 style="margin:22px 0 0; font-size:clamp(40px,7vw,76px); line-height:0.98; font-weight:600; letter-spacing:-0.035em; text-wrap:balance;">LogN</h1>
+    <p style="margin:18px 0 0; max-width:560px; font-size:17px; line-height:1.55; color:var(--text2,#99A0A7); text-wrap:pretty;">Sistema de interface para o app de micro-aprendizado de programação competitiva. Dark-first, fricção zero, ritmo de contest. Construído para Jetpack Compose e SwiftUI.</p>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:28px;">
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.08em; padding:6px 10px; border:1px solid var(--line2,#343A41); color:var(--text2,#99A0A7); border-radius:4px;">DARK-FIRST</span>
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.08em; padding:6px 10px; border:1px solid var(--line2,#343A41); color:var(--text2,#99A0A7); border-radius:4px;">PT-BR / EN</span>
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.08em; padding:6px 10px; border:1px solid var(--line2,#343A41); color:var(--text2,#99A0A7); border-radius:4px;">COMPOSE / M3</span>
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.08em; padding:6px 10px; border:1px solid var(--line2,#343A41); color:var(--text2,#99A0A7); border-radius:4px;">SWIFTUI / HIG</span>
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.08em; padding:6px 10px; border:1px solid var(--line2,#343A41); color:var(--text2,#99A0A7); border-radius:4px;">TOUCH 48DP / 44PT</span>
+    </div>
+  </header>
+
+  <div style="position:sticky; top:0; z-index:40; background:var(--canvas,#0B0C0D); backdrop-filter:blur(10px); border-bottom:1px solid var(--line,#24282D);">
+    <div style="max-width:1180px; margin:0 auto; padding:14px 32px; display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+      <div style="display:flex; gap:4px; padding:3px; border:1px solid var(--line,#24282D); border-radius:4px;">
+        <button onClick="{{ onSetDark }}" style="padding:6px 12px; border-radius:2px; border:1px solid {{ darkBtn.br }}; background:{{ darkBtn.bg }}; color:{{ darkBtn.fg }}; font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer;">Dark</button>
+        <button onClick="{{ onSetLight }}" style="padding:6px 12px; border-radius:2px; border:1px solid {{ lightBtn.br }}; background:{{ lightBtn.bg }}; color:{{ lightBtn.fg }}; font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer;">Light</button>
+      </div>
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D);">Acento</span>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <sc-for list="{{ swatches }}" as="sw" hint-placeholder-count="8">
+          <button onClick="{{ sw.onPick }}" title="{{ sw.note }}" style="display:flex; flex-direction:column; align-items:center; gap:6px; background:transparent; border:none; padding:0; cursor:pointer; font-family:'IBM Plex Mono',monospace;">
+            <span style="width:30px; height:30px; border-radius:4px; background:{{ sw.hex }}; box-shadow:0 0 0 1px var(--canvas,#0B0C0D), 0 0 0 2px {{ sw.ring }};"></span>
+            <span style="font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase; color:{{ sw.labelColor }};">{{ sw.name }}</span>
+          </button>
+        </sc-for>
+      </div>
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+        <span style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text3,#7E858D);">Custom</span>
+        <input type="color" value="{{ accent }}" onInput="{{ onPickCustom }}" style="width:30px; height:30px; padding:0; border:1px solid var(--line2,#343A41); border-radius:4px; background:transparent; cursor:pointer;" />
+      </label>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:12px; min-width:220px;">
+        <span style="display:inline-flex; align-items:center; justify-content:center; height:30px; padding:0 12px; border-radius:4px; background:var(--accent,#FF7A45); color:{{ onAccentColor }}; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; letter-spacing:0.08em;">{{ accent }}</span>
+        <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); line-height:1.4;">{{ accentName }} · {{ accentNote }}</span>
+      </div>
+    </div>
+  </div>
+
+  <section style="max-width:1180px; margin:0 auto; padding:64px 32px 0;">
+    <div style="display:flex; align-items:baseline; gap:16px; margin-bottom:8px;">
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent,#FF7A45); letter-spacing:0.1em;">00</span>
+      <h2 style="margin:0; font-size:28px; font-weight:600; letter-spacing:-0.02em;">Princípios</h2>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1px; background:var(--line,#24282D); border:1px solid var(--line,#24282D); border-radius:4px; margin-top:28px;">
+      <div style="background:var(--surface,#111316); padding:24px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--accent,#FF7A45); letter-spacing:0.1em; margin-bottom:12px;">01</div>
+        <h3 style="margin:0 0 8px; font-size:16px; font-weight:600;">O relógio nunca para</h3>
+        <p style="margin:0; font-size:14px; line-height:1.5; color:var(--text2,#99A0A7);">Nenhuma tela de partida pede confirmação. Erro, acerto e avanço acontecem em menos de 300&nbsp;ms.</p>
+      </div>
+      <div style="background:var(--surface,#111316); padding:24px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--accent,#FF7A45); letter-spacing:0.1em; margin-bottom:12px;">02</div>
+        <h3 style="margin:0 0 8px; font-size:16px; font-weight:600;">O código é o herói</h3>
+        <p style="margin:0; font-size:14px; line-height:1.5; color:var(--text2,#99A0A7);">Monoespaçada, numeração de linha e sintaxe têm prioridade hierárquica sobre qualquer cromo de interface.</p>
+      </div>
+      <div style="background:var(--surface,#111316); padding:24px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--accent,#FF7A45); letter-spacing:0.1em; margin-bottom:12px;">03</div>
+        <h3 style="margin:0 0 8px; font-size:16px; font-weight:600;">Placar acima de troféu</h3>
+        <p style="margin:0; font-size:14px; line-height:1.5; color:var(--text2,#99A0A7);">A gamificação é esportiva, não infantil: balões, vidas, ranking. Sem mascote, sem confete.</p>
+      </div>
+      <div style="background:var(--surface,#111316); padding:24px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--accent,#FF7A45); letter-spacing:0.1em; margin-bottom:12px;">04</div>
+        <h3 style="margin:0 0 8px; font-size:16px; font-weight:600;">Uma cor decide</h3>
+        <p style="margin:0; font-size:14px; line-height:1.5; color:var(--text2,#99A0A7);">O acento é ação e progresso. Verde e vermelho são exclusivos de veredito. Nada mais compete.</p>
+      </div>
+    </div>
+  </section>
+
+  <section style="max-width:1180px; margin:0 auto; padding:80px 32px 0;">
+    <div style="display:flex; align-items:baseline; gap:16px;">
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent,#FF7A45); letter-spacing:0.1em;">01</span>
+      <h2 style="margin:0; font-size:28px; font-weight:600; letter-spacing:-0.02em;">Cor</h2>
+    </div>
+    <p style="margin:12px 0 0; max-width:620px; font-size:15px; line-height:1.55; color:var(--text2,#99A0A7);">Base neutra fria com um único acento quente. Superfícies não usam sombra: a hierarquia vem de 1&nbsp;px de linha e de um degrau de luminância.</p>
+
+    <h3 style="margin:36px 0 14px; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D);">Superfície e linha</h3>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px; background:var(--line,#24282D); border:1px solid var(--line,#24282D); border-radius:4px;">
+      <div style="background:var(--surface,#111316); padding:0;">
+        <div style="height:76px; background:var(--canvas,#0B0C0D);"></div>
+        <div style="padding:12px 14px; border-top:1px solid var(--line,#24282D);"><div style="font-size:13px; font-weight:600;">canvas</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:3px;">{{ t.canvas }}</div></div>
+      </div>
+      <div style="background:var(--surface,#111316);">
+        <div style="height:76px; background:var(--surface,#111316);"></div>
+        <div style="padding:12px 14px; border-top:1px solid var(--line,#24282D);"><div style="font-size:13px; font-weight:600;">surface</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:3px;">{{ t.surface }}</div></div>
+      </div>
+      <div style="background:var(--surface,#111316);">
+        <div style="height:76px; background:var(--surface2,#171A1E);"></div>
+        <div style="padding:12px 14px; border-top:1px solid var(--line,#24282D);"><div style="font-size:13px; font-weight:600;">surfaceRaised</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:3px;">{{ t.surface2 }}</div></div>
+      </div>
+      <div style="background:var(--surface,#111316);">
+        <div style="height:76px; background:var(--line,#24282D);"></div>
+        <div style="padding:12px 14px; border-top:1px solid var(--line,#24282D);"><div style="font-size:13px; font-weight:600;">line</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:3px;">{{ t.line }}</div></div>
+      </div>
+      <div style="background:var(--surface,#111316);">
+        <div style="height:76px; background:var(--line2,#343A41);"></div>
+        <div style="padding:12px 14px; border-top:1px solid var(--line,#24282D);"><div style="font-size:13px; font-weight:600;">lineStrong</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:3px;">{{ t.line2 }}</div></div>
+      </div>
+    </div>
+
+    <h3 style="margin:36px 0 14px; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D);">Conteúdo</h3>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px; background:var(--line,#24282D); border:1px solid var(--line,#24282D); border-radius:4px;">
+      <div style="background:var(--surface,#111316);">
+        <div style="height:76px; background:var(--text,#EDEEEF);"></div>
+        <div style="padding:12px 14px; border-top:1px solid var(--line,#24282D);"><div style="font-size:13px; font-weight:600;">textPrimary</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:3px;">{{ t.text }} · {{ t.textRatio }}</div></div>
+      </div>
+      <div style="background:var(--surface,#111316);">
+        <div style="height:76px; background:var(--text2,#99A0A7);"></div>
+        <div style="padding:12px 14px; border-top:1px solid var(--line,#24282D);"><div style="font-size:13px; font-weight:600;">textSecondary</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:3px;">{{ t.text2 }} · {{ t.text2Ratio }}</div></div>
+      </div>
+      <div style="background:var(--surface,#111316);">
+        <div style="height:76px; background:var(--text3,#7E858D);"></div>
+        <div style="padding:12px 14px; border-top:1px solid var(--line,#24282D);"><div style="font-size:13px; font-weight:600;">textMuted</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:3px;">{{ t.text3 }} · {{ t.text3Ratio }}</div></div>
+      </div>
+    </div>
+
+    <h3 style="margin:36px 0 14px; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D);">Acento e veredito</h3>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:1px; background:var(--line,#24282D); border:1px solid var(--line,#24282D); border-radius:4px;">
+      <div style="background:var(--surface,#111316);">
+        <div style="height:76px; background:var(--accent,#FF7A45); display:flex; align-items:flex-end; padding:10px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:{{ onAccentColor }}; font-weight:600;">onAccent</span></div>
+        <div style="padding:12px 14px; border-top:1px solid var(--line,#24282D);"><div style="font-size:13px; font-weight:600;">accent</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:3px;">{{ accent }} · ação, progresso</div></div>
+      </div>
+      <div style="background:var(--surface,#111316);">
+        <div style="height:76px; background:var(--correct,#3DD68C);"></div>
+        <div style="padding:12px 14px; border-top:1px solid var(--line,#24282D);"><div style="font-size:13px; font-weight:600;">correct</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:3px;">{{ t.correct }} · accepted</div></div>
+      </div>
+      <div style="background:var(--surface,#111316);">
+        <div style="height:76px; background:var(--wrong,#FF5C5C);"></div>
+        <div style="padding:12px 14px; border-top:1px solid var(--line,#24282D);"><div style="font-size:13px; font-weight:600;">wrong</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:3px;">{{ t.wrong }} · wrong answer</div></div>
+      </div>
+      <div style="background:var(--surface,#111316);">
+        <div style="height:76px; background:var(--warn,#F5C451);"></div>
+        <div style="padding:12px 14px; border-top:1px solid var(--line,#24282D);"><div style="font-size:13px; font-weight:600;">warn</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:3px;">{{ t.warn }} · timer crítico</div></div>
+      </div>
+      <div style="background:var(--surface,#111316);">
+        <div style="height:76px; background:var(--info,#5AA9FF);"></div>
+        <div style="padding:12px 14px; border-top:1px solid var(--line,#24282D);"><div style="font-size:13px; font-weight:600;">info</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:3px;">{{ t.info }} · teoria, dica</div></div>
+      </div>
+    </div>
+    <p style="margin:16px 0 0; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.6; color:var(--text3,#7E858D); max-width:640px;">Regra: verde e vermelho <strong style="color:var(--text2,#99A0A7);">só</strong> aparecem como resultado de uma resposta. Nunca em navegação, nunca em estado neutro.</p>
+    <p style="margin:10px 0 0; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.6; color:var(--text3,#7E858D); max-width:640px;">Light mode é derivado, não redesenhado: a escala de superfície inverte, o acento é o mesmo hex, e veredito/sintaxe escurecem para manter 4.5:1 sobre branco. Os nomes de token não mudam — <span style="color:var(--text2,#99A0A7);">Surface</span> é <span style="color:var(--text2,#99A0A7);">Surface</span> nos dois temas.</p>
+  </section>
+
+  <section style="max-width:1180px; margin:0 auto; padding:80px 32px 0;">
+    <div style="display:flex; align-items:baseline; gap:16px;">
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent,#FF7A45); letter-spacing:0.1em;">02</span>
+      <h2 style="margin:0; font-size:28px; font-weight:600; letter-spacing:-0.02em;">Tipografia</h2>
+    </div>
+    <p style="margin:12px 0 0; max-width:620px; font-size:15px; line-height:1.55; color:var(--text2,#99A0A7);">IBM Plex Sans para interface, IBM Plex Mono para código, números e rótulos de sistema. Uma família, duas vozes.</p>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:1px; background:var(--line,#24282D); border:1px solid var(--line,#24282D); border-radius:4px; margin-top:28px;">
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); letter-spacing:0.1em;">displayLarge · 40/44 · 600</div>
+        <div style="font-size:40px; line-height:44px; font-weight:600; letter-spacing:-0.03em; margin-top:10px;">Two Pointers</div>
+      </div>
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); letter-spacing:0.1em;">headlineMedium · 24/30 · 600</div>
+        <div style="font-size:24px; line-height:30px; font-weight:600; letter-spacing:-0.02em; margin-top:10px;">Qual é a complexidade?</div>
+      </div>
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); letter-spacing:0.1em;">bodyLarge · 17/26 · 400</div>
+        <div style="font-size:17px; line-height:26px; margin-top:10px; color:var(--text,#EDEEEF);">Dado um array ordenado, encontre o par que soma exatamente K.</div>
+      </div>
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); letter-spacing:0.1em;">bodyMedium · 15/22 · 400</div>
+        <div style="font-size:15px; line-height:22px; margin-top:10px; color:var(--text2,#99A0A7);">O algoritmo guloso falha porque decisões locais não reconstroem o ótimo global.</div>
+      </div>
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); letter-spacing:0.1em;">code · Mono 15/24 · 400</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:15px; line-height:24px; margin-top:10px; color:var(--text,#EDEEEF);">while (lo &lt;= hi) {</div>
+      </div>
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); letter-spacing:0.1em;">label · Mono 11/16 · 500 · +0.14em</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; line-height:16px; font-weight:500; letter-spacing:0.14em; margin-top:10px; color:var(--accent,#FF7A45);">PROBLEM 07 / 15</div>
+      </div>
+    </div>
+    <p style="margin:16px 0 0; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.6; color:var(--text3,#7E858D);">Mínimo absoluto em tela: 11&nbsp;sp para rótulo mono, 15&nbsp;sp para qualquer texto lido.</p>
+  </section>
+
+  <section style="max-width:1180px; margin:0 auto; padding:80px 32px 0;">
+    <div style="display:flex; align-items:baseline; gap:16px;">
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent,#FF7A45); letter-spacing:0.1em;">03</span>
+      <h2 style="margin:0; font-size:28px; font-weight:600; letter-spacing:-0.02em;">Espaço, forma e motion</h2>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:1px; background:var(--line,#24282D); border:1px solid var(--line,#24282D); border-radius:4px; margin-top:28px;">
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D); margin-bottom:18px;">Escala 4dp</div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; align-items:center; gap:14px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text2,#99A0A7); width:56px;">xs 4</span><div style="height:10px; width:4px; background:var(--accent,#FF7A45);"></div></div>
+          <div style="display:flex; align-items:center; gap:14px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text2,#99A0A7); width:56px;">sm 8</span><div style="height:10px; width:8px; background:var(--accent,#FF7A45);"></div></div>
+          <div style="display:flex; align-items:center; gap:14px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text2,#99A0A7); width:56px;">md 12</span><div style="height:10px; width:12px; background:var(--accent,#FF7A45);"></div></div>
+          <div style="display:flex; align-items:center; gap:14px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text2,#99A0A7); width:56px;">lg 16</span><div style="height:10px; width:16px; background:var(--accent,#FF7A45);"></div></div>
+          <div style="display:flex; align-items:center; gap:14px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text2,#99A0A7); width:56px;">xl 24</span><div style="height:10px; width:24px; background:var(--accent,#FF7A45);"></div></div>
+          <div style="display:flex; align-items:center; gap:14px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text2,#99A0A7); width:56px;">2xl 32</span><div style="height:10px; width:32px; background:var(--accent,#FF7A45);"></div></div>
+          <div style="display:flex; align-items:center; gap:14px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text2,#99A0A7); width:56px;">3xl 48</span><div style="height:10px; width:48px; background:var(--accent,#FF7A45);"></div></div>
+        </div>
+        <p style="margin:18px 0 0; font-size:13px; line-height:1.5; color:var(--text3,#7E858D);">Margem lateral de tela: 20&nbsp;dp. Gap entre cards de lista: 8&nbsp;dp.</p>
+      </div>
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D); margin-bottom:18px;">Forma e profundidade</div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <div style="width:86px; height:56px; border:1px solid var(--line2,#343A41); border-radius:2px; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text2,#99A0A7);">2dp</div>
+          <div style="width:86px; height:56px; border:1px solid var(--line2,#343A41); border-radius:4px; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text2,#99A0A7);">4dp</div>
+          <div style="width:86px; height:56px; border:1px solid var(--line2,#343A41); border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text2,#99A0A7);">8dp</div>
+        </div>
+        <p style="margin:18px 0 0; font-size:13px; line-height:1.5; color:var(--text2,#99A0A7);">Padrão 4&nbsp;dp. 2&nbsp;dp em blocos de código e chips. 8&nbsp;dp apenas no bottom sheet (cantos superiores).</p>
+        <div style="margin-top:20px; display:flex; flex-direction:column; gap:8px;">
+          <div style="padding:12px 14px; background:var(--surface,#111316); border:1px solid var(--line,#24282D); border-radius:4px; font-size:13px; color:var(--text2,#99A0A7);">elev 0 — Surface, linha Line</div>
+          <div style="padding:12px 14px; background:var(--surface2,#171A1E); border:1px solid var(--line2,#343A41); border-radius:4px; font-size:13px; color:var(--text2,#99A0A7);">elev 1 — SurfaceRaised, linha LineStrong</div>
+          <div style="padding:12px 14px; background:var(--surface2,#171A1E); border:1px solid var(--line2,#343A41); border-radius:4px; font-size:13px; color:var(--text2,#99A0A7); box-shadow:0 -10px 40px var(--shadowSoft,rgba(0,0,0,0.6));">elev 2 — sheet, sombra apenas para cima</div>
+        </div>
+      </div>
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D); margin-bottom:18px;">Motion</div>
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div style="display:flex; justify-content:space-between; gap:12px; border-bottom:1px solid var(--line,#24282D); padding-bottom:10px;"><span style="font-size:14px;">Feedback de resposta</span><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent,#FF7A45);">120 ms</span></div>
+          <div style="display:flex; justify-content:space-between; gap:12px; border-bottom:1px solid var(--line,#24282D); padding-bottom:10px;"><span style="font-size:14px;">Shake de erro</span><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent,#FF7A45);">240 ms · ±5 dp</span></div>
+          <div style="display:flex; justify-content:space-between; gap:12px; border-bottom:1px solid var(--line,#24282D); padding-bottom:10px;"><span style="font-size:14px;">Bottom sheet enter</span><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent,#FF7A45);">280 ms · emphDecel</span></div>
+          <div style="display:flex; justify-content:space-between; gap:12px; border-bottom:1px solid var(--line,#24282D); padding-bottom:10px;"><span style="font-size:14px;">Troca de questão</span><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent,#FF7A45);">180 ms · slide+fade</span></div>
+          <div style="display:flex; justify-content:space-between; gap:12px;"><span style="font-size:14px;">Balão preenche</span><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent,#FF7A45);">160 ms · spring pop</span></div>
+        </div>
+        <p style="margin:18px 0 0; font-size:13px; line-height:1.5; color:var(--text3,#7E858D);">Haptic: <span style="font-family:'IBM Plex Mono',monospace;">TextHandleMove</span> no acerto, <span style="font-family:'IBM Plex Mono',monospace;">LongPress</span> no erro. Nenhuma animação acima de 300&nbsp;ms durante partida.</p>
+      </div>
+    </div>
+  </section>
+
+  <section style="max-width:1180px; margin:0 auto; padding:80px 32px 0;">
+    <div style="display:flex; align-items:baseline; gap:16px;">
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent,#FF7A45); letter-spacing:0.1em;">04</span>
+      <h2 style="margin:0; font-size:28px; font-weight:600; letter-spacing:-0.02em;">Componentes</h2>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); gap:1px; background:var(--line,#24282D); border:1px solid var(--line,#24282D); border-radius:4px; margin-top:28px;">
+
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D); margin-bottom:18px;">Button · primary / secondary / ghost</div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <button style="height:52px; border:none; border-radius:4px; background:var(--accent,#FF7A45); color:#160B05; font-family:'IBM Plex Sans',sans-serif; font-size:15px; font-weight:600; letter-spacing:0.02em; cursor:pointer;" style-hover="background:#FF9364;" style-active="transform:translateY(1px);">Confirmar resposta</button>
+          <button style="height:52px; border:1px solid var(--line2,#343A41); border-radius:4px; background:transparent; color:var(--text,#EDEEEF); font-family:'IBM Plex Sans',sans-serif; font-size:15px; font-weight:500; cursor:pointer;" style-hover="border-color:var(--lineDim,#4C535B); background:var(--surface2,#171A1E);">Ler explicação</button>
+          <button style="height:52px; border:none; border-radius:4px; background:transparent; color:var(--text2,#99A0A7); font-family:'IBM Plex Sans',sans-serif; font-size:15px; font-weight:500; cursor:pointer;" style-hover="color:var(--text,#EDEEEF);">Pular</button>
+          <button style="height:52px; border:none; border-radius:4px; background:var(--btnOff,#1B1D20); color:var(--textDim,#5F656C); font-family:'IBM Plex Sans',sans-serif; font-size:15px; font-weight:600; cursor:not-allowed;">Confirmar resposta</button>
+        </div>
+        <p style="margin:16px 0 0; font-size:13px; color:var(--text3,#7E858D); line-height:1.5;">Altura 52&nbsp;dp, largura total na base da tela. Um primário por tela — sempre o que avança a partida.</p>
+      </div>
+
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D); margin-bottom:18px;">OptionRow · estados de resposta</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; align-items:center; gap:12px; min-height:56px; padding:0 14px; border:1px solid var(--line2,#343A41); border-radius:4px; background:var(--surface2,#171A1E);"><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text3,#7E858D); width:18px;">A</span><span style="font-size:15px;">Binary Search</span></div>
+          <div style="display:flex; align-items:center; gap:12px; min-height:56px; padding:0 14px; border:1px solid var(--accent,#FF7A45); border-radius:4px; background:#221610; background:color-mix(in srgb, var(--accent,#FF7A45) 14%, var(--canvas,#0B0C0D));"><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent,#FF7A45); width:18px;">B</span><span style="font-size:15px;">Two Pointers</span></div>
+          <div style="display:flex; align-items:center; gap:12px; min-height:56px; padding:0 14px; border:1px solid var(--correct,#3DD68C); border-radius:4px; background:var(--tintOk,#0F2018);"><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--correct,#3DD68C); width:18px;">C</span><span style="font-size:15px; color:var(--text,#EDEEEF);">Sliding Window</span><span style="margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--correct,#3DD68C); letter-spacing:0.1em;">AC</span></div>
+          <div style="display:flex; align-items:center; gap:12px; min-height:56px; padding:0 14px; border:1px solid var(--wrong,#FF5C5C); border-radius:4px; background:var(--tintErr,#231113); animation:logn-shake 240ms ease-out;"><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--wrong,#FF5C5C); width:18px;">D</span><span style="font-size:15px; color:var(--text,#EDEEEF);">Greedy</span><span style="margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--wrong,#FF5C5C); letter-spacing:0.1em;">WA</span></div>
+        </div>
+        <p style="margin:16px 0 0; font-size:13px; color:var(--text3,#7E858D); line-height:1.5;">Alvo mínimo 56&nbsp;dp. Estado nunca depende só da cor: AC/WA em mono acompanham o veredito.</p>
+      </div>
+
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D); margin-bottom:18px;">BalloonScore · 15 problemas</div>
+        <div style="display:flex; flex-wrap:wrap; gap:7px;">
+          <div style="width:15px; height:19px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div>
+          <div style="width:15px; height:19px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div>
+          <div style="width:15px; height:19px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div>
+          <div style="width:15px; height:19px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div>
+          <div style="width:15px; height:19px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div>
+          <div style="width:15px; height:19px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div>
+          <div style="width:15px; height:19px; border-radius:50% 50% 45% 45%; background:transparent; border:1px solid var(--accent,#FF7A45); animation:logn-pop 900ms ease-in-out infinite;"></div>
+          <div style="width:15px; height:19px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+          <div style="width:15px; height:19px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+          <div style="width:15px; height:19px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+          <div style="width:15px; height:19px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+          <div style="width:15px; height:19px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+          <div style="width:15px; height:19px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+          <div style="width:15px; height:19px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+          <div style="width:15px; height:19px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+        </div>
+        <div style="margin-top:22px; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D); margin-bottom:12px;">LifeBar · 3 vidas</div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:20px; line-height:1; color:var(--wrong,#FF5C5C);">&#9829;</span>
+          <span style="font-size:20px; line-height:1; color:var(--wrong,#FF5C5C);">&#9829;</span>
+          <span style="font-size:20px; line-height:1; color:var(--heartOff,#2E3238);">&#9829;</span>
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text3,#7E858D); margin-left:6px;">2 / 3</span>
+        </div>
+        <p style="margin:16px 0 0; font-size:13px; color:var(--text3,#7E858D); line-height:1.5;">Balão preenchido = problema aceito. O contador mono ao lado das vidas é o fallback acessível.</p>
+      </div>
+
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D); margin-bottom:18px;">Tag · padrão algorítmico</div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; padding:8px 12px; border:1px solid var(--line2,#343A41); border-radius:2px; color:var(--text2,#99A0A7);">graphs</span>
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; padding:8px 12px; border:1px solid var(--accent,#FF7A45); border-radius:2px; color:var(--accent,#FF7A45); background:#221610; background:color-mix(in srgb, var(--accent,#FF7A45) 14%, var(--canvas,#0B0C0D));">bfs</span>
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; padding:8px 12px; border:1px solid var(--line2,#343A41); border-radius:2px; color:var(--text2,#99A0A7);">dp</span>
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; padding:8px 12px; border:1px solid var(--line2,#343A41); border-radius:2px; color:var(--text2,#99A0A7);">greedy</span>
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; padding:8px 12px; border:1px solid var(--line2,#343A41); border-radius:2px; color:var(--text2,#99A0A7);">O(n log n)</span>
+        </div>
+        <div style="margin-top:24px; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D); margin-bottom:12px;">DropZone</div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; min-width:96px; height:38px; display:inline-flex; align-items:center; justify-content:center; border:1px dashed var(--lineDim,#4C535B); border-radius:2px; color:var(--textDim,#5F656C);">drop here</span>
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; min-width:96px; height:38px; display:inline-flex; align-items:center; justify-content:center; border:1px dashed var(--accent,#FF7A45); border-radius:2px; color:var(--accent,#FF7A45); background:#221610; background:color-mix(in srgb, var(--accent,#FF7A45) 14%, var(--canvas,#0B0C0D));">hover</span>
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; min-width:96px; height:38px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--line2,#343A41); border-radius:2px; color:var(--text,#EDEEEF); background:var(--surface2,#171A1E);">O(n log n)</span>
+        </div>
+      </div>
+
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D); margin-bottom:18px;">MatchHeader</div>
+        <div style="border:1px solid var(--line,#24282D); border-radius:4px; background:var(--canvas,#0B0C0D); padding:14px 16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; color:var(--text3,#7E858D);">FREE FOR ALL</span>
+            <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--warn,#F5C451); font-weight:500;">00:42</span>
+            <span style="display:flex; gap:5px; align-items:center;"><span style="font-size:15px; color:var(--wrong,#FF5C5C);">&#9829;</span><span style="font-size:15px; color:var(--wrong,#FF5C5C);">&#9829;</span><span style="font-size:15px; color:var(--heartOff,#2E3238);">&#9829;</span></span>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:12px;">
+            <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div>
+            <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div>
+            <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div>
+            <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div>
+            <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div>
+            <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div>
+            <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+            <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+            <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+            <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+            <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+            <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+            <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+            <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+            <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+          </div>
+        </div>
+        <p style="margin:16px 0 0; font-size:13px; color:var(--text3,#7E858D); line-height:1.5;">Fixo no topo, 84&nbsp;dp, fundo canvas para separar-se do conteúdo. O timer vira warn abaixo de 15&nbsp;s.</p>
+      </div>
+
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D); margin-bottom:18px;">CodeBlock</div>
+        <div style="border:1px solid var(--line,#24282D); border-radius:2px; background:var(--canvas,#0B0C0D); font-family:'IBM Plex Mono',monospace; font-size:13px; line-height:24px; overflow:hidden;">
+          <div style="display:flex; gap:14px; padding:0 14px;"><span style="color:var(--lineDim,#4C535B); user-select:none;">1</span><span style="color:var(--text2,#99A0A7);"><span style="color:var(--synKw,#C792EA);">fun</span> <span style="color:var(--synFn,#82AAFF);">search</span>(a: IntArray, k: Int): Int {</span></div>
+          <div style="display:flex; gap:14px; padding:0 14px;"><span style="color:var(--lineDim,#4C535B); user-select:none;">2</span><span style="color:var(--text2,#99A0A7);">&nbsp;&nbsp;<span style="color:var(--synKw,#C792EA);">var</span> lo = <span style="color:var(--warn,#F5C451);">0</span>; <span style="color:var(--synKw,#C792EA);">var</span> hi = a.size</span></div>
+          <div style="display:flex; gap:14px; padding:0 14px; background:var(--tintErr,#231113); border-left:2px solid var(--wrong,#FF5C5C); margin-left:-2px;"><span style="color:var(--wrong,#FF5C5C); user-select:none;">3</span><span style="color:var(--text,#EDEEEF);">&nbsp;&nbsp;<span style="color:var(--synKw,#C792EA);">while</span> (lo &lt; hi) {</span></div>
+          <div style="display:flex; gap:14px; padding:0 14px;"><span style="color:var(--lineDim,#4C535B); user-select:none;">4</span><span style="color:var(--text2,#99A0A7);">&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--synKw,#C792EA);">val</span> mid = (lo + hi) / <span style="color:var(--warn,#F5C451);">2</span></span></div>
+          <div style="display:flex; gap:14px; padding:0 14px;"><span style="color:var(--lineDim,#4C535B); user-select:none;">5</span><span style="color:var(--text2,#99A0A7);">&nbsp;&nbsp;}</span></div>
+        </div>
+        <p style="margin:16px 0 0; font-size:13px; color:var(--text3,#7E858D); line-height:1.5;">Realce de linha por fundo + barra lateral de 2&nbsp;dp. Sem scroll horizontal: linhas quebram com indentação preservada.</p>
+      </div>
+    </div>
+  </section>
+
+  <section style="max-width:1180px; margin:0 auto; padding:80px 32px 0;">
+    <div style="display:flex; align-items:baseline; gap:16px;">
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent,#FF7A45); letter-spacing:0.1em;">05</span>
+      <h2 style="margin:0; font-size:28px; font-weight:600; letter-spacing:-0.02em;">Templates de questão</h2>
+    </div>
+    <p style="margin:12px 0 0; max-width:620px; font-size:15px; line-height:1.55; color:var(--text2,#99A0A7);">Quatro <span style="font-family:'IBM Plex Mono',monospace; font-size:14px;">template_type</span> renderizados pelo mesmo casco: header fixo, corpo rolável, CTA ancorado. Sem teclado nativo em nenhum deles.</p>
+
+    <div style="display:flex; flex-wrap:wrap; gap:24px; margin-top:32px;">
+
+      <div style="width:340px; flex:0 0 auto;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--accent,#FF7A45); margin-bottom:10px;">FILL_IN_THE_BLANK</div>
+        <div style="border:1px solid var(--line2,#343A41); border-radius:4px; background:var(--canvas,#0B0C0D); height:620px; display:flex; flex-direction:column; overflow:hidden;">
+          <div style="padding:14px 16px; border-bottom:1px solid var(--line,#24282D); display:flex; justify-content:space-between; align-items:center;"><span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D);">07 / 15</span><span style="display:flex; gap:4px;"><span style="font-size:14px; color:var(--wrong,#FF5C5C);">&#9829;</span><span style="font-size:14px; color:var(--wrong,#FF5C5C);">&#9829;</span><span style="font-size:14px; color:var(--heartOff,#2E3238);">&#9829;</span></span></div>
+          <div style="padding:20px 16px; flex:1; display:flex; flex-direction:column; gap:16px;">
+            <h4 style="margin:0; font-size:19px; font-weight:600; line-height:1.3;">Complete a condição do loop</h4>
+            <div style="border:1px solid var(--line,#24282D); border-radius:2px; background:var(--surface,#111316); font-family:'IBM Plex Mono',monospace; font-size:13px; line-height:26px; padding:12px 0;">
+              <div style="display:flex; gap:12px; padding:0 12px;"><span style="color:var(--lineDim,#4C535B);">1</span><span style="color:var(--text2,#99A0A7);"><span style="color:var(--synKw,#C792EA);">var</span> lo = <span style="color:var(--warn,#F5C451);">0</span>, hi = n - <span style="color:var(--warn,#F5C451);">1</span></span></div>
+              <div style="display:flex; gap:12px; padding:0 12px; align-items:center;"><span style="color:var(--lineDim,#4C535B);">2</span><span style="color:var(--text2,#99A0A7);"><span style="color:var(--synKw,#C792EA);">while</span> (</span><span style="display:inline-flex; align-items:center; justify-content:center; min-width:74px; height:30px; border:1px dashed var(--accent,#FF7A45); border-radius:2px; color:var(--textDim,#5F656C); font-size:12px;">____</span><span style="color:var(--text2,#99A0A7);">) {</span></div>
+              <div style="display:flex; gap:12px; padding:0 12px;"><span style="color:var(--lineDim,#4C535B);">3</span><span style="color:var(--text2,#99A0A7);">&nbsp;&nbsp;<span style="color:var(--synKw,#C792EA);">val</span> mid = lo + (hi - lo) / <span style="color:var(--warn,#F5C451);">2</span></span></div>
+              <div style="display:flex; gap:12px; padding:0 12px;"><span style="color:var(--lineDim,#4C535B);">4</span><span style="color:var(--text2,#99A0A7);">}</span></div>
+            </div>
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D);">ARRASTE O BLOCO</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; padding:9px 12px; border:1px solid var(--line2,#343A41); border-radius:2px; background:var(--surface2,#171A1E);">lo &lt; hi</span>
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; padding:9px 12px; border:1px solid var(--line2,#343A41); border-radius:2px; background:var(--surface2,#171A1E);">lo &lt;= hi</span>
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; padding:9px 12px; border:1px solid var(--line2,#343A41); border-radius:2px; background:var(--surface2,#171A1E);">lo != hi</span>
+            </div>
+          </div>
+          <div style="padding:16px; border-top:1px solid var(--line,#24282D);"><div style="height:52px; border-radius:4px; background:var(--btnOff,#1B1D20); color:var(--textDim,#5F656C); display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600;">Confirmar</div></div>
+        </div>
+      </div>
+
+      <div style="width:340px; flex:0 0 auto;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--accent,#FF7A45); margin-bottom:10px;">SPOT_THE_BUG</div>
+        <div style="border:1px solid var(--line2,#343A41); border-radius:4px; background:var(--canvas,#0B0C0D); height:620px; display:flex; flex-direction:column; overflow:hidden;">
+          <div style="padding:14px 16px; border-bottom:1px solid var(--line,#24282D); display:flex; justify-content:space-between; align-items:center;"><span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D);">08 / 15</span><span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--warn,#F5C451);">00:22</span></div>
+          <div style="padding:20px 16px; flex:1; display:flex; flex-direction:column; gap:16px;">
+            <h4 style="margin:0; font-size:19px; font-weight:600; line-height:1.3;">Toque na linha com o loop infinito</h4>
+            <div style="border:1px solid var(--line,#24282D); border-radius:2px; background:var(--surface,#111316); font-family:'IBM Plex Mono',monospace; font-size:13px; line-height:34px;">
+              <div style="display:flex; gap:12px; padding:0 12px; border-bottom:1px solid var(--rowline,#16191C);"><span style="color:var(--lineDim,#4C535B); width:14px;">1</span><span style="color:var(--text2,#99A0A7);"><span style="color:var(--synKw,#C792EA);">while</span> (i &lt; n) {</span></div>
+              <div style="display:flex; gap:12px; padding:0 12px; border-bottom:1px solid var(--rowline,#16191C);"><span style="color:var(--lineDim,#4C535B); width:14px;">2</span><span style="color:var(--text2,#99A0A7);">&nbsp;&nbsp;total += nums[i]</span></div>
+              <div style="display:flex; gap:12px; padding:0 12px; border-bottom:1px solid var(--rowline,#16191C); background:#221610; background:color-mix(in srgb, var(--accent,#FF7A45) 14%, var(--canvas,#0B0C0D)); border-left:2px solid var(--accent,#FF7A45);"><span style="color:var(--accent,#FF7A45); width:14px;">3</span><span style="color:var(--text,#EDEEEF);">&nbsp;&nbsp;<span style="color:var(--synKw,#C792EA);">if</span> (nums[i] &lt; <span style="color:var(--warn,#F5C451);">0</span>) i = i</span></div>
+              <div style="display:flex; gap:12px; padding:0 12px; border-bottom:1px solid var(--rowline,#16191C);"><span style="color:var(--lineDim,#4C535B); width:14px;">4</span><span style="color:var(--text2,#99A0A7);">&nbsp;&nbsp;<span style="color:var(--synKw,#C792EA);">else</span> i = i + <span style="color:var(--warn,#F5C451);">1</span></span></div>
+              <div style="display:flex; gap:12px; padding:0 12px;"><span style="color:var(--lineDim,#4C535B); width:14px;">5</span><span style="color:var(--text2,#99A0A7);">}</span></div>
+            </div>
+            <p style="margin:0; font-size:13px; color:var(--text3,#7E858D); line-height:1.5;">Alvo de toque = linha inteira, altura 34&nbsp;dp + 7&nbsp;dp de folga invisível acima e abaixo.</p>
+          </div>
+          <div style="padding:16px; border-top:1px solid var(--line,#24282D);"><div style="height:52px; border-radius:4px; background:var(--accent,#FF7A45); color:#160B05; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600;">Confirmar linha 3</div></div>
+        </div>
+      </div>
+
+      <div style="width:340px; flex:0 0 auto;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--accent,#FF7A45); margin-bottom:10px;">COMPLEXITY_MATCH</div>
+        <div style="border:1px solid var(--line2,#343A41); border-radius:4px; background:var(--canvas,#0B0C0D); height:620px; display:flex; flex-direction:column; overflow:hidden;">
+          <div style="padding:14px 16px; border-bottom:1px solid var(--line,#24282D); display:flex; justify-content:space-between; align-items:center;"><span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D);">09 / 15</span><span style="display:flex; gap:4px;"><span style="font-size:14px; color:var(--wrong,#FF5C5C);">&#9829;</span><span style="font-size:14px; color:var(--wrong,#FF5C5C);">&#9829;</span><span style="font-size:14px; color:var(--heartOff,#2E3238);">&#9829;</span></span></div>
+          <div style="padding:20px 16px; flex:1; display:flex; flex-direction:column; gap:18px;">
+            <h4 style="margin:0; font-size:19px; font-weight:600; line-height:1.3;">Ordenar um vetor com <span style="font-family:'IBM Plex Mono',monospace; font-size:17px;">n</span> elementos</h4>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div style="display:flex; align-items:center; gap:12px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D); width:60px;">TEMPO</span><span style="flex:1; display:flex; align-items:center; justify-content:center; height:46px; border:1px solid var(--line2,#343A41); border-radius:2px; background:var(--surface2,#171A1E); font-family:'IBM Plex Mono',monospace; font-size:14px;">O(n log n)</span></div>
+              <div style="display:flex; align-items:center; gap:12px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D); width:60px;">ESPAÇO</span><span style="flex:1; display:flex; align-items:center; justify-content:center; height:46px; border:1px dashed var(--accent,#FF7A45); border-radius:2px; color:var(--textDim,#5F656C); font-family:'IBM Plex Mono',monospace; font-size:13px;">solte aqui</span></div>
+            </div>
+            <div style="height:1px; background:var(--line,#24282D);"></div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; padding:10px 12px; border:1px solid var(--line2,#343A41); border-radius:2px; background:var(--surface2,#171A1E);">O(1)</span>
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; padding:10px 12px; border:1px solid var(--line2,#343A41); border-radius:2px; background:var(--surface2,#171A1E);">O(log n)</span>
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; padding:10px 12px; border:1px solid var(--line2,#343A41); border-radius:2px; background:var(--surface2,#171A1E);">O(n)</span>
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; padding:10px 12px; border:1px solid var(--line2,#343A41); border-radius:2px; background:var(--surface2,#171A1E);">O(n²)</span>
+            </div>
+          </div>
+          <div style="padding:16px; border-top:1px solid var(--line,#24282D);"><div style="height:52px; border-radius:4px; background:var(--btnOff,#1B1D20); color:var(--textDim,#5F656C); display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600;">Confirmar</div></div>
+        </div>
+      </div>
+
+      <div style="width:340px; flex:0 0 auto;">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--accent,#FF7A45); margin-bottom:10px;">TAG_THE_PATTERN</div>
+        <div style="border:1px solid var(--line2,#343A41); border-radius:4px; background:var(--canvas,#0B0C0D); height:620px; display:flex; flex-direction:column; overflow:hidden;">
+          <div style="padding:14px 16px; border-bottom:1px solid var(--line,#24282D); display:flex; justify-content:space-between; align-items:center;"><span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D);">10 / 15</span><span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--text2,#99A0A7);">01:04</span></div>
+          <div style="padding:20px 16px; flex:1; display:flex; flex-direction:column; gap:18px;">
+            <h4 style="margin:0; font-size:19px; font-weight:600; line-height:1.3;">Que padrões resolvem isto?</h4>
+            <p style="margin:0; font-size:16px; line-height:1.55; color:var(--text,#EDEEEF);">Uma malha urbana com ruas de custo idêntico. Encontre o menor número de quarteirões entre dois cruzamentos.</p>
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D);">SELECIONE ATÉ 2</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; padding:11px 13px; border:1px solid var(--accent,#FF7A45); border-radius:2px; background:#221610; background:color-mix(in srgb, var(--accent,#FF7A45) 14%, var(--canvas,#0B0C0D)); color:var(--accent,#FF7A45);">graphs</span>
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; padding:11px 13px; border:1px solid var(--accent,#FF7A45); border-radius:2px; background:#221610; background:color-mix(in srgb, var(--accent,#FF7A45) 14%, var(--canvas,#0B0C0D)); color:var(--accent,#FF7A45);">bfs</span>
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; padding:11px 13px; border:1px solid var(--line2,#343A41); border-radius:2px; color:var(--text2,#99A0A7);">dijkstra</span>
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; padding:11px 13px; border:1px solid var(--line2,#343A41); border-radius:2px; color:var(--text2,#99A0A7);">dp</span>
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; padding:11px 13px; border:1px solid var(--line2,#343A41); border-radius:2px; color:var(--text2,#99A0A7);">binary search</span>
+              <span style="font-family:'IBM Plex Mono',monospace; font-size:13px; padding:11px 13px; border:1px solid var(--line2,#343A41); border-radius:2px; color:var(--text2,#99A0A7);">union find</span>
+            </div>
+          </div>
+          <div style="padding:16px; border-top:1px solid var(--line,#24282D);"><div style="height:52px; border-radius:4px; background:var(--accent,#FF7A45); color:#160B05; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600;">Confirmar 2 tags</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="max-width:1180px; margin:0 auto; padding:80px 32px 0;">
+    <div style="display:flex; align-items:baseline; gap:16px;">
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent,#FF7A45); letter-spacing:0.1em;">06</span>
+      <h2 style="margin:0; font-size:28px; font-weight:600; letter-spacing:-0.02em;">Telas-chave</h2>
+    </div>
+
+    <div style="display:flex; flex-wrap:wrap; gap:24px; margin-top:32px;">
+
+      <div style="width:340px; flex:0 0 auto;" data-screen-label="Skill tree">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D); margin-bottom:10px;">TRILHAS GUIADAS · SKILL TREE</div>
+        <div style="border:1px solid var(--line2,#343A41); border-radius:4px; background:var(--canvas,#0B0C0D); height:660px; display:flex; flex-direction:column; overflow:hidden;">
+          <div style="padding:18px 20px 14px; border-bottom:1px solid var(--line,#24282D);">
+            <div style="display:flex; justify-content:space-between; align-items:baseline;"><h4 style="margin:0; font-size:22px; font-weight:600; letter-spacing:-0.02em;">Trilha: Arrays</h4><span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent,#FF7A45);">3/6</span></div>
+            <div style="height:3px; background:var(--line,#24282D); border-radius:2px; margin-top:12px;"><div style="width:50%; height:3px; background:var(--accent,#FF7A45); border-radius:2px;"></div></div>
+          </div>
+          <div style="flex:1; padding:20px; display:flex; flex-direction:column; gap:0;">
+            <div style="display:flex; gap:14px; align-items:flex-start;"><div style="display:flex; flex-direction:column; align-items:center;"><div style="width:40px; height:40px; border:1px solid var(--correct,#3DD68C); border-radius:4px; background:var(--tintOk,#0F2018); display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--correct,#3DD68C);">01</div><div style="width:1px; height:34px; background:var(--line,#24282D);"></div></div><div style="padding-top:8px;"><div style="font-size:15px; font-weight:500;">Sliding Window</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--correct,#3DD68C); margin-top:3px;">COMPLETO</div></div></div>
+            <div style="display:flex; gap:14px; align-items:flex-start;"><div style="display:flex; flex-direction:column; align-items:center;"><div style="width:40px; height:40px; border:1px solid var(--correct,#3DD68C); border-radius:4px; background:var(--tintOk,#0F2018); display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--correct,#3DD68C);">02</div><div style="width:1px; height:34px; background:var(--line,#24282D);"></div></div><div style="padding-top:8px;"><div style="font-size:15px; font-weight:500;">Prefix Sum</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--correct,#3DD68C); margin-top:3px;">COMPLETO</div></div></div>
+            <div style="display:flex; gap:14px; align-items:flex-start;"><div style="display:flex; flex-direction:column; align-items:center;"><div style="width:40px; height:40px; border:1px solid var(--accent,#FF7A45); border-radius:4px; background:#221610; background:color-mix(in srgb, var(--accent,#FF7A45) 14%, var(--canvas,#0B0C0D)); display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--accent,#FF7A45);">03</div><div style="width:1px; height:34px; background:var(--line,#24282D);"></div></div><div style="padding-top:6px;"><div style="font-size:16px; font-weight:600;">Two Pointers</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--accent,#FF7A45); margin-top:3px;">EM CURSO · 2/5 LIÇÕES</div></div></div>
+            <div style="display:flex; gap:14px; align-items:flex-start;"><div style="display:flex; flex-direction:column; align-items:center;"><div style="width:40px; height:40px; border:1px dashed var(--line2,#343A41); border-radius:4px; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--textDim,#5F656C);">04</div><div style="width:1px; height:34px; background:var(--line,#24282D);"></div></div><div style="padding-top:8px;"><div style="font-size:15px; font-weight:500; color:var(--textDim,#5F656C);">Binary Search</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--textDim,#5F656C); margin-top:3px;">BLOQUEADO</div></div></div>
+            <div style="display:flex; gap:14px; align-items:flex-start;"><div style="display:flex; flex-direction:column; align-items:center;"><div style="width:40px; height:40px; border:1px solid var(--heartOff,#2E3238); border-radius:4px; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--textDim,#5F656C); letter-spacing:0.05em;">BOSS</div></div><div style="padding-top:8px;"><div style="font-size:15px; font-weight:600; color:var(--textDim,#5F656C);">Desafio: Arrays</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--textDim,#5F656C); margin-top:3px;">DESTRAVA A PRÓXIMA TRILHA</div></div></div>
+          </div>
+          <div style="padding:16px 20px; border-top:1px solid var(--line,#24282D);"><div style="height:52px; border-radius:4px; background:var(--accent,#FF7A45); color:#160B05; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600;">Continuar lição 3</div></div>
+        </div>
+      </div>
+
+      <div style="width:340px; flex:0 0 auto;" data-screen-label="Trap bottom sheet">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D); margin-bottom:10px;">EM PARTIDA · TRAP SHEET</div>
+        <div style="border:1px solid var(--line2,#343A41); border-radius:4px; background:var(--canvas,#0B0C0D); height:660px; display:flex; flex-direction:column; overflow:hidden; position:relative;">
+          <div style="padding:14px 16px; border-bottom:1px solid var(--line,#24282D); display:flex; justify-content:space-between; align-items:center;"><span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D);">11 / 15</span><span style="display:flex; gap:4px;"><span style="font-size:14px; color:var(--wrong,#FF5C5C);">&#9829;</span><span style="font-size:14px; color:var(--heartOff,#2E3238);">&#9829;</span><span style="font-size:14px; color:var(--heartOff,#2E3238);">&#9829;</span></span></div>
+          <div style="padding:20px 16px; display:flex; flex-direction:column; gap:12px; opacity:0.45;">
+            <h4 style="margin:0; font-size:19px; font-weight:600;">Qual estratégia é ótima?</h4>
+            <div style="min-height:52px; display:flex; align-items:center; padding:0 14px; border:1px solid var(--line2,#343A41); border-radius:4px; font-size:15px; color:var(--text2,#99A0A7);">Dynamic Programming</div>
+            <div style="min-height:52px; display:flex; align-items:center; padding:0 14px; border:1px solid var(--wrong,#FF5C5C); border-radius:4px; background:var(--tintErr,#231113); font-size:15px;">Greedy por maior valor</div>
+          </div>
+          <div style="margin-top:auto; border-top:1px solid var(--line2,#343A41); border-radius:8px 8px 0 0; background:var(--surface2,#171A1E); padding:18px 18px 20px; box-shadow:0 -16px 48px var(--shadowSheet,rgba(0,0,0,0.65));">
+            <div style="width:36px; height:3px; background:var(--line2,#343A41); border-radius:2px; margin:0 auto 16px;"></div>
+            <div style="display:flex; align-items:center; gap:8px;"><span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--wrong,#FF5C5C);">TRAP CLÁSSICA</span><span style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D);">· greedy vs dp</span></div>
+            <h5 style="margin:10px 0 6px; font-size:17px; font-weight:600; line-height:1.3;">Escolher o maior valor primeiro não reconstrói o ótimo.</h5>
+            <p style="margin:0 0 16px; font-size:14px; line-height:1.5; color:var(--text2,#99A0A7);">Com pesos arbitrários, a decisão local descarta combinações melhores adiante.</p>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="height:48px; border-radius:4px; border:1px solid var(--line2,#343A41); display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:500;">Ler explicação <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-left:8px;">pausa o timer</span></div>
+              <div style="height:48px; border-radius:4px; background:var(--accent,#FF7A45); color:#160B05; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600;">Pular</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="width:340px; flex:0 0 auto;" data-screen-label="Post-match report">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D); margin-bottom:10px;">POST-MATCH REPORT</div>
+        <div style="border:1px solid var(--line2,#343A41); border-radius:4px; background:var(--canvas,#0B0C0D); height:660px; display:flex; flex-direction:column; overflow:hidden;">
+          <div style="padding:22px 20px 18px; border-bottom:1px solid var(--line,#24282D);">
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; color:var(--text3,#7E858D);">CONTEST ENCERRADO</div>
+            <div style="display:flex; align-items:baseline; gap:10px; margin-top:8px;"><span style="font-size:40px; font-weight:600; letter-spacing:-0.03em; line-height:1;">11</span><span style="font-family:'IBM Plex Mono',monospace; font-size:15px; color:var(--text3,#7E858D);">/ 15 aceitos</span></div>
+            <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:14px;">
+              <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div><div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div><div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div><div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div><div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div><div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div><div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div><div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div><div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div><div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div><div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; background:var(--accent,#FF7A45);"></div>
+              <div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div><div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div><div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div><div style="width:11px; height:14px; border-radius:50% 50% 45% 45%; border:1px solid var(--line2,#343A41);"></div>
+            </div>
+          </div>
+          <div style="flex:1; padding:18px 20px; display:flex; flex-direction:column; gap:10px; overflow:hidden;">
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D);">REVISÃO · 3 ERROS</div>
+            <div style="border:1px solid var(--line,#24282D); border-radius:4px; background:var(--surface,#111316); padding:14px;">
+              <div style="display:flex; justify-content:space-between; gap:10px;"><span style="font-size:15px; font-weight:600;">Coin Change</span><span style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--wrong,#FF5C5C);">WA</span></div>
+              <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text3,#7E858D); margin-top:6px;">sua resposta: greedy</div>
+              <p style="margin:8px 0 0; font-size:13px; line-height:1.5; color:var(--text2,#99A0A7);">Guloso falha com moedas não canônicas; DP reconstrói o mínimo global.</p>
+            </div>
+            <div style="border:1px solid var(--line,#24282D); border-radius:4px; background:var(--surface,#111316); padding:14px;">
+              <div style="display:flex; justify-content:space-between; gap:10px;"><span style="font-size:15px; font-weight:600;">Soma de Dois Números</span><span style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--wrong,#FF5C5C);">WA</span></div>
+              <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text3,#7E858D); margin-top:6px;">sua resposta: i = i</div>
+              <p style="margin:8px 0 0; font-size:13px; line-height:1.5; color:var(--text2,#99A0A7);">Sem <span style="font-family:'IBM Plex Mono',monospace;">i + 1</span> o contador não avança: loop infinito.</p>
+            </div>
+          </div>
+          <div style="padding:16px 20px; border-top:1px solid var(--line,#24282D);"><div style="height:52px; border-radius:4px; background:var(--accent,#FF7A45); color:#160B05; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600;">Entendi</div></div>
+        </div>
+      </div>
+
+      <div style="width:340px; flex:0 0 auto;" data-screen-label="Ranking">
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D); margin-bottom:10px;">RANKING · GLOBAL / LOCAL</div>
+        <div style="border:1px solid var(--line2,#343A41); border-radius:4px; background:var(--canvas,#0B0C0D); height:660px; display:flex; flex-direction:column; overflow:hidden;">
+          <div style="padding:18px 20px 0;">
+            <h4 style="margin:0 0 14px; font-size:22px; font-weight:600; letter-spacing:-0.02em;">Ranking</h4>
+            <div style="display:flex; border-bottom:1px solid var(--line,#24282D);">
+              <div style="padding:10px 2px; margin-right:20px; font-size:14px; font-weight:600; border-bottom:2px solid var(--accent,#FF7A45); margin-bottom:-1px;">Global</div>
+              <div style="padding:10px 2px; font-size:14px; color:var(--text3,#7E858D);">UFC</div>
+            </div>
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column;">
+            <div style="display:flex; align-items:center; gap:14px; padding:14px 20px; border-bottom:1px solid var(--rowline,#16191C);"><span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--text3,#7E858D); width:26px;">01</span><div style="flex:1;"><div style="font-size:15px; font-weight:500;">tourist_br</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:2px;">ITA</div></div><span style="font-family:'IBM Plex Mono',monospace; font-size:14px; color:var(--text,#EDEEEF);">4820</span></div>
+            <div style="display:flex; align-items:center; gap:14px; padding:14px 20px; border-bottom:1px solid var(--rowline,#16191C);"><span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--text3,#7E858D); width:26px;">02</span><div style="flex:1;"><div style="font-size:15px; font-weight:500;">lupa.dp</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:2px;">USP</div></div><span style="font-family:'IBM Plex Mono',monospace; font-size:14px; color:var(--text,#EDEEEF);">4655</span></div>
+            <div style="display:flex; align-items:center; gap:14px; padding:14px 20px; border-bottom:1px solid var(--rowline,#16191C);"><span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--text3,#7E858D); width:26px;">03</span><div style="flex:1;"><div style="font-size:15px; font-weight:500;">bfs_enjoyer</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:2px;">UNICAMP</div></div><span style="font-family:'IBM Plex Mono',monospace; font-size:14px; color:var(--text,#EDEEEF);">4390</span></div>
+            <div style="display:flex; align-items:center; gap:14px; padding:14px 20px; border-bottom:1px solid var(--rowline,#16191C);"><span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--text3,#7E858D); width:26px;">04</span><div style="flex:1;"><div style="font-size:15px; font-weight:500;">seg.tree</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:2px;">UFMG</div></div><span style="font-family:'IBM Plex Mono',monospace; font-size:14px; color:var(--text,#EDEEEF);">4102</span></div>
+            <div style="display:flex; align-items:center; gap:14px; padding:14px 20px; border-bottom:1px solid var(--rowline,#16191C);"><span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--text3,#7E858D); width:26px;">05</span><div style="flex:1;"><div style="font-size:15px; font-weight:500;">kmp.rodrigo</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text3,#7E858D); margin-top:2px;">UFRGS</div></div><span style="font-family:'IBM Plex Mono',monospace; font-size:14px; color:var(--text,#EDEEEF);">3987</span></div>
+            <div style="display:flex; align-items:center; gap:14px; padding:16px 20px; border-top:1px solid var(--accent,#FF7A45); border-bottom:1px solid var(--accent,#FF7A45); background:#221610; background:color-mix(in srgb, var(--accent,#FF7A45) 14%, var(--canvas,#0B0C0D)); margin-top:auto;"><span style="font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--accent,#FF7A45); width:26px;">42</span><div style="flex:1;"><div style="font-size:15px; font-weight:600;">você</div><div style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--accent,#FF7A45); margin-top:2px;">UFC · +6 esta semana</div></div><span style="font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:600;">2140</span></div>
+          </div>
+          <div style="display:flex; border-top:1px solid var(--line,#24282D); background:var(--surface,#111316);">
+            <div style="flex:1; padding:14px 0; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.1em; color:var(--text3,#7E858D);">TRILHAS</div>
+            <div style="flex:1; padding:14px 0; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.1em; color:var(--text3,#7E858D);">ARENA</div>
+            <div style="flex:1; padding:14px 0; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.1em; color:var(--accent,#FF7A45); border-top:2px solid var(--accent,#FF7A45); margin-top:-1px;">RANKING</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <sc-if value="{{ showComposeTokens }}" hint-placeholder-val="{{ true }}">
+  <section style="max-width:1180px; margin:0 auto; padding:80px 32px 0;">
+    <div style="display:flex; align-items:baseline; gap:16px;">
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent,#FF7A45); letter-spacing:0.1em;">07</span>
+      <h2 style="margin:0; font-size:28px; font-weight:600; letter-spacing:-0.02em;">Tokens · Compose e SwiftUI</h2>
+    </div>
+    <p style="margin:12px 0 0; max-width:660px; font-size:15px; line-height:1.55; color:var(--text2,#99A0A7);">Mesmos nomes nas duas plataformas: <span style="font-family:'IBM Plex Mono',monospace; font-size:14px;">Accent</span> é <span style="font-family:'IBM Plex Mono',monospace; font-size:14px;">Accent</span> no Kotlin e no Swift. Cores fora deste conjunto não entram em PR.</p>
+    <div style="display:flex; align-items:center; gap:10px; margin-top:20px;">
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.1em; padding:6px 12px; border:1px solid var(--accent,#FF7A45); border-radius:2px; color:var(--accent,#FF7A45); background:#221610; background:color-mix(in srgb, var(--accent,#FF7A45) 14%, var(--canvas,#0B0C0D));">KOTLIN · COMPOSE</span>
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.1em; padding:6px 12px; border:1px solid var(--accent,#FF7A45); border-radius:2px; color:var(--accent,#FF7A45); background:#221610; background:color-mix(in srgb, var(--accent,#FF7A45) 14%, var(--canvas,#0B0C0D));">SWIFT · SWIFTUI</span>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:1px; background:var(--line,#24282D); border:1px solid var(--line,#24282D); border-radius:4px; margin-top:28px;">
+      <div style="background:var(--canvas,#0B0C0D); padding:24px; font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:1.85; color:var(--text2,#99A0A7); white-space:pre-wrap;"><span style="color:var(--textDim,#5F656C);">// LognColors.kt
+</span><span style="color:var(--synKw,#C792EA);">val</span> Canvas        = Color(<span style="color:var(--warn,#F5C451);">0xFF{{ t.canvasRaw }}</span>)
+<span style="color:var(--synKw,#C792EA);">val</span> Surface       = Color(<span style="color:var(--warn,#F5C451);">0xFF{{ t.surfaceRaw }}</span>)
+<span style="color:var(--synKw,#C792EA);">val</span> SurfaceRaised = Color(<span style="color:var(--warn,#F5C451);">0xFF{{ t.surface2Raw }}</span>)
+<span style="color:var(--synKw,#C792EA);">val</span> Line          = Color(<span style="color:var(--warn,#F5C451);">0xFF{{ t.lineRaw }}</span>)
+<span style="color:var(--synKw,#C792EA);">val</span> LineStrong    = Color(<span style="color:var(--warn,#F5C451);">0xFF{{ t.line2Raw }}</span>)
+<span style="color:var(--synKw,#C792EA);">val</span> TextPrimary   = Color(<span style="color:var(--warn,#F5C451);">0xFF{{ t.textRaw }}</span>)
+<span style="color:var(--synKw,#C792EA);">val</span> TextSecondary = Color(<span style="color:var(--warn,#F5C451);">0xFF{{ t.text2Raw }}</span>)
+<span style="color:var(--synKw,#C792EA);">val</span> TextMuted     = Color(<span style="color:var(--warn,#F5C451);">0xFF{{ t.text3Raw }}</span>)
+<span style="color:var(--synKw,#C792EA);">val</span> Accent        = Color(<span style="color:var(--warn,#F5C451);">0xFFFF7A45</span>)
+<span style="color:var(--synKw,#C792EA);">val</span> OnAccent      = Color(<span style="color:var(--warn,#F5C451);">0xFF160B05</span>)
+<span style="color:var(--synKw,#C792EA);">val</span> Correct       = Color(<span style="color:var(--warn,#F5C451);">0xFF{{ t.correctRaw }}</span>)
+<span style="color:var(--synKw,#C792EA);">val</span> Wrong         = Color(<span style="color:var(--warn,#F5C451);">0xFF{{ t.wrongRaw }}</span>)
+<span style="color:var(--synKw,#C792EA);">val</span> Warn          = Color(<span style="color:var(--warn,#F5C451);">0xFF{{ t.warnRaw }}</span>)
+<span style="color:var(--synKw,#C792EA);">val</span> Info          = Color(<span style="color:var(--warn,#F5C451);">0xFF{{ t.infoRaw }}</span>)</div>
+      <div style="background:var(--canvas,#0B0C0D); padding:24px; font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:1.85; color:var(--text2,#99A0A7); white-space:pre-wrap;"><span style="color:var(--textDim,#5F656C);">// LognType.kt / LognShape.kt
+</span><span style="color:var(--text2,#99A0A7);">displayLarge     PlexSans 40.sp / 44 / W600
+</span><span style="color:var(--text2,#99A0A7);">headlineMedium   PlexSans 24.sp / 30 / W600
+</span><span style="color:var(--text2,#99A0A7);">titleMedium      PlexSans 19.sp / 25 / W600
+</span><span style="color:var(--text2,#99A0A7);">bodyLarge        PlexSans 17.sp / 26 / W400
+</span><span style="color:var(--text2,#99A0A7);">bodyMedium       PlexSans 15.sp / 22 / W400
+</span><span style="color:var(--text2,#99A0A7);">code             PlexMono 15.sp / 24 / W400
+</span><span style="color:var(--text2,#99A0A7);">label            PlexMono 11.sp / 16 / W500
+
+</span>
+<span style="color:var(--synKw,#C792EA);">val</span> Shapes = Shapes(
+  <span style="color:var(--text2,#99A0A7);">extraSmall</span> = RoundedCornerShape(<span style="color:var(--warn,#F5C451);">2</span>.dp),
+  <span style="color:var(--text2,#99A0A7);">small     </span> = RoundedCornerShape(<span style="color:var(--warn,#F5C451);">4</span>.dp),
+  <span style="color:var(--text2,#99A0A7);">medium    </span> = RoundedCornerShape(<span style="color:var(--warn,#F5C451);">8</span>.dp)
+)
+
+<span style="color:var(--textDim,#5F656C);">// spacing: 4 · 8 · 12 · 16 · 24 · 32 · 48</span></div>
+      <div style="background:var(--canvas,#0B0C0D); padding:24px; font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:1.85; color:var(--text2,#99A0A7); white-space:pre-wrap;"><span style="color:var(--textDim,#5F656C);">// LognColor.swift
+</span><span style="color:var(--synKw,#C792EA);">extension</span> <span style="color:var(--synFn,#82AAFF);">Color</span> {
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">canvas        </span>= Color(hex: <span style="color:var(--correct,#3DD68C);">"{{ t.canvasRaw }}"</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">surface       </span>= Color(hex: <span style="color:var(--correct,#3DD68C);">"{{ t.surfaceRaw }}"</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">surfaceRaised </span>= Color(hex: <span style="color:var(--correct,#3DD68C);">"{{ t.surface2Raw }}"</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">line          </span>= Color(hex: <span style="color:var(--correct,#3DD68C);">"{{ t.lineRaw }}"</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">lineStrong    </span>= Color(hex: <span style="color:var(--correct,#3DD68C);">"{{ t.line2Raw }}"</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">textPrimary   </span>= Color(hex: <span style="color:var(--correct,#3DD68C);">"{{ t.textRaw }}"</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">textSecondary </span>= Color(hex: <span style="color:var(--correct,#3DD68C);">"{{ t.text2Raw }}"</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">textMuted     </span>= Color(hex: <span style="color:var(--correct,#3DD68C);">"{{ t.text3Raw }}"</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">accent        </span>= Color(hex: <span style="color:var(--correct,#3DD68C);">"FF7A45"</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">onAccent      </span>= Color(hex: <span style="color:var(--correct,#3DD68C);">"160B05"</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">correct       </span>= Color(hex: <span style="color:var(--correct,#3DD68C);">"{{ t.correctRaw }}"</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">wrong         </span>= Color(hex: <span style="color:var(--correct,#3DD68C);">"{{ t.wrongRaw }}"</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">warn          </span>= Color(hex: <span style="color:var(--correct,#3DD68C);">"{{ t.warnRaw }}"</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">info          </span>= Color(hex: <span style="color:var(--correct,#3DD68C);">"{{ t.infoRaw }}"</span>)
+}
+<span style="color:var(--textDim,#5F656C);">// Assets.xcassets espelha os mesmos nomes
+// com Any + Dark appearance (dark-first).</span></div>
+      <div style="background:var(--canvas,#0B0C0D); padding:24px; font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:1.85; color:var(--text2,#99A0A7); white-space:pre-wrap;"><span style="color:var(--textDim,#5F656C);">// LognFont.swift / LognSpace.swift
+</span><span style="color:var(--synKw,#C792EA);">extension</span> <span style="color:var(--synFn,#82AAFF);">Font</span> {
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">displayLarge   </span>= custom(<span style="color:var(--correct,#3DD68C);">"IBMPlexSans-SemiBold"</span>, size: <span style="color:var(--warn,#F5C451);">40</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">headlineMedium </span>= custom(<span style="color:var(--correct,#3DD68C);">"IBMPlexSans-SemiBold"</span>, size: <span style="color:var(--warn,#F5C451);">24</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">titleMedium    </span>= custom(<span style="color:var(--correct,#3DD68C);">"IBMPlexSans-SemiBold"</span>, size: <span style="color:var(--warn,#F5C451);">19</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">bodyLarge      </span>= custom(<span style="color:var(--correct,#3DD68C);">"IBMPlexSans-Regular"</span>,  size: <span style="color:var(--warn,#F5C451);">17</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">bodyMedium     </span>= custom(<span style="color:var(--correct,#3DD68C);">"IBMPlexSans-Regular"</span>,  size: <span style="color:var(--warn,#F5C451);">15</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">code           </span>= custom(<span style="color:var(--correct,#3DD68C);">"IBMPlexMono-Regular"</span>,  size: <span style="color:var(--warn,#F5C451);">15</span>)
+  <span style="color:var(--synKw,#C792EA);">static let</span> <span style="color:var(--text2,#99A0A7);">label          </span>= custom(<span style="color:var(--correct,#3DD68C);">"IBMPlexMono-Medium"</span>,   size: <span style="color:var(--warn,#F5C451);">11</span>)
+}
+<span style="color:var(--textDim,#5F656C);">// use .custom(_, size:relativeTo:) para Dynamic Type
+
+</span><span style="color:var(--synKw,#C792EA);">enum</span> <span style="color:var(--synFn,#82AAFF);">Radius</span> { <span style="color:var(--synKw,#C792EA);">static let</span> xs = <span style="color:var(--warn,#F5C451);">2.0</span>, sm = <span style="color:var(--warn,#F5C451);">4.0</span>, md = <span style="color:var(--warn,#F5C451);">8.0</span> }
+<span style="color:var(--synKw,#C792EA);">enum</span> <span style="color:var(--synFn,#82AAFF);">Space</span>  { <span style="color:var(--synKw,#C792EA);">static let</span> xs = <span style="color:var(--warn,#F5C451);">4.0</span>, sm = <span style="color:var(--warn,#F5C451);">8.0</span>, md = <span style="color:var(--warn,#F5C451);">12.0</span>,
+                 lg = <span style="color:var(--warn,#F5C451);">16.0</span>, xl = <span style="color:var(--warn,#F5C451);">24.0</span>, xxl = <span style="color:var(--warn,#F5C451);">32.0</span> }</div>
+    </div>
+
+    <h3 style="margin:36px 0 14px; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text3,#7E858D);">Paridade entre plataformas</h3>
+    <div style="border:1px solid var(--line,#24282D); border-radius:4px; overflow:hidden;">
+      <div style="display:grid; grid-template-columns:1.1fr 1.2fr 1.2fr; gap:1px; background:var(--line,#24282D);">
+        <div style="background:var(--surface2,#171A1E); padding:12px 16px; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D);">ELEMENTO</div>
+        <div style="background:var(--surface2,#171A1E); padding:12px 16px; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D);">COMPOSE</div>
+        <div style="background:var(--surface2,#171A1E); padding:12px 16px; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; color:var(--text3,#7E858D);">SWIFTUI</div>
+
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:14px;">Trap sheet</div>
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:13.5px; color:var(--text2,#99A0A7); font-family:'IBM Plex Mono',monospace;">ModalBottomSheet</div>
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:13.5px; color:var(--text2,#99A0A7); font-family:'IBM Plex Mono',monospace;">.sheet + .presentationDetents</div>
+
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:14px;">Drag &amp; drop</div>
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:13.5px; color:var(--text2,#99A0A7); font-family:'IBM Plex Mono',monospace;">detectDragGestures + DragTarget</div>
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:13.5px; color:var(--text2,#99A0A7); font-family:'IBM Plex Mono',monospace;">.draggable / .dropDestination</div>
+
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:14px;">Haptic no veredito</div>
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:13.5px; color:var(--text2,#99A0A7); font-family:'IBM Plex Mono',monospace;">HapticFeedbackType.LongPress</div>
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:13.5px; color:var(--text2,#99A0A7); font-family:'IBM Plex Mono',monospace;">.sensoryFeedback(.error, …)</div>
+
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:14px;">Shake de erro</div>
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:13.5px; color:var(--text2,#99A0A7); font-family:'IBM Plex Mono',monospace;">Animatable + keyframes 240 ms</div>
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:13.5px; color:var(--text2,#99A0A7); font-family:'IBM Plex Mono',monospace;">.phaseAnimator / KeyframeAnimator</div>
+
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:14px;">Escala de texto</div>
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:13.5px; color:var(--text2,#99A0A7); font-family:'IBM Plex Mono',monospace;">sp + fontScale até 200%</div>
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:13.5px; color:var(--text2,#99A0A7); font-family:'IBM Plex Mono',monospace;">Dynamic Type até AX2</div>
+
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:14px;">Alvo de toque</div>
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:13.5px; color:var(--text2,#99A0A7); font-family:'IBM Plex Mono',monospace;">48 dp — mínimo M3</div>
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:13.5px; color:var(--text2,#99A0A7); font-family:'IBM Plex Mono',monospace;">44 pt — mínimo HIG</div>
+
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:14px;">Navegação raiz</div>
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:13.5px; color:var(--text2,#99A0A7); font-family:'IBM Plex Mono',monospace;">NavigationBar 3 itens</div>
+        <div style="background:var(--surface,#111316); padding:12px 16px; font-size:13.5px; color:var(--text2,#99A0A7); font-family:'IBM Plex Mono',monospace;">TabView .tabBar, mesmos 3</div>
+      </div>
+    </div>
+    <p style="margin:16px 0 0; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.6; color:var(--text3,#7E858D); max-width:680px;">Regra de paridade: geometria, cor e copy são idênticas nas duas plataformas. Só gesto, haptic, transição de sistema e piso de toque seguem a convenção nativa.</p>
+  </section>
+  </sc-if>
+
+  <section style="max-width:1180px; margin:0 auto; padding:80px 32px 0;">
+    <div style="display:flex; align-items:baseline; gap:16px;">
+      <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent,#FF7A45); letter-spacing:0.1em;">08</span>
+      <h2 style="margin:0; font-size:28px; font-weight:600; letter-spacing:-0.02em;">Estados e acessibilidade</h2>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:1px; background:var(--line,#24282D); border:1px solid var(--line,#24282D); border-radius:4px; margin-top:28px;">
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <h3 style="margin:0 0 14px; font-size:16px; font-weight:600;">Estados obrigatórios</h3>
+        <ul style="margin:0; padding-left:18px; font-size:14px; line-height:1.8; color:var(--text2,#99A0A7);">
+          <li>enabled · pressed · disabled · focused</li>
+          <li>selected (acento) · correct · wrong</li>
+          <li>locked (tracejado + texto muted)</li>
+          <li>loading: skeleton com linha Line, sem spinner</li>
+          <li>offline: chip mono <span style="font-family:'IBM Plex Mono',monospace; color:var(--warn,#F5C451);">SYNC PENDENTE</span> no header</li>
+        </ul>
+      </div>
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <h3 style="margin:0 0 14px; font-size:16px; font-weight:600;">Acessibilidade</h3>
+        <ul style="margin:0; padding-left:18px; font-size:14px; line-height:1.8; color:var(--text2,#99A0A7);">
+          <li>Piso nativo: 48&nbsp;dp no Android, 44&nbsp;pt no iOS</li>
+          <li>Veredito nunca só por cor: AC/WA em mono sempre presentes</li>
+          <li>Em partida, 56&nbsp;dp/pt nos dois: mis-tap custa uma vida</li>
+          <li>Linhas de código 34&nbsp;dp + folga invisível até o piso</li>
+          <li>Contraste mínimo 4.5:1 em texto lido</li>
+          <li><span style="font-family:'IBM Plex Mono',monospace; font-size:13px;">contentDescription</span> em balões: "problema 7 aceito"</li>
+          <li>Shake respeita <span style="font-family:'IBM Plex Mono',monospace; font-size:13px;">reduceMotion</span> — vira flash de borda</li>
+          <li>Suporta font scale até 200% sem truncar enunciado</li>
+        </ul>
+      </div>
+      <div style="background:var(--surface,#111316); padding:26px;">
+        <h3 style="margin:0 0 14px; font-size:16px; font-weight:600;">Voz e copy</h3>
+        <ul style="margin:0; padding-left:18px; font-size:14px; line-height:1.8; color:var(--text2,#99A0A7);">
+          <li>Termos técnicos em inglês, sem tradução: <span style="font-family:'IBM Plex Mono',monospace; font-size:13px;">binary search</span>, <span style="font-family:'IBM Plex Mono',monospace; font-size:13px;">trap</span>, <span style="font-family:'IBM Plex Mono',monospace; font-size:13px;">contest</span></li>
+          <li>Interface em português; rótulos de sistema em inglês mono</li>
+          <li>Erro explica a causa, nunca julga: "Guloso falha aqui", não "Você errou feio"</li>
+          <li>Sem exclamação, sem emoji, sem parabenização genérica</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#FF7A45&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#FF7A45&quot;,&quot;#7CF25E&quot;,&quot;#4DA3FF&quot;,&quot;#C77DFF&quot;],&quot;section&quot;:&quot;Tema&quot;},&quot;showComposeTokens&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Conteúdo&quot;}}">
+class Component extends DCLogic {
+  state = { accent: null };
+
+  get palette() {
+    return [
+      { hex: '#FF7A45', name: 'Ember',   note: 'quente, urgência de contest' },
+      { hex: '#F5C451', name: 'Balloon', note: 'balão ICPC clássico, muito legível' },
+      { hex: '#3DD68C', name: 'Accepted',note: 'verde AC — conflita com veredito' },
+      { hex: '#5AA9FF', name: 'Terminal',note: 'frio, sóbrio, tom de IDE' },
+      { hex: '#7C8BFF', name: 'Indigo',  note: 'neutro-frio, menos esportivo' },
+      { hex: '#C77DFF', name: 'Violet',  note: 'distintivo, pouco usado na categoria' },
+      { hex: '#FF5C8A', name: 'Magenta', note: 'alta energia, risco de infantil' },
+      { hex: '#E8EAED', name: 'Mono',    note: 'sem acento: só tipografia e linha' }
+    ];
+  }
+
+  get themes() {
+    return {
+      dark: {
+        canvas:'#0B0C0D', surface:'#111316', surface2:'#171A1E', line:'#24282D', line2:'#343A41',
+        text:'#EDEEEF', text2:'#99A0A7', text3:'#7E858D', textDim:'#5F656C', lineDim:'#4C535B',
+        heartOff:'#2E3238', rowline:'#16191C', btnOff:'#1B1D20',
+        correct:'#3DD68C', wrong:'#FF5C5C', warn:'#F5C451', info:'#5AA9FF',
+        tintOk:'#0F2018', tintErr:'#231113', synKw:'#C792EA', synFn:'#82AAFF',
+        shadowSoft:'rgba(0,0,0,0.6)', shadowSheet:'rgba(0,0,0,0.65)',
+        textRatio:'15.8:1', text2Ratio:'7.1:1', text3Ratio:'5.0:1'
+      },
+      light: {
+        canvas:'#F6F6F4', surface:'#FFFFFF', surface2:'#F0F1EE', line:'#E2E3DF', line2:'#C6C8C2',
+        text:'#14161A', text2:'#555B62', text3:'#6B7178', textDim:'#7C838A', lineDim:'#A9AFB5',
+        heartOff:'#D6D8D3', rowline:'#ECEDE9', btnOff:'#E6E7E3',
+        shadowSoft:'rgba(20,22,26,0.10)', shadowSheet:'rgba(20,22,26,0.14)',
+        correct:'#0E8F52', wrong:'#C93636', warn:'#8A5B00', info:'#1660C4',
+        tintOk:'#E6F5EC', tintErr:'#FBEAEA', synKw:'#7A28C4', synFn:'#0A4FA8',
+        textRatio:'15.4:1', text2Ratio:'7.0:1', text3Ratio:'5.2:1'
+      }
+    };
+  }
+
+  componentDidUpdate() { this.syncBody(); }
+  componentDidMount() { this.syncBody(); }
+  syncBody() {
+    const mode = this.state.theme ?? 'dark';
+    document.body.style.background = this.themes[mode].canvas;
+  }
+
+  renderVals() {
+    const mode = this.state.theme ?? 'dark';
+    const t = Object.assign({}, this.themes[mode]);
+    ['canvas','surface','surface2','line','line2','text','text2','text3','correct','wrong','warn','info']
+      .forEach(k => { t[k + 'Raw'] = t[k].replace('#', '').toUpperCase(); });
+    const current = this.state.accent ?? this.props.accent ?? '#FF7A45';
+    const active = this.palette.find(p => p.hex.toLowerCase() === current.toLowerCase());
+    return {
+      t,
+      isLight: mode === 'light',
+      themeLabel: mode === 'dark' ? 'Dark' : 'Light',
+      darkBtn: mode === 'dark'
+        ? { bg: 'var(--surface2,#171A1E)', fg: 'var(--text,#EDEEEF)', br: 'var(--line2,#343A41)' }
+        : { bg: 'transparent', fg: 'var(--text3,#7E858D)', br: 'var(--line,#24282D)' },
+      lightBtn: mode === 'light'
+        ? { bg: 'var(--surface2,#171A1E)', fg: 'var(--text,#EDEEEF)', br: 'var(--line2,#343A41)' }
+        : { bg: 'transparent', fg: 'var(--text3,#7E858D)', br: 'var(--line,#24282D)' },
+      onSetDark: () => this.setState({ theme: 'dark' }),
+      onSetLight: () => this.setState({ theme: 'light' }),
+      accent: current,
+      accentName: active ? active.name : 'Custom',
+      accentNote: active ? active.note : 'cor livre — confira contraste do texto sobre o acento',
+      onAccentColor: this.onAccentFor(current),
+      showComposeTokens: this.props.showComposeTokens ?? true,
+      onPickCustom: e => this.setState({ accent: e.target.value }),
+      swatches: this.palette.map(p => ({
+        hex: p.hex,
+        name: p.name,
+        note: p.note,
+        ring: p.hex.toLowerCase() === current.toLowerCase() ? t.text : 'transparent',
+        labelColor: p.hex.toLowerCase() === current.toLowerCase() ? t.text : t.text3,
+        onPick: () => this.setState({ accent: p.hex })
+      }))
+    };
+  }
+
+  onAccentFor(hex) {
+    const h = hex.replace('#', '');
+    if (h.length !== 6) return '#160B05';
+    const [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+    const lin = c => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+    const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    return L > 0.45 ? '#120A06' : '#0B0C0D';
+  }
+}
+</script>
+</body>
+</html>

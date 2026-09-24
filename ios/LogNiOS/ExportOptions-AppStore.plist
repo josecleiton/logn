@@ -8,7 +8,7 @@
 	<key>destination</key>
 	<string>export</string>
 	<key>teamID</key>
-	<string>$(DEVELOPMENT_TEAM)</string>
+	<string>N2GD694WT8</string>
 	<key>signingStyle</key>
 	<string>automatic</string>
 	<key>uploadSymbols</key>

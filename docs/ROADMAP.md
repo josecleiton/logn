@@ -1,0 +1,136 @@
+# Roadmap
+
+O que está aberto no app, com o que já se sabe sobre cada coisa. Currículo não entra aqui:
+enunciados, gabaritos e a auditoria deles vivem no repositório de conteúdo.
+
+Ordem é por risco para quem joga, não por esforço.
+
+## Os portões não obrigam caminho nenhum
+
+A trilha tem teto e os portões estão calibrados no repositório de conteúdo. A `view()`
+do Core destrava nó **só por XP global**; os pré-requisitos entram apenas para marcar o
+pai como conquistado — hoje eles não travam de verdade.
+
+Ou os pré-requisitos passam a travar de verdade, ou os números dos portões mudam. Entra
+junto com a calibração do relógio: as duas coisas pedem jogar a trilha inteira.
+
+## O relógio da questão nunca foi calibrado jogando
+
+`seconds_for_template` em `match_engine.rs` dá 150s ao DRY_RUN, 90s ao SPOT_THE_BUG, 75s ao
+COMPLEXITY_MATCH e 60s ao resto, e um desafio sobrepõe com `content.seconds`.
+
+As réguas foram estimadas, não medidas com gente. A revisão cega mediu dois extremos no nó
+7: um DRY_RUN com 109 segundos sobrando, e um COMPLEXITY_MATCH em que a leitura sozinha
+consome quase todo o orçamento para um leitor devagar. Os números saíram de modelo de
+palavras por minuto, não de jogador — por isso isto está aqui e não foi mexido.
+
+A revisão por língua (setembro de 2026) reforçou o sinal: pela fórmula do guia de
+conteúdo, sete itens passam de metade do relógio só lendo, nas três línguas, quase todos
+COMPLEXITY_MATCH, em que as opções são varridas duas vezes. O espanhol sai mais longo e
+fica no limite em mais casos. Enxugar o enunciado já foi feito onde dava sem mudar o
+sentido; o resto pede cortar opção ou código, ou dar mais tempo ao template. A lista dos
+itens está no repositório de conteúdo.
+
+Calibrar exige jogar as sete trilhas e anotar onde sobra e onde falta.
+
+## Ninguém lê o fim da partida
+
+Toda partida com ao menos uma resposta fecha com `MATCH_END`: a jogada até o fim com
+`solved`, a abandonada com `solved` e `abandoned: true`. Quem entra e sai sem responder
+não gera evento. Mas nada consome esse evento ainda — o backend o ignora em
+`ProcessEventXP`, e não há tela nem rota de histórico. O relatório pós-partida lê o
+estado em memória, não o evento.
+
+Quando o histórico existir, é ele quem decide o que a partida abandonada vale: derrota,
+neutra ou escondida. O flag já está gravado para as três leituras.
+
+## A FFI numera variante por posição
+
+O bincode não grava o nome da variante, só a posição dela no enum; o código gerado pelo `codegen` escreve esse número. Tirar ou reordenar uma variante no meio de um tipo que atravessa a FFI mudaria o protocolo em silêncio se houvesse descasamento de versão.
+
+**Por que reordenar é seguro hoje:** os dois lados (Swift e Rust) vão no mesmo binário, gerados e compilados juntos pelo `build-ios-ffi`, então nunca discordam. O que vai para o disco para ser lido depois é JSON, e não bincode.
+
+**Regra de estabilidade (JSON):** no JSON, a serialização se baseia no nome. Portanto, não se pode renomear variante nem campo de tipos persistidos (`OfflineSnapshot`, `SkillNode`, `Challenge`, `GameEvent` e `NodeStatus`). Se precisar de um campo novo, use `#[serde(default)]`.
+
+**Situações que exigiriam mudar essa decisão (exigiriam "enum só cresce no fim" e travas rígidas):**
+- Se algum estado passar a ser persistido em bincode.
+- Se o xcframework passar a ser distribuído com versão própria e as pontas puderem desatualizar.
+- Extensão (ex: widget) ou relógio trocando bincode com o app.
+- Se criarmos um shell Android compilado em um pipeline separado.
+
+## Antes de enviar para a loja
+
+O que saiu em setembro de 2026 e deixou uma ponta aberta:
+
+- **Conteúdo em três línguas** (ADR 0009) está no ar em português, inglês e espanhol. O
+  espanhol passou por revisão de texto, mas ainda precisa de um revisor técnico nativo
+  antes da loja.
+- **Termos e política** (ADR 0008) estão na versão 1, sem marcador de rascunho, com
+  aceite no cadastro e exclusão de conta de verdade. O PRD pede revisão jurídica do texto
+  final; confirmar se ela aconteceu antes de publicar.
+- **Build de loja:** `just release-ios` empacota a trilha e os documentos a partir da
+  produção e gera o `.ipa`, sem enviar.
+
+## Seleção de trilha, e trilhas pagas
+
+É o próximo item grande. O que ele pedia antes de começar já existe: o conteúdo sai por
+língua, e os termos, onde mora a licença, estão publicados. Fica deste ciclo a folha de
+aceite pendente, que avisa o jogador quando uma versão nova dos termos entra em vigor
+(ADR 0008): o servidor já tem `pending` e `accept`, e a página já marca as seções novas.
+
+Hoje o app tem uma trilha só, a de problem solving: sete nós com portões de XP. Ela vira a
+**trilha principal**, gratuita, para todo mundo, com e sem rede — como já funciona hoje,
+com a semente no bundle e o retrato offline. As outras trilhas entram por uma tela de
+seleção, e algumas são pagas: só abrem para quem comprou, a compra fica atribuída à conta, e
+a trilha pode ser baixada e guardada no aparelho, criptografada.
+
+O que é pago é uma **licença de uso**, revogável só em hipóteses fechadas: reembolso ou
+estorno, fraude, redistribuição do conteúdo e compartilhamento de conta. Compra avulsa por
+trilha, só iOS no lançamento, pelo StoreKit, com o servidor validando a compra. O primeiro
+nó é amostra grátis, a trilha abre 30 dias sem rede, e quem comprou uma trilha
+descontinuada continua com ela.
+
+PRD: [`specs/logn_trilhas_pagas_spec.md`](specs/logn_trilhas_pagas_spec.md).
+
+## Os balões da árvore ainda usam o desenho antigo
+
+O design fechou dois estados do nó:
+
+- **Bloqueado (1b):** um balão cinza inteiro.
+- **Ativo (3b):** o contorno accent, agora com o miolo tint.
+
+O handoff do design system já traz os dois. O app ainda desenha o bloqueado como silhueta
+murcha tracejada e o ativo oco. Com a troca, o brilho passa a ser obrigatório no
+conquistado, porque é o que o separa do bloqueado. O dado do Core já basta e não entra
+texto novo: a mudança fica no `BalloonShape` e nos dois lugares que o usam.
+
+O tint do ativo fica no `#241610` que o app já usa. O "14%" do README do handoff é que
+precisa ser corrigido.
+
+Spec: [`specs/logn_balao_estados_spec.md`](specs/logn_balao_estados_spec.md).
+
+## Instituição de ensino no perfil
+
+O design ("LogN Instituicao") põe a instituição no Perfil, abaixo dos números, como a
+chave do placar por instituição e das inscrições em contest. Nenhum dos dois existe: a
+aba Placar mostra dados de exemplo, e a aba Sede diz "UFC" para todo mundo.
+
+Esta entrega é escolher na lista do e-MEC, no Perfil ou num passo pulável do cadastro,
+ver a sigla no Perfil e provar o vínculo com um código no e-mail institucional, que não
+vira login e fica guardado cifrado. Domínio de e-mail o e-MEC não traz: ele se cura a
+partir de quem tenta verificar. Já diz de onde vêm os jogadores, que é o dado para
+decidir onde o placar começa. A carência de troca e as métricas do card esperam o PRD
+do placar, porque dependem do que ele conta; a aba Sede fica como está até lá.
+
+Antes de codar: a tela do passo no cadastro, que o design não tem, e a chave nova
+`INSTITUTION_EMAIL_KEY` no Secret Manager. A política de privacidade ganha versão nova,
+de novo sem revisão jurídica.
+
+O risco para quem joga é baixo: entra depois das trilhas pagas.
+
+PRD: [`specs/logn_instituicao_spec.md`](specs/logn_instituicao_spec.md).
+
+## O repositório ainda é privado
+
+Ele está preparado para ser público — Apache 2.0, `TRADEMARKS.md`, `NOTICE`, conteúdo
+separado, gitleaks limpo. Falta só a decisão de virar a chave.
