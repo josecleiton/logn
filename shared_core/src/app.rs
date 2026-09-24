@@ -12,6 +12,7 @@ use crate::match_engine;
 #[repr(C)]
 #[facet(fg::namespace = "LogN")]
 pub enum Event {
+    SetLocale(String),
     TelemetrySent,
     Ping,
     Pong,
@@ -135,6 +136,7 @@ pub struct Model {
     pub is_fetching: bool,
     pub is_authenticating: bool,
     pub is_guest: bool,
+    pub locale: String,
     pub pending_retry_event: Option<Event>, // Para o interceptor 401
     /// E-mail em trânsito no fluxo de OTP. Vive só até o código ser verificado.
     pub otp_email: String,
@@ -339,6 +341,7 @@ pub struct ViewModel {
     /// volta direto para a trilha: quem desistiu não tem relatório para ler.
     pub match_left: bool,
     pub is_guest: bool,
+    pub locale: String,
     pub challenges: Vec<Challenge>,
     pub nodes: Vec<crate::domain::SkillNode>,
     pub otp_email: String,
@@ -527,11 +530,15 @@ pub fn display_name_from_email(email: &str) -> String {
 pub struct LogNApp;
 
 // Helper to inject token if available
-fn auth_headers(token: &Option<String>) -> Vec<crux_http::protocol::HttpHeader> {
+fn auth_headers(token: &Option<String>, locale: &str) -> Vec<crux_http::protocol::HttpHeader> {
     let mut headers = vec![
         crux_http::protocol::HttpHeader {
             name: "Content-Type".to_string(),
             value: "application/json".to_string(),
+        },
+        crux_http::protocol::HttpHeader {
+            name: "Accept-Language".to_string(),
+            value: locale.to_string(),
         }
     ];
     if let Some(t) = token {
@@ -541,6 +548,19 @@ fn auth_headers(token: &Option<String>) -> Vec<crux_http::protocol::HttpHeader> 
         });
     }
     headers
+}
+
+fn base_headers(locale: &str) -> Vec<crux_http::protocol::HttpHeader> {
+    vec![
+        crux_http::protocol::HttpHeader {
+            name: "Content-Type".to_string(),
+            value: "application/json".to_string(),
+        },
+        crux_http::protocol::HttpHeader {
+            name: "Accept-Language".to_string(),
+            value: locale.to_string(),
+        }
+    ]
 }
 
 impl App for LogNApp {
@@ -554,6 +574,10 @@ impl App for LogNApp {
 
             Event::TelemetrySent => {
                 render::render()
+            }
+            Event::SetLocale(lang) => {
+                model.locale = lang;
+                Command::done()
             }
             Event::Ping => {
                 model.status = "Pong received!".to_string();
@@ -578,10 +602,7 @@ impl App for LogNApp {
                 let request = HttpRequest {
                     method: "POST".to_string(),
                     url: "/api/v1/auth/login".to_string(),
-                    headers: vec![crux_http::protocol::HttpHeader {
-                        name: "Content-Type".to_string(),
-                        value: "application/json".to_string(),
-                    }],
+                    headers: base_headers(&model.locale),
                     body: serde_json::to_vec(&body).unwrap_or_default(),
                 };
 
@@ -1012,7 +1033,7 @@ impl App for LogNApp {
                 let request = HttpRequest {
                     method: "GET".to_string(),
                     url: "/api/v1/progress".to_string(),
-                    headers: auth_headers(&model.access_token),
+                    headers: auth_headers(&model.access_token, &model.locale),
                     body: vec![],
                 };
 
@@ -1057,7 +1078,7 @@ impl App for LogNApp {
                 let request = HttpRequest {
                     method: "GET".to_string(),
                     url: "/api/v1/nodes".to_string(),
-                    headers: auth_headers(&model.access_token),
+                    headers: auth_headers(&model.access_token, &model.locale),
                     body: vec![],
                 };
                 
@@ -1108,7 +1129,7 @@ Event::FetchChallenges => {
                 let request = HttpRequest {
                     method: "GET".to_string(),
                     url: "/api/v1/challenges".to_string(),
-                    headers: auth_headers(&model.access_token),
+                    headers: auth_headers(&model.access_token, &model.locale),
                     body: vec![],
                 };
 
@@ -1158,10 +1179,7 @@ Event::FetchChallenges => {
                 let request = HttpRequest {
                     method: "POST".to_string(),
                     url: "/api/v1/auth/request-otp".to_string(),
-                    headers: vec![crux_http::protocol::HttpHeader {
-                        name: "Content-Type".to_string(),
-                        value: "application/json".to_string(),
-                    }],
+                    headers: base_headers(&model.locale),
                     body: body.to_string().into_bytes(),
                 };
                 Command::request_from_shell(request)
@@ -1200,10 +1218,7 @@ Event::FetchChallenges => {
                 let request = HttpRequest {
                     method: "POST".to_string(),
                     url: "/api/v1/auth/verify-otp".to_string(),
-                    headers: vec![crux_http::protocol::HttpHeader {
-                        name: "Content-Type".to_string(),
-                        value: "application/json".to_string(),
-                    }],
+                    headers: base_headers(&model.locale),
                     body: body.to_string().into_bytes(),
                 };
                 Command::request_from_shell(request)
@@ -1243,10 +1258,7 @@ Event::FetchChallenges => {
                 let request = HttpRequest {
                     method: "POST".to_string(),
                     url: "/api/v1/auth/register".to_string(),
-                    headers: vec![crux_http::protocol::HttpHeader {
-                        name: "Content-Type".to_string(),
-                        value: "application/json".to_string(),
-                    }],
+                    headers: base_headers(&model.locale),
                     body: body.to_string().into_bytes(),
                 };
                 Command::request_from_shell(request)
@@ -1305,10 +1317,7 @@ Event::FetchChallenges => {
                 let request = HttpRequest {
                     method: "POST".to_string(),
                     url: "/api/v1/auth/reset-password".to_string(),
-                    headers: vec![crux_http::protocol::HttpHeader {
-                        name: "Content-Type".to_string(),
-                        value: "application/json".to_string(),
-                    }],
+                    headers: base_headers(&model.locale),
                     body: body.to_string().into_bytes(),
                 };
                 Command::request_from_shell(request)
@@ -1400,7 +1409,7 @@ Event::FetchChallenges => {
                 let request = HttpRequest {
                     method: "POST".to_string(),
                     url: "/api/v1/sync".to_string(),
-                    headers: auth_headers(&model.access_token),
+                    headers: auth_headers(&model.access_token, &model.locale),
                     body: body_bytes,
                 };
                 
@@ -2017,6 +2026,7 @@ Event::FetchChallenges => {
             trail_generated_at: model.trail_generated_at.clone(),
             match_left: model.match_left,
             is_guest: model.is_guest,
+            locale: model.locale.clone(),
             challenges: model.challenges.clone(),
             nodes: computed_nodes,
             otp_email: model.otp_email.clone(),
@@ -3428,7 +3438,7 @@ mod tests {
         let http_req = cmd.expect_one_effect();
         if let Effect::Http(r) = http_req {
             assert_eq!(r.operation.url, "/api/v1/challenges");
-            assert_eq!(r.operation.headers[1].value, "Bearer new_tok");
+            assert_eq!(r.operation.headers[2].value, "Bearer new_tok");
         } else {
             panic!("Expected Http effect re-emitting original request");
         }

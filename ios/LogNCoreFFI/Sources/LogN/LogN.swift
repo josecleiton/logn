@@ -514,6 +514,7 @@ indirect public enum Effect: Hashable, Equatable {
 }
 
 indirect public enum Event: Hashable, Equatable {
+    case setLocale(String)
     case telemetrySent
     case ping
     case pong
@@ -602,133 +603,136 @@ indirect public enum Event: Hashable, Equatable {
     public func serialize<S: Serializer>(serializer: S) throws {
         try serializer.increase_container_depth()
         switch self {
-        case .telemetrySent:
+        case .setLocale(let x):
             try serializer.serialize_variant_index(value: 0)
-        case .ping:
+            try serializer.serialize_str(value: x)
+        case .telemetrySent:
             try serializer.serialize_variant_index(value: 1)
-        case .pong:
+        case .ping:
             try serializer.serialize_variant_index(value: 2)
-        case .login(let email, let passwordHash):
+        case .pong:
             try serializer.serialize_variant_index(value: 3)
+        case .login(let email, let passwordHash):
+            try serializer.serialize_variant_index(value: 4)
             try serializer.serialize_str(value: email)
             try serializer.serialize_str(value: passwordHash)
         case .loginCompleted(let x):
-            try serializer.serialize_variant_index(value: 4)
+            try serializer.serialize_variant_index(value: 5)
             try x.serialize(serializer: serializer)
         case .continueAsGuest:
-            try serializer.serialize_variant_index(value: 5)
-        case .tokenStored(let x):
             try serializer.serialize_variant_index(value: 6)
-            try x.serialize(serializer: serializer)
-        case .accountEmailStored(let x):
+        case .tokenStored(let x):
             try serializer.serialize_variant_index(value: 7)
             try x.serialize(serializer: serializer)
-        case .accountEmailRead(let x):
+        case .accountEmailStored(let x):
             try serializer.serialize_variant_index(value: 8)
             try x.serialize(serializer: serializer)
-        case .attemptRefresh:
+        case .accountEmailRead(let x):
             try serializer.serialize_variant_index(value: 9)
-        case .tokenRead(let x):
-            try serializer.serialize_variant_index(value: 10)
             try x.serialize(serializer: serializer)
-        case .tokenCleared(let x):
+        case .attemptRefresh:
+            try serializer.serialize_variant_index(value: 10)
+        case .tokenRead(let x):
             try serializer.serialize_variant_index(value: 11)
             try x.serialize(serializer: serializer)
-        case .refreshCompleted(let x):
+        case .tokenCleared(let x):
             try serializer.serialize_variant_index(value: 12)
             try x.serialize(serializer: serializer)
-        case .logout:
+        case .refreshCompleted(let x):
             try serializer.serialize_variant_index(value: 13)
-        case .fetchChallenges:
-            try serializer.serialize_variant_index(value: 14)
-        case .fetchNodes:
-            try serializer.serialize_variant_index(value: 15)
-        case .fetchProgress:
-            try serializer.serialize_variant_index(value: 16)
-        case .progressFetched(let x):
-            try serializer.serialize_variant_index(value: 17)
             try x.serialize(serializer: serializer)
-        case .nodesFetched(let x):
+        case .logout:
+            try serializer.serialize_variant_index(value: 14)
+        case .fetchChallenges:
+            try serializer.serialize_variant_index(value: 15)
+        case .fetchNodes:
+            try serializer.serialize_variant_index(value: 16)
+        case .fetchProgress:
+            try serializer.serialize_variant_index(value: 17)
+        case .progressFetched(let x):
             try serializer.serialize_variant_index(value: 18)
             try x.serialize(serializer: serializer)
-        case .challengesFetched(let x):
+        case .nodesFetched(let x):
             try serializer.serialize_variant_index(value: 19)
             try x.serialize(serializer: serializer)
-        case .syncNow:
+        case .challengesFetched(let x):
             try serializer.serialize_variant_index(value: 20)
-        case .syncAndLogout:
+            try x.serialize(serializer: serializer)
+        case .syncNow:
             try serializer.serialize_variant_index(value: 21)
-        case .restoreOfflineQueue:
+        case .syncAndLogout:
             try serializer.serialize_variant_index(value: 22)
-        case .offlineQueueRestored(let x):
+        case .restoreOfflineQueue:
             try serializer.serialize_variant_index(value: 23)
+        case .offlineQueueRestored(let x):
+            try serializer.serialize_variant_index(value: 24)
             try x.serialize(serializer: serializer)
         case .bundledTrailLoaded(let json):
-            try serializer.serialize_variant_index(value: 24)
+            try serializer.serialize_variant_index(value: 25)
             try serializer.serialize_str(value: json)
         case .leaveMatch:
-            try serializer.serialize_variant_index(value: 25)
-        case .confirmLeaveMatch:
             try serializer.serialize_variant_index(value: 26)
-        case .cancelLeaveMatch:
+        case .confirmLeaveMatch:
             try serializer.serialize_variant_index(value: 27)
-        case .openOriginSheet:
+        case .cancelLeaveMatch:
             try serializer.serialize_variant_index(value: 28)
-        case .closeOriginSheet:
+        case .openOriginSheet:
             try serializer.serialize_variant_index(value: 29)
-        case .originsSeenRestored(let x):
+        case .closeOriginSheet:
             try serializer.serialize_variant_index(value: 30)
-            try x.serialize(serializer: serializer)
-        case .originsSeenStored(let x):
+        case .originsSeenRestored(let x):
             try serializer.serialize_variant_index(value: 31)
             try x.serialize(serializer: serializer)
-        case .dismissPasswordReset:
+        case .originsSeenStored(let x):
             try serializer.serialize_variant_index(value: 32)
-        case .tick(let now):
+            try x.serialize(serializer: serializer)
+        case .dismissPasswordReset:
             try serializer.serialize_variant_index(value: 33)
-            try serializer.serialize_i64(value: now)
-        case .cooldownClock(let now):
+        case .tick(let now):
             try serializer.serialize_variant_index(value: 34)
             try serializer.serialize_i64(value: now)
-        case .cooldownElapsed:
+        case .cooldownClock(let now):
             try serializer.serialize_variant_index(value: 35)
-        case .sessionExpiryStored(let x):
+            try serializer.serialize_i64(value: now)
+        case .cooldownElapsed:
             try serializer.serialize_variant_index(value: 36)
-            try x.serialize(serializer: serializer)
-        case .offlineSessionChecked(let x):
+        case .sessionExpiryStored(let x):
             try serializer.serialize_variant_index(value: 37)
             try x.serialize(serializer: serializer)
-        case .snapshotSaved(let x):
+        case .offlineSessionChecked(let x):
             try serializer.serialize_variant_index(value: 38)
             try x.serialize(serializer: serializer)
-        case .snapshotRestored(let x):
+        case .snapshotSaved(let x):
             try serializer.serialize_variant_index(value: 39)
             try x.serialize(serializer: serializer)
-        case .rotatedTokenStored(let x):
+        case .snapshotRestored(let x):
             try serializer.serialize_variant_index(value: 40)
             try x.serialize(serializer: serializer)
-        case .attemptRefreshDone:
+        case .rotatedTokenStored(let x):
             try serializer.serialize_variant_index(value: 41)
-        case .syncCompleted(let x):
+            try x.serialize(serializer: serializer)
+        case .attemptRefreshDone:
             try serializer.serialize_variant_index(value: 42)
+        case .syncCompleted(let x):
+            try serializer.serialize_variant_index(value: 43)
             try x.serialize(serializer: serializer)
         case .requestOtp(let email, let purpose):
-            try serializer.serialize_variant_index(value: 43)
+            try serializer.serialize_variant_index(value: 44)
             try serializer.serialize_str(value: email)
             try serializer.serialize_str(value: purpose)
         case .otpRequested(let x):
-            try serializer.serialize_variant_index(value: 44)
+            try serializer.serialize_variant_index(value: 45)
             try x.serialize(serializer: serializer)
         case .verifyOtp(let email, let code, let purpose):
-            try serializer.serialize_variant_index(value: 45)
+            try serializer.serialize_variant_index(value: 46)
             try serializer.serialize_str(value: email)
             try serializer.serialize_str(value: code)
             try serializer.serialize_str(value: purpose)
         case .otpVerified(let x):
-            try serializer.serialize_variant_index(value: 46)
+            try serializer.serialize_variant_index(value: 47)
             try x.serialize(serializer: serializer)
         case .register(let email, let password, let otp, let ageConfirmed, let legalAcceptances):
-            try serializer.serialize_variant_index(value: 47)
+            try serializer.serialize_variant_index(value: 48)
             try serializer.serialize_str(value: email)
             try serializer.serialize_str(value: password)
             try serializer.serialize_str(value: otp)
@@ -737,65 +741,65 @@ indirect public enum Event: Hashable, Equatable {
                 try serializer.serialize_str(value: item)
             }
         case .registerCompleted(let x):
-            try serializer.serialize_variant_index(value: 48)
+            try serializer.serialize_variant_index(value: 49)
             try x.serialize(serializer: serializer)
         case .resetPassword(let email, let newPassword, let otp):
-            try serializer.serialize_variant_index(value: 49)
+            try serializer.serialize_variant_index(value: 50)
             try serializer.serialize_str(value: email)
             try serializer.serialize_str(value: newPassword)
             try serializer.serialize_str(value: otp)
         case .resetPasswordCompleted(let x):
-            try serializer.serialize_variant_index(value: 50)
-            try x.serialize(serializer: serializer)
-        case .queueSavedForSync(let x):
             try serializer.serialize_variant_index(value: 51)
             try x.serialize(serializer: serializer)
-        case .startMatch(let nodeId):
+        case .queueSavedForSync(let x):
             try serializer.serialize_variant_index(value: 52)
+            try x.serialize(serializer: serializer)
+        case .startMatch(let nodeId):
+            try serializer.serialize_variant_index(value: 53)
             try serializer.serialize_str(value: nodeId)
         case .matchSelectLine(let line):
-            try serializer.serialize_variant_index(value: 53)
+            try serializer.serialize_variant_index(value: 54)
             try serializer.serialize_i32(value: line)
         case .matchSetAnswer(let answer):
-            try serializer.serialize_variant_index(value: 54)
+            try serializer.serialize_variant_index(value: 55)
             try serializer.serialize_str(value: answer)
         case .matchSetDropTime(let value):
-            try serializer.serialize_variant_index(value: 55)
-            try serializer.serialize_str(value: value)
-        case .matchSetDropSpace(let value):
             try serializer.serialize_variant_index(value: 56)
             try serializer.serialize_str(value: value)
-        case .matchToggleTag(let tag):
+        case .matchSetDropSpace(let value):
             try serializer.serialize_variant_index(value: 57)
+            try serializer.serialize_str(value: value)
+        case .matchToggleTag(let tag):
+            try serializer.serialize_variant_index(value: 58)
             try serializer.serialize_str(value: tag)
         case .matchSetOutput(let value):
-            try serializer.serialize_variant_index(value: 58)
+            try serializer.serialize_variant_index(value: 59)
             try serializer.serialize_str(value: value)
         case .matchSubmit(let timestamp):
-            try serializer.serialize_variant_index(value: 59)
+            try serializer.serialize_variant_index(value: 60)
             try serializer.serialize_i64(value: timestamp)
         case .matchDismissTrap:
-            try serializer.serialize_variant_index(value: 60)
-        case .matchTimerTick:
             try serializer.serialize_variant_index(value: 61)
-        case .undoLogout:
+        case .matchTimerTick:
             try serializer.serialize_variant_index(value: 62)
-        case .dismissLogoutNotice:
+        case .undoLogout:
             try serializer.serialize_variant_index(value: 63)
-        case .logoutUndone(let x):
+        case .dismissLogoutNotice:
             try serializer.serialize_variant_index(value: 64)
+        case .logoutUndone(let x):
+            try serializer.serialize_variant_index(value: 65)
             try x.serialize(serializer: serializer)
         case .matchAbandonedAt(let solved, let now):
-            try serializer.serialize_variant_index(value: 65)
+            try serializer.serialize_variant_index(value: 66)
             try serializer.serialize_i32(value: solved)
             try serializer.serialize_i64(value: now)
         case .matchReportClosed:
-            try serializer.serialize_variant_index(value: 66)
-        case .reviewMilestonesFired(let x):
             try serializer.serialize_variant_index(value: 67)
+        case .reviewMilestonesFired(let x):
+            try serializer.serialize_variant_index(value: 68)
             try x.serialize(serializer: serializer)
         case .reviewMilestonesRestored(let x):
-            try serializer.serialize_variant_index(value: 68)
+            try serializer.serialize_variant_index(value: 69)
             try x.serialize(serializer: serializer)
         }
         try serializer.decrease_container_depth()
@@ -812,178 +816,182 @@ indirect public enum Event: Hashable, Equatable {
         try deserializer.increase_container_depth()
         switch index {
         case 0:
+            let x = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
-            return .telemetrySent
+            return .setLocale(x)
         case 1:
             try deserializer.decrease_container_depth()
-            return .ping
+            return .telemetrySent
         case 2:
             try deserializer.decrease_container_depth()
-            return .pong
+            return .ping
         case 3:
+            try deserializer.decrease_container_depth()
+            return .pong
+        case 4:
             let email = try deserializer.deserialize_str()
             let passwordHash = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .login(email: email, passwordHash: passwordHash)
-        case 4:
+        case 5:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .loginCompleted(x)
-        case 5:
+        case 6:
             try deserializer.decrease_container_depth()
             return .continueAsGuest
-        case 6:
-            let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
-            try deserializer.decrease_container_depth()
-            return .tokenStored(x)
         case 7:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .accountEmailStored(x)
+            return .tokenStored(x)
         case 8:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .accountEmailRead(x)
+            return .accountEmailStored(x)
         case 9:
-            try deserializer.decrease_container_depth()
-            return .attemptRefresh
-        case 10:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .tokenRead(x)
+            return .accountEmailRead(x)
+        case 10:
+            try deserializer.decrease_container_depth()
+            return .attemptRefresh
         case 11:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .tokenCleared(x)
+            return .tokenRead(x)
         case 12:
+            let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .tokenCleared(x)
+        case 13:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .refreshCompleted(x)
-        case 13:
-            try deserializer.decrease_container_depth()
-            return .logout
         case 14:
             try deserializer.decrease_container_depth()
-            return .fetchChallenges
+            return .logout
         case 15:
             try deserializer.decrease_container_depth()
-            return .fetchNodes
+            return .fetchChallenges
         case 16:
             try deserializer.decrease_container_depth()
-            return .fetchProgress
+            return .fetchNodes
         case 17:
-            let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .progressFetched(x)
+            return .fetchProgress
         case 18:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .nodesFetched(x)
+            return .progressFetched(x)
         case 19:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .challengesFetched(x)
+            return .nodesFetched(x)
         case 20:
+            let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .syncNow
+            return .challengesFetched(x)
         case 21:
             try deserializer.decrease_container_depth()
-            return .syncAndLogout
+            return .syncNow
         case 22:
             try deserializer.decrease_container_depth()
-            return .restoreOfflineQueue
+            return .syncAndLogout
         case 23:
+            try deserializer.decrease_container_depth()
+            return .restoreOfflineQueue
+        case 24:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .offlineQueueRestored(x)
-        case 24:
+        case 25:
             let json = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .bundledTrailLoaded(json: json)
-        case 25:
-            try deserializer.decrease_container_depth()
-            return .leaveMatch
         case 26:
             try deserializer.decrease_container_depth()
-            return .confirmLeaveMatch
+            return .leaveMatch
         case 27:
             try deserializer.decrease_container_depth()
-            return .cancelLeaveMatch
+            return .confirmLeaveMatch
         case 28:
             try deserializer.decrease_container_depth()
-            return .openOriginSheet
+            return .cancelLeaveMatch
         case 29:
             try deserializer.decrease_container_depth()
-            return .closeOriginSheet
+            return .openOriginSheet
         case 30:
-            let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .originsSeenRestored(x)
+            return .closeOriginSheet
         case 31:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .originsSeenStored(x)
+            return .originsSeenRestored(x)
         case 32:
+            let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .originsSeenStored(x)
+        case 33:
             try deserializer.decrease_container_depth()
             return .dismissPasswordReset
-        case 33:
-            let now = try deserializer.deserialize_i64()
-            try deserializer.decrease_container_depth()
-            return .tick(now: now)
         case 34:
             let now = try deserializer.deserialize_i64()
             try deserializer.decrease_container_depth()
-            return .cooldownClock(now: now)
+            return .tick(now: now)
         case 35:
+            let now = try deserializer.deserialize_i64()
+            try deserializer.decrease_container_depth()
+            return .cooldownClock(now: now)
+        case 36:
             try deserializer.decrease_container_depth()
             return .cooldownElapsed
-        case 36:
-            let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
-            try deserializer.decrease_container_depth()
-            return .sessionExpiryStored(x)
         case 37:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .offlineSessionChecked(x)
+            return .sessionExpiryStored(x)
         case 38:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .snapshotSaved(x)
+            return .offlineSessionChecked(x)
         case 39:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .snapshotRestored(x)
+            return .snapshotSaved(x)
         case 40:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .rotatedTokenStored(x)
+            return .snapshotRestored(x)
         case 41:
+            let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .rotatedTokenStored(x)
+        case 42:
             try deserializer.decrease_container_depth()
             return .attemptRefreshDone
-        case 42:
+        case 43:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .syncCompleted(x)
-        case 43:
+        case 44:
             let email = try deserializer.deserialize_str()
             let purpose = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .requestOtp(email: email, purpose: purpose)
-        case 44:
+        case 45:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .otpRequested(x)
-        case 45:
+        case 46:
             let email = try deserializer.deserialize_str()
             let code = try deserializer.deserialize_str()
             let purpose = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .verifyOtp(email: email, code: code, purpose: purpose)
-        case 46:
+        case 47:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .otpVerified(x)
-        case 47:
+        case 48:
             let email = try deserializer.deserialize_str()
             let password = try deserializer.deserialize_str()
             let otp = try deserializer.deserialize_str()
@@ -993,85 +1001,85 @@ indirect public enum Event: Hashable, Equatable {
             }
             try deserializer.decrease_container_depth()
             return .register(email: email, password: password, otp: otp, ageConfirmed: ageConfirmed, legalAcceptances: legalAcceptances)
-        case 48:
+        case 49:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .registerCompleted(x)
-        case 49:
+        case 50:
             let email = try deserializer.deserialize_str()
             let newPassword = try deserializer.deserialize_str()
             let otp = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .resetPassword(email: email, newPassword: newPassword, otp: otp)
-        case 50:
+        case 51:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .resetPasswordCompleted(x)
-        case 51:
+        case 52:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .queueSavedForSync(x)
-        case 52:
+        case 53:
             let nodeId = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .startMatch(nodeId: nodeId)
-        case 53:
+        case 54:
             let line = try deserializer.deserialize_i32()
             try deserializer.decrease_container_depth()
             return .matchSelectLine(line: line)
-        case 54:
+        case 55:
             let answer = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .matchSetAnswer(answer: answer)
-        case 55:
-            let value = try deserializer.deserialize_str()
-            try deserializer.decrease_container_depth()
-            return .matchSetDropTime(value: value)
         case 56:
             let value = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
-            return .matchSetDropSpace(value: value)
+            return .matchSetDropTime(value: value)
         case 57:
+            let value = try deserializer.deserialize_str()
+            try deserializer.decrease_container_depth()
+            return .matchSetDropSpace(value: value)
+        case 58:
             let tag = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .matchToggleTag(tag: tag)
-        case 58:
+        case 59:
             let value = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .matchSetOutput(value: value)
-        case 59:
+        case 60:
             let timestamp = try deserializer.deserialize_i64()
             try deserializer.decrease_container_depth()
             return .matchSubmit(timestamp: timestamp)
-        case 60:
-            try deserializer.decrease_container_depth()
-            return .matchDismissTrap
         case 61:
             try deserializer.decrease_container_depth()
-            return .matchTimerTick
+            return .matchDismissTrap
         case 62:
             try deserializer.decrease_container_depth()
-            return .undoLogout
+            return .matchTimerTick
         case 63:
             try deserializer.decrease_container_depth()
-            return .dismissLogoutNotice
+            return .undoLogout
         case 64:
+            try deserializer.decrease_container_depth()
+            return .dismissLogoutNotice
+        case 65:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .logoutUndone(x)
-        case 65:
+        case 66:
             let solved = try deserializer.deserialize_i32()
             let now = try deserializer.deserialize_i64()
             try deserializer.decrease_container_depth()
             return .matchAbandonedAt(solved: solved, now: now)
-        case 66:
+        case 67:
             try deserializer.decrease_container_depth()
             return .matchReportClosed
-        case 67:
+        case 68:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .reviewMilestonesFired(x)
-        case 68:
+        case 69:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .reviewMilestonesRestored(x)
@@ -3038,6 +3046,7 @@ public struct ViewModel: Hashable, Equatable {
     /// volta direto para a trilha: quem desistiu não tem relatório para ler.
     public var matchLeft: Bool
     public var isGuest: Bool
+    public var locale: String
     public var challenges: [Challenge]
     public var nodes: [SkillNode]
     public var otpEmail: String
@@ -3078,7 +3087,7 @@ public struct ViewModel: Hashable, Equatable {
     /// o limite por IP também barra o envio.
     public var resendCooldownSeconds: UInt32
 
-    public init(status: StatusKey, pendingSyncCount: UInt32, isSyncing: Bool, isFetching: Bool, isAuthenticating: Bool, hasAccessToken: Bool, hasSession: Bool, isOfflineSession: Bool, trailFromBundle: Bool, trailGeneratedAt: String, matchLeft: Bool, isGuest: Bool, challenges: [Challenge], nodes: [SkillNode], otpEmail: String, accountEmail: String, otpVerified: Bool, globalXp: Int32, bugsFound: Int32, dryRunsCompleted: Int32, level: Int32, xpIntoLevel: Int32, xpForLevel: Int32, xpToNextLevel: Int32, challengesCompleted: Int32, balloonsUp: Int32, justLoggedOut: Bool, passwordResetDone: Bool, displayName: String, matchView: MatchViewModel, contestName: String, standingsGlobal: [StandingRow], standingsHome: [StandingRow], userStanding: StandingRow, scoreboard: [ScoreboardRow], standingsAreSample: Bool, authCooldownSeconds: UInt32, resendCooldownSeconds: UInt32) {
+    public init(status: StatusKey, pendingSyncCount: UInt32, isSyncing: Bool, isFetching: Bool, isAuthenticating: Bool, hasAccessToken: Bool, hasSession: Bool, isOfflineSession: Bool, trailFromBundle: Bool, trailGeneratedAt: String, matchLeft: Bool, isGuest: Bool, locale: String, challenges: [Challenge], nodes: [SkillNode], otpEmail: String, accountEmail: String, otpVerified: Bool, globalXp: Int32, bugsFound: Int32, dryRunsCompleted: Int32, level: Int32, xpIntoLevel: Int32, xpForLevel: Int32, xpToNextLevel: Int32, challengesCompleted: Int32, balloonsUp: Int32, justLoggedOut: Bool, passwordResetDone: Bool, displayName: String, matchView: MatchViewModel, contestName: String, standingsGlobal: [StandingRow], standingsHome: [StandingRow], userStanding: StandingRow, scoreboard: [ScoreboardRow], standingsAreSample: Bool, authCooldownSeconds: UInt32, resendCooldownSeconds: UInt32) {
         self.status = status
         self.pendingSyncCount = pendingSyncCount
         self.isSyncing = isSyncing
@@ -3091,6 +3100,7 @@ public struct ViewModel: Hashable, Equatable {
         self.trailGeneratedAt = trailGeneratedAt
         self.matchLeft = matchLeft
         self.isGuest = isGuest
+        self.locale = locale
         self.challenges = challenges
         self.nodes = nodes
         self.otpEmail = otpEmail
@@ -3133,6 +3143,7 @@ public struct ViewModel: Hashable, Equatable {
         try serializer.serialize_str(value: self.trailGeneratedAt)
         try serializer.serialize_bool(value: self.matchLeft)
         try serializer.serialize_bool(value: self.isGuest)
+        try serializer.serialize_str(value: self.locale)
         try serializeArray(value: self.challenges, serializer: serializer) { item, serializer in
             try item.serialize(serializer: serializer)
         }
@@ -3192,6 +3203,7 @@ public struct ViewModel: Hashable, Equatable {
         let trailGeneratedAt = try deserializer.deserialize_str()
         let matchLeft = try deserializer.deserialize_bool()
         let isGuest = try deserializer.deserialize_bool()
+        let locale = try deserializer.deserialize_str()
         let challenges = try deserializeArray(deserializer: deserializer) { deserializer in
             try LogN.Challenge.deserialize(deserializer: deserializer)
         }
@@ -3229,7 +3241,7 @@ public struct ViewModel: Hashable, Equatable {
         let authCooldownSeconds = try deserializer.deserialize_u32()
         let resendCooldownSeconds = try deserializer.deserialize_u32()
         try deserializer.decrease_container_depth()
-        return ViewModel(status: status, pendingSyncCount: pendingSyncCount, isSyncing: isSyncing, isFetching: isFetching, isAuthenticating: isAuthenticating, hasAccessToken: hasAccessToken, hasSession: hasSession, isOfflineSession: isOfflineSession, trailFromBundle: trailFromBundle, trailGeneratedAt: trailGeneratedAt, matchLeft: matchLeft, isGuest: isGuest, challenges: challenges, nodes: nodes, otpEmail: otpEmail, accountEmail: accountEmail, otpVerified: otpVerified, globalXp: globalXp, bugsFound: bugsFound, dryRunsCompleted: dryRunsCompleted, level: level, xpIntoLevel: xpIntoLevel, xpForLevel: xpForLevel, xpToNextLevel: xpToNextLevel, challengesCompleted: challengesCompleted, balloonsUp: balloonsUp, justLoggedOut: justLoggedOut, passwordResetDone: passwordResetDone, displayName: displayName, matchView: matchView, contestName: contestName, standingsGlobal: standingsGlobal, standingsHome: standingsHome, userStanding: userStanding, scoreboard: scoreboard, standingsAreSample: standingsAreSample, authCooldownSeconds: authCooldownSeconds, resendCooldownSeconds: resendCooldownSeconds)
+        return ViewModel(status: status, pendingSyncCount: pendingSyncCount, isSyncing: isSyncing, isFetching: isFetching, isAuthenticating: isAuthenticating, hasAccessToken: hasAccessToken, hasSession: hasSession, isOfflineSession: isOfflineSession, trailFromBundle: trailFromBundle, trailGeneratedAt: trailGeneratedAt, matchLeft: matchLeft, isGuest: isGuest, locale: locale, challenges: challenges, nodes: nodes, otpEmail: otpEmail, accountEmail: accountEmail, otpVerified: otpVerified, globalXp: globalXp, bugsFound: bugsFound, dryRunsCompleted: dryRunsCompleted, level: level, xpIntoLevel: xpIntoLevel, xpForLevel: xpForLevel, xpToNextLevel: xpToNextLevel, challengesCompleted: challengesCompleted, balloonsUp: balloonsUp, justLoggedOut: justLoggedOut, passwordResetDone: passwordResetDone, displayName: displayName, matchView: matchView, contestName: contestName, standingsGlobal: standingsGlobal, standingsHome: standingsHome, userStanding: userStanding, scoreboard: scoreboard, standingsAreSample: standingsAreSample, authCooldownSeconds: authCooldownSeconds, resendCooldownSeconds: resendCooldownSeconds)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> ViewModel {

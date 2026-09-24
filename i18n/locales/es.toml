@@ -1,0 +1,294 @@
+[app]
+name = "LogN"
+
+[dashboard]
+syncing = "Sincronizando..."
+sync_guest_warning = "Inicia sesión para guardar tu progreso"
+tree_unavailable = "No pude cargar el mapa de las rutas."
+offline_session = "Sin conexión · tu progreso se sube cuando vuelva la red"
+balloons_up = { one = "%{count} globo en el aire", other = "%{count} globos en el aire" }
+map_updating = "Actualizando mapa"
+map_failed = "No pude cargar el mapa de las rutas."
+try_again = "Intentar de nuevo"
+arena_desc = "Los contests cronometrados van aquí."
+arena_sub = "Por ahora, las sesiones de tres minutos viven en las rutas."
+
+[status]
+signing_in = "Iniciando sesión…"
+wrong_credentials = "El correo o la contraseña no coinciden."
+sign_in_failed = "No pude iniciar sesión ahora. Intenta de nuevo."
+no_connection = "Sin conexión con el servidor."
+server_unreadable = "No pude leer la respuesta del servidor."
+session_expired = "Tu sesión expiró. Inicia sesión de nuevo."
+signing_out = "Cerrando sesión…"
+resuming_session = "Reanudando la sesión…"
+sending_code = "Enviando el código…"
+code_sent_failed = "No pude enviar el código."
+checking_code = "Verificando el código…"
+code_invalid = "Código inválido o expirado."
+creating_account = "Creando la cuenta…"
+account_failed = "No pude crear la cuenta."
+resetting_password = "Restableciendo la contraseña…"
+reset_failed = "No pude restablecer la contraseña."
+syncing = "Enviando tu progreso…"
+sync_diverged = "Tu progreso divergió del servidor."
+sync_failed = "No pude enviar tu progreso ahora."
+sync_offline = "Sin conexión para enviar tu progreso."
+sign_in_to_sync = "Inicia sesión para guardar tu progreso."
+trail_from_bundle = "Ruta del %{date} · puede haber desafíos nuevos"
+rate_limited = "Demasiados intentos seguidos. Espera la cuenta regresiva para intentar de nuevo."
+wait_seconds = "Espera %{seconds} s"
+sample_standings = "Datos de ejemplo. La tabla de posiciones aún no está activa: equipos, puestos y números son ficticios."
+
+[leave]
+eyebrow = "Salir de la partida"
+solved = "Resolviste %{solved} de %{total}."
+body = "El XP que ya ganaste está guardado — se acredita por respuesta aceptada, no al final. Lo que termina aquí es esta partida: los globos que faltan volverán a cero en la próxima."
+stay = "Continuar jugando"
+confirm = "Salir de todos modos"
+accessibility = "Salir de la partida"
+
+[solved]
+inflating = "INFLANDO · %{solved}/%{total} RESUELTOS"
+node_accessibility = "%{solved} de %{total} problemas resueltos"
+problems = "PROBLEMAS"
+count = "%{solved} de %{total} resueltos"
+done = "HECHO"
+worth = "+%{xp} XP"
+problem_done_accessibility = "problema %{letter}, ya resuelto"
+problem_open_accessibility = "problema %{letter}, vale %{xp} XP"
+in_play = "EN JUEGO"
+start = "Comenzar partida"
+resume = "Continuar"
+replay = "Jugar de nuevo"
+verdict = "YA RESUELTO · SIN XP"
+verdict_accessibility = "Aceptado. Globo %{letter} en el aire. Ya resuelto antes, sin XP."
+report_xp = "+%{xp} XP"
+report_repeated = { one = "%{count} ya resuelto antes, sin XP", other = "%{count} ya resueltos antes, sin XP" }
+
+[origin]
+eyebrow = "Origen del problema"
+origin_name = "Farias"
+origin_role = ""
+origin_body = "Tarjeta de origen: el texto viene del servidor."
+pause_notice = "El cronómetro está detenido mientras lees. Esto ocurre solo esta vez — en la próxima, el reloj sigue corriendo."
+close = "Volver a la partida"
+
+[info_plist]
+NSLocalNetworkUsageDescription = "Necesitamos acceso a la red local para encontrar la instancia de la app."
+
+[node]
+completed = "CONQUISTADO"
+active = "INFLANDO · %{xp} XP"
+locked = "BLOQUEADO"
+locked_prereq = "BLOQUEADO, %{missing} PRERREQ."
+prereq = "PRERREQ."
+unlocks = "DESBLOQUEA"
+upstream = "VIENE DE"
+downstream = "DESBLOQUEA"
+start_point = "punto de partida"
+end_point = "fin de la ruta"
+no_problems = "Sin problemas todavía"
+no_problems_desc = "Todavía no he escrito desafíos para este tema."
+
+[tree]
+edge_legend = "LÍNEA DISCONTINUA = ARISTA CERRADA"
+node_completed = "%{name}, conquistado, %{solved} de %{total} problemas resueltos"
+node_active = "%{name}, en curso, %{solved} de %{total} problemas resueltos"
+node_locked = "%{name}, bloqueado"
+node_locked_prereq = "%{name}, bloqueado, %{missing} prerrequisitos"
+
+[arena]
+drag_block = "ARRASTRA EL BLOQUE"
+select_up_to = "SELECCIONA HASTA %{max}"
+time_axis = "TIEMPO"
+space_axis = "ESPACIO"
+confirm_line = "Confirmar línea %{line}"
+confirm_answer = "Confirmar respuesta"
+confirm_tags = { one = "Confirmar %{count} etiqueta", other = "Confirmar %{count} etiquetas" }
+confirm_complexity = "Confirmar complejidad"
+confirm_output = "Confirmar salida"
+confirm = "Confirmar"
+back_to_trail = "volver a la ruta · nodo completo"
+back_to_trail_open = "volver a la ruta · el nodo queda abierto"
+gap_to_fill = "espacio por rellenar"
+drop_here = "suelta aquí"
+drop_here_accessibility = "suelta aquí"
+filled_accessibility = "rellenado con %{value}"
+
+[match]
+blank_accessibility = "espacio por rellenar"
+clock_critical = "RELOJ DE LA PREGUNTA · CRÍTICO"
+problem_letter = "PROBLEMA %{letter}"
+time_remaining = "tiempo restante %{seconds} segundos"
+
+balloon_up = "GLOBO %{letter} EN EL AIRE"
+xp_earned = "+%{xp} XP"
+accepted_accessibility = "Aceptado. Globo %{letter} en el aire. Más %{xp} XP."
+penalty_minutes = "+20 min pen"
+lost_life = "−1 vida"
+zero_xp = "0 XP"
+failed_accessibility = "%{code}, %{meaning}. Más 20 minutos de penalidad, menos una vida."
+view_report = "Ver el reporte"
+next_problem = "Próximo problema"
+keep_going = "Continuar"
+got_it = "Entendido"
+contest_over = "CONTEST FINALIZADO"
+report_stats = "/ %{accepted} aceptados · %{penalty} pen"
+problem_status = "problema %{letter}, %{status}"
+review = "REVISIÓN"
+review_errors = { one = "REVISIÓN · %{count} ERROR", other = "REVISIÓN · %{count} ERRORES" }
+no_errors = "Ningún error en esta sesión."
+your_answer = "tu respuesta: %{answer}"
+error_accessibility = "problema %{letter}, %{title}, %{code}, %{meaning}"
+
+[verdict]
+accepted = "aceptado"
+failed = "intentado, sin AC"
+frozen = "enviado tras el congelamiento"
+untried = "no intentado"
+
+[hud]
+lives = { one = "%{count} vida", other = "%{count} vidas" }
+
+[dry_run]
+watch = "WATCH"
+watch_accessibility = "%{name} vale %{value}"
+expected_output = "SALIDA ESPERADA"
+ignored_spaces = "espacios ignorados"
+tap_to_type = "toca para escribir"
+output_accessibility = "salida esperada"
+
+[tabs]
+trails = "RUTAS"
+arena = "ARENA"
+standings = "POSICIONES"
+
+[profile]
+lives_accessibility = "%{lives} de %{max_lives} vidas"
+verdict_accessibility = "%{raw}, %{meaning}"
+xp = "%{xp} XP"
+
+guest_mode = "MODO INVITADO"
+guest_sub = "SIN CUENTA · SOLO EN ESTE DISPOSITIVO"
+all_synced = "TODO SINCRONIZADO"
+queued_events = { one = "%{count} EVENTO EN COLA", other = "%{count} EVENTOS EN COLA" }
+local_xp_only = "%{xp} XP aún existen solo en este dispositivo."
+pending_events = { one = "%{count} evento pendiente de envío", other = "%{count} eventos pendientes de envío" }
+retry = "Reintentar"
+level = "NIVEL"
+level_word = "nivel"
+xp_to_next = "%{xp} XP para el nivel %{next}"
+level_accessibility = "nivel %{level}, %{xp} XP, faltan %{missing} para el nivel %{next}"
+total_xp = "XP TOTAL"
+bugs = "BUGS"
+dry_runs = "DRY RUNS"
+stats_summary = "%{challenges} · %{balloons} en el aire"
+has_account = "Ya tengo una cuenta"
+sign_out = "Cerrar sesión"
+manage_account = "Administrar cuenta"
+guest_risk = "Tu progreso vive solo en este dispositivo"
+guest_risk_desc = "Crear una cuenta conserva los %{xp} XP, los %{balloons} globos y los %{challenges} desafíos que ya resolviste. Reinstalar o cambiar de dispositivo sin una cuenta borrará todo."
+create_account = "Crear cuenta · guardar progreso"
+challenges_completed = { one = "%{count} desafío completado", other = "%{count} desafíos completados" }
+
+[logout]
+server_safe = "Tus %{xp} XP están en el servidor. Iniciar sesión de nuevo recuperará todo."
+sign_in_again = "Iniciar sesión de nuevo"
+undo_logout = "¿cerraste sesión por error? deshacer"
+see_you = "Hasta la próxima"
+see_you_name = "Hasta la próxima, %{name}"
+risk_summary = "%{events} · %{xp} XP"
+save_before = "Vamos a guardar antes de salir"
+save_desc = "Este progreso aún no ha llegado al servidor. Sincronizar toma unos segundos y no pierdes nada."
+sync_and_leave = "Sincronizar y salir"
+stay_connected = "Continuar conectado"
+leave_and_drop = "Salir y descartar %{xp} XP"
+change_email = "Cambiar correo"
+change_password = "Cambiar contraseña"
+download_data = "Descargar mis datos"
+download_sub = "JSON con XP, rutas y envíos"
+back = "Volver"
+irreversible = "IRREVERSIBLE"
+delete_account = "Eliminar cuenta"
+delete_desc = "Elimina el correo, los %{xp} XP, las rutas y el historial de envíos del servidor. La cola pendiente offline también será descartada. Nada de esto se recupera."
+delete_button = "Eliminar mi cuenta"
+delete_prompt = "pide la contraseña y la palabra EXCLUIR"
+
+[account]
+manage = "Administrar cuenta"
+
+[login]
+slogan = "REDUCE THE COMPLEXITY OF YOUR SOLUTIONS"
+sign_in_apple = "Continuar con Apple"
+sign_in_google = "Continuar con Google"
+sign_in_github = "Continuar con GitHub"
+or_email = "O CON CORREO"
+email_prompt = "correo electrónico"
+password_prompt = "contraseña"
+create_account = "Crear cuenta"
+forgot_password = "Olvidé mi contraseña"
+guest_mode = "Jugar como invitado"
+without_saving = "sin guardar"
+core_ready = "CORE LISTO"
+loading = "Cargando..."
+sign_in = "Iniciar sesión"
+
+[register]
+age_confirmation = "Tengo 13 años o más."
+terms_confirmation = "He leído y acepto los Términos de Servicio y la Política de Privacidad."
+email_prompt = "correo electrónico"
+password_prompt = "contraseña (mín. 8 caracteres)"
+confirm_prompt = "confirmar contraseña"
+create_account = "Crear Cuenta"
+verify_email = "Verificar correo"
+set_password = "Definir Contraseña"
+reason_email = "Para guardar tu progreso"
+reason_otp = "Ingresa el código enviado a %{email}"
+reason_password = "Elige tu contraseña"
+sending = "Enviando..."
+send_code = "Enviar Código"
+
+[reset]
+title = "Restablecer contraseña"
+subtitle = "Elige una nueva contraseña para\n%{email}"
+password_prompt = "nueva contraseña · mínimo 8 caracteres"
+confirm_prompt = "confirmar contraseña"
+save_password = "Guardar nueva contraseña"
+
+[otp]
+digit_accessibility = "dígito %{index} de 6"
+paste_code = "Pegar el código"
+verify = "Verificar"
+resend_code = "Reenviar código"
+
+[scoreboard]
+close = "Cerrar"
+frozen = "CONGELADO"
+rank = "#"
+team = "EQUIPO"
+slv = "SLV"
+pen = "PEN"
+legend_accepted = "aceptado · intentos / minuto"
+legend_failed = "intentado, sin AC"
+legend_frozen = "enviado tras el congelamiento"
+legend_untried = "no intentado"
+cell_accessibility = "problema %{letter}, %{status}"
+
+[standings]
+title = "Standings"
+global_tab = "Global"
+full_screen = "VER PANTALLA COMPLETA"
+row_accessibility = "%{rank}º, %{handle}, %{university}, %{solved} aceptados, %{penalty} de penalidad"
+row_accessibility_user = "tu posición, %{rank}º, %{handle}, %{university}, %{solved} aceptados, %{penalty} de penalidad"
+you = "tú"
+
+[trap]
+findTheBug = "Encuentra el bug."
+completeTheLine = "Completa la línea."
+finalValueOfAcc = "¿Cuál es el valor final de acc?"
+complexity = "¿Cuál es la complejidad?"
+findTheCrash = "Encuentra el crash de memoria."
+nullTerminatedString = "Completa la cadena terminada en nulo."
+dynamicSubarrays = "Subarrays dinámicos."
+twoPointers = "Dos punteros."

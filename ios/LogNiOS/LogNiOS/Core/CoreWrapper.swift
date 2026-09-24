@@ -34,6 +34,7 @@ public class CoreWrapper: ObservableObject {
             trailGeneratedAt: "",
             matchLeft: false,
             isGuest: false,
+            locale: "",
             challenges: [],
             nodes: [],
             otpEmail: "",
