@@ -17,6 +17,8 @@ struct RegisterView: View {
     @State private var ageConfirmed = false
     @State private var termsAccepted = false
     @State private var legalSheet: LegalKind?
+    /// País da confirmação de idade, descoberto ao abrir a tela.
+    @State private var country = ""
 
     var body: some View {
         ZStack {
@@ -66,10 +68,16 @@ struct RegisterView: View {
                 dismiss()
             }
         }
-        .onAppear {
-            // O cadastro aceita a versão vigente dos documentos, e só o servidor sabe
-            // qual é.
-            core.dispatch(event: .fetchLegalVersions)
+        .task {
+            // O cadastro aceita a versão vigente dos documentos e declara a idade
+            // mínima do país — só o servidor sabe as duas.
+            country = await DeviceCountry.current()
+            core.dispatch(event: .fetchLegalVersions(country: country))
+        }
+        .onChange(of: core.viewModel.minAge) { _ in
+            // A frase da caixa mudou ("tenho 13" virou "tenho 16"): quem marcou antes
+            // declarou outra coisa, e marca de novo.
+            ageConfirmed = false
         }
         .sheet(item: $legalSheet) { kind in
             LegalDocumentView(kind: kind)
@@ -101,7 +109,7 @@ struct RegisterView: View {
                         Image(systemName: ageConfirmed ? "checkmark.square.fill" : "square")
                             .foregroundColor(ageConfirmed ? LognDark.accent : LognDark.textDim)
                             .font(.system(size: 18))
-                        Text(Str.Register.age_confirmation)
+                        Text(Str.Register.age_confirmation(Int(core.viewModel.minAge)))
                             .font(.plexSans(13))
                             .foregroundColor(LognDark.textSecondary)
                             .multilineTextAlignment(.leading)
@@ -113,7 +121,7 @@ struct RegisterView: View {
                     // A busca da abertura pode ter falhado sem rede; marcar a caixa é a
                     // hora de tentar de novo.
                     if termsAccepted && !core.viewModel.legalVersionsReady {
-                        core.dispatch(event: .fetchLegalVersions)
+                        core.dispatch(event: .fetchLegalVersions(country: country))
                     }
                 }) {
                     HStack(alignment: .top, spacing: 10) {

@@ -193,6 +193,8 @@ guest_risk = "Seu progresso vive só neste aparelho"
 guest_risk_desc = "Criar conta herda os %{xp} XP, os %{balloons} balões e os %{challenges} desafios que você já resolveu. Reinstalar ou trocar de aparelho sem conta apaga tudo."
 create_account = "Criar conta · salvar progresso"
 challenges_completed = { one = "%{count} desafio concluído", other = "%{count} desafios concluídos" }
+analytics_title = "Análise de uso"
+analytics_desc = "Envia como você usa o app, para melhorarmos o LogN. Erros do app continuam sendo enviados, sem ligação com a sua conta."
 
 [logout]
 server_safe = "Seus %{xp} XP estão no servidor. Entrar de novo traz tudo de volta."
@@ -211,11 +213,17 @@ change_password = "Trocar senha"
 download_data = "Baixar meus dados"
 download_sub = "JSON com XP, trilhas e submissões"
 back = "Voltar"
-irreversible = "IRREVERSÍVEL"
+grace_period = "EXCLUSÃO EM 30 DIAS"
 delete_account = "Excluir conta"
-delete_desc = "Apaga o e-mail, os %{xp} XP, as trilhas e o histórico de submissões do servidor. Fila pendente offline também será descartada. Nada disso volta."
+delete_desc = "A conta é desativada agora e apagada de vez em até 31 dias: o e-mail, os %{xp} XP, as trilhas e o histórico. Entrar ou redefinir a senha antes disso cancela. Respostas offline ainda não enviadas são descartadas."
 delete_button = "Excluir minha conta"
 delete_prompt = "pede a senha e a palavra EXCLUIR"
+delete_confirm_placeholder = "Digite EXCLUIR"
+deleted_title = "Conta desativada"
+deleted_body = "Ela será apagada de vez em %{date}. Se mudar de ideia, entre na conta ou redefina a senha antes disso."
+restored_title = "Exclusão cancelada"
+restored_body = "Sua conta voltou com todo o progresso e não será mais apagada."
+notice_ok = "Entendi"
 
 [account]
 manage = "Gerenciar conta"
@@ -237,7 +245,7 @@ loading = "Carregando..."
 sign_in = "Entrar"
 
 [register]
-age_confirmation = "Tenho 13 anos ou mais."
+age_confirmation = "Tenho %{age} anos ou mais."
 terms_confirmation = "Li e aceito os Termos de uso e a Política de privacidade."
 email_prompt = "e-mail"
 password_prompt = "senha (mín 8 chars)"

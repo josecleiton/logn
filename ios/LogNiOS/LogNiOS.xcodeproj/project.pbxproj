@@ -28,8 +28,10 @@
 		5B28C2226E5C4917A2F15B4E /* CoreWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C915F676CBB9F04656C255 /* CoreWrapper.swift */; };
 		67BF1220625E8C2DBEF91212 /* LegalDocumentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 116B2CC534846B378BDCA8EB /* LegalDocumentView.swift */; };
 		67E43BEE172F2659EA187C3B /* ScoreboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50E1734BB756CB9066ECEC94 /* ScoreboardView.swift */; };
+		6FEEE4F67862A78B1A8ED436 /* AccountNoticeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 549AE758216A25FF57DE3F1B /* AccountNoticeViews.swift */; };
 		724724B930EEFEFF07CB88DB /* LogoutViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E3DB489715A5B620395CD47 /* LogoutViews.swift */; };
 		7447A744F19419838DA5F8C5 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F111AFD2776AF5D50D29BF33 /* IBMPlexMono-SemiBold.ttf */; };
+		759F5D41188EC09D79188812 /* Telemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E24E7180F9C2D1ABF5578BE3 /* Telemetry.swift */; };
 		7EC7FCEE24F8C2D1213036A7 /* ProfileHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8ACFF3284CD5B7DC2095483 /* ProfileHubView.swift */; };
 		828671D74C041716CCBFDBCE /* legal-privacy.pt-BR.html in Resources */ = {isa = PBXBuildFile; fileRef = 7D5540CC96022EB3FD517E3E /* legal-privacy.pt-BR.html */; };
 		847B9C5F21C81347B4C1204A /* StatusKeyCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C36C16A334636C98206B989 /* StatusKeyCopy.swift */; };
@@ -81,6 +83,7 @@
 		4AB77126A8B91B307CED33F7 /* legal-terms.es.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "legal-terms.es.html"; sourceTree = "<group>"; };
 		4AD3AA2F9805C2879EA05524 /* LegalWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalWebView.swift; sourceTree = "<group>"; };
 		50E1734BB756CB9066ECEC94 /* ScoreboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoreboardView.swift; sourceTree = "<group>"; };
+		549AE758216A25FF57DE3F1B /* AccountNoticeViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountNoticeViews.swift; sourceTree = "<group>"; };
 		6E3DB489715A5B620395CD47 /* LogoutViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogoutViews.swift; sourceTree = "<group>"; };
 		72C915F676CBB9F04656C255 /* CoreWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreWrapper.swift; sourceTree = "<group>"; };
 		752CBF98CC2C51F2EDC3EF62 /* IBMPlexSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Regular.ttf"; sourceTree = "<group>"; };
@@ -110,6 +113,7 @@
 		D06AADFA16250D1A08A15AFE /* LognTopics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LognTopics.swift; sourceTree = "<group>"; };
 		DF70445FC4588B69074A5843 /* Strings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Strings.swift; sourceTree = "<group>"; };
 		DFC409C250EFC18B48AF0021 /* LognDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LognDesignSystem.swift; sourceTree = "<group>"; };
+		E24E7180F9C2D1ABF5578BE3 /* Telemetry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Telemetry.swift; sourceTree = "<group>"; };
 		E30F815E4AC253B06790AAE8 /* IBMPlexSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Medium.ttf"; sourceTree = "<group>"; };
 		EB03B22842CF2E79E83561F8 /* SVGPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SVGPath.swift; sourceTree = "<group>"; };
 		F111AFD2776AF5D50D29BF33 /* IBMPlexMono-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-SemiBold.ttf"; sourceTree = "<group>"; };
@@ -162,6 +166,7 @@
 			isa = PBXGroup;
 			children = (
 				72C915F676CBB9F04656C255 /* CoreWrapper.swift */,
+				E24E7180F9C2D1ABF5578BE3 /* Telemetry.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -230,6 +235,7 @@
 		8A706ECEAA021B704E9D9935 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				549AE758216A25FF57DE3F1B /* AccountNoticeViews.swift */,
 				42D4982DBEFBD646B4F5FD62 /* ContentView.swift */,
 				26D31A9B206FE1CD0C80B3F9 /* DryRunView.swift */,
 				A4811EB169815262BA8CDC9F /* LeaveMatchSheet.swift */,
@@ -382,6 +388,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6FEEE4F67862A78B1A8ED436 /* AccountNoticeViews.swift in Sources */,
 				FA39E591FFCF6E0D9F6EABC6 /* BalloonShape.swift in Sources */,
 				9B73D9EDD483D4291A531CE4 /* CodeBlock.swift in Sources */,
 				03E8A94FF11F486216CC13B1 /* ContentView.swift in Sources */,
@@ -412,6 +419,7 @@
 				0ACF6DDB39EBC84AD6AABC71 /* StatusLine.swift in Sources */,
 				2F7173374C70B98EECB2E04A /* Strings.swift in Sources */,
 				EA1F6042A86DDF791B09AB41 /* StringsMappers.swift in Sources */,
+				759F5D41188EC09D79188812 /* Telemetry.swift in Sources */,
 				00B7B8B14FF0303E46007203 /* TopicIcon.swift in Sources */,
 				92CE64A8F39A3BACBDFA7E2D /* ViewExtensions.swift in Sources */,
 			);

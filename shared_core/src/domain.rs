@@ -348,7 +348,12 @@ pub struct SkillNode {
 pub enum TelemetryOperation {
     Identify { user_id: String },
     Track { event: String, properties: std::collections::HashMap<String, String> },
-
+    /// Esquece a identidade: o que for enviado depois sai com um identificador anônimo
+    /// novo. Na exclusão da conta, no logout e ao desligar a análise de uso.
+    Reset,
+    /// O interruptor "Análise de uso". Desligado, o shell para a captura automática do
+    /// SDK (abertura e fechamento do app); erros e medições seguem.
+    SetAnalyticsEnabled { enabled: bool },
 }
 
 impl crux_core::capability::Operation for TelemetryOperation {

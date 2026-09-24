@@ -207,6 +207,8 @@ guest_risk = {}
 guest_risk_desc = { placeholders = [{ name = "xp", type = "int" }, { name = "balloons", type = "int" }, { name = "challenges", type = "int" }] }
 create_account = {}
 challenges_completed = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+analytics_title = {}
+analytics_desc = {}
 
 [groups.logout.keys]
 server_safe = { placeholders = [{ name = "xp", type = "int" }] }
@@ -225,17 +227,23 @@ change_password = {}
 download_data = {}
 download_sub = {}
 back = {}
-irreversible = {}
+grace_period = {}
 delete_account = {}
 delete_desc = { placeholders = [{ name = "xp", type = "int" }] }
 delete_button = {}
 delete_prompt = {}
+delete_confirm_placeholder = {}
+deleted_title = {}
+deleted_body = { placeholders = [{ name = "date", type = "text" }] }
+restored_title = {}
+restored_body = {}
+notice_ok = {}
 
 [groups.account.keys]
 manage = {}
 
 [groups.register.keys]
-age_confirmation = {}
+age_confirmation = { placeholders = [{ name = "age", type = "int" }] }
 terms_confirmation = {}
 email_prompt = {}
 password_prompt = {}

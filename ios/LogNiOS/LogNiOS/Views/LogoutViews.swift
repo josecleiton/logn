@@ -244,7 +244,7 @@ struct ManageAccountView: View {
     /// e nesse caso só dentro do bloco de confirmação — nunca no repouso da tela.
     private var deletionBlock: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(Str.Logout.irreversible)
+            Text(Str.Logout.grace_period)
                 .font(.plexMono(10.5))
                 .tracking(0.14 * 10.5)
                 .foregroundColor(LognDark.wrongInk)
@@ -301,7 +301,7 @@ struct DeleteAccountSheet: View {
                 .font(.plexSans(14))
                 .foregroundColor(LognDark.textSecondary)
                 
-            Text(Str.Logout.irreversible)
+            Text(Str.Logout.grace_period)
                 .font(.plexSansSemiBold(14))
                 .foregroundColor(LognDark.wrongInk)
 
@@ -314,7 +314,7 @@ struct DeleteAccountSheet: View {
                 .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
                 .foregroundColor(LognDark.textPrimary)
 
-            TextField("Digite EXCLUIR", text: $confirmation)
+            TextField(Str.Logout.delete_confirm_placeholder, text: $confirmation)
                 .font(.plexMono(14))
                 .padding(.horizontal, 14)
                 .frame(height: 52)

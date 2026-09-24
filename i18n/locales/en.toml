@@ -193,6 +193,8 @@ guest_risk = "Your progress lives only on this device"
 guest_risk_desc = "Creating an account inherits the %{xp} XP, %{balloons} balloons, and %{challenges} challenges you've already solved. Reinstalling or switching devices without an account wipes everything."
 create_account = "Create account · save progress"
 challenges_completed = { one = "%{count} challenge completed", other = "%{count} challenges completed" }
+analytics_title = "Usage analytics"
+analytics_desc = "Sends how you use the app, so we can improve LogN. App errors are still sent, not linked to your account."
 
 [logout]
 server_safe = "Your %{xp} XP are on the server. Signing in again brings everything back."
@@ -211,11 +213,17 @@ change_password = "Change password"
 download_data = "Download my data"
 download_sub = "JSON with XP, trails, and submissions"
 back = "Back"
-irreversible = "IRREVERSIBLE"
+grace_period = "DELETION IN 30 DAYS"
 delete_account = "Delete account"
-delete_desc = "Wipes your e-mail, %{xp} XP, trails, and submission history from the server. Pending offline queue will also be discarded. None of this comes back."
+delete_desc = "The account is deactivated now and permanently erased within 31 days: your e-mail, %{xp} XP, trails and history. Signing in or resetting your password before then cancels it. Offline answers not yet sent are discarded."
 delete_button = "Delete my account"
 delete_prompt = "asks for your password and the word EXCLUIR"
+delete_confirm_placeholder = "Type EXCLUIR"
+deleted_title = "Account deactivated"
+deleted_body = "It will be permanently erased on %{date}. If you change your mind, sign in or reset your password before then."
+restored_title = "Deletion cancelled"
+restored_body = "Your account is back with all your progress and will no longer be erased."
+notice_ok = "Got it"
 
 [account]
 manage = "Manage account"
@@ -237,7 +245,7 @@ loading = "Loading..."
 sign_in = "Sign in"
 
 [register]
-age_confirmation = "I am 13 years old or older."
+age_confirmation = "I am %{age} years old or older."
 terms_confirmation = "I have read and accept the Terms of Use and the Privacy Policy."
 email_prompt = "e-mail"
 password_prompt = "password (min 8 chars)"

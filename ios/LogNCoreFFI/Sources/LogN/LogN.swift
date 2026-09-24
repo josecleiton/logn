@@ -603,13 +603,23 @@ indirect public enum Event: Hashable, Equatable {
     case reviewMilestonesFired(KeyValueResult)
     case reviewMilestonesRestored(KeyValueResult)
     /// A tela de cadastro abriu: busca as versões vigentes dos termos e da política,
-    /// que são as que o cadastro vai aceitar.
-    case fetchLegalVersions
+    /// que são as que o cadastro vai aceitar, e a idade mínima do país (ISO 3166-1
+    /// alfa-2 ou alfa-3, vazio se o shell não souber). O país vai também no cadastro.
+    case fetchLegalVersions(country: String)
     case legalVersionsFetched(HttpResult)
     /// Pede a exclusão da conta, com a senha. O nome do campo segue o do `Login`: o que
     /// viaja é a senha em si, sobre TLS, e o servidor confere com Argon2.
     case deleteAccount(passwordHash: String)
     case accountDeleted(HttpResult)
+    /// Fechou a tela "conta desativada, apagada até DD/MM".
+    case dismissDeletionNotice
+    /// Fechou o aviso de que a exclusão foi cancelada pelo login.
+    case dismissAccountRestoredNotice
+    /// O interruptor "Análise de uso" do perfil.
+    case setAnalyticsEnabled(Bool)
+    /// Abertura do app: lê a escolha do interruptor guardada no aparelho.
+    case restoreAnalyticsPreference
+    case analyticsPreferenceRestored(KeyValueResult)
 
     public func serialize<S: Serializer>(serializer: S) throws {
         try serializer.increase_container_depth()
@@ -810,8 +820,9 @@ indirect public enum Event: Hashable, Equatable {
         case .reviewMilestonesRestored(let x):
             try serializer.serialize_variant_index(value: 69)
             try x.serialize(serializer: serializer)
-        case .fetchLegalVersions:
+        case .fetchLegalVersions(let country):
             try serializer.serialize_variant_index(value: 70)
+            try serializer.serialize_str(value: country)
         case .legalVersionsFetched(let x):
             try serializer.serialize_variant_index(value: 71)
             try x.serialize(serializer: serializer)
@@ -820,6 +831,18 @@ indirect public enum Event: Hashable, Equatable {
             try serializer.serialize_str(value: passwordHash)
         case .accountDeleted(let x):
             try serializer.serialize_variant_index(value: 73)
+            try x.serialize(serializer: serializer)
+        case .dismissDeletionNotice:
+            try serializer.serialize_variant_index(value: 74)
+        case .dismissAccountRestoredNotice:
+            try serializer.serialize_variant_index(value: 75)
+        case .setAnalyticsEnabled(let x):
+            try serializer.serialize_variant_index(value: 76)
+            try serializer.serialize_bool(value: x)
+        case .restoreAnalyticsPreference:
+            try serializer.serialize_variant_index(value: 77)
+        case .analyticsPreferenceRestored(let x):
+            try serializer.serialize_variant_index(value: 78)
             try x.serialize(serializer: serializer)
         }
         try serializer.decrease_container_depth()
@@ -1102,8 +1125,9 @@ indirect public enum Event: Hashable, Equatable {
             try deserializer.decrease_container_depth()
             return .reviewMilestonesRestored(x)
         case 70:
+            let country = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
-            return .fetchLegalVersions
+            return .fetchLegalVersions(country: country)
         case 71:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
@@ -1116,6 +1140,23 @@ indirect public enum Event: Hashable, Equatable {
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .accountDeleted(x)
+        case 74:
+            try deserializer.decrease_container_depth()
+            return .dismissDeletionNotice
+        case 75:
+            try deserializer.decrease_container_depth()
+            return .dismissAccountRestoredNotice
+        case 76:
+            let x = try deserializer.deserialize_bool()
+            try deserializer.decrease_container_depth()
+            return .setAnalyticsEnabled(x)
+        case 77:
+            try deserializer.decrease_container_depth()
+            return .restoreAnalyticsPreference
+        case 78:
+            let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .analyticsPreferenceRestored(x)
         default: throw DeserializationError.invalidInput(issue: "Unknown variant index for Event: \(index)")
         }
     }
@@ -2753,6 +2794,12 @@ indirect public enum StoreReviewOperation: Hashable, Equatable {
 indirect public enum TelemetryOperation: Hashable, Equatable {
     case identify(userId: String)
     case track(event: String, properties: [String: String])
+    /// Esquece a identidade: o que for enviado depois sai com um identificador anônimo
+    /// novo. Na exclusão da conta, no logout e ao desligar a análise de uso.
+    case reset
+    /// O interruptor "Análise de uso". Desligado, o shell para a captura automática do
+    /// SDK (abertura e fechamento do app); erros e medições seguem.
+    case setAnalyticsEnabled(enabled: Bool)
 
     public func serialize<S: Serializer>(serializer: S) throws {
         try serializer.increase_container_depth()
@@ -2767,6 +2814,11 @@ indirect public enum TelemetryOperation: Hashable, Equatable {
                 try serializer.serialize_str(value: key)
                 try serializer.serialize_str(value: value)
             }
+        case .reset:
+            try serializer.serialize_variant_index(value: 2)
+        case .setAnalyticsEnabled(let enabled):
+            try serializer.serialize_variant_index(value: 3)
+            try serializer.serialize_bool(value: enabled)
         }
         try serializer.decrease_container_depth()
     }
@@ -2794,6 +2846,13 @@ indirect public enum TelemetryOperation: Hashable, Equatable {
             }
             try deserializer.decrease_container_depth()
             return .track(event: event, properties: properties)
+        case 2:
+            try deserializer.decrease_container_depth()
+            return .reset
+        case 3:
+            let enabled = try deserializer.deserialize_bool()
+            try deserializer.decrease_container_depth()
+            return .setAnalyticsEnabled(enabled: enabled)
         default: throw DeserializationError.invalidInput(issue: "Unknown variant index for TelemetryOperation: \(index)")
         }
     }
@@ -3122,8 +3181,18 @@ public struct ViewModel: Hashable, Equatable {
     /// Já se sabe quais versões dos termos e da política o cadastro aceita. Sem isso o
     /// cadastro não tem o que mandar, e a tela segura o envio do código.
     public var legalVersionsReady: Bool
+    /// Idade mínima para criar conta no país do aparelho — o N de "tenho N anos ou
+    /// mais". Enquanto o servidor não responde, a idade padrão.
+    public var minAge: UInt32
+    /// Até quando a conta que acabou de pedir exclusão pode ser recuperada, em segundos
+    /// desde a época. 0 = sem aviso. O cliente formata a data.
+    public var deletionPurgeAfter: Int64
+    /// Mostrar, uma vez, que a exclusão foi cancelada e a conta voltou.
+    public var accountRestoredNotice: Bool
+    /// Estado do interruptor "Análise de uso".
+    public var analyticsEnabled: Bool
 
-    public init(status: StatusKey, pendingSyncCount: UInt32, isSyncing: Bool, isFetching: Bool, isAuthenticating: Bool, hasAccessToken: Bool, hasSession: Bool, isOfflineSession: Bool, trailFromBundle: Bool, trailGeneratedAt: String, matchLeft: Bool, isGuest: Bool, locale: String, challenges: [Challenge], nodes: [SkillNode], otpEmail: String, accountEmail: String, otpVerified: Bool, globalXp: Int32, bugsFound: Int32, dryRunsCompleted: Int32, level: Int32, xpIntoLevel: Int32, xpForLevel: Int32, xpToNextLevel: Int32, challengesCompleted: Int32, balloonsUp: Int32, justLoggedOut: Bool, passwordResetDone: Bool, displayName: String, matchView: MatchViewModel, contestName: String, standingsGlobal: [StandingRow], standingsHome: [StandingRow], userStanding: StandingRow, scoreboard: [ScoreboardRow], standingsAreSample: Bool, authCooldownSeconds: UInt32, resendCooldownSeconds: UInt32, legalVersionsReady: Bool) {
+    public init(status: StatusKey, pendingSyncCount: UInt32, isSyncing: Bool, isFetching: Bool, isAuthenticating: Bool, hasAccessToken: Bool, hasSession: Bool, isOfflineSession: Bool, trailFromBundle: Bool, trailGeneratedAt: String, matchLeft: Bool, isGuest: Bool, locale: String, challenges: [Challenge], nodes: [SkillNode], otpEmail: String, accountEmail: String, otpVerified: Bool, globalXp: Int32, bugsFound: Int32, dryRunsCompleted: Int32, level: Int32, xpIntoLevel: Int32, xpForLevel: Int32, xpToNextLevel: Int32, challengesCompleted: Int32, balloonsUp: Int32, justLoggedOut: Bool, passwordResetDone: Bool, displayName: String, matchView: MatchViewModel, contestName: String, standingsGlobal: [StandingRow], standingsHome: [StandingRow], userStanding: StandingRow, scoreboard: [ScoreboardRow], standingsAreSample: Bool, authCooldownSeconds: UInt32, resendCooldownSeconds: UInt32, legalVersionsReady: Bool, minAge: UInt32, deletionPurgeAfter: Int64, accountRestoredNotice: Bool, analyticsEnabled: Bool) {
         self.status = status
         self.pendingSyncCount = pendingSyncCount
         self.isSyncing = isSyncing
@@ -3164,6 +3233,10 @@ public struct ViewModel: Hashable, Equatable {
         self.authCooldownSeconds = authCooldownSeconds
         self.resendCooldownSeconds = resendCooldownSeconds
         self.legalVersionsReady = legalVersionsReady
+        self.minAge = minAge
+        self.deletionPurgeAfter = deletionPurgeAfter
+        self.accountRestoredNotice = accountRestoredNotice
+        self.analyticsEnabled = analyticsEnabled
     }
 
     public func serialize<S: Serializer>(serializer: S) throws {
@@ -3218,6 +3291,10 @@ public struct ViewModel: Hashable, Equatable {
         try serializer.serialize_u32(value: self.authCooldownSeconds)
         try serializer.serialize_u32(value: self.resendCooldownSeconds)
         try serializer.serialize_bool(value: self.legalVersionsReady)
+        try serializer.serialize_u32(value: self.minAge)
+        try serializer.serialize_i64(value: self.deletionPurgeAfter)
+        try serializer.serialize_bool(value: self.accountRestoredNotice)
+        try serializer.serialize_bool(value: self.analyticsEnabled)
         try serializer.decrease_container_depth()
     }
 
@@ -3279,8 +3356,12 @@ public struct ViewModel: Hashable, Equatable {
         let authCooldownSeconds = try deserializer.deserialize_u32()
         let resendCooldownSeconds = try deserializer.deserialize_u32()
         let legalVersionsReady = try deserializer.deserialize_bool()
+        let minAge = try deserializer.deserialize_u32()
+        let deletionPurgeAfter = try deserializer.deserialize_i64()
+        let accountRestoredNotice = try deserializer.deserialize_bool()
+        let analyticsEnabled = try deserializer.deserialize_bool()
         try deserializer.decrease_container_depth()
-        return ViewModel(status: status, pendingSyncCount: pendingSyncCount, isSyncing: isSyncing, isFetching: isFetching, isAuthenticating: isAuthenticating, hasAccessToken: hasAccessToken, hasSession: hasSession, isOfflineSession: isOfflineSession, trailFromBundle: trailFromBundle, trailGeneratedAt: trailGeneratedAt, matchLeft: matchLeft, isGuest: isGuest, locale: locale, challenges: challenges, nodes: nodes, otpEmail: otpEmail, accountEmail: accountEmail, otpVerified: otpVerified, globalXp: globalXp, bugsFound: bugsFound, dryRunsCompleted: dryRunsCompleted, level: level, xpIntoLevel: xpIntoLevel, xpForLevel: xpForLevel, xpToNextLevel: xpToNextLevel, challengesCompleted: challengesCompleted, balloonsUp: balloonsUp, justLoggedOut: justLoggedOut, passwordResetDone: passwordResetDone, displayName: displayName, matchView: matchView, contestName: contestName, standingsGlobal: standingsGlobal, standingsHome: standingsHome, userStanding: userStanding, scoreboard: scoreboard, standingsAreSample: standingsAreSample, authCooldownSeconds: authCooldownSeconds, resendCooldownSeconds: resendCooldownSeconds, legalVersionsReady: legalVersionsReady)
+        return ViewModel(status: status, pendingSyncCount: pendingSyncCount, isSyncing: isSyncing, isFetching: isFetching, isAuthenticating: isAuthenticating, hasAccessToken: hasAccessToken, hasSession: hasSession, isOfflineSession: isOfflineSession, trailFromBundle: trailFromBundle, trailGeneratedAt: trailGeneratedAt, matchLeft: matchLeft, isGuest: isGuest, locale: locale, challenges: challenges, nodes: nodes, otpEmail: otpEmail, accountEmail: accountEmail, otpVerified: otpVerified, globalXp: globalXp, bugsFound: bugsFound, dryRunsCompleted: dryRunsCompleted, level: level, xpIntoLevel: xpIntoLevel, xpForLevel: xpForLevel, xpToNextLevel: xpToNextLevel, challengesCompleted: challengesCompleted, balloonsUp: balloonsUp, justLoggedOut: justLoggedOut, passwordResetDone: passwordResetDone, displayName: displayName, matchView: matchView, contestName: contestName, standingsGlobal: standingsGlobal, standingsHome: standingsHome, userStanding: userStanding, scoreboard: scoreboard, standingsAreSample: standingsAreSample, authCooldownSeconds: authCooldownSeconds, resendCooldownSeconds: resendCooldownSeconds, legalVersionsReady: legalVersionsReady, minAge: minAge, deletionPurgeAfter: deletionPurgeAfter, accountRestoredNotice: accountRestoredNotice, analyticsEnabled: analyticsEnabled)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> ViewModel {

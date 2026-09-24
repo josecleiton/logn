@@ -104,13 +104,23 @@ pub enum Event {
     ReviewMilestonesFired(KeyValueResult),
     ReviewMilestonesRestored(KeyValueResult),
     /// A tela de cadastro abriu: busca as versões vigentes dos termos e da política,
-    /// que são as que o cadastro vai aceitar.
-    FetchLegalVersions,
+    /// que são as que o cadastro vai aceitar, e a idade mínima do país (ISO 3166-1
+    /// alfa-2 ou alfa-3, vazio se o shell não souber). O país vai também no cadastro.
+    FetchLegalVersions { country: String },
     LegalVersionsFetched(HttpResult),
     /// Pede a exclusão da conta, com a senha. O nome do campo segue o do `Login`: o que
     /// viaja é a senha em si, sobre TLS, e o servidor confere com Argon2.
     DeleteAccount { password_hash: String },
     AccountDeleted(HttpResult),
+    /// Fechou a tela "conta desativada, apagada até DD/MM".
+    DismissDeletionNotice,
+    /// Fechou o aviso de que a exclusão foi cancelada pelo login.
+    DismissAccountRestoredNotice,
+    /// O interruptor "Análise de uso" do perfil.
+    SetAnalyticsEnabled(bool),
+    /// Abertura do app: lê a escolha do interruptor guardada no aparelho.
+    RestoreAnalyticsPreference,
+    AnalyticsPreferenceRestored(KeyValueResult),
 }
 
 /// O que o desfazer devolve. Existe só entre a saída e o jogador deixar a tela.
@@ -218,6 +228,18 @@ pub struct Model {
     /// O cadastro manda o aceite destas versões. Antes o app mandava `"terms_v1"` como
     /// texto, o servidor esperava objeto, e todo cadastro caía em 400.
     pub legal_versions: Vec<(String, u32)>,
+    /// País considerado na confirmação de idade, como o shell informou. Vai no cadastro.
+    pub legal_country: String,
+    /// Idade mínima do país, como o servidor disse. 0 = ainda não se sabe.
+    pub min_age: u32,
+    /// Até quando a conta cuja exclusão acabou de ser pedida pode ser recuperada, em
+    /// segundos desde a época. 0 = sem aviso na tela.
+    pub deletion_purge_after: i64,
+    /// O último login ou troca de senha cancelou uma exclusão pedida. O app avisa uma vez.
+    pub account_restored_notice: bool,
+    /// O jogador desligou "Análise de uso". Guardado ao contrário para o padrão do
+    /// `Default` (falso) ser o padrão do produto: ligado.
+    pub analytics_disabled: bool,
     /// A trilha em uso veio da semente do bundle, e ninguém falou com o servidor ainda.
     ///
     /// A semente envelhece com o binário, não com o conteúdo: quem instalar hoje e
@@ -400,6 +422,16 @@ pub struct ViewModel {
     /// Já se sabe quais versões dos termos e da política o cadastro aceita. Sem isso o
     /// cadastro não tem o que mandar, e a tela segura o envio do código.
     pub legal_versions_ready: bool,
+    /// Idade mínima para criar conta no país do aparelho — o N de "tenho N anos ou
+    /// mais". Enquanto o servidor não responde, a idade padrão.
+    pub min_age: u32,
+    /// Até quando a conta que acabou de pedir exclusão pode ser recuperada, em segundos
+    /// desde a época. 0 = sem aviso. O cliente formata a data.
+    pub deletion_purge_after: i64,
+    /// Mostrar, uma vez, que a exclusão foi cancelada e a conta voltou.
+    pub account_restored_notice: bool,
+    /// Estado do interruptor "Análise de uso".
+    pub analytics_enabled: bool,
 }
 
 #[effect(facet_typegen)]
@@ -585,6 +617,25 @@ fn base_headers(locale: &str) -> Vec<crux_http::protocol::HttpHeader> {
 /// Os dois documentos que o cadastro precisa aceitar.
 const LEGAL_KINDS: [&str; 2] = ["terms", "privacy"];
 
+/// Idade mínima enquanto o servidor não disse a do país. É a mesma padrão dele.
+const DEFAULT_MIN_AGE: u32 = 13;
+
+/// Chave, no armazenamento do aparelho, da escolha "Análise de uso". O shell lê a
+/// mesma chave ao iniciar o PostHog, antes de o Core existir.
+const ANALYTICS_DISABLED_KEY: &str = "analytics_disabled";
+
+/// Parte do corpo das respostas de login e troca de senha que o Core lê além da sessão.
+#[derive(Deserialize, Default)]
+struct RestoredFlag {
+    #[serde(default)]
+    account_restored: bool,
+}
+
+/// Lê `account_restored` do corpo. O servidor antigo não manda o campo: vale falso.
+fn account_restored(body: &[u8]) -> bool {
+    serde_json::from_slice::<RestoredFlag>(body).map(|f| f.account_restored).unwrap_or(false)
+}
+
 /// Já se conhece a versão vigente dos dois documentos.
 fn legal_versions_complete(versions: &[(String, u32)]) -> bool {
     LEGAL_KINDS.iter().all(|k| versions.iter().any(|(kind, _)| kind == k))
@@ -683,6 +734,8 @@ impl App for LogNApp {
                             // A tela de login mostra o status como erro, em vermelho: um
                             // "deu certo" ali é ruído. A prova do sucesso é o app abrir.
                             model.status_key = StatusKey::Silent;
+                            // Entrar dentro da carência cancelou a exclusão pedida.
+                            model.account_restored_notice = account_restored(&response.body);
 
                             // Salva refresh token no Keychain
                             return Command::request_from_shell(KeyValueOperation::Set {
@@ -762,6 +815,11 @@ impl App for LogNApp {
 
             Event::SessionExpiryStored(_) => {
                 // Entrou agora: identifica na telemetria e busca o que já está no servidor.
+                // Com a análise de uso desligada, não identifica: o que o SDK ainda
+                // manda (erros, medições) sai com identificador anônimo.
+                if model.analytics_disabled {
+                    return self.update(Event::FetchProgress, model);
+                }
                 Command::request_from_shell(crate::domain::TelemetryOperation::Identify { user_id: model.user_id.clone() })
                     .then_send(|_| Event::TelemetrySent)
                     .and(self.update(Event::FetchProgress, model))
@@ -776,6 +834,9 @@ impl App for LogNApp {
                     .and(Command::request_from_shell(KeyValueOperation::Delete { key: "session_expires_at".into() }).then_send(|_| Event::Ping))
                     .and(Command::request_from_shell(KeyValueOperation::Delete { key: "offline_events".into() }).then_send(|_| Event::Ping))
                     .and(Command::request_from_shell(KeyValueOperation::Delete { key: "offline_snapshot".into() }).then_send(|_| Event::Ping))
+                    // Depois de sair, os eventos não seguem presos ao id da conta, e quem
+                    // entrar em seguida neste aparelho começa limpo.
+                    .and(Command::request_from_shell(TelemetryOperation::Reset).then_send(|_| Event::TelemetrySent))
             }
             Event::TokenCleared(result) => {
                 // Guarda o que dá para devolver. Sair estando sincronizado é
@@ -1311,7 +1372,11 @@ Event::FetchChallenges => {
                 } else {
                     serde_json::json!([])
                 };
-                let body = serde_json::json!({ "email": email, "password": password, "otp": otp, "age_confirmed": age_confirmed, "legal_acceptances": acceptances });
+                let body = serde_json::json!({
+                    "email": email, "password": password, "otp": otp,
+                    "age_confirmed": age_confirmed, "country": model.legal_country,
+                    "legal_acceptances": acceptances,
+                });
                 let request = HttpRequest {
                     method: "POST".to_string(),
                     url: "/api/v1/auth/register".to_string(),
@@ -1359,7 +1424,8 @@ Event::FetchChallenges => {
                         // Saiu versão nova dos documentos enquanto a tela estava
                         // aberta. Busca a vigente; o próximo toque já aceita a certa.
                         model.status_key = StatusKey::AccountFailed;
-                        return self.update(Event::FetchLegalVersions, model).and(render::render());
+                        let country = model.legal_country.clone();
+                        return self.update(Event::FetchLegalVersions { country }, model).and(render::render());
                     }
                     _ => {
                         model.status_key = StatusKey::AccountFailed;
@@ -1403,6 +1469,13 @@ Event::FetchChallenges => {
                         model.is_guest = false;
                         model.logout_undo = None;
                         model.status_key = StatusKey::Silent;
+                        // Até quando entrar ainda recupera a conta: a tela de despedida
+                        // mostra a data. Resposta sem o campo não mostra tela nenhuma.
+                        #[derive(Deserialize)]
+                        struct Deleted { #[serde(default)] purge_after: i64 }
+                        model.deletion_purge_after = serde_json::from_slice::<Deleted>(&response.body)
+                            .map(|d| d.purge_after)
+                            .unwrap_or(0);
                         let delete = |key: &str| {
                             Command::request_from_shell(KeyValueOperation::Delete { key: key.into() }).then_send(|_| Event::Ping)
                         };
@@ -1411,6 +1484,9 @@ Event::FetchChallenges => {
                             .and(delete("session_expires_at"))
                             .and(delete("offline_events"))
                             .and(delete("offline_snapshot"))
+                            // O aparelho para de mandar eventos com o id da conta apagada;
+                            // os que já estão no PostHog somem pela retenção de 30 dias.
+                            .and(Command::request_from_shell(TelemetryOperation::Reset).then_send(|_| Event::TelemetrySent))
                             .and(render::render());
                     }
                     HttpResult::Ok(response) if response.status == 401 => {
@@ -1428,10 +1504,64 @@ Event::FetchChallenges => {
                 }
                 render::render()
             }
-            Event::FetchLegalVersions => {
+            Event::DismissDeletionNotice => {
+                model.deletion_purge_after = 0;
+                render::render()
+            }
+            Event::DismissAccountRestoredNotice => {
+                model.account_restored_notice = false;
+                render::render()
+            }
+            Event::SetAnalyticsEnabled(enabled) => {
+                model.analytics_disabled = !enabled;
+                let store = Command::request_from_shell(KeyValueOperation::Set {
+                    key: ANALYTICS_DISABLED_KEY.to_string(),
+                    value: if enabled { b"0".to_vec() } else { b"1".to_vec() },
+                })
+                .then_send(|_| Event::Ping);
+                let apply = Command::request_from_shell(TelemetryOperation::SetAnalyticsEnabled { enabled })
+                    .then_send(|_| Event::TelemetrySent);
+                let identity = if enabled {
+                    // Religou com conta: os eventos voltam a ser da conta.
+                    if model.user_id.is_empty() {
+                        Command::done()
+                    } else {
+                        Command::request_from_shell(TelemetryOperation::Identify { user_id: model.user_id.clone() })
+                            .then_send(|_| Event::TelemetrySent)
+                    }
+                } else {
+                    // Desligou: o que continuar saindo (erros, medições) vai com um
+                    // identificador anônimo novo, sem ligação com a conta.
+                    Command::request_from_shell(TelemetryOperation::Reset).then_send(|_| Event::TelemetrySent)
+                };
+                store.and(apply).and(identity).and(render::render())
+            }
+            Event::RestoreAnalyticsPreference => {
+                Command::request_from_shell(KeyValueOperation::Get { key: ANALYTICS_DISABLED_KEY.to_string() })
+                    .then_send(Event::AnalyticsPreferenceRestored)
+            }
+            Event::AnalyticsPreferenceRestored(result) => {
+                // O shell já configurou o PostHog com a mesma chave ao abrir; aqui o Core
+                // só fica sabendo, para não identificar nem rastrear.
+                if let KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } = result {
+                    model.analytics_disabled = bytes == b"1";
+                }
+                render::render()
+            }
+            Event::FetchLegalVersions { country } => {
+                // O país só passa se for um código ISO de duas ou três letras: a loja dá
+                // alfa-3 (`BRA`), a região do iPhone dá alfa-2 (`BR`), e o servidor leva
+                // os dois a alfa-2. O resto ele recusaria, e o cadastro inteiro travaria
+                // por causa de um detalhe.
+                let country = country.trim().to_ascii_uppercase();
+                model.legal_country = if (2..=3).contains(&country.len()) && country.chars().all(|c| c.is_ascii_uppercase()) {
+                    country
+                } else {
+                    String::new()
+                };
                 let request = HttpRequest {
                     method: "GET".to_string(),
-                    url: "/api/v1/legal/current".to_string(),
+                    url: format!("/api/v1/legal/current?country={}", model.legal_country),
                     headers: base_headers(&model.locale),
                     body: vec![],
                 };
@@ -1439,12 +1569,15 @@ Event::FetchChallenges => {
             }
             Event::LegalVersionsFetched(result) => {
                 #[derive(Deserialize)]
-                struct Current { kind: String, version: u32 }
+                struct Document { kind: String, version: u32 }
+                #[derive(Deserialize)]
+                struct Current { documents: Vec<Document>, #[serde(default)] min_age: u32 }
 
                 if let HttpResult::Ok(response) = result {
                     if response.status == 200 {
-                        if let Ok(current) = serde_json::from_slice::<Vec<Current>>(&response.body) {
-                            model.legal_versions = current.into_iter().map(|c| (c.kind, c.version)).collect();
+                        if let Ok(current) = serde_json::from_slice::<Current>(&response.body) {
+                            model.legal_versions = current.documents.into_iter().map(|d| (d.kind, d.version)).collect();
+                            model.min_age = current.min_age;
                         }
                     }
                 }
@@ -1493,6 +1626,8 @@ Event::FetchChallenges => {
                             model.otp_email = String::new();
                             model.status_key = StatusKey::Silent;
                             model.password_reset_done = true;
+                            // Trocar a senha também cancela uma exclusão pedida.
+                            model.account_restored_notice = account_restored(&response.body);
 
                             return Command::request_from_shell(KeyValueOperation::Set {
                                 key: "refresh_token".to_string(),
@@ -1642,6 +1777,10 @@ Event::FetchChallenges => {
                 render::render()
             }
             Event::QueueSavedForSync(_) => {
+                // Análise de uso desligada: acerto e erro de desafio não viram evento.
+                if model.analytics_disabled {
+                    return self.update(Event::SyncNow, model);
+                }
                 if let Some(event) = model.pending_events.last() {
                     let is_correct = event.payload_json.contains("\"is_correct\":true");
                     let telemetry_event = if is_correct { "challenge_correct" } else { "challenge_incorrect" };
@@ -2212,6 +2351,10 @@ Event::FetchChallenges => {
                 .remaining(model.now)
                 .max(model.auth_cooldown.remaining(model.now)),
             legal_versions_ready: legal_versions_complete(&model.legal_versions),
+            min_age: if model.min_age == 0 { DEFAULT_MIN_AGE } else { model.min_age },
+            deletion_purge_after: model.deletion_purge_after,
+            account_restored_notice: model.account_restored_notice,
+            analytics_enabled: !model.analytics_disabled,
         }
     }
 }
@@ -3776,14 +3919,16 @@ mod tests {
         let app = LogNApp::default();
         let mut model = Model::default();
 
-        let mut cmd = app.update(Event::FetchLegalVersions, &mut model);
-        assert!(matches!(cmd.expect_one_effect(), Effect::Http(ref r) if r.operation.url == "/api/v1/legal/current"));
+        let mut cmd = app.update(Event::FetchLegalVersions { country: "br".into() }, &mut model);
+        assert!(matches!(cmd.expect_one_effect(), Effect::Http(ref r) if r.operation.url == "/api/v1/legal/current?country=BR"));
         assert!(!app.view(&model).legal_versions_ready);
+        assert_eq!(app.view(&model).min_age, 13, "antes da resposta, a idade padrão");
 
         let _ = app.update(Event::LegalVersionsFetched(legal_current(
-            r#"[{"kind":"terms","version":3,"effective_at":"2026-10-01"},{"kind":"privacy","version":2,"effective_at":"2026-09-24"}]"#,
+            r#"{"documents":[{"kind":"terms","version":3,"effective_at":"2026-10-01"},{"kind":"privacy","version":2,"effective_at":"2026-09-24"}],"min_age":14}"#,
         )), &mut model);
         assert!(app.view(&model).legal_versions_ready);
+        assert_eq!(app.view(&model).min_age, 14);
 
         let _ = app.update(Event::SetLocale("es-MX".into()), &mut model);
         let mut cmd = app.update(Event::Register {
@@ -3792,6 +3937,7 @@ mod tests {
         }, &mut model);
         let body = register_body(&mut cmd);
         assert_eq!(body["age_confirmed"], true);
+        assert_eq!(body["country"], "BR");
         assert_eq!(body["legal_acceptances"], serde_json::json!([
             { "kind": "terms", "version": 3, "locale": "es" },
             { "kind": "privacy", "version": 2, "locale": "es" },
@@ -3834,8 +3980,119 @@ mod tests {
         let _ = app.update(Event::LegalVersionsFetched(HttpResult::Err(crux_http::HttpError::Io("offline".into()))), &mut model);
         assert!(app.view(&model).legal_versions_ready);
 
-        let _ = app.update(Event::LegalVersionsFetched(legal_current(r#"[{"kind":"terms","version":2}]"#)), &mut model);
+        let _ = app.update(Event::LegalVersionsFetched(legal_current(r#"{"documents":[{"kind":"terms","version":2}],"min_age":13}"#)), &mut model);
         assert!(!app.view(&model).legal_versions_ready, "só os termos: a política ficou sem versão");
+    }
+
+    /// País inválido não vai para o servidor: o cadastro seguiria sem ele, com a idade
+    /// padrão, em vez de ser recusado por um detalhe.
+    #[test]
+    fn test_invalid_country_is_dropped() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        for bad in ["BRAZ", "1", "", "b r", "B1"] {
+            let mut cmd = app.update(Event::FetchLegalVersions { country: bad.into() }, &mut model);
+            assert!(matches!(cmd.expect_one_effect(), Effect::Http(ref r) if r.operation.url == "/api/v1/legal/current?country="));
+            assert_eq!(model.legal_country, "");
+        }
+    }
+
+    fn auth_ok(body: &str) -> HttpResult {
+        HttpResult::Ok(crux_http::protocol::HttpResponse { status: 200, headers: vec![], body: body.as_bytes().to_vec() })
+    }
+
+    /// O login que cancela uma exclusão liga o aviso, e o aviso some ao ser fechado.
+    /// Servidor antigo, sem o campo, não liga nada.
+    #[test]
+    fn test_login_that_restores_the_account_shows_the_notice() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+
+        let _ = app.update(Event::LoginCompleted(auth_ok(
+            r#"{"access_token":"a","refresh_token":"r","user_id":"u","refresh_expires_at":1,"account_restored":true}"#,
+        )), &mut model);
+        assert!(app.view(&model).account_restored_notice);
+        let _ = app.update(Event::DismissAccountRestoredNotice, &mut model);
+        assert!(!app.view(&model).account_restored_notice);
+
+        let _ = app.update(Event::LoginCompleted(auth_ok(r#"{"access_token":"a","refresh_token":"r"}"#)), &mut model);
+        assert!(!app.view(&model).account_restored_notice);
+
+        let _ = app.update(Event::ResetPasswordCompleted(auth_ok(
+            r#"{"access_token":"a","refresh_token":"r","account_restored":true}"#,
+        )), &mut model);
+        assert!(app.view(&model).account_restored_notice, "trocar a senha também recupera");
+    }
+
+    /// A exclusão aceita guarda até quando a conta pode voltar, e esquece a identidade
+    /// na telemetria.
+    #[test]
+    fn test_account_deleted_keeps_the_purge_date_and_resets_telemetry() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("tok".into());
+
+        let mut cmd = app.update(Event::AccountDeleted(auth_ok(r#"{"purge_after":1792600000}"#)), &mut model);
+        assert_eq!(app.view(&model).deletion_purge_after, 1_792_600_000);
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Telemetry(ref r) if matches!(r.operation, TelemetryOperation::Reset))));
+
+        let _ = app.update(Event::DismissDeletionNotice, &mut model);
+        assert_eq!(app.view(&model).deletion_purge_after, 0);
+    }
+
+    #[test]
+    fn test_logout_resets_telemetry() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let mut cmd = app.update(Event::Logout, &mut model);
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Telemetry(ref r) if matches!(r.operation, TelemetryOperation::Reset))));
+    }
+
+    /// Desligar "Análise de uso" guarda a escolha, avisa o shell, esquece a identidade
+    /// e para de montar os eventos de uso. Religar com conta identifica de novo.
+    #[test]
+    fn test_analytics_switch() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.user_id = "u1".into();
+        assert!(app.view(&model).analytics_enabled, "ligado por padrão");
+
+        let mut cmd = app.update(Event::SetAnalyticsEnabled(false), &mut model);
+        let effects: Vec<_> = cmd.effects().collect();
+        assert!(effects.iter().any(|e| matches!(e, Effect::SecureStore(r)
+            if matches!(&r.operation, KeyValueOperation::Set { key, value } if key == "analytics_disabled" && value == b"1"))));
+        assert!(effects.iter().any(|e| matches!(e, Effect::Telemetry(r)
+            if matches!(r.operation, TelemetryOperation::SetAnalyticsEnabled { enabled: false }))));
+        assert!(effects.iter().any(|e| matches!(e, Effect::Telemetry(r) if matches!(r.operation, TelemetryOperation::Reset))));
+        assert!(!app.view(&model).analytics_enabled);
+
+        // Com ela desligada, acerto de desafio não vira evento, e entrar não identifica.
+        let mut cmd = app.update(Event::QueueSavedForSync(KeyValueResult::Ok {
+            response: KeyValueResponse::Set { previous: crux_kv::Value::None },
+        }), &mut model);
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Telemetry(_))));
+        let mut cmd = app.update(Event::SessionExpiryStored(KeyValueResult::Ok {
+            response: KeyValueResponse::Set { previous: crux_kv::Value::None },
+        }), &mut model);
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Telemetry(_))));
+
+        let mut cmd = app.update(Event::SetAnalyticsEnabled(true), &mut model);
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Telemetry(r)
+            if matches!(&r.operation, TelemetryOperation::Identify { user_id } if user_id == "u1"))));
+        assert!(app.view(&model).analytics_enabled);
+    }
+
+    #[test]
+    fn test_analytics_preference_is_restored() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let mut cmd = app.update(Event::RestoreAnalyticsPreference, &mut model);
+        assert!(matches!(cmd.expect_one_effect(), Effect::SecureStore(r)
+            if matches!(&r.operation, KeyValueOperation::Get { key } if key == "analytics_disabled")));
+        let _ = app.update(Event::AnalyticsPreferenceRestored(KeyValueResult::Ok {
+            response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(b"1".to_vec()) },
+        }), &mut model);
+        assert!(!app.view(&model).analytics_enabled);
     }
 
     /// Excluir a conta manda a senha e, aceito, apaga do aparelho tudo o que a conta
@@ -3898,11 +4155,13 @@ mod tests {
         let app = LogNApp::default();
         let mut model = Model::default();
         model.is_authenticating = true;
+        model.legal_country = "BR".into();
 
         let mut cmd = app.update(Event::RegisterCompleted(HttpResult::Ok(crux_http::protocol::HttpResponse {
             status: 409, headers: vec![], body: b"legal_version_outdated\n".to_vec(),
         })), &mut model);
-        assert!(cmd.effects().any(|e| matches!(e, Effect::Http(ref r) if r.operation.url == "/api/v1/legal/current")));
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Http(ref r) if r.operation.url == "/api/v1/legal/current?country=BR")),
+            "busca de novo, com o mesmo país");
         assert_eq!(model.status_key, StatusKey::AccountFailed);
         assert!(!model.is_authenticating);
     }

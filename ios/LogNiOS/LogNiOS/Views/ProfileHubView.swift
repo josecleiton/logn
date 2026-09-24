@@ -301,6 +301,33 @@ struct ProfileHubView: View {
             .padding(.top, 10)
     }
 
+    // MARK: Análise de uso
+
+    /// O interruptor da telemetria de uso. Quem guarda a escolha e para de mandar os
+    /// eventos é o Core; a tela só mostra o estado e despacha a mudança.
+    private var analyticsToggle: some View {
+        Toggle(isOn: Binding(
+            get: { vm.analyticsEnabled },
+            set: { core.dispatch(event: .setAnalyticsEnabled($0)) }
+        )) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(Str.Profile.analytics_title)
+                    .font(.plexSansMedium(14.5, relativeTo: .callout))
+                    .foregroundColor(LognDark.textPrimary)
+                Text(Str.Profile.analytics_desc)
+                    .font(.plexSans(12.5, relativeTo: .footnote))
+                    .foregroundColor(LognDark.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .tint(LognDark.accent)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(LognDark.surface)
+        .cornerRadius(Radius.sm)
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+    }
+
     // MARK: Rodapé — muda inteiro entre visitante e conta
 
     @ViewBuilder
@@ -359,6 +386,10 @@ struct ProfileHubView: View {
             .buttonStyle(.plain)
             .padding(.top, 6)
         }
+
+        // Visitante e conta: a política promete o interruptor para os dois.
+        analyticsToggle
+            .padding(.top, 14)
 
         // Visitante e conta: os dois jogam sob os mesmos termos.
         LegalLinksRow(presented: $legalSheet)

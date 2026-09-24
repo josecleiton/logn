@@ -8,18 +8,8 @@ struct LogNiOSApp: App {
     @StateObject private var core = CoreWrapper()
     
     init() {
-        if let key = Bundle.main.object(forInfoDictionaryKey: "LogNTelemetryKey") as? String, !key.isEmpty,
-           let host = Bundle.main.object(forInfoDictionaryKey: "LogNPostHogHost") as? String, !host.isEmpty {
-            let config = PostHogConfig(projectToken: key, host: host)
-            config.captureApplicationLifecycleEvents = true
-            // O IP do cliente não se desliga aqui: o SDK não tem essa opção (havia um
-            // `captureIP = false`, e o app não compilava). Descartar o IP é o
-            // "Discard client IP data" nas configurações do projeto em PostHog, que a
-            // política de privacidade promete.
-            PostHogSDK.shared.setup(config)
-        } else {
-            print("PostHog telemetry is disabled (no key provided)")
-        }
+        // Com a escolha do interruptor "Análise de uso" guardada no aparelho.
+        Telemetry.start()
     }
     
     /// O link de redefinição que chegou, como um dado só.
@@ -43,6 +33,16 @@ struct LogNiOSApp: App {
                 // do prazo entra no jogo, não na tela de login.
                 if core.viewModel.hasSession || core.viewModel.isGuest {
                     ContentView()
+                        .environmentObject(core)
+                        .overlay(alignment: .bottom) {
+                            // A exclusão pedida foi cancelada por este login.
+                            if core.viewModel.accountRestoredNotice {
+                                AccountRestoredCard().environmentObject(core)
+                            }
+                        }
+                } else if core.viewModel.deletionPurgeAfter > 0 {
+                    // Acabou de pedir a exclusão: diz até quando entrar ainda recupera.
+                    DeletionNoticeView()
                         .environmentObject(core)
                 } else if core.wantsRegistration {
                     // Visitante que escolheu salvar o progresso cai direto no cadastro.

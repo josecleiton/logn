@@ -1,3 +1,4 @@
+import StoreKit
 import SwiftUI
 import UIKit
 import WebKit
@@ -38,6 +39,21 @@ enum AppLocale {
         case "es": return "es"
         default: return "pt-BR"
         }
+    }
+}
+
+/// O país considerado na confirmação de idade.
+///
+/// Primeiro a loja em que o app foi baixado (`Storefront`), que é o país onde a App
+/// Store liberou a distribuição e o mais difícil de trocar por acidente; depois a
+/// região do iPhone. A loja dá o código alfa-3 (`BRA`), a região dá alfa-2 (`BR`) — o
+/// servidor aceita os dois e grava alfa-2.
+enum DeviceCountry {
+    static func current() async -> String {
+        if let code = await Storefront.current?.countryCode, !code.isEmpty {
+            return code
+        }
+        return Locale.current.region?.identifier ?? ""
     }
 }
 

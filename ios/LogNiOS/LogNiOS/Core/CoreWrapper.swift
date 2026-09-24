@@ -76,13 +76,20 @@ public class CoreWrapper: ObservableObject {
             standingsAreSample: true,
             authCooldownSeconds: 0,
             resendCooldownSeconds: 0,
-            legalVersionsReady: false
+            legalVersionsReady: false,
+            minAge: 13,
+            deletionPurgeAfter: 0,
+            accountRestoredNotice: false,
+            analyticsEnabled: Telemetry.analyticsEnabled
         )
         updateViewModel()
         // A língua do app vai antes de qualquer pedido: é o `Accept-Language` de cada um
         // e a língua do aceite no cadastro. Nada despachava isto, e o Core mandava o
         // cabeçalho vazio.
         dispatch(event: .setLocale(AppLocale.current))
+        // A escolha do interruptor "Análise de uso" antes do primeiro login: com ela
+        // desligada, o Core não identifica nem manda evento de uso.
+        dispatch(event: .restoreAnalyticsPreference)
         prepareKeychain()
         // A trilha que viaja no bundle entra antes de tudo: instalação nova e sem rede
         // não tem retrato guardado nem resposta do servidor, e sem isto o app abria com
@@ -241,6 +248,10 @@ public class CoreWrapper: ObservableObject {
             PostHogSDK.shared.identify(userId)
         case .track(let event, let properties):
             PostHogSDK.shared.capture(event, properties: properties)
+        case .reset:
+            PostHogSDK.shared.reset()
+        case .setAnalyticsEnabled(let enabled):
+            Telemetry.apply(analyticsEnabled: enabled)
         }
 
         resolveUnitEffect(id: id)
