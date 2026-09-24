@@ -17,6 +17,24 @@ import (
 // derrubam um ao outro com `conn busy`. Como o servidor atende em paralelo por
 // natureza, a conexão única fazia requisições legítimas falharem de forma
 // intermitente — o verify de OTP recusava código válido.
+
+type LegalDocument struct {
+	ID          string
+	Kind        string
+	Locale      string
+	Version     int
+	EffectiveAt time.Time
+	Material    bool
+	BodyHTML    string
+	CreatedAt   time.Time
+}
+
+type LegalAcceptance struct {
+	Kind    string `json:"kind"`
+	Version int    `json:"version"`
+	Locale  string `json:"locale"`
+}
+
 type Repository struct {
 	db *pgxpool.Pool
 }
@@ -325,21 +343,39 @@ func (r *Repository) GetUserProgress(ctx context.Context, userID string) ([]User
 	return progress, nil
 }
 
-func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string, ageConfirmed bool, legalAcceptances []string) (string, error) {
-	var id string
-	
-	legalJson, _ := json.Marshal(legalAcceptances)
-	if legalJson == nil {
-		legalJson = []byte("[]")
+func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string, ageConfirmed bool, acceptances []LegalAcceptance) (string, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return "", err
 	}
+	defer tx.Rollback(ctx)
 
+	var id string
 	query := `
-		INSERT INTO users (email, password_hash, age_confirmed_at, legal_acceptances)
-		VALUES ($1, $2, CASE WHEN $3::boolean THEN CURRENT_TIMESTAMP ELSE NULL END, $4)
+		INSERT INTO users (email, password_hash, age_confirmed_at)
+		VALUES ($1, $2, CASE WHEN $3::boolean THEN CURRENT_TIMESTAMP ELSE NULL END)
 		RETURNING id
 	`
-	err := r.db.QueryRow(ctx, query, email, passwordHash, ageConfirmed, legalJson).Scan(&id)
-	return id, err
+	err = tx.QueryRow(ctx, query, email, passwordHash, ageConfirmed).Scan(&id)
+	if err != nil {
+		return "", err
+	}
+
+	for _, acc := range acceptances {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO legal_acceptances (user_id, kind, version, locale)
+			VALUES ($1, $2, $3, $4)
+		`, id, acc.Kind, acc.Version, acc.Locale)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", err
+	}
+
+	return id, nil
 }
 
 // ErrUserNotFound sinaliza e-mail sem conta.
@@ -472,4 +508,85 @@ func (r *Repository) PurgeDeletedAccounts(ctx context.Context) error {
 	}
 
 	return tx.Commit(ctx)
+}
+
+func (r *Repository) GetLatestLegalDocument(ctx context.Context, kind, locale string) (*LegalDocument, error) {
+	query := `
+		SELECT id, kind, locale, version, effective_at, material, body_html, created_at
+		FROM legal_documents
+		WHERE kind = $1 AND locale = $2
+		ORDER BY version DESC LIMIT 1
+	`
+	var doc LegalDocument
+	err := r.db.QueryRow(ctx, query, kind, locale).Scan(
+		&doc.ID, &doc.Kind, &doc.Locale, &doc.Version, &doc.EffectiveAt, &doc.Material, &doc.BodyHTML, &doc.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &doc, nil
+}
+
+func (r *Repository) GetLegalDocumentByVersion(ctx context.Context, kind string, version int) (*LegalDocument, error) {
+	query := `
+		SELECT id, kind, locale, version, effective_at, material, body_html, created_at
+		FROM legal_documents
+		WHERE kind = $1 AND version = $2
+	`
+	var doc LegalDocument
+	err := r.db.QueryRow(ctx, query, kind, version).Scan(
+		&doc.ID, &doc.Kind, &doc.Locale, &doc.Version, &doc.EffectiveAt, &doc.Material, &doc.BodyHTML, &doc.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &doc, nil
+}
+
+func (r *Repository) GetPendingLegalDocuments(ctx context.Context, userID string) ([]LegalDocument, error) {
+	// Pega a última versão de cada kind que seja <= current time, 
+	// mas que o usuário não aceitou uma versão >= ela.
+	// Por simplificação (o PRD indica pegar pendentes relevantes).
+	// "Uma versão com material: bloqueia o app... sem material: avisa"
+	// Na verdade, vamos trazer os documentos recentes que o user não tem na tabela acceptances
+	query := `
+		WITH latest_docs AS (
+			SELECT kind, MAX(version) as version
+			FROM legal_documents
+			GROUP BY kind
+		)
+		SELECT d.id, d.kind, d.locale, d.version, d.effective_at, d.material, d.body_html, d.created_at
+		FROM legal_documents d
+		JOIN latest_docs ld ON d.kind = ld.kind AND d.version = ld.version
+		WHERE NOT EXISTS (
+			SELECT 1 FROM legal_acceptances a
+			WHERE a.user_id = $1 AND a.kind = d.kind AND a.version >= d.version
+		)
+	`
+	rows, err := r.db.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var docs []LegalDocument
+	for rows.Next() {
+		var doc LegalDocument
+		if err := rows.Scan(
+			&doc.ID, &doc.Kind, &doc.Locale, &doc.Version, &doc.EffectiveAt, &doc.Material, &doc.BodyHTML, &doc.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		docs = append(docs, doc)
+	}
+	return docs, nil
+}
+
+func (r *Repository) AcceptLegalDocument(ctx context.Context, userID, kind string, version int, locale string) error {
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO legal_acceptances (user_id, kind, version, locale)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT DO NOTHING
+	`, userID, kind, version, locale)
+	return err
 }

@@ -280,14 +280,42 @@ func main() {
 	mux.HandleFunc("GET /api/v1/nodes", server.getNodesHandler)
 	mux.HandleFunc("GET /api/v1/progress", server.getUserProgressHandler)
 	
-	mux.HandleFunc("GET /legal/privacy", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write([]byte("<html><body><h1>Privacy Policy</h1><p>Em breve.</p></body></html>"))
-	})
-	mux.HandleFunc("GET /legal/terms", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write([]byte("<html><body><h1>Terms of Service</h1><p>Em breve.</p></body></html>"))
-	})
+	serveLegal := func(kind string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			lang := r.URL.Query().Get("lang")
+			if lang == "" {
+				lang = r.Header.Get("Accept-Language")
+			}
+			
+			locale := "en"
+			if strings.HasPrefix(strings.ToLower(lang), "pt") {
+				locale = "pt-BR"
+			} else if strings.HasPrefix(strings.ToLower(lang), "es") {
+				locale = "es"
+			}
+			
+			doc, err := server.repo.GetLatestLegalDocument(r.Context(), kind, locale)
+			if err != nil {
+				// Fallback to en
+				doc, err = server.repo.GetLatestLegalDocument(r.Context(), kind, "en")
+			}
+			
+			if err != nil || doc == nil {
+				http.Error(w, "Document not found", http.StatusNotFound)
+				return
+			}
+			
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Header().Set("Cache-Control", "public, max-age=3600")
+			w.Write([]byte(doc.BodyHTML))
+		}
+	}
+	
+	mux.HandleFunc("GET /legal/privacy", serveLegal("privacy"))
+	mux.HandleFunc("GET /legal/terms", serveLegal("terms"))
+	
+	mux.HandleFunc("GET /api/v1/legal/pending", auth(server.pendingLegalHandler))
+	mux.HandleFunc("POST /api/v1/legal/accept", auth(server.acceptLegalHandler))
 
 	port := os.Getenv("PORT")
 	if port == "" {

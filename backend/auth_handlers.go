@@ -197,8 +197,8 @@ type RegisterRequest struct {
 	Email            string   `json:"email"`
 	Password         string   `json:"password"`
 	OTP              string   `json:"otp"`
-	AgeConfirmed     bool     `json:"age_confirmed"`
-	LegalAcceptances []string `json:"legal_acceptances"`
+	AgeConfirmed     bool                     `json:"age_confirmed"`
+	LegalAcceptances []domain.LegalAcceptance `json:"legal_acceptances"`
 }
 
 func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
