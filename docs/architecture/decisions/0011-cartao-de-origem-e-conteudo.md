@@ -2,7 +2,7 @@
 
 ## 1. Visão Geral
 
-O selo de origem (a coluna `challenges.origin`, desde a 0010) abre um cartão de homenagem quando um desafio não nasceu no LogN. O texto desse cartão — nome, papel e corpo — vivia em `i18n/keys.toml` e nas três `i18n/locales/*.toml`, como `origin_name`, `origin_role` e `origin_body`, e `OriginSheetView` escolhia entre eles com um `if origin == "FARIAS"`.
+O selo de origem (a coluna `challenges.origin`, desde a 0010) abre um cartão de homenagem quando um desafio não nasceu no LogN. O texto desse cartão — nome, papel e corpo — vivia como três chaves fixas em `i18n/keys.toml` e nas três `i18n/locales/*.toml`, uma por campo, e `OriginSheetView` escolhia entre elas com um `if origin == "FARIAS"`.
 
 Isso contradizia a regra 6 do `AGENTS.md`: o catálogo de i18n é da **interface**, e texto de **conteúdo** — nome de nó, enunciado, explicação, rótulo de opção de TAG — vem do servidor, das tabelas de tradução (ADR 0009). O texto de origem é conteúdo pela mesma razão que o nome de um nó é: descreve algo do currículo, não algo da tela, e crescer para uma segunda origem exigiria uma chave nova por campo e um release do app, em vez de uma linha na trilha.
 
@@ -22,7 +22,7 @@ A ordem existe porque `challenges.origin` já tem `FARIAS` em produção sem lin
 
 **O Core resolve o id para o cartão, com um fallback que nunca trava a partida.** `Model.origins: Vec<OriginCard>` chega pelo `/nodes` e pela semente empacotada (`TRAIL_SEED_VERSION` sobe de 2 para 3). `Model.origin_sheet` continua a ser só o id — é estado de navegação, não texto — e quem monta o `MatchViewModel` (`origin_sheet: Option<OriginCard>`) procura o id em `Model.origins`; sem achar, abre um cartão com o próprio id no lugar do nome e o resto vazio, em vez de recusar abrir. `origins_seen` continua chaveado pelo id: a cortesia de pausar o relógio na primeira leitura não muda com o texto, só com a identidade da origem.
 
-**O iOS só mostra o que chegou.** `OriginSheetView` lê `name`, `role` e `body` do `OriginCard` do ViewModel; o `if origin == "FARIAS"` some. `origin_name`, `origin_role` e `origin_body` saem de `i18n/keys.toml` e das três locales — o grupo `origin` fica com `eyebrow`, `pause_notice` e `close`, que são interface de verdade: o rótulo da tarja e o aviso de pausa não descrevem uma origem específica.
+**O iOS só mostra o que chegou.** `OriginSheetView` lê `name`, `role` e `body` do `OriginCard` do ViewModel; o `if origin == "FARIAS"` some. As três chaves fixas saem de `i18n/keys.toml` e das três locales — o grupo `origin` fica com `eyebrow`, `pause_notice` e `close`, que são interface de verdade: o rótulo da tarja e o aviso de pausa não descrevem uma origem específica.
 
 ## 3. Alternativas descartadas
 
