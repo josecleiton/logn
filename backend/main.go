@@ -288,40 +288,13 @@ func main() {
 	mux.HandleFunc("GET /api/v1/progress", server.getUserProgressHandler)
 	mux.HandleFunc("POST /api/v1/internal/purge", server.purgeHandler)
 	
-	serveLegal := func(kind string) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			lang := r.URL.Query().Get("lang")
-			if lang == "" {
-				lang = r.Header.Get("Accept-Language")
-			}
-			
-			locale := "en"
-			if strings.HasPrefix(strings.ToLower(lang), "pt") {
-				locale = "pt-BR"
-			} else if strings.HasPrefix(strings.ToLower(lang), "es") {
-				locale = "es"
-			}
-			
-			doc, err := server.repo.GetLatestLegalDocument(r.Context(), kind, locale)
-			if err != nil {
-				// Fallback to en
-				doc, err = server.repo.GetLatestLegalDocument(r.Context(), kind, "en")
-			}
-			
-			if err != nil || doc == nil {
-				http.Error(w, "Document not found", http.StatusNotFound)
-				return
-			}
-			
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Header().Set("Cache-Control", "public, max-age=3600")
-			w.Write([]byte(doc.BodyHTML))
-		}
-	}
-	
-	mux.HandleFunc("GET /legal/privacy", serveLegal("privacy"))
-	mux.HandleFunc("GET /legal/terms", serveLegal("terms"))
-	
+	// Termos e política. No Cloud Run o modo é estrito: documento com marcador de
+	// rascunho responde 503, a não ser que LEGAL_ALLOW_DRAFT=true libere a página com a
+	// faixa de rascunho — o caso do TestFlight, enquanto o advogado revisa.
+	legalStrict := os.Getenv("K_SERVICE") != "" && os.Getenv("LEGAL_ALLOW_DRAFT") != "true"
+	registerLegalRoutes(mux, legalStore{server.repo}, legalStrict)
+
+	mux.HandleFunc("GET /api/v1/legal/current", server.currentLegalVersionsHandler)
 	mux.HandleFunc("GET /api/v1/legal/pending", auth(server.pendingLegalHandler))
 	mux.HandleFunc("POST /api/v1/legal/accept", auth(server.acceptLegalHandler))
 

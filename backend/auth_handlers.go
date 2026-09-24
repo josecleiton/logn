@@ -226,6 +226,27 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
+	// Idade e aceite também vêm antes do OTP, pelo mesmo motivo da senha.
+	if !req.AgeConfirmed {
+		http.Error(w, "age_not_confirmed", http.StatusBadRequest)
+		return
+	}
+	current, err := s.currentLegalVersions(ctx)
+	if err != nil {
+		log.Printf("cadastro sem versões legais: erro=%v", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+	acceptances, err := checkLegalAcceptances(req.LegalAcceptances, current)
+	if errors.Is(err, errLegalOutdated) {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	valid, err := s.repo.ConsumeOTP(ctx, email, req.OTP, domain.OTPPurposeVerifyEmail)
 	if err != nil || !valid {
 		http.Error(w, "Invalid or expired OTP", http.StatusUnauthorized)
@@ -238,7 +259,7 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := s.repo.CreateUser(ctx, email, hashedPassword, req.AgeConfirmed, req.LegalAcceptances)
+	userID, err := s.repo.CreateUser(ctx, email, hashedPassword, req.AgeConfirmed, acceptances)
 	if err != nil {
 		// Usually indicates email already exists
 		http.Error(w, "Error creating user: email might already be registered", http.StatusConflict)

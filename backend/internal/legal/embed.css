@@ -1,0 +1,22 @@
+:root{color-scheme:dark;--raised:#171A1E;--surface:#111316;--line:#24282D;--line-strong:#343A41;--text:#EDEEEF;--text-2:#99A0A7;--muted:#7E858D;--accent:#FF7A45;--accent-ink:#FF7A45;--warn-ink:#F5C451;--tint-warn:#221C0C;--warn:#F5C451}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;background:var(--raised)}
+body{margin:0;padding:20px 20px 32px;background:var(--raised);color:var(--text-2);font-family:"IBM Plex Sans",-apple-system,system-ui,sans-serif;font-size:15px;line-height:22px}
+.legal-badge,.draft-label{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:16px;font-weight:500;letter-spacing:.14em;text-transform:uppercase}
+header p{margin:0}
+section{margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}
+h2{margin:0 0 8px;color:var(--text);font-size:17px;line-height:24px;font-weight:600}
+h3{margin:20px 0 8px;color:var(--text);font-size:15px;line-height:22px;font-weight:600}
+p{margin:8px 0 0}
+ul,ol{margin:8px 0 0;padding-left:22px}
+li{margin-top:6px}
+strong{color:var(--text);font-weight:600}
+a{color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px}
+table{display:block;overflow-x:auto;margin-top:12px;border-collapse:collapse;max-width:100%}
+th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top;min-width:120px}
+th{background:var(--surface);color:var(--text);font-weight:600}
+mark{background:var(--tint-warn);color:var(--warn-ink);padding:0 2px;border-radius:2px}
+.legal-new{background:rgba(255,122,69,.08);border:1px solid var(--line-strong);border-radius:4px;padding:12px;margin-left:-12px;margin-right:-12px}
+.legal-badge{display:inline-block;margin:0 0 8px;padding:2px 6px;border:1px solid var(--accent);border-radius:2px;color:var(--accent-ink)}
+.draft{margin:-20px -20px 20px;padding:12px 20px;background:var(--tint-warn);border-bottom:1px solid var(--warn);color:var(--text);display:flex;gap:12px;align-items:baseline}
+.draft-label{color:var(--warn-ink);flex-shrink:0}

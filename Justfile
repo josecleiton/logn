@@ -25,8 +25,24 @@ test-backend:
 
 # Aplica as migrações no banco de Produção e encerra sem subir o servidor HTTP.
 # Uso: DATABASE_URL="postgres://admin..." just migrate-prod
+#
+# Recusa publicar documento legal com marcador de rascunho ([A CONFIRMAR] e afins). Para
+# levar um rascunho de propósito, durante a revisão do advogado:
+# LEGAL_ALLOW_DRAFT=true DATABASE_URL=... just migrate-prod
 migrate-prod:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	if [ "${LEGAL_ALLOW_DRAFT:-}" != "true" ] && grep -lE 'A CONFIRMAR|TO CONFIRM|POR CONFIRMAR' backend/schema/migrations/*.sql; then
+		echo "Migração acima tem documento legal em rascunho. Publique o texto final ou use LEGAL_ALLOW_DRAFT=true." >&2
+		exit 1
+	fi
 	cd backend && RUN_MIGRATIONS=true MIGRATE_ONLY=true go run .
+
+# Confere os documentos legais do repositório de conteúdo: estrutura, links, línguas e
+# ids de seção. Com `release`, recusa também os marcadores de rascunho.
+# Uso: just legal-check        ou        just legal-check release
+legal-check mode="":
+	cd backend && go run ./cmd/legalcheck {{ if mode == "release" { "--release" } else { "" } }} ../../logn-conteudo/legal
 
 # Faz o deploy do Backend para o Google Cloud Run, a partir do Dockerfile de backend/.
 # Variáveis, secrets e probes vivem no serviço `logn` e são mantidas a cada deploy.
@@ -43,29 +59,29 @@ deploy-scheduler:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	echo "Consultando informações do serviço 'logn' no Cloud Run..."
-	URL=$$(gcloud run services describe logn --region us-east1 --format 'value(status.url)')
-	SA=$$(gcloud run services describe logn --region us-east1 --format 'value(spec.template.spec.serviceAccountName)')
+	URL=$(gcloud run services describe logn --region us-east1 --format 'value(status.url)')
+	SA=$(gcloud run services describe logn --region us-east1 --format 'value(spec.template.spec.serviceAccountName)')
 	
-	if [ -z "$$SA" ] || [ "$$SA" = "None" ]; then
-		PROJECT_NUMBER=$$(gcloud projects describe $$(gcloud config get-value project) --format 'value(projectNumber)')
-		SA="$${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+	if [ -z "$SA" ] || [ "$SA" = "None" ]; then
+		PROJECT_NUMBER=$(gcloud projects describe $(gcloud config get-value project) --format 'value(projectNumber)')
+		SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 	fi
 	
-	echo "Configurando Cloud Scheduler para bater em $$URL usando a conta $$SA"
+	echo "Configurando Cloud Scheduler para bater em $URL usando a conta $SA"
 	
 	gcloud scheduler jobs create http purge-deleted-accounts \
 		--schedule="0 3 * * *" \
-		--uri="$$URL/api/v1/internal/purge" \
+		--uri="$URL/api/v1/internal/purge" \
 		--http-method=POST \
-		--oidc-service-account-email="$$SA" \
-		--oidc-token-audience="$$URL" \
+		--oidc-service-account-email="$SA" \
+		--oidc-token-audience="$URL" \
 		--location=us-east1 \
 		|| gcloud scheduler jobs update http purge-deleted-accounts \
 		--schedule="0 3 * * *" \
-		--uri="$$URL/api/v1/internal/purge" \
+		--uri="$URL/api/v1/internal/purge" \
 		--http-method=POST \
-		--oidc-service-account-email="$$SA" \
-		--oidc-token-audience="$$URL" \
+		--oidc-service-account-email="$SA" \
+		--oidc-token-audience="$URL" \
 		--location=us-east1
 
 
@@ -80,7 +96,7 @@ test-core:
 # Sincroniza as chaves do .env raiz para o formato consumível das shells nativas
 sync-env:
 	@echo "// Generated auto-magically from .env by Justfile" > ios/LogNiOS/Local.xcconfig
-	@sed -e 's/#.*//g' -e '/^$$/d' -e 's/\/\//\/\$()\//g' .env >> ios/LogNiOS/Local.xcconfig
+	@sed -e 's/#.*//g' -e '/^$/d' -e 's/\/\//\/\$()\//g' .env >> ios/LogNiOS/Local.xcconfig
 	@echo "Local.xcconfig synced from .env!"
 
 
@@ -88,6 +104,11 @@ sync-env:
 # rede. Precisa do backend de pé. Rode de novo depois de cada migração de conteúdo.
 seed-bundle:
 	python3 tools/seed_bundle.py
+
+# Empacota termos e política, no modo do app, para ler sem rede. Precisa do backend de
+# pé. Recusa rascunho, a não ser com LEGAL_BUNDLE_ALLOW_DRAFT=1.
+legal-bundle:
+	python3 tools/legal_bundle.py
 
 # Gera as strings de internacionalização (i18n) para Swift (e futuramente Kotlin)
 i18n:

@@ -2,17 +2,28 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
+	"slices"
 
 	"github.com/josecleiton/logn/backend/internal/domain"
+	"github.com/josecleiton/logn/backend/internal/legal"
 )
 
+// pendingLegalHandler lista as versões vigentes que a conta ainda não aceitou.
+//
+// Lia o dono de `r.Context().Value("user_id")`, que nada preenche: a asserção de tipo
+// derrubava toda requisição. O dono sai do token, como no resto da API.
 func (s *Server) pendingLegalHandler(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
+	userID, ok := s.authenticate(w, r)
+	if !ok {
+		return
+	}
 
 	docs, err := s.repo.GetPendingLegalDocuments(r.Context(), userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("pendências legais não lidas: user=%s erro=%v", userID, err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -31,17 +42,38 @@ type AcceptLegalRequest struct {
 }
 
 func (s *Server) acceptLegalHandler(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(string)
-
-	var req AcceptLegalRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	userID, ok := s.authenticate(w, r)
+	if !ok {
 		return
 	}
 
-	err := s.repo.AcceptLegalDocument(r.Context(), userID, req.Kind, req.Version, req.Locale)
+	var req AcceptLegalRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	current, err := s.currentLegalVersions(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("aceite sem versões legais: user=%s erro=%v", userID, err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+	doc, ok := current[legal.Kind(req.Kind)]
+	if !ok || !slices.Contains(legal.Locales, req.Locale) {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	// Só a versão vigente se aceita. Aceitar uma velha não resolve pendência nenhuma,
+	// e aceitar uma que não existe gravaria lixo.
+	if req.Version != doc.Version {
+		http.Error(w, "legal_version_outdated", http.StatusConflict)
+		return
+	}
+
+	if err := s.repo.AcceptLegalDocument(r.Context(), userID, req.Kind, req.Version, req.Locale); err != nil {
+		log.Printf("aceite não gravado: user=%s erro=%v", userID, err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 

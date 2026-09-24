@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="{{.Lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="{{if .Embed}}dark{{else}}light dark{{end}}">
+<title>{{.Title}}</title>
+<style>{{.CSS}}</style>
+</head>
+<body>
+{{- if .Embed}}
+{{- if .Draft}}
+<div class="draft" role="note"><span class="draft-label">{{.DraftLabel}}</span><span>{{.DraftText}}</span></div>
+{{- end}}
+{{.Body}}
+{{- else}}
+<nav class="topbar" aria-label="{{.Title}}"><div class="topbar-inner"><span class="brand">LogN</span><span class="langs">{{range .Langs}}{{if .Current}}<span aria-current="page">{{.Label}}</span>{{else}}<a href="{{.Href}}" hreflang="{{.Code}}" lang="{{.Code}}">{{.Label}}</a>{{end}}{{end}}</span></div></nav>
+{{- if .Draft}}
+<div class="draft" role="note"><div class="draft-inner"><span class="draft-label">{{.DraftLabel}}</span><span>{{.DraftText}}</span></div></div>
+{{- end}}
+<main class="legal-page">
+{{.Body}}
+</main>
+{{- end}}
+</body>
+</html>
