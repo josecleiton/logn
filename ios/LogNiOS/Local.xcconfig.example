@@ -9,3 +9,6 @@ API_BASE_URL = http:$(SLASH)$(SLASH)localhost:8080
 
 // Chave do PostHog (vazia por padrão em dev)
 TELEMETRY_KEY = phc_SuaChaveAqui
+
+// Team ID da Apple usado para assinar o build (Apple Developer > Membership)
+DEVELOPMENT_TEAM = SEU_TEAM_ID

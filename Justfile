@@ -163,7 +163,7 @@ xcode: sync-env build-ios-ffi i18n
 open-ios: xcode
 	open ios/LogNiOS/LogNiOS.xcodeproj
 
-# Builda em Release, assina com o time do project.yml e instala no iPhone conectado.
+# Builda em Release, assina com o DEVELOPMENT_TEAM do Local.xcconfig e instala no iPhone conectado.
 # Fala com o API_BASE_URL do .env (o `xcode` roda o sync-env antes), que hoje é a produção.
 # Sem argumento, instala no primeiro iPhone pareado e disponível; com argumento, no id
 # dado por `xcrun devicectl list devices`.
