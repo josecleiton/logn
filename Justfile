@@ -188,6 +188,39 @@ install-ios-device device="": xcode
 	xcrun devicectl device install app --device "$device" \
 		ios/build/device/Build/Products/Release-iphoneos/LogNiOS.app
 
+# A trilha e os documentos legais que viajam dentro do app saem da própria API de
+# produção (API_BASE_URL do .env), nunca do banco local: o app offline mostra
+# exatamente o que a produção serve. Por isso a produção já tem de estar com as
+# migrações e o backend novos. O build para antes de compilar se:
+# - o conteúdo ou os documentos em logn-conteudo têm pendência ou rascunho;
+# - alguma língua não está publicada inteira na produção (seed --release);
+# - a produção não manda Content-Language (backend antigo);
+# - algum documento legal da produção está em rascunho.
+#
+# Saída: ios/build/store/LogNiOS.ipa. Envie pelo Transporter ou pelo Organizer. Para o
+# seu iPhone, o caminho é o `install-ios-device`.
+#
+# Build de loja: arquiva em Release e exporta o .ipa da App Store, sem enviar.
+release-ios:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	base=$(sed -n 's/^API_BASE_URL=//p' .env | tr -d '"' | tail -1)
+	if [ -z "$base" ]; then echo "API_BASE_URL vazio no .env" >&2; exit 1; fi
+	echo "Conteúdo e documentos legais de $base"
+	{{just_executable()}} content-check release
+	{{just_executable()}} legal-check release
+	env -u LEGAL_BUNDLE_ALLOW_DRAFT SEED_BUNDLE_BASE_URL="$base" python3 tools/seed_bundle.py --release
+	env -u LEGAL_BUNDLE_ALLOW_DRAFT LEGAL_BUNDLE_BASE_URL="$base" python3 tools/legal_bundle.py
+	{{just_executable()}} xcode
+	rm -rf ios/build/store
+	xcodebuild -project ios/LogNiOS/LogNiOS.xcodeproj -scheme LogNiOS \
+		-configuration Release -destination 'generic/platform=iOS' \
+		-archivePath ios/build/store/LogNiOS.xcarchive -allowProvisioningUpdates archive
+	xcodebuild -exportArchive -archivePath ios/build/store/LogNiOS.xcarchive \
+		-exportOptionsPlist ios/LogNiOS/ExportOptions-AppStore.plist \
+		-exportPath ios/build/store -allowProvisioningUpdates
+	echo "Pronto: ios/build/store/LogNiOS.ipa (envie pelo Transporter ou pelo Organizer)"
+
 # Limpa o build do Rust e do Xcode
 clean:
 	cd shared_core && cargo clean
