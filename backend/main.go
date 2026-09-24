@@ -255,10 +255,11 @@ func main() {
 
 	if os.Getenv("PURGE_ONLY") == "true" {
 		log.Println("Rodando rotina de expurgo (PURGE_ONLY=true)...")
-		if err := server.repo.PurgeDeletedAccounts(context.Background()); err != nil {
-			log.Fatalf("Erro no expurgo: %v", err)
+		purged, err := server.repo.PurgeDeletedAccounts(context.Background())
+		if err != nil {
+			log.Fatalf("Erro no expurgo depois de %d contas: %v", purged, err)
 		}
-		log.Println("Expurgo concluído com sucesso. Encerrando.")
+		log.Printf("Expurgo concluído: %d contas apagadas. Encerrando.", purged)
 		return
 	}
 

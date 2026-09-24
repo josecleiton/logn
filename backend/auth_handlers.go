@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/josecleiton/logn/backend/internal/domain"
+	"github.com/josecleiton/logn/backend/internal/legal"
 )
 
 type LoginRequest struct {
@@ -31,6 +32,9 @@ type AuthResponse struct {
 	// Até quando a sessão vale, em segundos desde a época. É o que deixa o app seguir
 	// funcionando sem rede: sem saber o prazo, ele só podia perguntar ao servidor.
 	RefreshExpiresAt int64 `json:"refresh_expires_at"`
+	// A conta tinha pedido exclusão, e este login ou esta troca de senha a cancelou.
+	// O app avisa uma vez. Some do JSON quando falso: app antigo ignora o campo.
+	AccountRestored bool `json:"account_restored,omitempty"`
 }
 
 func hashRefreshToken(token string) string {
@@ -43,7 +47,7 @@ func hashRefreshToken(token string) string {
 // Login, registro e troca de senha repetiam os mesmos passos à mão, e o da troca de
 // senha descartava os erros: sem token gravado, o app recebia uma sessão que morria no
 // primeiro refresh.
-func (s *Server) issueSession(ctx context.Context, w http.ResponseWriter, userID string) {
+func (s *Server) issueSession(ctx context.Context, w http.ResponseWriter, userID string, restored bool) {
 	accessToken, err := domain.GenerateAccessToken(userID)
 	if err != nil {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
@@ -69,6 +73,7 @@ func (s *Server) issueSession(ctx context.Context, w http.ResponseWriter, userID
 		RefreshToken:     refreshToken,
 		UserID:           userID,
 		RefreshExpiresAt: expiresAt.Unix(),
+		AccountRestored:  restored,
 	})
 }
 
@@ -123,7 +128,19 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	s.issueSession(ctx, w, user.ID)
+	// Entrar dentro da carência cancela a exclusão. Sem isto a pessoa recebia a sessão
+	// e tomava 401 em todo o resto, porque a conta seguia desativada.
+	restored, err := s.repo.CancelAccountDeletion(ctx, user.ID)
+	if err != nil {
+		log.Printf("exclusão não cancelada no login: user=%s erro=%v", user.ID, err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+	if restored {
+		log.Printf("exclusão cancelada pelo login: user=%s", user.ID)
+	}
+
+	s.issueSession(ctx, w, user.ID, restored)
 }
 
 type RefreshRequest struct {
@@ -147,6 +164,13 @@ func (s *Server) refreshHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	tokenRecord, err := s.repo.GetRefreshToken(ctx, tokenHash)
 	if err != nil || tokenRecord.ExpiresAt.Before(time.Now()) {
+		http.Error(w, "Invalid or expired refresh token", http.StatusUnauthorized)
+		return
+	}
+	// Conta desativada não renova sessão. O pedido de exclusão já revoga os tokens;
+	// isto fecha a porta para o que tiver escapado, como um token emitido no meio.
+	if !s.repo.IsUserActive(ctx, tokenRecord.UserID) {
+		log.Printf("refresh recusado: user=%s conta desativada", tokenRecord.UserID)
 		http.Error(w, "Invalid or expired refresh token", http.StatusUnauthorized)
 		return
 	}
@@ -194,10 +218,13 @@ func (s *Server) refreshHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type RegisterRequest struct {
-	Email            string   `json:"email"`
-	Password         string   `json:"password"`
-	OTP              string   `json:"otp"`
-	AgeConfirmed     bool                     `json:"age_confirmed"`
+	Email        string `json:"email"`
+	Password     string `json:"password"`
+	OTP          string `json:"otp"`
+	AgeConfirmed bool   `json:"age_confirmed"`
+	// País considerado na confirmação de idade, ISO 3166-1 alfa-2. Vazio vale a
+	// idade padrão.
+	Country          string                   `json:"country"`
 	LegalAcceptances []domain.LegalAcceptance `json:"legal_acceptances"`
 }
 
@@ -226,7 +253,14 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	// Idade e aceite também vêm antes do OTP, pelo mesmo motivo da senha.
+	// Idade e aceite também vêm antes do OTP, pelo mesmo motivo da senha. A caixa diz
+	// "tenho N anos ou mais", com o N da tabela para este país: marcá-la é a
+	// declaração, e sem ela não há cadastro.
+	country, ok := legal.NormalizeCountry(req.Country)
+	if !ok {
+		http.Error(w, "invalid_country", http.StatusBadRequest)
+		return
+	}
 	if !req.AgeConfirmed {
 		http.Error(w, "age_not_confirmed", http.StatusBadRequest)
 		return
@@ -259,14 +293,16 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := s.repo.CreateUser(ctx, email, hashedPassword, req.AgeConfirmed, acceptances)
+	userID, err := s.repo.CreateUser(ctx, email, hashedPassword, req.AgeConfirmed, country, acceptances)
 	if err != nil {
-		// Usually indicates email already exists
+		// E-mail já cadastrado, inclusive o de uma conta na carência de exclusão. A
+		// mensagem não muda para esse caso: dizer "entre para recuperar" contaria a
+		// qualquer um que o endereço tem conta.
 		http.Error(w, "Error creating user: email might already be registered", http.StatusConflict)
 		return
 	}
 
-	s.issueSession(ctx, w, userID)
+	s.issueSession(ctx, w, userID, false)
 }
 
 type ResetPasswordRequest struct {
@@ -313,7 +349,8 @@ func (s *Server) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Troca a senha e revoga todas as sessões abertas numa transação só: quem estava
 	// dentro da conta sai junto com a senha velha.
-	userID, err := s.repo.ResetUserPassword(ctx, email, hashedPassword)
+	// Cancela também uma exclusão pedida (ver ResetUserPassword).
+	userID, restored, err := s.repo.ResetUserPassword(ctx, email, hashedPassword)
 	if err != nil {
 		// E-mail sem conta responde como código inválido. Era um 500 próprio, e
 		// dava para distinguir quem tem conta.
@@ -325,8 +362,11 @@ func (s *Server) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
+	if restored {
+		log.Printf("exclusão cancelada pela troca de senha: user=%s", userID)
+	}
 
-	s.issueSession(ctx, w, userID)
+	s.issueSession(ctx, w, userID, restored)
 }
 
 type DeleteAccountRequest struct {
@@ -363,10 +403,15 @@ func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.repo.MarkAccountForDeletion(ctx, userID); err != nil {
+	purgeAfter, err := s.repo.MarkAccountForDeletion(ctx, userID)
+	if err != nil {
+		log.Printf("exclusão não pedida: user=%s erro=%v", userID, err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
+	log.Printf("exclusão pedida: user=%s expurgo_a_partir_de=%s", userID, purgeAfter.Format(time.RFC3339))
 
-	w.WriteHeader(http.StatusOK)
+	// A data em que o expurgo pode apagar a conta: o app mostra "apagada até DD/MM".
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int64{"purge_after": purgeAfter.Unix()})
 }

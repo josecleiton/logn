@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 )
@@ -24,11 +26,14 @@ func (s *Server) purgeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.repo.PurgeDeletedAccounts(r.Context()); err != nil {
+	purged, err := s.repo.PurgeDeletedAccounts(r.Context())
+	if err != nil {
+		log.Printf("expurgo interrompido depois de %d contas: erro=%v", purged, err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
+	log.Printf("expurgo ok: %d contas apagadas", purged)
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status":"ok"}`))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"status": "ok", "purged": purged})
 }

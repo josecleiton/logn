@@ -343,7 +343,9 @@ func (r *Repository) GetUserProgress(ctx context.Context, userID string) ([]User
 	return progress, nil
 }
 
-func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string, ageConfirmed bool, acceptances []LegalAcceptance) (string, error) {
+// CreateUser cria a conta com a confirmação de idade, o país considerado nela (vazio
+// grava NULL) e os aceites, numa transação só.
+func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string, ageConfirmed bool, country string, acceptances []LegalAcceptance) (string, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return "", err
@@ -352,11 +354,11 @@ func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string,
 
 	var id string
 	query := `
-		INSERT INTO users (email, password_hash, age_confirmed_at)
-		VALUES ($1, $2, CASE WHEN $3::boolean THEN CURRENT_TIMESTAMP ELSE NULL END)
+		INSERT INTO users (email, password_hash, age_confirmed_at, country)
+		VALUES ($1, $2, CASE WHEN $3::boolean THEN CURRENT_TIMESTAMP ELSE NULL END, NULLIF($4, ''))
 		RETURNING id
 	`
-	err = tx.QueryRow(ctx, query, email, passwordHash, ageConfirmed).Scan(&id)
+	err = tx.QueryRow(ctx, query, email, passwordHash, ageConfirmed, country).Scan(&id)
 	if err != nil {
 		return "", err
 	}
@@ -386,31 +388,38 @@ var ErrUserNotFound = errors.New("user not found")
 //
 // Antes só trocava o hash. Quem tinha roubado a conta seguia com o refresh token, e a
 // rotação o mantinha vivo para sempre: a troca de senha não expulsava ninguém.
-func (r *Repository) ResetUserPassword(ctx context.Context, email, passwordHash string) (string, error) {
+//
+// Também cancela uma exclusão pedida: provar que é dono pelo código do e-mail é o
+// caminho de quem esqueceu a senha e quer a conta de volta. `restored` diz se havia
+// exclusão a cancelar.
+func (r *Repository) ResetUserPassword(ctx context.Context, email, passwordHash string) (userID string, restored bool, err error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	defer tx.Rollback(ctx)
 
-	var userID string
-	err = tx.QueryRow(ctx,
-		`UPDATE users SET password_hash = $1 WHERE email = $2 RETURNING id`,
-		passwordHash, email).Scan(&userID)
+	// O valor antigo sai da CTE: o RETURNING do UPDATE já veria a coluna zerada.
+	err = tx.QueryRow(ctx, `
+		WITH old AS (SELECT id, deletion_requested_at FROM users WHERE email = $2 FOR UPDATE)
+		UPDATE users u SET password_hash = $1, deletion_requested_at = NULL
+		FROM old WHERE u.id = old.id
+		RETURNING u.id, old.deletion_requested_at IS NOT NULL`,
+		passwordHash, email).Scan(&userID, &restored)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", ErrUserNotFound
+		return "", false, ErrUserNotFound
 	}
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 
 	if _, err := tx.Exec(ctx,
 		`UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1 AND revoked = FALSE`,
 		userID); err != nil {
-		return "", err
+		return "", false, err
 	}
 
-	return userID, tx.Commit(ctx)
+	return userID, restored, tx.Commit(ctx)
 }
 
 // UpdatePasswordHash regrava o hash de quem acabou de acertar a senha. É o que leva
@@ -435,9 +444,47 @@ func (r *Repository) GetUserByID(ctx context.Context, userID string) (*User, err
 	return &user, nil
 }
 
-func (r *Repository) MarkAccountForDeletion(ctx context.Context, userID string) error {
-	_, err := r.db.Exec(ctx, `UPDATE users SET deletion_requested_at = CURRENT_TIMESTAMP WHERE id = $1`, userID)
-	return err
+// AccountDeletionGrace é a carência entre o pedido de exclusão e o expurgo. Entrar na
+// conta ou redefinir a senha nesse prazo cancela a exclusão.
+const AccountDeletionGrace = 30 * 24 * time.Hour
+
+// MarkAccountForDeletion desativa a conta e derruba todas as sessões, numa transação,
+// e devolve a partir de quando o expurgo pode apagá-la.
+//
+// Só gravava a data: o refresh token de outro aparelho seguia valendo, e a política
+// promete encerrar as sessões em todos os aparelhos. Pedir de novo mantém a data do
+// primeiro pedido, para ninguém empurrar o prazo sem querer.
+func (r *Repository) MarkAccountForDeletion(ctx context.Context, userID string) (time.Time, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return time.Time{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	var requestedAt time.Time
+	if err := tx.QueryRow(ctx, `
+		UPDATE users SET deletion_requested_at = COALESCE(deletion_requested_at, CURRENT_TIMESTAMP)
+		WHERE id = $1 RETURNING deletion_requested_at`, userID).Scan(&requestedAt); err != nil {
+		return time.Time{}, err
+	}
+	if _, err := tx.Exec(ctx,
+		`UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1 AND revoked = FALSE`,
+		userID); err != nil {
+		return time.Time{}, err
+	}
+	return requestedAt.Add(AccountDeletionGrace), tx.Commit(ctx)
+}
+
+// CancelAccountDeletion reativa a conta que tinha pedido exclusão e diz se havia o que
+// cancelar. É o login dentro da carência.
+func (r *Repository) CancelAccountDeletion(ctx context.Context, userID string) (bool, error) {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE users SET deletion_requested_at = NULL
+		WHERE id = $1 AND deletion_requested_at IS NOT NULL`, userID)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
 }
 
 func (r *Repository) IsUserActive(ctx context.Context, userID string) bool {
@@ -449,65 +496,89 @@ func (r *Repository) IsUserActive(ctx context.Context, userID string) bool {
 	return deletionRequestedAt == nil
 }
 
-// PurgeDeletedAccounts apaga contas que pediram exclusão há mais de 30 dias.
-// Apaga os dados em cascata manualmente para game_events e user_sync_state.
-func (r *Repository) PurgeDeletedAccounts(ctx context.Context) error {
-	tx, err := r.db.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-
-	// Seleciona usuários a apagar
-	query := `
+// PurgeDeletedAccounts apaga de vez as contas que passaram da carência e devolve
+// quantas apagou.
+//
+// Uma transação por conta: antes era uma para todas, e uma conta com problema
+// segurava o expurgo das outras. Os dados da conta nos dados de uso do PostHog não
+// passam por aqui — somem pela retenção de 30 dias do projeto, e o app chama `reset()`
+// ao excluir para não mandar mais nada com o id dela.
+func (r *Repository) PurgeDeletedAccounts(ctx context.Context) (int, error) {
+	rows, err := r.db.Query(ctx, `
 		SELECT id FROM users
 		WHERE deletion_requested_at IS NOT NULL
-		  AND deletion_requested_at < CURRENT_TIMESTAMP - INTERVAL '30 days'
-	`
-	rows, err := tx.Query(ctx, query)
+		  AND deletion_requested_at < CURRENT_TIMESTAMP - make_interval(secs => $1)`,
+		AccountDeletionGrace.Seconds())
 	if err != nil {
-		return err
+		return 0, err
 	}
-
 	var userIDs []string
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
-			return err
+			rows.Close()
+			return 0, err
 		}
 		userIDs = append(userIDs, id)
 	}
 	rows.Close()
-
-	if len(userIDs) == 0 {
-		return nil
+	if err := rows.Err(); err != nil {
+		return 0, err
 	}
 
+	purged := 0
 	for _, uid := range userIDs {
-		// game_events depende de user_sync_state, que logicamente depende de users
-		_, err = tx.Exec(ctx, "DELETE FROM game_events WHERE user_id = $1", uid)
+		ok, err := r.purgeAccount(ctx, uid)
 		if err != nil {
-			return err
+			return purged, fmt.Errorf("expurgo de %s: %w", uid, err)
 		}
-		_, err = tx.Exec(ctx, "DELETE FROM user_sync_state WHERE user_id = $1", uid)
-		if err != nil {
-			return err
-		}
-		_, err = tx.Exec(ctx, "DELETE FROM user_progress WHERE user_id = $1", uid)
-		if err != nil {
-			return err
-		}
-		_, err = tx.Exec(ctx, "DELETE FROM refresh_tokens WHERE user_id = $1", uid)
-		if err != nil {
-			return err
-		}
-		_, err = tx.Exec(ctx, "DELETE FROM users WHERE id = $1", uid)
-		if err != nil {
-			return err
+		if ok {
+			purged++
 		}
 	}
+	return purged, nil
+}
 
-	return tx.Commit(ctx)
+// purgeAccount apaga uma conta e tudo o que é dela, se ela ainda estiver vencida.
+//
+// A linha de `users` sai primeiro, conferindo de novo a carência: quem entrou na conta
+// entre a seleção e este passo não perde nada. Em cascata vão `refresh_tokens`,
+// `user_progress`, `user_paid_challenges` e `legal_acceptances`. `game_events` e
+// `user_sync_state` não têm chave estrangeira para `users`, e `otps` é por e-mail:
+// esses saem à mão.
+func (r *Repository) purgeAccount(ctx context.Context, userID string) (bool, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback(ctx)
+
+	var email string
+	err = tx.QueryRow(ctx, `
+		DELETE FROM users
+		WHERE id = $1 AND deletion_requested_at < CURRENT_TIMESTAMP - make_interval(secs => $2)
+		RETURNING email`, userID, AccountDeletionGrace.Seconds()).Scan(&email)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	// game_events antes de user_sync_state: a chave estrangeira aponta para lá.
+	for _, q := range []struct {
+		sql string
+		arg string
+	}{
+		{"DELETE FROM game_events WHERE user_id = $1", userID},
+		{"DELETE FROM user_sync_state WHERE user_id = $1", userID},
+		{"DELETE FROM otps WHERE email = $1", email},
+	} {
+		if _, err := tx.Exec(ctx, q.sql, q.arg); err != nil {
+			return false, err
+		}
+	}
+	return true, tx.Commit(ctx)
 }
 
 func (r *Repository) GetLatestLegalDocument(ctx context.Context, kind, locale string) (*LegalDocument, error) {

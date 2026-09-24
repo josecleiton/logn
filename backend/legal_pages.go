@@ -48,20 +48,32 @@ type currentLegalVersion struct {
 	EffectiveAt string `json:"effective_at"`
 }
 
-// currentLegalVersionsHandler diz quais versões estão vigentes. É o que o cadastro
-// precisa aceitar: o app não tem outra forma de saber a versão, e o servidor recusa
-// aceite de versão velha.
+type currentLegalResponse struct {
+	Documents []currentLegalVersion `json:"documents"`
+	// Idade mínima para criar conta no país de `?country=`. É o N da caixa "tenho N
+	// anos ou mais" e o que o cadastro confere.
+	MinAge int `json:"min_age"`
+}
+
+// currentLegalVersionsHandler diz o que o cadastro precisa aceitar e declarar: as
+// versões vigentes dos documentos e a idade mínima do país (`?country=BR`). O app não
+// tem outra forma de saber nenhum dos dois.
 func (s *Server) currentLegalVersionsHandler(w http.ResponseWriter, r *http.Request) {
+	country, ok := legal.NormalizeCountry(r.URL.Query().Get("country"))
+	if !ok {
+		http.Error(w, "invalid_country", http.StatusBadRequest)
+		return
+	}
 	versions, err := s.currentLegalVersions(r.Context())
 	if err != nil {
 		log.Printf("versões legais não lidas: erro=%v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
-	out := make([]currentLegalVersion, 0, len(versions))
+	out := currentLegalResponse{Documents: []currentLegalVersion{}, MinAge: legal.MinimumAge(country)}
 	for _, kind := range []legal.Kind{legal.Terms, legal.Privacy} {
 		if doc, ok := versions[kind]; ok {
-			out = append(out, currentLegalVersion{
+			out.Documents = append(out.Documents, currentLegalVersion{
 				Kind: string(kind), Version: doc.Version, EffectiveAt: legal.EffectiveDate(doc.EffectiveAt),
 			})
 		}
