@@ -4290,8 +4290,8 @@ mod tests {
 
     #[test]
     fn test_display_name_takes_the_first_name_from_the_email() {
-        assert_eq!(display_name_from_email("jogador@example.com"), "Rodrigo");
-        assert_eq!(display_name_from_email("jogador@example.com"), "Rodrigo");
+        assert_eq!(display_name_from_email("jogador@example.com"), "Jogador");
+        assert_eq!(display_name_from_email("jogador.exemplo@example.com"), "Jogador");
         assert_eq!(display_name_from_email("JOSE_CLEITON@x.com"), "Jose");
         assert_eq!(display_name_from_email(""), "", "sem e-mail, sem nome inventado");
         assert_eq!(display_name_from_email("@x.com"), "");

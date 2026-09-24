@@ -6,7 +6,7 @@ O app não tinha splash. Enquanto o refresh e a busca do progresso estavam no ar
 
 A fila offline era uma chave só, `offline_events`, sem dono. O login não a limpava e `GameEvent` não tem `user_id`. Se a sessão de A expirasse e B entrasse no mesmo aparelho, o sync mandava as partidas de A como se fossem de B, e o rebase do 409 ainda as encaixava na cadeia de B.
 
-O design da splash (`LogN Splash.dc.html`, no projeto de design) tem quatro telas: 01 recuperando, 02 termos mudaram, 03 sem rede, 04 sessão expirada. O plano e as decisões de 2026-09-24 estão em `tmp/claude-plan-20260924-141450.md`. Esta v0 faz 01, 03 e 04. A 02 fica para quando o app souber conferir os termos.
+O design da splash (`LogN Splash.dc.html`, no projeto de design) tem quatro telas: 01 recuperando, 02 termos mudaram, 03 sem rede, 04 sessão expirada. O plano e as decisões de 2026-09-24 estão no repositório de conteúdo, `docs/planos/<nome>`. Esta v0 faz 01, 03 e 04. A 02 fica para quando o app souber conferir os termos.
 
 ## 2. Decisão
 
