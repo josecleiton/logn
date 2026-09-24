@@ -62,3 +62,8 @@ ios/LogNiOS/LogNiOS/Resources/trail-seed.json
 backend/backend
 backend/test_match_sync
 !backend/schema/migrations/0037_exclusao_de_conta_e_idade.sql
+!backend/schema/migrations/0038_legal_documents_prd.sql
+
+# Termos e política no modo do app, para ler sem rede. `just legal-bundle` gera a partir
+# do servidor, como a trilha empacotada.
+ios/LogNiOS/LogNiOS/Resources/Legal/
