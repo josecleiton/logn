@@ -116,32 +116,62 @@ func (r *Repository) GetUserLastHash(ctx context.Context, userID string) (string
 	return hash, nil
 }
 
-func (r *Repository) GetChallenges(ctx context.Context) ([]Challenge, error) {
-	// A coluna é node_id desde que a árvore virou DAG; `chapter` não existe e derrubava
-	// a listagem inteira com um 500.
-	//
+// publishedNodes é a regra de publicação por língua, como CTE: um nó aparece na língua
+// $1 quando tem o próprio nome nela e nenhum desafio dele está sem tradução nela.
+//
+// Não há coluna de "publicado". A tradução que falta esconde o nó inteiro, e não um
+// desafio solto: a partida é por nó, e um nó pela metade mudaria as letras A, B, C.
+const publishedNodes = `
+	WITH publicados AS (
+		SELECT n.id FROM skill_nodes n
+		JOIN skill_node_translations nt ON nt.node_id = n.id AND nt.locale = $1
+		WHERE NOT EXISTS (
+			SELECT 1 FROM challenges c
+			WHERE c.node_id = n.id AND NOT EXISTS (
+				SELECT 1 FROM challenge_translations t
+				WHERE t.challenge_id = c.id AND t.locale = $1)))`
+
+// GetChallenges devolve os desafios dos nós publicados na língua, com o texto dela.
+func (r *Repository) GetChallenges(ctx context.Context, locale string) ([]Challenge, error) {
 	// A ordem define as letras A, B, C da partida: o core enumera esta lista já
 	// ordenada. Ordenava por `id`, que é VARCHAR — ch_10 vinha antes de ch_2. Agora sai
 	// de position_idx, que é dado explícito (ADR 0006).
-	// position_idx vai junto: a coluna decide a ordem aqui, e o JSON a anunciava sem
-	// nunca preenchê-la — a trilha empacotada saía com zero em todos os desafios.
-	query := `SELECT id, node_id, template_type, payload, position_idx, COALESCE(origin, '')
-			  FROM challenges ORDER BY node_id, position_idx`
-	rows, err := r.db.Query(ctx, query)
+	query := publishedNodes + `
+		SELECT c.id, c.node_id, c.template_type, c.payload, c.position_idx, COALESCE(c.origin, ''),
+		       t.title, t.description, t.explanation, COALESCE(t.watch_note, ''), t.option_labels
+		FROM challenges c
+		JOIN publicados p ON p.id = c.node_id
+		JOIN challenge_translations t ON t.challenge_id = c.id AND t.locale = $1
+		ORDER BY c.node_id, c.position_idx`
+	rows, err := r.db.Query(ctx, query, locale)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var challenges []Challenge
+	// Nunca `null` no JSON: o Core desserializa em lista e recusaria a resposta inteira.
+	challenges := []Challenge{}
 	for rows.Next() {
 		var ch Challenge
-		if err := rows.Scan(&ch.ID, &ch.NodeID, &ch.TemplateType, &ch.Payload, &ch.PositionIdx, &ch.Origin); err != nil {
+		var text ChallengeText
+		var labels []byte
+		if err := rows.Scan(&ch.ID, &ch.NodeID, &ch.TemplateType, &ch.Payload, &ch.PositionIdx, &ch.Origin,
+			&text.Title, &text.Description, &text.Explanation, &text.WatchNote, &labels); err != nil {
 			return nil, err
 		}
+		if len(labels) > 0 {
+			if err := json.Unmarshal(labels, &text.OptionLabels); err != nil {
+				return nil, fmt.Errorf("rótulos de %s/%s: %w", ch.ID, locale, err)
+			}
+		}
+		payload, err := AssemblePayload(ch.Payload, text)
+		if err != nil {
+			return nil, fmt.Errorf("desafio %s: %w", ch.ID, err)
+		}
+		ch.Payload = payload
 		challenges = append(challenges, ch)
 	}
-	return challenges, nil
+	return challenges, rows.Err()
 }
 
 type User struct {
@@ -240,6 +270,9 @@ type SkillNode struct {
 	Column        int      `json:"column"`
 	RequiredXP    int      `json:"required_xp"`
 	Prerequisites []string `json:"prerequisites"`
+	// Assunto do nó, neutro (`adhoc`, `graphs`): decide cor e ícone no app, que antes
+	// adivinhava pelo nome. Vazio enquanto o conteúdo não preencher.
+	Topic string `json:"topic"`
 }
 
 type UserProgress struct {
@@ -300,26 +333,49 @@ func (r *Repository) GetUserStats(ctx context.Context, userID string) (UserStats
 	return stats, rows.Err()
 }
 
-func (r *Repository) GetSkillNodes(ctx context.Context) ([]SkillNode, error) {
-	query := `SELECT id, name, description, row_idx, col_idx, required_xp, prerequisites FROM skill_nodes ORDER BY row_idx ASC`
-	rows, err := r.db.Query(ctx, query)
+// GetSkillNodes devolve os nós publicados na língua, com o nome nela.
+func (r *Repository) GetSkillNodes(ctx context.Context, locale string) ([]SkillNode, error) {
+	query := publishedNodes + `
+		SELECT n.id, nt.name, COALESCE(nt.description, ''), n.row_idx, n.col_idx, n.required_xp,
+		       n.prerequisites, COALESCE(n.topic, '')
+		FROM skill_nodes n
+		JOIN publicados p ON p.id = n.id
+		JOIN skill_node_translations nt ON nt.node_id = n.id AND nt.locale = $1
+		ORDER BY n.row_idx ASC`
+	rows, err := r.db.Query(ctx, query, locale)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var nodes []SkillNode
+	nodes := []SkillNode{}
 	for rows.Next() {
 		var n SkillNode
 		var prereqsJSON []byte
-		if err := rows.Scan(&n.ID, &n.Name, &n.Description, &n.Row, &n.Column, &n.RequiredXP, &prereqsJSON); err != nil {
+		if err := rows.Scan(&n.ID, &n.Name, &n.Description, &n.Row, &n.Column, &n.RequiredXP, &prereqsJSON, &n.Topic); err != nil {
 			return nil, err
 		}
 		json.Unmarshal(prereqsJSON, &n.Prerequisites)
-		if n.Prerequisites == nil {
-			n.Prerequisites = []string{}
-		}
 		nodes = append(nodes, n)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Pré-requisito que aponta para nó escondido nesta língua sai da lista: senão o nó
+	// ficaria esperando um pai que o app nunca vai mostrar.
+	published := make(map[string]bool, len(nodes))
+	for _, n := range nodes {
+		published[n.ID] = true
+	}
+	for i := range nodes {
+		kept := []string{}
+		for _, p := range nodes[i].Prerequisites {
+			if published[p] {
+				kept = append(kept, p)
+			}
+		}
+		nodes[i].Prerequisites = kept
 	}
 	return nodes, nil
 }
@@ -615,7 +671,7 @@ func (r *Repository) GetLegalDocumentByVersion(ctx context.Context, kind string,
 }
 
 func (r *Repository) GetPendingLegalDocuments(ctx context.Context, userID string) ([]LegalDocument, error) {
-	// Pega a última versão de cada kind que seja <= current time, 
+	// Pega a última versão de cada kind que seja <= current time,
 	// mas que o usuário não aceitou uma versão >= ela.
 	// Por simplificação (o PRD indica pegar pendentes relevantes).
 	// "Uma versão com material: bloqueia o app... sem material: avisa"

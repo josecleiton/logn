@@ -62,11 +62,11 @@ func TestRepository_InsertChallenge(t *testing.T) {
 	}()
 
 	// 1. Inserir Challenge válido
-	// A explicação é exigida por constraint desde a 0005: desafio sem ela caía no texto
-	// genérico, que é a regressão que a 0002 existiu para consertar.
+	// Só estrutura neutra: desde a 0043 o texto (título, enunciado, explicação) mora em
+	// challenge_translations, e a chk_payload_sem_texto recusa texto no payload.
 	validPayload := []byte(`{
 		"content": {"code_lines": ["int a = 1;"]},
-		"validation": {"type": "LINE_MATCH", "correct_line": 1, "explanation": "A linha 1 é a única."}
+		"validation": {"type": "LINE_MATCH", "correct_line": 1}
 	}`)
 	// node_id é FK para skill_nodes desde que a árvore virou DAG: precisa do UUID
 	// de um nó semeado, não de um rótulo solto.
@@ -74,7 +74,7 @@ func TestRepository_InsertChallenge(t *testing.T) {
 
 	ch1 := Challenge{
 		ID:           "test_bug_1",
-		NodeID:      adHocNode,
+		NodeID:       adHocNode,
 		TemplateType: "SPOT_THE_BUG",
 		Payload:      validPayload,
 		PositionIdx:  90, // fora da faixa dos seeds, para não colidir no UNIQUE do nó
@@ -86,16 +86,13 @@ func TestRepository_InsertChallenge(t *testing.T) {
 	}
 
 	// 2. Inserir Challenge inválido (sem code_lines no SPOT_THE_BUG)
-	// A explicação está aqui de propósito: sem ela a linha bateria em duas constraints
-	// ao mesmo tempo, e a ordem em que o Postgres as avalia não é garantida — o teste
-	// passaria a depender de sorte para ver chk_payload_structure na mensagem.
 	invalidPayload := []byte(`{
 		"content": {"story": "missing code_lines"},
-		"validation": {"type": "MATCH", "correct_line": 1, "explanation": "Irrelevante."}
+		"validation": {"type": "MATCH", "correct_line": 1}
 	}`)
 	ch2 := Challenge{
 		ID:           "test_bug_2",
-		NodeID:      adHocNode,
+		NodeID:       adHocNode,
 		TemplateType: "SPOT_THE_BUG",
 		Payload:      invalidPayload,
 		PositionIdx:  91,
@@ -111,6 +108,21 @@ func TestRepository_InsertChallenge(t *testing.T) {
 		(!strings.Contains(err.Error(), "chk_payload_structure") &&
 			!strings.Contains(err.Error(), "chk_spot_the_bug_linha_valida")) {
 		t.Fatalf("Expected check constraint violation for missing code_lines, got: %v", err)
+	}
+
+	// 3. Texto de conteúdo no payload é recusado: ele mora nas traduções.
+	withText := Challenge{
+		ID:           "test_bug_2",
+		NodeID:       adHocNode,
+		TemplateType: "SPOT_THE_BUG",
+		Payload: []byte(`{
+			"content": {"code_lines": ["int a = 1;"], "title": "Título no lugar errado"},
+			"validation": {"type": "LINE_MATCH", "correct_line": 1}
+		}`),
+		PositionIdx: 91,
+	}
+	if err := repo.InsertChallenge(ctx, withText); err == nil || !strings.Contains(err.Error(), "chk_payload_sem_texto") {
+		t.Fatalf("payload com texto devia bater na chk_payload_sem_texto, got: %v", err)
 	}
 }
 

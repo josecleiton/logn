@@ -14,6 +14,7 @@ import (
 	"github.com/josecleiton/logn/backend/internal/domain"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/cloudauth"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/email"
+	"github.com/josecleiton/logn/backend/internal/locale"
 	"github.com/josecleiton/logn/backend/schema"
 )
 
@@ -52,19 +53,19 @@ func (s *Server) pingHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Server) authenticate(w http.ResponseWriter, r *http.Request) (string, bool) {
 	header := r.Header.Get("Authorization")
 	if !strings.HasPrefix(header, "Bearer ") {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, codeUnauthenticated)
 		return "", false
 	}
 
 	userID, err := domain.UserIDFromAccessToken(strings.TrimPrefix(header, "Bearer "))
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, codeUnauthenticated)
 		return "", false
 	}
-	
+
 	// Ensure user exists and has not requested deletion
 	if !s.repo.IsUserActive(r.Context(), userID) {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, codeUnauthenticated)
 		return "", false
 	}
 
@@ -84,7 +85,7 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 
 	var payload domain.SyncPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, codeInvalidRequest)
 		return
 	}
 
@@ -97,7 +98,7 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	serverLastHash, err := s.repo.GetUserLastHash(ctx, payload.UserID)
 	if err != nil {
 		log.Printf("sync sem estado: user=%s erro=%v", payload.UserID, err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 
@@ -113,13 +114,13 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 		// Sem este log, um sync recusado some: o cliente só vê o número do status e
 		// o servidor não conta o motivo a ninguém.
 		log.Printf("sync recusado: user=%s eventos=%d motivo=%v", payload.UserID, len(payload.Events), err)
-		http.Error(w, "Security validation failed", http.StatusForbidden)
+		writeError(w, http.StatusForbidden, codeSyncRejected)
 		return
 	}
 
 	if !valid {
 		log.Printf("sync recusado: user=%s cadeia inválida", payload.UserID)
-		http.Error(w, "Invalid chain", http.StatusForbidden)
+		writeError(w, http.StatusForbidden, codeSyncRejected)
 		return
 	}
 
@@ -141,7 +142,7 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 				err = topErr
 			}
 			log.Printf("sync não gravado: user=%s eventos=%d erro=%v", payload.UserID, len(payload.Events), err)
-			http.Error(w, "Failed to save events", http.StatusInternalServerError)
+			writeError(w, http.StatusInternalServerError, codeInternal)
 			return
 		}
 		log.Printf("sync ok: user=%s eventos=%d topo=%s", payload.UserID, len(payload.Events), newTop)
@@ -159,27 +160,36 @@ func writeRebaseRequired(w http.ResponseWriter, serverTop string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusConflict)
 	json.NewEncoder(w).Encode(map[string]interface{}{
+		"code":           codeRebaseRequired,
 		"status":         "rebase_required",
 		"server_top":     serverTop,
 		"events_applied": 0,
 	})
 }
 
+// Método filtrado pela rota, como em getNodesHandler: HEAD tem de passar.
 func (s *Server) challengesHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	challenges, err := s.repo.GetChallenges(r.Context())
+	lang := locale.Negotiate(r)
+	challenges, err := s.repo.GetChallenges(r.Context(), lang)
 	if err != nil {
-		log.Printf("desafios não lidos: erro=%v", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		log.Printf("desafios não lidos: locale=%s erro=%v", lang, err)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(challenges)
+	writeContentJSON(w, lang, challenges)
+}
+
+// writeContentJSON responde conteúdo da trilha numa língua. `Content-Language` diz ao
+// app em que língua o que chegou está — é o que ele grava junto da cópia offline —, e
+// `Vary` impede um cache no caminho de servir o espanhol a quem pediu português.
+func writeContentJSON(w http.ResponseWriter, lang string, body any) {
+	h := w.Header()
+	h.Set("Content-Type", "application/json")
+	h.Set("Content-Language", lang)
+	h.Add("Vary", "Accept-Language")
+	h.Set("Cache-Control", "no-cache")
+	json.NewEncoder(w).Encode(body)
 }
 
 func main() {
@@ -241,8 +251,6 @@ func main() {
 		log.Println("Migrações concluídas com sucesso. Encerrando (MIGRATE_ONLY=true).")
 		return
 	}
-	
-
 
 	repo := domain.NewRepository(pool)
 	mailer := email.NewMailer()
@@ -288,7 +296,7 @@ func main() {
 	mux.HandleFunc("GET /api/v1/nodes", server.getNodesHandler)
 	mux.HandleFunc("GET /api/v1/progress", server.getUserProgressHandler)
 	mux.HandleFunc("POST /api/v1/internal/purge", server.purgeHandler)
-	
+
 	// Termos e política. No Cloud Run o modo é estrito: documento com marcador de
 	// rascunho responde 503, a não ser que LEGAL_ALLOW_DRAFT=true libere a página com a
 	// faixa de rascunho — o caso do TestFlight, enquanto o advogado revisa.

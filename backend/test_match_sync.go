@@ -10,11 +10,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/josecleiton/logn/backend/internal/domain"
 	"log"
-	"github.com/jackc/pgx/v5"
 	"os"
 	"time"
-	"github.com/josecleiton/logn/backend/internal/domain"
 )
 
 func main() {
@@ -22,15 +22,15 @@ func main() {
 	if dbUrl == "" {
 		dbUrl = "postgres://logn_user:logn_password@localhost:5432/logn_db?sslmode=disable"
 	}
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	conn, err := pgx.Connect(ctx, dbUrl)
+	conn, err := pgxpool.New(ctx, dbUrl)
 	if err != nil {
 		log.Fatalf("Failed to connect to db: %v", err)
 	}
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	repo := domain.NewRepository(conn)
 	userID := "00000000-0000-0000-0000-000000000001" // Mock user: nenhuma migração cria, insira à mão antes de rodar

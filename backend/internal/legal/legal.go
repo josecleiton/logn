@@ -16,10 +16,10 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"sort"
-	"strconv"
 	"strings"
 	"time"
+
+	"github.com/josecleiton/logn/backend/internal/locale"
 )
 
 // Kind é o tipo de documento. Só existem os dois do CHECK de `legal_documents`.
@@ -30,19 +30,20 @@ const (
 	Privacy Kind = "privacy"
 )
 
-// Locales aceitos, na forma em que aparecem no banco.
+// Locales aceitos, na forma em que aparecem no banco. A negociação mora em
+// `internal/locale`, que o conteúdo da trilha usa também.
 const (
-	PtBR = "pt-BR"
-	En   = "en"
-	Es   = "es"
+	PtBR = locale.PtBR
+	En   = locale.En
+	Es   = locale.Es
 )
 
 // DefaultLocale é a língua que prevalece nos próprios documentos. Pedido sem língua
 // conhecida cai aqui, e não em inglês: é a versão que vale em caso de divergência.
-const DefaultLocale = PtBR
+const DefaultLocale = locale.Default
 
 // Locales lista as línguas servidas, na ordem da troca de língua da página.
-var Locales = []string{PtBR, En, Es}
+var Locales = locale.Supported
 
 // Document é uma versão publicada de um documento numa língua.
 type Document struct {
@@ -80,73 +81,7 @@ func ContainsPlaceholder(body string) bool {
 	return false
 }
 
-// Negotiate escolhe a língua do pedido: `?lang=` primeiro, depois `Accept-Language`,
-// e por fim a língua padrão. Valor desconhecido em `?lang=` é ignorado, não é erro —
-// a negociação só segue para a próxima fonte.
+// Negotiate escolhe a língua do pedido (ver `locale.Negotiate`).
 func Negotiate(r *http.Request) string {
-	if l, ok := matchLocale(r.URL.Query().Get("lang")); ok {
-		return l
-	}
-	for _, tag := range acceptLanguage(r.Header.Get("Accept-Language")) {
-		if l, ok := matchLocale(tag); ok {
-			return l
-		}
-	}
-	return DefaultLocale
-}
-
-// matchLocale leva uma etiqueta de língua (`pt`, `pt-PT`, `EN-us`, `es_MX`) a um dos
-// locales servidos. Português de qualquer região vira `pt-BR`, que é o único que
-// existe.
-func matchLocale(tag string) (string, bool) {
-	tag = strings.ToLower(strings.TrimSpace(tag))
-	if tag == "" {
-		return "", false
-	}
-	base, _, _ := strings.Cut(strings.ReplaceAll(tag, "_", "-"), "-")
-	switch base {
-	case "pt":
-		return PtBR, true
-	case "en":
-		return En, true
-	case "es":
-		return Es, true
-	}
-	return "", false
-}
-
-// acceptLanguage devolve as etiquetas do cabeçalho em ordem de preferência. Entrada
-// malformada vira lista vazia, e a negociação cai na língua padrão.
-func acceptLanguage(header string) []string {
-	type weighted struct {
-		tag string
-		q   float64
-		pos int
-	}
-	var tags []weighted
-	for i, part := range strings.Split(header, ",") {
-		tag, params, _ := strings.Cut(strings.TrimSpace(part), ";")
-		tag = strings.TrimSpace(tag)
-		if tag == "" || tag == "*" {
-			continue
-		}
-		q := 1.0
-		if v, ok := strings.CutPrefix(strings.TrimSpace(params), "q="); ok {
-			parsed, err := strconv.ParseFloat(v, 64)
-			if err != nil {
-				continue
-			}
-			q = parsed
-		}
-		if q <= 0 {
-			continue
-		}
-		tags = append(tags, weighted{tag, q, i})
-	}
-	sort.SliceStable(tags, func(a, b int) bool { return tags[a].q > tags[b].q })
-	out := make([]string, len(tags))
-	for i, t := range tags {
-		out[i] = t.tag
-	}
-	return out
+	return locale.Negotiate(r)
 }

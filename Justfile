@@ -44,6 +44,13 @@ migrate-prod:
 legal-check mode="":
 	cd backend && go run ./cmd/legalcheck {{ if mode == "release" { "--release" } else { "" } }} ../../logn-conteudo/legal
 
+# Confere a trilha (logn-conteudo/trilha e glossario) antes de gerar a migração. Sem
+# `release`, tradução e reescrita que faltam aparecem como pendência; com `release`,
+# reprovam — é a porta para a submissão.
+# Uso: just content-check        ou        just content-check release
+content-check mode="":
+	cd backend && go run ./cmd/contentcheck {{ if mode == "release" { "--release" } else { "" } }} ../../logn-conteudo
+
 # Faz o deploy do Backend para o Google Cloud Run, a partir do Dockerfile de backend/.
 # Variáveis, secrets e probes vivem no serviço `logn` e são mantidas a cada deploy.
 # As migrações não sobem junto: rode `just migrate-prod` antes, da sua máquina.
@@ -101,9 +108,10 @@ sync-env:
 
 
 # Empacota a trilha atual (nós + desafios) dentro do app, para a primeira abertura sem
-# rede. Precisa do backend de pé. Rode de novo depois de cada migração de conteúdo.
-seed-bundle:
-	python3 tools/seed_bundle.py
+# rede, uma trilha por língua. Precisa do backend de pé. Rode de novo depois de cada
+# migração de conteúdo. `just seed-bundle --release` recusa língua com trilha menor.
+seed-bundle *flags:
+	python3 tools/seed_bundle.py {{flags}}
 
 # Empacota termos e política, no modo do app, para ler sem rede. Precisa do backend de
 # pé. Recusa rascunho, a não ser com LEGAL_BUNDLE_ALLOW_DRAFT=1.

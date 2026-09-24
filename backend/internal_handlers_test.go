@@ -25,7 +25,7 @@ func (m *mockCloudValidator) ValidateToken(ctx context.Context, authHeader strin
 func TestPurgeHandler(t *testing.T) {
 	pool := setupTestDB(t)
 	repo := domain.NewRepository(pool)
-	
+
 	tests := []struct {
 		name           string
 		method         string

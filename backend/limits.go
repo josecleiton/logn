@@ -81,7 +81,7 @@ func (rl *rateLimiter) wrap(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !rl.allow(clientIP(r)) {
 			w.Header().Set("Retry-After", "60")
-			http.Error(w, "Too many requests", http.StatusTooManyRequests)
+			writeError(w, http.StatusTooManyRequests, codeRateLimited)
 			return
 		}
 		next(w, r)

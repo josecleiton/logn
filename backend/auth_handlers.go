@@ -50,20 +50,20 @@ func hashRefreshToken(token string) string {
 func (s *Server) issueSession(ctx context.Context, w http.ResponseWriter, userID string, restored bool) {
 	accessToken, err := domain.GenerateAccessToken(userID)
 	if err != nil {
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 
 	refreshToken, err := domain.GenerateRefreshToken()
 	if err != nil {
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 
 	expiresAt := time.Now().Add(refreshTokenLifetime)
 	if err := s.repo.CreateRefreshToken(ctx, userID, hashRefreshToken(refreshToken), expiresAt); err != nil {
 		log.Printf("sessão não gravada: user=%s erro=%v", userID, err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 
@@ -85,7 +85,7 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, codeInvalidRequest)
 		return
 	}
 
@@ -94,7 +94,7 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	// Senha acima do teto nem chega ao Argon2. Não entrega nada: nenhuma conta tem
 	// senha desse tamanho, porque o registro recusa.
 	if len(req.Password) > 4*128 {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, codeInvalidCredentials)
 		return
 	}
 
@@ -115,7 +115,7 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	match, compareErr := domain.ComparePasswordAndHash(req.Password, hashToCompare)
 	if err != nil || user.PasswordHash == "" || compareErr != nil || !match {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, codeInvalidCredentials)
 		return
 	}
 
@@ -133,7 +133,7 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	restored, err := s.repo.CancelAccountDeletion(ctx, user.ID)
 	if err != nil {
 		log.Printf("exclusão não cancelada no login: user=%s erro=%v", user.ID, err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 	if restored {
@@ -155,7 +155,7 @@ func (s *Server) refreshHandler(w http.ResponseWriter, r *http.Request) {
 
 	var req RefreshRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, codeInvalidRequest)
 		return
 	}
 
@@ -164,20 +164,20 @@ func (s *Server) refreshHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	tokenRecord, err := s.repo.GetRefreshToken(ctx, tokenHash)
 	if err != nil || tokenRecord.ExpiresAt.Before(time.Now()) {
-		http.Error(w, "Invalid or expired refresh token", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, codeSessionInvalid)
 		return
 	}
 	// Conta desativada não renova sessão. O pedido de exclusão já revoga os tokens;
 	// isto fecha a porta para o que tiver escapado, como um token emitido no meio.
 	if !s.repo.IsUserActive(ctx, tokenRecord.UserID) {
 		log.Printf("refresh recusado: user=%s conta desativada", tokenRecord.UserID)
-		http.Error(w, "Invalid or expired refresh token", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, codeSessionInvalid)
 		return
 	}
 
 	accessToken, err := domain.GenerateAccessToken(tokenRecord.UserID)
 	if err != nil {
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 
@@ -188,7 +188,7 @@ func (s *Server) refreshHandler(w http.ResponseWriter, r *http.Request) {
 	// sem ter feito nada de errado.
 	newRefresh, err := domain.GenerateRefreshToken()
 	if err != nil {
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 	expiresAt := time.Now().Add(refreshTokenLifetime)
@@ -200,11 +200,11 @@ func (s *Server) refreshHandler(w http.ResponseWriter, r *http.Request) {
 	); err != nil {
 		if errors.Is(err, domain.ErrRefreshTokenAlreadyUsed) {
 			log.Printf("refresh recusado: user=%s token já usado, sessões revogadas", tokenRecord.UserID)
-			http.Error(w, "Invalid or expired refresh token", http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, codeSessionInvalid)
 			return
 		}
 		log.Printf("refresh não rotacionado: user=%s erro=%v", tokenRecord.UserID, err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 
@@ -236,18 +236,18 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, codeInvalidRequest)
 		return
 	}
 
 	email, err := domain.NormalizeEmail(req.Email)
 	if err != nil {
-		http.Error(w, "Invalid email", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, codeInvalidEmail)
 		return
 	}
 	// A senha é conferida antes do OTP: recusá-la depois gastaria um código válido.
 	if err := domain.ValidatePassword(req.Password); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, passwordErrorCode(err))
 		return
 	}
 
@@ -258,38 +258,38 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 	// declaração, e sem ela não há cadastro.
 	country, ok := legal.NormalizeCountry(req.Country)
 	if !ok {
-		http.Error(w, "invalid_country", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, codeInvalidCountry)
 		return
 	}
 	if !req.AgeConfirmed {
-		http.Error(w, "age_not_confirmed", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, codeAgeNotConfirmed)
 		return
 	}
 	current, err := s.currentLegalVersions(ctx)
 	if err != nil {
 		log.Printf("cadastro sem versões legais: erro=%v", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 	acceptances, err := checkLegalAcceptances(req.LegalAcceptances, current)
 	if errors.Is(err, errLegalOutdated) {
-		http.Error(w, err.Error(), http.StatusConflict)
+		writeError(w, http.StatusConflict, codeLegalVersionOutdated)
 		return
 	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, codeLegalAcceptanceRequired)
 		return
 	}
 
 	valid, err := s.repo.ConsumeOTP(ctx, email, req.OTP, domain.OTPPurposeVerifyEmail)
 	if err != nil || !valid {
-		http.Error(w, "Invalid or expired OTP", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, codeOTPInvalid)
 		return
 	}
 
 	hashedPassword, err := domain.HashPassword(req.Password)
 	if err != nil {
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 
@@ -298,7 +298,7 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 		// E-mail já cadastrado, inclusive o de uma conta na carência de exclusão. A
 		// mensagem não muda para esse caso: dizer "entre para recuperar" contaria a
 		// qualquer um que o endereço tem conta.
-		http.Error(w, "Error creating user: email might already be registered", http.StatusConflict)
+		writeError(w, http.StatusConflict, codeEmailTaken)
 		return
 	}
 
@@ -319,17 +319,17 @@ func (s *Server) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 
 	var req ResetPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, codeInvalidRequest)
 		return
 	}
 
 	email, err := domain.NormalizeEmail(req.Email)
 	if err != nil {
-		http.Error(w, "Invalid email", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, codeInvalidEmail)
 		return
 	}
 	if err := domain.ValidatePassword(req.Password); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, passwordErrorCode(err))
 		return
 	}
 
@@ -337,13 +337,13 @@ func (s *Server) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 
 	valid, err := s.repo.ConsumeOTP(ctx, email, req.OTP, domain.OTPPurposeResetPassword)
 	if err != nil || !valid {
-		http.Error(w, "Invalid or expired OTP", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, codeOTPInvalid)
 		return
 	}
 
 	hashedPassword, err := domain.HashPassword(req.Password)
 	if err != nil {
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 
@@ -355,11 +355,11 @@ func (s *Server) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		// E-mail sem conta responde como código inválido. Era um 500 próprio, e
 		// dava para distinguir quem tem conta.
 		if errors.Is(err, domain.ErrUserNotFound) {
-			http.Error(w, "Invalid or expired OTP", http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, codeOTPInvalid)
 			return
 		}
 		log.Printf("senha não trocada: erro=%v", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 	if restored {
@@ -386,27 +386,28 @@ func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 
 	var req DeleteAccountRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, codeInvalidRequest)
 		return
 	}
 
 	ctx := r.Context()
 	user, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		// Token válido de conta que não existe mais: para o app, é sessão sem dono.
+		writeError(w, http.StatusUnauthorized, codeUnauthenticated)
 		return
 	}
 
 	match, compareErr := domain.ComparePasswordAndHash(req.Password, user.PasswordHash)
 	if err != nil || user.PasswordHash == "" || compareErr != nil || !match {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, codeInvalidCredentials)
 		return
 	}
 
 	purgeAfter, err := s.repo.MarkAccountForDeletion(ctx, userID)
 	if err != nil {
 		log.Printf("exclusão não pedida: user=%s erro=%v", userID, err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 	log.Printf("exclusão pedida: user=%s expurgo_a_partir_de=%s", userID, purgeAfter.Format(time.RFC3339))

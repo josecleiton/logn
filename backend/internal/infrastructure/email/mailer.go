@@ -54,12 +54,12 @@ func NewMailer() *Mailer {
 }
 
 type OTPData struct {
-	Email       string
-	Code        string
-	CodeSpaced  string
+	Email                  string
+	Code                   string
+	CodeSpaced             string
 	D1, D2, D3, D4, D5, D6 string
-	Purpose     string
-	RequestMeta string
+	Purpose                string
+	RequestMeta            string
 }
 
 func newOTPData(email, code, purpose string) OTPData {
@@ -79,10 +79,10 @@ func newOTPData(email, code, purpose string) OTPData {
 	meta := fmt.Sprintf("%s · LogN App", time.Now().Format("02 Jan 2006, 15:04"))
 
 	return OTPData{
-		Email:       email,
-		Code:        code,
-		CodeSpaced:  spaced,
-		D1: digits[0], D2: digits[1], D3: digits[2],
+		Email:      email,
+		Code:       code,
+		CodeSpaced: spaced,
+		D1:         digits[0], D2: digits[1], D3: digits[2],
 		D4: digits[3], D5: digits[4], D6: digits[5],
 		Purpose:     purpose,
 		RequestMeta: meta,

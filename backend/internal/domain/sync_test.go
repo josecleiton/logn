@@ -7,7 +7,7 @@ import (
 func TestValidateSync(t *testing.T) {
 	// 1. Setup a valid event manually hashed identically to Rust
 	// Payload: prev=00...0, id=ch1, type=ANSWER, json={}
-	
+
 	event1 := GameEvent{
 		ID:           "ch1",
 		EventType:    "ANSWER",
@@ -15,7 +15,7 @@ func TestValidateSync(t *testing.T) {
 		Timestamp:    1690000000,
 		PreviousHash: "0000000000000000000000000000000000000000000000000000000000000000",
 	}
-	
+
 	event1.CurrentHash = ComputeHash(event1, event1.PreviousHash)
 
 	event2 := GameEvent{

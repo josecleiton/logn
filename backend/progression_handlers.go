@@ -4,30 +4,25 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+
+	"github.com/josecleiton/logn/backend/internal/locale"
 )
 
+// O método já vem filtrado pela rota: `GET /api/v1/nodes` aceita também HEAD, que uma
+// guarda de GET aqui dentro recusava com 405.
 func (s *Server) getNodesHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	nodes, err := s.repo.GetSkillNodes(r.Context())
+	lang := locale.Negotiate(r)
+	nodes, err := s.repo.GetSkillNodes(r.Context(), lang)
 	if err != nil {
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		log.Printf("nós não lidos: locale=%s erro=%v", lang, err)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(nodes)
+	writeContentJSON(w, lang, nodes)
 }
 
 func (s *Server) getUserProgressHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	// Era um UUID fixo, escrito à mão, que não pertencia a ninguém: a rota respondia
 	// `null` para todo mundo e nenhum cliente a chamava.
 	userID, ok := s.authenticate(w, r)
@@ -38,7 +33,7 @@ func (s *Server) getUserProgressHandler(w http.ResponseWriter, r *http.Request) 
 	stats, err := s.repo.GetUserStats(r.Context(), userID)
 	if err != nil {
 		log.Printf("progresso não lido: user=%s erro=%v", userID, err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 

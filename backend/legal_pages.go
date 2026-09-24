@@ -61,13 +61,13 @@ type currentLegalResponse struct {
 func (s *Server) currentLegalVersionsHandler(w http.ResponseWriter, r *http.Request) {
 	country, ok := legal.NormalizeCountry(r.URL.Query().Get("country"))
 	if !ok {
-		http.Error(w, "invalid_country", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, codeInvalidCountry)
 		return
 	}
 	versions, err := s.currentLegalVersions(r.Context())
 	if err != nil {
 		log.Printf("versões legais não lidas: erro=%v", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 	out := currentLegalResponse{Documents: []currentLegalVersion{}, MinAge: legal.MinimumAge(country)}

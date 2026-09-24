@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -55,13 +56,72 @@ func bearer(t *testing.T, userID string) string {
 	return "Bearer " + token
 }
 
+// O conteúdo da trilha diz em que língua saiu e avisa o cache de que muda com ela. Pelo
+// caminho de produção, com o gzip na frente: ele também mexe em Vary, e um Set no
+// lugar de Add apagaria o outro.
+func TestContentResponsesCarryTheirLanguage(t *testing.T) {
+	conn := setupTestDB(t)
+	t.Cleanup(conn.Close)
+	server := &Server{repo: domain.NewRepository(conn)}
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/v1/challenges", server.challengesHandler)
+	mux.HandleFunc("GET /api/v1/nodes", server.getNodesHandler)
+	handler := withGzip(mux)
+
+	for _, path := range []string{"/api/v1/challenges", "/api/v1/nodes"} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.Header.Set("Accept-Language", "es-MX,es;q=0.9")
+		req.Header.Set("Accept-Encoding", "gzip")
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s: status %d", path, rec.Code)
+		}
+		if got := rec.Header().Get("Content-Language"); got != "es" {
+			t.Errorf("%s: Content-Language %q, esperava es", path, got)
+		}
+		vary := strings.Join(rec.Header().Values("Vary"), ",")
+		for _, h := range []string{"Accept-Language", "Accept-Encoding"} {
+			if !strings.Contains(vary, h) {
+				t.Errorf("%s: Vary %q sem %s", path, vary, h)
+			}
+		}
+		if got := rec.Header().Get("Content-Type"); got != "application/json" {
+			t.Errorf("%s: Content-Type %q", path, got)
+		}
+
+		// HEAD responde como GET, sem corpo. Uma guarda de GET no handler dava 405.
+		head := httptest.NewRequest(http.MethodHead, path, nil)
+		rec = httptest.NewRecorder()
+		handler.ServeHTTP(rec, head)
+		if rec.Code != http.StatusOK {
+			t.Errorf("HEAD %s: status %d", path, rec.Code)
+		}
+		if got := rec.Header().Get("Content-Language"); got != "pt-BR" {
+			t.Errorf("HEAD %s: Content-Language %q", path, got)
+		}
+	}
+}
+
 func TestSyncHandler(t *testing.T) {
 	conn := setupTestDB(t)
-	defer conn.Close()
+	// Cleanup, e não defer: o defer fecharia o pool antes da limpeza abaixo rodar.
+	t.Cleanup(conn.Close)
 
 	repo := domain.NewRepository(conn)
 	server := &Server{repo: repo}
 	auth := bearer(t, syncUserID)
+
+	// O token só vale para conta que existe e não pediu exclusão (ac84a44): sem a linha
+	// em users, o sync respondia 401 e o teste falhava desde então.
+	ctx := context.Background()
+	if _, err := conn.Exec(ctx,
+		`INSERT INTO users (id, email) VALUES ($1, 'sync-test@logn.test') ON CONFLICT (id) DO NOTHING`,
+		syncUserID); err != nil {
+		t.Fatalf("criando o usuário do teste: %v", err)
+	}
+	t.Cleanup(func() { conn.Exec(ctx, `DELETE FROM users WHERE id = $1`, syncUserID) })
 
 	// 0. Sem token não passa. O corpo do pedido dizia de quem era a cadeia e o
 	// servidor obedecia: dava para escrever eventos na conta de qualquer um.

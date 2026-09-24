@@ -23,7 +23,7 @@ func (s *Server) pendingLegalHandler(w http.ResponseWriter, r *http.Request) {
 	docs, err := s.repo.GetPendingLegalDocuments(r.Context(), userID)
 	if err != nil {
 		log.Printf("pendências legais não lidas: user=%s erro=%v", userID, err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 
@@ -49,31 +49,31 @@ func (s *Server) acceptLegalHandler(w http.ResponseWriter, r *http.Request) {
 
 	var req AcceptLegalRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, codeInvalidRequest)
 		return
 	}
 
 	current, err := s.currentLegalVersions(r.Context())
 	if err != nil {
 		log.Printf("aceite sem versões legais: user=%s erro=%v", userID, err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 	doc, ok := current[legal.Kind(req.Kind)]
 	if !ok || !slices.Contains(legal.Locales, req.Locale) {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, codeInvalidRequest)
 		return
 	}
 	// Só a versão vigente se aceita. Aceitar uma velha não resolve pendência nenhuma,
 	// e aceitar uma que não existe gravaria lixo.
 	if req.Version != doc.Version {
-		http.Error(w, "legal_version_outdated", http.StatusConflict)
+		writeError(w, http.StatusConflict, codeLegalVersionOutdated)
 		return
 	}
 
 	if err := s.repo.AcceptLegalDocument(r.Context(), userID, req.Kind, req.Version, req.Locale); err != nil {
 		log.Printf("aceite não gravado: user=%s erro=%v", userID, err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 
