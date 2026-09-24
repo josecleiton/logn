@@ -235,6 +235,8 @@ delete_prompt = {}
 manage = {}
 
 [groups.register.keys]
+age_confirmation = {}
+terms_confirmation = {}
 email_prompt = {}
 password_prompt = {}
 confirm_prompt = {}
@@ -310,6 +312,8 @@ findTheCrash = {}
 nullTerminatedString = {}
 dynamicSubarrays = {}
 twoPointers = {}
+
+
 
 
 

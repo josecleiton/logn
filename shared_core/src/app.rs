@@ -71,7 +71,7 @@ pub enum Event {
     OTPRequested(HttpResult),
     VerifyOTP { email: String, code: String, purpose: String },
     OTPVerified(HttpResult),
-    Register { email: String, password: String, otp: String },
+    Register { email: String, password: String, otp: String, age_confirmed: bool, legal_acceptances: Vec<String> },
     RegisterCompleted(HttpResult),
     ResetPassword { email: String, new_password: String, otp: String },
     ResetPasswordCompleted(HttpResult),
@@ -1230,7 +1230,7 @@ Event::FetchChallenges => {
                 }
                 render::render()
             }
-            Event::Register { email, password, otp } => {
+            Event::Register { email, password, otp, age_confirmed, legal_acceptances } => {
                 if model.auth_cooldown.is_active() {
                     return still_rate_limited(model);
                 }
@@ -1239,7 +1239,7 @@ Event::FetchChallenges => {
                 model.status_key = StatusKey::CreatingAccount;
                 model.account_email = email.clone();
 
-                let body = serde_json::json!({ "email": email, "password": password, "otp": otp });
+                let body = serde_json::json!({ "email": email, "password": password, "otp": otp, "age_confirmed": age_confirmed, "legal_acceptances": legal_acceptances });
                 let request = HttpRequest {
                     method: "POST".to_string(),
                     url: "/api/v1/auth/register".to_string(),
@@ -3556,7 +3556,7 @@ mod tests {
             Event::Login { email: "a@x.com".into(), password_hash: "senha-forte".into() },
             Event::RequestOTP { email: "a@x.com".into(), purpose: "verify_email".into() },
             Event::VerifyOTP { email: "a@x.com".into(), code: "123456".into(), purpose: "verify_email".into() },
-            Event::Register { email: "a@x.com".into(), password: "senha-forte".into(), otp: "123456".into() },
+            Event::Register { email: "a@x.com".into(), password: "senha-forte".into(), otp: "123456".into(), age_confirmed: true, legal_acceptances: vec![] },
             Event::ResetPassword { email: "a@x.com".into(), new_password: "senha-forte".into(), otp: "123456".into() },
         ] {
             let mut cmd = app.update(event, &mut model);

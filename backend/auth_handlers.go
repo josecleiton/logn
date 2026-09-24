@@ -194,9 +194,11 @@ func (s *Server) refreshHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type RegisterRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	OTP      string `json:"otp"`
+	Email            string   `json:"email"`
+	Password         string   `json:"password"`
+	OTP              string   `json:"otp"`
+	AgeConfirmed     bool     `json:"age_confirmed"`
+	LegalAcceptances []string `json:"legal_acceptances"`
 }
 
 func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
@@ -236,7 +238,7 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := s.repo.CreateUser(ctx, email, hashedPassword)
+	userID, err := s.repo.CreateUser(ctx, email, hashedPassword, req.AgeConfirmed, req.LegalAcceptances)
 	if err != nil {
 		// Usually indicates email already exists
 		http.Error(w, "Error creating user: email might already be registered", http.StatusConflict)

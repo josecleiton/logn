@@ -325,14 +325,20 @@ func (r *Repository) GetUserProgress(ctx context.Context, userID string) ([]User
 	return progress, nil
 }
 
-func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string) (string, error) {
+func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string, ageConfirmed bool, legalAcceptances []string) (string, error) {
 	var id string
+	
+	legalJson, _ := json.Marshal(legalAcceptances)
+	if legalJson == nil {
+		legalJson = []byte("[]")
+	}
+
 	query := `
-		INSERT INTO users (email, password_hash)
-		VALUES ($1, $2)
+		INSERT INTO users (email, password_hash, age_confirmed_at, legal_acceptances)
+		VALUES ($1, $2, CASE WHEN $3::boolean THEN CURRENT_TIMESTAMP ELSE NULL END, $4)
 		RETURNING id
 	`
-	err := r.db.QueryRow(ctx, query, email, passwordHash).Scan(&id)
+	err := r.db.QueryRow(ctx, query, email, passwordHash, ageConfirmed, legalJson).Scan(&id)
 	return id, err
 }
 

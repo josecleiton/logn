@@ -14,6 +14,8 @@ struct RegisterView: View {
     
     enum Step { case email, otp, password }
     @State private var step: Step = .email
+    @State private var ageConfirmed = false
+    @State private var termsAccepted = false
     
     var body: some View {
         ZStack {
@@ -83,6 +85,34 @@ struct RegisterView: View {
                     RoundedRectangle(cornerRadius: Radius.sm)
                         .stroke(LognDark.line, lineWidth: 1)
                 )
+                
+            VStack(alignment: .leading, spacing: 12) {
+                Button(action: { ageConfirmed.toggle() }) {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: ageConfirmed ? "checkmark.square.fill" : "square")
+                            .foregroundColor(ageConfirmed ? LognDark.accent : LognDark.textDim)
+                            .font(.system(size: 18))
+                        Text(Str.Register.age_confirmation)
+                            .font(.plexSans(13))
+                            .foregroundColor(LognDark.textSecondary)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+                
+                Button(action: { termsAccepted.toggle() }) {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: termsAccepted ? "checkmark.square.fill" : "square")
+                            .foregroundColor(termsAccepted ? LognDark.accent : LognDark.textDim)
+                            .font(.system(size: 18))
+                        Text(Str.Register.terms_confirmation)
+                            .font(.plexSans(13))
+                            .foregroundColor(LognDark.textSecondary)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+            }
+            .padding(.top, 4)
+            .padding(.bottom, 8)
             
             Button(action: {
                 core.dispatch(event: LogN.Event.requestOtp(email: email, purpose: "verify_email"))
@@ -138,7 +168,7 @@ struct RegisterView: View {
             Button(action: {
                 // O código que o jogador digitou, não o e-mail: ia `otpEmail` aqui, e
                 // "Criar Conta" chegava ao servidor com o endereço no campo do OTP.
-                core.dispatch(event: .register(email: email, password: password, otp: otpCode))
+                core.dispatch(event: .register(email: email, password: password, otp: otpCode, ageConfirmed: ageConfirmed, legalAcceptances: termsAccepted ? ["terms_v1", "privacy_v1"] : []))
             }) {
                 Text(accountLocked
                      ? Str.Status.wait_seconds(Int(core.viewModel.authCooldownSeconds))
@@ -186,7 +216,7 @@ struct RegisterView: View {
     private var accountLocked: Bool { core.viewModel.authCooldownSeconds > 0 }
     private var sendCodeLocked: Bool { core.viewModel.resendCooldownSeconds > 0 }
 
-    private var canSendCode: Bool { email.contains("@") && !sendCodeLocked }
+    private var canSendCode: Bool { email.contains("@") && !sendCodeLocked && ageConfirmed && termsAccepted }
 
     private var sendCodeLabel: String {
         if sendCodeLocked { return Str.Status.wait_seconds(Int(core.viewModel.resendCooldownSeconds)) }

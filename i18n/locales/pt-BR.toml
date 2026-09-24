@@ -237,6 +237,8 @@ loading = "Carregando..."
 sign_in = "Entrar"
 
 [register]
+age_confirmation = "Tenho 13 anos ou mais."
+terms_confirmation = "Li e aceito os Termos de Serviço e a Política de Privacidade."
 email_prompt = "e-mail"
 password_prompt = "senha (mín 8 chars)"
 confirm_prompt = "confirmar senha"

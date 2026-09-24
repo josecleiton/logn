@@ -572,7 +572,7 @@ indirect public enum Event: Hashable, Equatable {
     case otpRequested(HttpResult)
     case verifyOtp(email: String, code: String, purpose: String)
     case otpVerified(HttpResult)
-    case register(email: String, password: String, otp: String)
+    case register(email: String, password: String, otp: String, ageConfirmed: Bool, legalAcceptances: [String])
     case registerCompleted(HttpResult)
     case resetPassword(email: String, newPassword: String, otp: String)
     case resetPasswordCompleted(HttpResult)
@@ -727,11 +727,15 @@ indirect public enum Event: Hashable, Equatable {
         case .otpVerified(let x):
             try serializer.serialize_variant_index(value: 46)
             try x.serialize(serializer: serializer)
-        case .register(let email, let password, let otp):
+        case .register(let email, let password, let otp, let ageConfirmed, let legalAcceptances):
             try serializer.serialize_variant_index(value: 47)
             try serializer.serialize_str(value: email)
             try serializer.serialize_str(value: password)
             try serializer.serialize_str(value: otp)
+            try serializer.serialize_bool(value: ageConfirmed)
+            try serializeArray(value: legalAcceptances, serializer: serializer) { item, serializer in
+                try serializer.serialize_str(value: item)
+            }
         case .registerCompleted(let x):
             try serializer.serialize_variant_index(value: 48)
             try x.serialize(serializer: serializer)
@@ -983,8 +987,12 @@ indirect public enum Event: Hashable, Equatable {
             let email = try deserializer.deserialize_str()
             let password = try deserializer.deserialize_str()
             let otp = try deserializer.deserialize_str()
+            let ageConfirmed = try deserializer.deserialize_bool()
+            let legalAcceptances = try deserializeArray(deserializer: deserializer) { deserializer in
+                try deserializer.deserialize_str()
+            }
             try deserializer.decrease_container_depth()
-            return .register(email: email, password: password, otp: otp)
+            return .register(email: email, password: password, otp: otp, ageConfirmed: ageConfirmed, legalAcceptances: legalAcceptances)
         case 48:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
