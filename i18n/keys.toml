@@ -248,6 +248,18 @@ reason_otp = { placeholders = [{ name = "email", type = "text" }] }
 reason_password = {}
 sending = {}
 send_code = {}
+legal_pending = {}
+
+# Termos de uso e política de privacidade: a tela que mostra os dois e os links que
+# levam até ela. O texto dos documentos não mora aqui — vem do servidor.
+[groups.legal.keys]
+terms_title = {}
+privacy_title = {}
+version_effective = { placeholders = [{ name = "version", type = "int" }, { name = "date", type = "text" }] }
+offline_copy = {}
+unavailable = {}
+accept = {}
+loading_accessibility = {}
 
 [groups.reset.keys]
 title = {}

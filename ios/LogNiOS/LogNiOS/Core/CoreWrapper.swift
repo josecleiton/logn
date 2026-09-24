@@ -75,9 +75,14 @@ public class CoreWrapper: ObservableObject {
             scoreboard: [],
             standingsAreSample: true,
             authCooldownSeconds: 0,
-            resendCooldownSeconds: 0
+            resendCooldownSeconds: 0,
+            legalVersionsReady: false
         )
         updateViewModel()
+        // A língua do app vai antes de qualquer pedido: é o `Accept-Language` de cada um
+        // e a língua do aceite no cadastro. Nada despachava isto, e o Core mandava o
+        // cabeçalho vazio.
+        dispatch(event: .setLocale(AppLocale.current))
         prepareKeychain()
         // A trilha que viaja no bundle entra antes de tudo: instalação nova e sem rede
         // não tem retrato guardado nem resposta do servidor, e sem isto o app abria com

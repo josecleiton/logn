@@ -12,8 +12,10 @@ struct LogNiOSApp: App {
            let host = Bundle.main.object(forInfoDictionaryKey: "LogNPostHogHost") as? String, !host.isEmpty {
             let config = PostHogConfig(projectToken: key, host: host)
             config.captureApplicationLifecycleEvents = true
-            // App Store Plan: Discard IP
-            config.captureIP = false
+            // O IP do cliente não se desliga aqui: o SDK não tem essa opção (havia um
+            // `captureIP = false`, e o app não compilava). Descartar o IP é o
+            // "Discard client IP data" nas configurações do projeto em PostHog, que a
+            // política de privacidade promete.
             PostHogSDK.shared.setup(config)
         } else {
             print("PostHog telemetry is disabled (no key provided)")

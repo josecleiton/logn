@@ -16,18 +16,22 @@
 		113A7C042597592AB08772A7 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 052D097253B21873566489C9 /* InfoPlist.strings */; };
 		1AFD3DC5C3190DE8CF4CA6D9 /* IBMPlexMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C5B7C9FB40CD745774D3BA3F /* IBMPlexMono-Medium.ttf */; };
 		1B3F7CCE389E70B29D4DC659 /* StandingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2638F7B390A01676A65CFD9 /* StandingsView.swift */; };
+		1D453632FCF4FC2DDA13EB0D /* legal-privacy.en.html in Resources */ = {isa = PBXBuildFile; fileRef = 9480CE2CB5982E8E6666380C /* legal-privacy.en.html */; };
 		211A33B99BD2DE50F85E8997 /* trail-seed.json in Resources */ = {isa = PBXBuildFile; fileRef = 495013444502A57C6D127A7D /* trail-seed.json */; };
 		2904B02ECB83300658D107C7 /* IBMPlexSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1BE5DBCB70C667BEFA031ED7 /* IBMPlexSans-SemiBold.ttf */; };
 		2C16E5D79E26EC653658C71B /* IBMPlexSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E30F815E4AC253B06790AAE8 /* IBMPlexSans-Medium.ttf */; };
 		2F7173374C70B98EECB2E04A /* Strings.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF70445FC4588B69074A5843 /* Strings.swift */; };
 		367A11F1AABAF76BBEC5269D /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4DB2DC21E3986A71469A3AA /* RegisterView.swift */; };
 		3C863FFB4FF7194F0493F4FE /* DryRunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26D31A9B206FE1CD0C80B3F9 /* DryRunView.swift */; };
+		44D5D3BB9F8FE23DDE664A52 /* legal-terms.en.html in Resources */ = {isa = PBXBuildFile; fileRef = 27CDD3F1EB1F68123D863200 /* legal-terms.en.html */; };
 		567C1D15944B685B8204F3ED /* ResetPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B2B5EA563D4C0A69035BF3 /* ResetPasswordView.swift */; };
 		5B28C2226E5C4917A2F15B4E /* CoreWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C915F676CBB9F04656C255 /* CoreWrapper.swift */; };
+		67BF1220625E8C2DBEF91212 /* LegalDocumentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 116B2CC534846B378BDCA8EB /* LegalDocumentView.swift */; };
 		67E43BEE172F2659EA187C3B /* ScoreboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50E1734BB756CB9066ECEC94 /* ScoreboardView.swift */; };
 		724724B930EEFEFF07CB88DB /* LogoutViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E3DB489715A5B620395CD47 /* LogoutViews.swift */; };
 		7447A744F19419838DA5F8C5 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F111AFD2776AF5D50D29BF33 /* IBMPlexMono-SemiBold.ttf */; };
 		7EC7FCEE24F8C2D1213036A7 /* ProfileHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8ACFF3284CD5B7DC2095483 /* ProfileHubView.swift */; };
+		828671D74C041716CCBFDBCE /* legal-privacy.pt-BR.html in Resources */ = {isa = PBXBuildFile; fileRef = 7D5540CC96022EB3FD517E3E /* legal-privacy.pt-BR.html */; };
 		847B9C5F21C81347B4C1204A /* StatusKeyCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C36C16A334636C98206B989 /* StatusKeyCopy.swift */; };
 		86F460E1EFCA8C55032ECD9D /* LognTopics.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06AADFA16250D1A08A15AFE /* LognTopics.swift */; };
 		92CE64A8F39A3BACBDFA7E2D /* ViewExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DA78EDFD4661B922FE1E389 /* ViewExtensions.swift */; };
@@ -38,23 +42,30 @@
 		AF4EF398751D584030B9F840 /* NodeSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9476B1DFF7AE686900CF32CD /* NodeSheetView.swift */; };
 		B118212843B83D5CB04DFAE9 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */; };
 		B25F010AFF41794BFC439A02 /* LogNCoreFFI in Frameworks */ = {isa = PBXBuildFile; productRef = 13135BDC590A9C01156FE7B3 /* LogNCoreFFI */; };
+		B8F59D5FA327BDA47F4FEFA5 /* legal-manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = A1BDCF2925B08814426FF636 /* legal-manifest.json */; };
+		B9C7645E671FFFA6668EF826 /* LegalWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AD3AA2F9805C2879EA05524 /* LegalWebView.swift */; };
 		C1C10995476705C547B2E3F3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F486C5E97DFDCE2C80818FB7 /* Assets.xcassets */; };
 		C878D3C2E023BF3402DA39A2 /* SkillTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CEDA9E40AF59358F4F00143 /* SkillTreeView.swift */; };
 		CF0A1EB4CE4E50CC539A134C /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 6CFC8719D13EE3EF51651524 /* PostHog */; };
 		CF9D002B22CE05C3BC5D80D6 /* LeaveMatchSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4811EB169815262BA8CDC9F /* LeaveMatchSheet.swift */; };
+		D7C66D51C4C07B02BDCF7FD7 /* legal-terms.pt-BR.html in Resources */ = {isa = PBXBuildFile; fileRef = A22C79FFC5A566973EBC4A20 /* legal-terms.pt-BR.html */; };
+		E2D8CA6DB078DBFF781C1263 /* legal-privacy.es.html in Resources */ = {isa = PBXBuildFile; fileRef = AA26092B0334D250671544C2 /* legal-privacy.es.html */; };
 		E51C5DD63A8796B58694D004 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2A37D7575A08B4C92B940D53 /* IBMPlexMono-Regular.ttf */; };
 		E618B59B0A839990BDA626EA /* MatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BCAD3D7D269E2D03F55181F /* MatchView.swift */; };
 		E6D95FDA93A65195F543436D /* OriginSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40FA716E89E041D22882546E /* OriginSheetView.swift */; };
 		E73189436712870098DA5F1C /* LognComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C234F5143F4791D66EF36E0 /* LognComponents.swift */; };
 		EA1F6042A86DDF791B09AB41 /* StringsMappers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D238C31B32D323BF620359D /* StringsMappers.swift */; };
 		F78BA7613AF912F27820D2ED /* OTPInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48659346006694BF96682CBE /* OTPInputView.swift */; };
+		F8F7BD017E95750A2DCF438E /* legal-terms.es.html in Resources */ = {isa = PBXBuildFile; fileRef = 4AB77126A8B91B307CED33F7 /* legal-terms.es.html */; };
 		FA39E591FFCF6E0D9F6EABC6 /* BalloonShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = 911B685B7906CC9801E098A1 /* BalloonShape.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0C36C16A334636C98206B989 /* StatusKeyCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusKeyCopy.swift; sourceTree = "<group>"; };
+		116B2CC534846B378BDCA8EB /* LegalDocumentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalDocumentView.swift; sourceTree = "<group>"; };
 		1BE5DBCB70C667BEFA031ED7 /* IBMPlexSans-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-SemiBold.ttf"; sourceTree = "<group>"; };
 		26D31A9B206FE1CD0C80B3F9 /* DryRunView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DryRunView.swift; sourceTree = "<group>"; };
+		27CDD3F1EB1F68123D863200 /* legal-terms.en.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "legal-terms.en.html"; sourceTree = "<group>"; };
 		28351D90B42E5417571B1A37 /* pt-BR */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "pt-BR"; path = "pt-BR.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		2A37D7575A08B4C92B940D53 /* IBMPlexMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Regular.ttf"; sourceTree = "<group>"; };
 		2CEDA9E40AF59358F4F00143 /* SkillTreeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillTreeView.swift; sourceTree = "<group>"; };
@@ -67,22 +78,29 @@
 		42D4982DBEFBD646B4F5FD62 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		48659346006694BF96682CBE /* OTPInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTPInputView.swift; sourceTree = "<group>"; };
 		495013444502A57C6D127A7D /* trail-seed.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "trail-seed.json"; sourceTree = "<group>"; };
+		4AB77126A8B91B307CED33F7 /* legal-terms.es.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "legal-terms.es.html"; sourceTree = "<group>"; };
+		4AD3AA2F9805C2879EA05524 /* LegalWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalWebView.swift; sourceTree = "<group>"; };
 		50E1734BB756CB9066ECEC94 /* ScoreboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoreboardView.swift; sourceTree = "<group>"; };
 		6E3DB489715A5B620395CD47 /* LogoutViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogoutViews.swift; sourceTree = "<group>"; };
 		72C915F676CBB9F04656C255 /* CoreWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreWrapper.swift; sourceTree = "<group>"; };
 		752CBF98CC2C51F2EDC3EF62 /* IBMPlexSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Regular.ttf"; sourceTree = "<group>"; };
 		7670411FB487991006E4DE02 /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
 		799B328B5FC2E3F615F7DB41 /* TopicIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopicIcon.swift; sourceTree = "<group>"; };
+		7D5540CC96022EB3FD517E3E /* legal-privacy.pt-BR.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "legal-privacy.pt-BR.html"; sourceTree = "<group>"; };
 		80804A0792E45E01C5BE3D0B /* LogNiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogNiOSApp.swift; sourceTree = "<group>"; };
 		8BCAD3D7D269E2D03F55181F /* MatchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchView.swift; sourceTree = "<group>"; };
 		8DA78EDFD4661B922FE1E389 /* ViewExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewExtensions.swift; sourceTree = "<group>"; };
 		911B685B7906CC9801E098A1 /* BalloonShape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalloonShape.swift; sourceTree = "<group>"; };
 		9476B1DFF7AE686900CF32CD /* NodeSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeSheetView.swift; sourceTree = "<group>"; };
+		9480CE2CB5982E8E6666380C /* legal-privacy.en.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "legal-privacy.en.html"; sourceTree = "<group>"; };
 		98613207977B12CB7500F98C /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		9D1A761B4BB79672516BF045 /* LogNiOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LogNiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D238C31B32D323BF620359D /* StringsMappers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StringsMappers.swift; sourceTree = "<group>"; };
 		9D8EF036E181D0306E94D226 /* CodeBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeBlock.swift; sourceTree = "<group>"; };
+		A1BDCF2925B08814426FF636 /* legal-manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "legal-manifest.json"; sourceTree = "<group>"; };
+		A22C79FFC5A566973EBC4A20 /* legal-terms.pt-BR.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "legal-terms.pt-BR.html"; sourceTree = "<group>"; };
 		A4811EB169815262BA8CDC9F /* LeaveMatchSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaveMatchSheet.swift; sourceTree = "<group>"; };
+		AA26092B0334D250671544C2 /* legal-privacy.es.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "legal-privacy.es.html"; sourceTree = "<group>"; };
 		C2638F7B390A01676A65CFD9 /* StandingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandingsView.swift; sourceTree = "<group>"; };
 		C4DB2DC21E3986A71469A3AA /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
 		C54D531EF24FAD3B3299DBF0 /* SampleDataNotice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleDataNotice.swift; sourceTree = "<group>"; };
@@ -97,6 +115,7 @@
 		F111AFD2776AF5D50D29BF33 /* IBMPlexMono-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-SemiBold.ttf"; sourceTree = "<group>"; };
 		F486C5E97DFDCE2C80818FB7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F8ACFF3284CD5B7DC2095483 /* ProfileHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileHubView.swift; sourceTree = "<group>"; };
+		FD38873CE559EB5BE3EC813F /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -152,6 +171,7 @@
 			children = (
 				495013444502A57C6D127A7D /* trail-seed.json */,
 				680BBE13756474F7C039A97A /* Fonts */,
+				8566724044B26ECB31FA33E7 /* Legal */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -177,11 +197,26 @@
 			path = Fonts;
 			sourceTree = "<group>";
 		};
+		8566724044B26ECB31FA33E7 /* Legal */ = {
+			isa = PBXGroup;
+			children = (
+				A1BDCF2925B08814426FF636 /* legal-manifest.json */,
+				9480CE2CB5982E8E6666380C /* legal-privacy.en.html */,
+				AA26092B0334D250671544C2 /* legal-privacy.es.html */,
+				7D5540CC96022EB3FD517E3E /* legal-privacy.pt-BR.html */,
+				27CDD3F1EB1F68123D863200 /* legal-terms.en.html */,
+				4AB77126A8B91B307CED33F7 /* legal-terms.es.html */,
+				A22C79FFC5A566973EBC4A20 /* legal-terms.pt-BR.html */,
+			);
+			path = Legal;
+			sourceTree = "<group>";
+		};
 		856EBED95C7BAADCCD7D633E /* Components */ = {
 			isa = PBXGroup;
 			children = (
 				911B685B7906CC9801E098A1 /* BalloonShape.swift */,
 				9D8EF036E181D0306E94D226 /* CodeBlock.swift */,
+				4AD3AA2F9805C2879EA05524 /* LegalWebView.swift */,
 				3C234F5143F4791D66EF36E0 /* LognComponents.swift */,
 				C54D531EF24FAD3B3299DBF0 /* SampleDataNotice.swift */,
 				2F017FABEBC4E5B128A074D0 /* StatusLine.swift */,
@@ -198,6 +233,7 @@
 				42D4982DBEFBD646B4F5FD62 /* ContentView.swift */,
 				26D31A9B206FE1CD0C80B3F9 /* DryRunView.swift */,
 				A4811EB169815262BA8CDC9F /* LeaveMatchSheet.swift */,
+				116B2CC534846B378BDCA8EB /* LegalDocumentView.swift */,
 				3C3479CDAF7B4103E414DAC3 /* LoginView.swift */,
 				6E3DB489715A5B620395CD47 /* LogoutViews.swift */,
 				8BCAD3D7D269E2D03F55181F /* MatchView.swift */,
@@ -295,6 +331,7 @@
 			knownRegions = (
 				Base,
 				en,
+				es,
 				"pt-BR",
 			);
 			mainGroup = 4D5F1268255946B4C54BC27F;
@@ -327,6 +364,13 @@
 				2904B02ECB83300658D107C7 /* IBMPlexSans-SemiBold.ttf in Resources */,
 				113A7C042597592AB08772A7 /* InfoPlist.strings in Resources */,
 				B118212843B83D5CB04DFAE9 /* Localizable.xcstrings in Resources */,
+				B8F59D5FA327BDA47F4FEFA5 /* legal-manifest.json in Resources */,
+				1D453632FCF4FC2DDA13EB0D /* legal-privacy.en.html in Resources */,
+				E2D8CA6DB078DBFF781C1263 /* legal-privacy.es.html in Resources */,
+				828671D74C041716CCBFDBCE /* legal-privacy.pt-BR.html in Resources */,
+				44D5D3BB9F8FE23DDE664A52 /* legal-terms.en.html in Resources */,
+				F8F7BD017E95750A2DCF438E /* legal-terms.es.html in Resources */,
+				D7C66D51C4C07B02BDCF7FD7 /* legal-terms.pt-BR.html in Resources */,
 				211A33B99BD2DE50F85E8997 /* trail-seed.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -344,6 +388,8 @@
 				5B28C2226E5C4917A2F15B4E /* CoreWrapper.swift in Sources */,
 				3C863FFB4FF7194F0493F4FE /* DryRunView.swift in Sources */,
 				CF9D002B22CE05C3BC5D80D6 /* LeaveMatchSheet.swift in Sources */,
+				67BF1220625E8C2DBEF91212 /* LegalDocumentView.swift in Sources */,
+				B9C7645E671FFFA6668EF826 /* LegalWebView.swift in Sources */,
 				936B6709633ADF906CB1E02F /* LogNiOSApp.swift in Sources */,
 				0B24F964C6C184D6E7B671B8 /* LoginView.swift in Sources */,
 				E73189436712870098DA5F1C /* LognComponents.swift in Sources */,
@@ -378,6 +424,7 @@
 			isa = PBXVariantGroup;
 			children = (
 				98613207977B12CB7500F98C /* en */,
+				FD38873CE559EB5BE3EC813F /* es */,
 				28351D90B42E5417571B1A37 /* pt-BR */,
 			);
 			name = InfoPlist.strings;

@@ -14,6 +14,7 @@ struct ProfileHubView: View {
     /// Sheet crítico de saída, quando há evento na fila.
     @State private var showsCriticalLogout = false
     @State private var showsManageAccount = false
+    @State private var legalSheet: LegalKind?
 
     /// Altura de partida do sheet, só até a primeira medição chegar.
     static let preferredHeight: CGFloat = 560
@@ -82,6 +83,9 @@ struct ProfileHubView: View {
             .presentationDetents([.height(CriticalLogoutSheet.preferredHeight)])
             .presentationDragIndicator(.hidden)
             .modifier(SheetCorners())
+        }
+        .sheet(item: $legalSheet) { kind in
+            LegalDocumentView(kind: kind)
         }
     }
 
@@ -355,6 +359,10 @@ struct ProfileHubView: View {
             .buttonStyle(.plain)
             .padding(.top, 6)
         }
+
+        // Visitante e conta: os dois jogam sob os mesmos termos.
+        LegalLinksRow(presented: $legalSheet)
+            .padding(.top, 4)
     }
 
     /// Nomeia o risco e o ganho em números reais — nunca um "crie sua conta" genérico.

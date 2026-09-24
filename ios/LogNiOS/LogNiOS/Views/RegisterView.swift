@@ -16,7 +16,8 @@ struct RegisterView: View {
     @State private var step: Step = .email
     @State private var ageConfirmed = false
     @State private var termsAccepted = false
-    
+    @State private var legalSheet: LegalKind?
+
     var body: some View {
         ZStack {
             LognDark.canvas.ignoresSafeArea()
@@ -65,6 +66,14 @@ struct RegisterView: View {
                 dismiss()
             }
         }
+        .onAppear {
+            // O cadastro aceita a versão vigente dos documentos, e só o servidor sabe
+            // qual é.
+            core.dispatch(event: .fetchLegalVersions)
+        }
+        .sheet(item: $legalSheet) { kind in
+            LegalDocumentView(kind: kind)
+        }
     }
     
     // MARK: - Steps
@@ -99,7 +108,14 @@ struct RegisterView: View {
                     }
                 }
                 
-                Button(action: { termsAccepted.toggle() }) {
+                Button(action: {
+                    termsAccepted.toggle()
+                    // A busca da abertura pode ter falhado sem rede; marcar a caixa é a
+                    // hora de tentar de novo.
+                    if termsAccepted && !core.viewModel.legalVersionsReady {
+                        core.dispatch(event: .fetchLegalVersions)
+                    }
+                }) {
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: termsAccepted ? "checkmark.square.fill" : "square")
                             .foregroundColor(termsAccepted ? LognDark.accent : LognDark.textDim)
@@ -109,6 +125,16 @@ struct RegisterView: View {
                             .foregroundColor(LognDark.textSecondary)
                             .multilineTextAlignment(.leading)
                     }
+                }
+
+                // Os links ficam fora do botão da caixa: dentro dele, o toque no link
+                // marcaria a caixa em vez de abrir o documento.
+                LegalLinksRow(presented: $legalSheet)
+
+                if termsAccepted && !core.viewModel.legalVersionsReady {
+                    Text(Str.Register.legal_pending)
+                        .font(.plexSans(13, relativeTo: .footnote))
+                        .foregroundColor(LognDark.textMuted)
                 }
             }
             .padding(.top, 4)
@@ -168,7 +194,8 @@ struct RegisterView: View {
             Button(action: {
                 // O código que o jogador digitou, não o e-mail: ia `otpEmail` aqui, e
                 // "Criar Conta" chegava ao servidor com o endereço no campo do OTP.
-                core.dispatch(event: .register(email: email, password: password, otp: otpCode, ageConfirmed: ageConfirmed, legalAcceptances: termsAccepted ? ["terms_v1", "privacy_v1"] : []))
+                // Quais versões e em que língua, o Core decide com o que o servidor disse.
+                core.dispatch(event: .register(email: email, password: password, otp: otpCode, ageConfirmed: ageConfirmed, legalAccepted: termsAccepted))
             }) {
                 Text(accountLocked
                      ? Str.Status.wait_seconds(Int(core.viewModel.authCooldownSeconds))
@@ -216,7 +243,11 @@ struct RegisterView: View {
     private var accountLocked: Bool { core.viewModel.authCooldownSeconds > 0 }
     private var sendCodeLocked: Bool { core.viewModel.resendCooldownSeconds > 0 }
 
-    private var canSendCode: Bool { email.contains("@") && !sendCodeLocked && ageConfirmed && termsAccepted }
+    /// Sem as versões vigentes não há o que aceitar: mandar o código levaria a um
+    /// cadastro que o servidor recusa depois de gastar o código.
+    private var canSendCode: Bool {
+        email.contains("@") && !sendCodeLocked && ageConfirmed && termsAccepted && core.viewModel.legalVersionsReady
+    }
 
     private var sendCodeLabel: String {
         if sendCodeLocked { return Str.Status.wait_seconds(Int(core.viewModel.resendCooldownSeconds)) }

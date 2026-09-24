@@ -238,7 +238,7 @@ sign_in = "Entrar"
 
 [register]
 age_confirmation = "Tenho 13 anos ou mais."
-terms_confirmation = "Li e aceito os Termos de Serviço e a Política de Privacidade."
+terms_confirmation = "Li e aceito os Termos de uso e a Política de privacidade."
 email_prompt = "e-mail"
 password_prompt = "senha (mín 8 chars)"
 confirm_prompt = "confirmar senha"
@@ -250,6 +250,16 @@ reason_otp = "Digite o código enviado para %{email}"
 reason_password = "Escolha sua senha"
 sending = "Enviando..."
 send_code = "Enviar Código"
+legal_pending = "Buscando a versão vigente dos termos. Confira a conexão se demorar."
+
+[legal]
+terms_title = "Termos de uso"
+privacy_title = "Política de privacidade"
+version_effective = "Versão %{version} · vigente desde %{date}"
+offline_copy = "Cópia salva no aparelho"
+unavailable = "Não deu para abrir o documento. Confira a conexão e tente de novo."
+accept = "Aceitar e continuar"
+loading_accessibility = "Carregando documento"
 
 [reset]
 title = "Redefinir senha"

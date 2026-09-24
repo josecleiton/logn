@@ -238,7 +238,7 @@ sign_in = "Sign in"
 
 [register]
 age_confirmation = "I am 13 years old or older."
-terms_confirmation = "I have read and accept the Terms of Service and Privacy Policy."
+terms_confirmation = "I have read and accept the Terms of Use and the Privacy Policy."
 email_prompt = "e-mail"
 password_prompt = "password (min 8 chars)"
 confirm_prompt = "confirm password"
@@ -250,6 +250,16 @@ reason_otp = "Enter the code sent to %{email}"
 reason_password = "Choose your password"
 sending = "Sending..."
 send_code = "Send Code"
+legal_pending = "Fetching the current version of the terms. Check your connection if this takes long."
+
+[legal]
+terms_title = "Terms of Use"
+privacy_title = "Privacy Policy"
+version_effective = "Version %{version} · effective %{date}"
+offline_copy = "Copy saved on this device"
+unavailable = "Couldn't open the document. Check your connection and try again."
+accept = "Accept and continue"
+loading_accessibility = "Loading document"
 
 [reset]
 title = "Reset password"

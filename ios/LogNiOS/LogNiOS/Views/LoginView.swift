@@ -11,7 +11,11 @@ struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var ssoEnabled = false
-    
+    @State private var legalSheet: LegalKind? = LegalKind.launchOverride
+    /// Só em DEBUG: `-LogNStartScreen cadastro` abre o cadastro direto. O toque
+    /// sintético no link depende da janela do Simulator estar acessível, e nem sempre está.
+    @State private var showsRegisterOnLaunch = LognTab.launchScreen == "cadastro"
+
     var body: some View {
         // Sem este container os `NavigationLink` daqui não empurram nada: "Criar conta"
         // e "Esqueci a senha" renderizavam como rótulo e não faziam nada.
@@ -207,6 +211,8 @@ struct LoginView: View {
                         )
                     }
                     
+                    LegalLinksRow(presented: $legalSheet)
+
                     // Core Status
                     HStack(spacing: 7) {
                         Circle()
@@ -226,6 +232,12 @@ struct LoginView: View {
         .navigationBarHidden(true)
         .onAppear {
             self.ssoEnabled = PostHogSDK.shared.isFeatureEnabled("sso_enabled")
+        }
+        .sheet(item: $legalSheet) { kind in
+            LegalDocumentView(kind: kind)
+        }
+        .navigationDestination(isPresented: $showsRegisterOnLaunch) {
+            RegisterView().environmentObject(core)
         }
 
     }
