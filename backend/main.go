@@ -187,14 +187,27 @@ func main() {
 		domain.JwtSecretKey = []byte(jwtSecret)
 	}
 
-	pool, err := pgxpool.New(context.Background(), dbUrl)
+	config, err := pgxpool.ParseConfig(dbUrl)
+	if err != nil {
+		log.Fatalf("Invalid DATABASE_URL: %v\n", err)
+	}
+	config.ConnConfig.ConnectTimeout = 15 * time.Second
+
+	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
 	defer pool.Close()
 
-	if err := pool.Ping(context.Background()); err != nil {
-		log.Fatalf("Unable to reach database: %v\n", err)
+	// pool.Ping só verifica o TCP — em bancos serverless (Neon) o compute pode ainda
+	// estar acordando enquanto o binário já aceita tráfego, e a primeira query leva 10s
+	// esperando o compute estar pronto. Um SELECT real garante que o compute está ativo
+	// antes de começar a servir.
+	wakeCtx, wakeCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer wakeCancel()
+	var dbReady int
+	if err := pool.QueryRow(wakeCtx, "SELECT 1").Scan(&dbReady); err != nil {
+		log.Fatalf("Database not ready: %v\n", err)
 	}
 
 	runMigrations := os.Getenv("RUN_MIGRATIONS") == "true"

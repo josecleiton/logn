@@ -16,7 +16,7 @@ COPY . .
 # Build the Go app
 # CGO_ENABLED=0 builds a static binary, allowing us to run it in scratch or alpine
 # GOOS=linux ensures we are building for Linux, which is what Cloud Run uses
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server .
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /app/server .
 
 # Run stage
 # Distroless estático: traz certificados de CA e tzdata, e nada além disso — sem shell,

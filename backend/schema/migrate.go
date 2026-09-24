@@ -49,15 +49,29 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) ([]string, error) {
 	}
 	sort.Strings(names)
 
+	// Uma query traz todas as migrações já aplicadas; a abordagem anterior fazia um
+	// SELECT EXISTS por arquivo (21 round trips para conferir que nada mudou).
+	rows, err := pool.Query(ctx, `SELECT name FROM schema_migrations`)
+	if err != nil {
+		return nil, fmt.Errorf("lendo schema_migrations: %w", err)
+	}
+	alreadyApplied := make(map[string]bool, len(names))
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("lendo nome de migração: %w", err)
+		}
+		alreadyApplied[n] = true
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterando schema_migrations: %w", err)
+	}
+
 	var applied []string
 	for _, name := range names {
-		var exists bool
-		if err := pool.QueryRow(ctx,
-			`SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE name = $1)`, name,
-		).Scan(&exists); err != nil {
-			return applied, fmt.Errorf("checando %s: %w", name, err)
-		}
-		if exists {
+		if alreadyApplied[name] {
 			continue
 		}
 
