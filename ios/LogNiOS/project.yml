@@ -25,8 +25,6 @@ targets:
     - package: LogNCoreFFI
     - package: PostHog
     settings:
-      PRODUCT_BUNDLE_IDENTIFIER: sh.logn.app
-      TARGETED_DEVICE_FAMILY: "1"
       DEVELOPMENT_TEAM: $(DEVELOPMENT_TEAM)
       INFOPLIST_KEY_CFBundleDisplayName: LogN
       INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.educational-games"
