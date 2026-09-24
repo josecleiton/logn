@@ -12,13 +12,15 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/josecleiton/logn/backend/internal/domain"
+	"github.com/josecleiton/logn/backend/internal/infrastructure/cloudauth"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/email"
 	"github.com/josecleiton/logn/backend/schema"
 )
 
 type Server struct {
-	repo   *domain.Repository
-	mailer *email.Mailer
+	repo           *domain.Repository
+	mailer         *email.Mailer
+	cloudValidator cloudauth.Validator
 }
 
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -244,7 +246,12 @@ func main() {
 
 	repo := domain.NewRepository(pool)
 	mailer := email.NewMailer()
-	server := &Server{repo: repo, mailer: mailer}
+	validator := cloudauth.NewGoogleValidator()
+	server := &Server{
+		repo:           repo,
+		mailer:         mailer,
+		cloudValidator: validator,
+	}
 
 	if os.Getenv("PURGE_ONLY") == "true" {
 		log.Println("Rodando rotina de expurgo (PURGE_ONLY=true)...")
@@ -279,6 +286,7 @@ func main() {
 
 	mux.HandleFunc("GET /api/v1/nodes", server.getNodesHandler)
 	mux.HandleFunc("GET /api/v1/progress", server.getUserProgressHandler)
+	mux.HandleFunc("POST /api/v1/internal/purge", server.purgeHandler)
 	
 	serveLegal := func(kind string) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {

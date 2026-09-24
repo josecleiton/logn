@@ -35,7 +35,39 @@ deploy-backend:
 	gcloud run deploy logn \
 		--source ./backend \
 		--region us-east1 \
-		--allow-unauthenticated
+
+# Cria ou atualiza o job no Cloud Scheduler para expurgar contas deletadas.
+# Cria ou atualiza o job no Cloud Scheduler para expurgar contas deletadas.
+# Extrai automaticamente a URL e a Service Account do serviço Cloud Run.
+deploy-scheduler:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	echo "Consultando informações do serviço 'logn' no Cloud Run..."
+	URL=$$(gcloud run services describe logn --region us-east1 --format 'value(status.url)')
+	SA=$$(gcloud run services describe logn --region us-east1 --format 'value(spec.template.spec.serviceAccountName)')
+	
+	if [ -z "$$SA" ] || [ "$$SA" = "None" ]; then
+		PROJECT_NUMBER=$$(gcloud projects describe $$(gcloud config get-value project) --format 'value(projectNumber)')
+		SA="$${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+	fi
+	
+	echo "Configurando Cloud Scheduler para bater em $$URL usando a conta $$SA"
+	
+	gcloud scheduler jobs create http purge-deleted-accounts \
+		--schedule="0 3 * * *" \
+		--uri="$$URL/api/v1/internal/purge" \
+		--http-method=POST \
+		--oidc-service-account-email="$$SA" \
+		--oidc-token-audience="$$URL" \
+		--location=us-east1 \
+		|| gcloud scheduler jobs update http purge-deleted-accounts \
+		--schedule="0 3 * * *" \
+		--uri="$$URL/api/v1/internal/purge" \
+		--http-method=POST \
+		--oidc-service-account-email="$$SA" \
+		--oidc-token-audience="$$URL" \
+		--location=us-east1
+
 
 # --- Core (Rust) ---
 
