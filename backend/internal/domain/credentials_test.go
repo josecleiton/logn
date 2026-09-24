@@ -9,7 +9,7 @@ func TestNormalizeEmail(t *testing.T) {
 	cases := map[string]string{
 		"a@x.com":       "a@x.com",
 		"  A@X.Com ":    "a@x.com",
-		"Jose@Example.Com": "jose@example.com",
+		"Jogador@Example.Com": "jogador@example.com",
 	}
 	for in, want := range cases {
 		got, err := NormalizeEmail(in)

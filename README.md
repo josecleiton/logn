@@ -8,9 +8,10 @@ o placar congela no fim. A sessão dura minutos, não uma tarde.
 
 ## Como funciona
 
-**Trilhas de assuntos** de programação competitiva,
-ligados como grafo e não como lista: um assunto pode abrir mais de um caminho, e caminhos podem voltar a se
-encontrar. Cada nó abre com XP acumulado, e o XP entra por resposta aceita.
+**Trilhas de assuntos** de programação competitiva, ligados como grafo e não
+como lista: um assunto pode abrir mais de um caminho, e caminhos podem voltar a se encontrar. Cada nó abre
+com XP acumulado, e o XP entra por resposta aceita. O currículo em si — os assuntos,
+enunciados e gabaritos — vive no repositório de conteúdo.
 
 **Cinco formatos de desafio**, porque saber programar tem partes diferentes:
 

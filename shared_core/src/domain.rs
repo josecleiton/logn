@@ -95,11 +95,11 @@ mod tests {
     #[test]
     fn test_parses_nodes_without_status_from_the_backend() {
         let body = r#"[
-            {"id":"10000000-0000-0000-0000-000000000001","name":"Nó A",
+            {"id":"10000000-0000-0000-0000-000000000001","name":"1. Fundamentos & Notação",
              "description":"Simulação de algoritmos.","row":0,"column":0,
              "required_xp":0,"prerequisites":[]},
-            {"id":"20000000-0000-0000-0000-000000000002","name":"Nó B",
-             "description":"Stacks e Queues.","row":1,"column":-1,
+            {"id":"20000000-0000-0000-0000-000000000002","name":"2. Estruturas Básicas",
+             "description":"Estruturas de dados básicas.","row":1,"column":-1,
              "required_xp":100,"prerequisites":["10000000-0000-0000-0000-000000000001"]}
         ]"#;
 

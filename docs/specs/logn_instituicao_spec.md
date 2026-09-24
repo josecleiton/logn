@@ -516,7 +516,7 @@ já está pendente no roadmap.
   distingue nenhum deles.
 - **Política sem revisão jurídica:** mesma dívida da v1 dos termos.
 - **E-mail em português:** o `mailer.go` só manda em pt-BR.
-- **banco ainda sem backup:** perder o banco apaga os vínculos, como apaga as contas.
+- **O banco ainda não tem backup:** perder o banco apaga os vínculos, como apaga as contas.
 
 ## 13. Perguntas abertas
 

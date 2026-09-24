@@ -200,6 +200,9 @@ func main() {
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
+		if os.Getenv("K_SERVICE") != "" {
+			log.Fatalf("JWT_SECRET is not set. Refusing to start in production with an insecure default.")
+		}
 		log.Println("WARNING: JWT_SECRET is not set. Using insecure default for development.")
 		domain.JwtSecretKey = []byte("my-super-secret-logn-key-for-dev")
 	} else {

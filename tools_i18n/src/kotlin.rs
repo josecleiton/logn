@@ -3,7 +3,7 @@
 //!
 //! The mappers are the reason this is generated rather than written: an
 //! exhaustive `when` with no `else` is what makes a new variant in
-//! `shared/src/recording.rs` a build failure in *every* shell instead of a blank
+//! `shared/src/match_engine.rs` a build failure in *every* shell instead of a blank
 //! label in one.
 //!
 //! Matching a variant is where Kotlin needs more from us than Swift does. Swift
@@ -366,7 +366,7 @@ fn strings_file(catalog: &Catalog, package: &str, core_package: &str) -> String 
             }
 
             // No `else`. The exhaustiveness is the point: a variant added to
-            // `shared/src/recording.rs` has to break this build.
+            // `shared/src/match_engine.rs` has to break this build.
             out.push_str("}\n");
         }
     }
@@ -464,8 +464,8 @@ mod tests {
             "draft_card_view_transcript"
         );
         assert_eq!(
-            resource_name("infoPlist", "NSMicrophoneUsageDescription"),
-            "info_plist_n_s_microphone_usage_description"
+            resource_name("infoPlist", "JWTRefreshTokenTTL"),
+            "info_plist_j_w_t_refresh_token_t_t_l"
         );
     }
 
@@ -522,14 +522,14 @@ mod tests {
 
         assert!(
             file.contains(
-                "import sh.logn.core.Match.ConfirmationTarget as RecordingConfirmationTarget"
+                "import sh.logn.core.Match.ConfirmationTarget as MatchConfirmationTarget"
             ),
             "{file}"
         );
         // `is`, and PascalCase — a data class and a data object are both types.
         assert!(
             file.contains(
-                "    is RecordingConfirmationTarget.DeleteDraft -> \
+                "    is MatchConfirmationTarget.DeleteDraft -> \
                  Str.ConfirmationTitle.deleteDraft(context)"
             ),
             "{file}"
@@ -540,7 +540,7 @@ mod tests {
     #[test]
     fn mappers_are_exhaustive_without_an_else() {
         // The whole reason the mappers are generated rather than written: a new
-        // variant in shared/src/recording.rs has to break the Android build
+        // variant in shared/src/match_engine.rs has to break the Android build
         // instead of blanking a label at runtime.
         for catalog in [status_catalog(), confirmation_catalog()] {
             let file = strings_file(&catalog, "sh.logn.app", "sh.logn.core");
@@ -553,21 +553,21 @@ mod tests {
     /// narrowing the generated file does not compile, which is how this was found.
     #[test]
     fn a_number_bound_out_of_a_variant_is_narrowed_to_what_the_accessor_takes() {
-        let mut group = group("diskSpace", "Recording.DiskSpaceState", "message", &["low"]);
+        let mut group = group("queueBacklog", "Match.QueueState", "message", &["critical"]);
         group.keys[0].placeholders = vec![Placeholder {
-            name: "minutes".to_owned(),
+            name: "count".to_owned(),
             kind: PlaceholderKind::Int,
         }];
 
         let file = strings_file(
-            &catalog(vec![group], &["Recording.DiskSpaceState"]),
+            &catalog(vec![group], &["Match.QueueState"]),
             "sh.logn.app",
             "sh.logn.core",
         );
 
         assert!(
             file.contains(
-                "is RecordingDiskSpaceState.Low -> Str.DiskSpace.low(context, this.minutes.toInt())"
+                "is MatchQueueState.Critical -> Str.QueueBacklog.critical(context, this.count.toInt())"
             ),
             "{file}"
         );
@@ -589,7 +589,7 @@ mod tests {
             "{file}"
         );
         assert!(
-            file.contains("fun MatchStatus.microphoneAccessibilityLabel("),
+            file.contains("fun MatchStatus.syncAccessibilityLabel("),
             "{file}"
         );
     }
@@ -605,7 +605,7 @@ mod tests {
         let catalog = Catalog {
             groups: vec![
                 group("tabs", "Navigation.Tab", "label", &["calendar"]),
-                group("meetingPanel", "ChallengeDetail.Tab", "label", &["summary"]),
+                group("challengePanel", "ChallengeDetail.Tab", "label", &["summary"]),
             ],
             ..two_groups_on_status()
         };
@@ -656,7 +656,7 @@ mod tests {
                 "confirmationTitle",
                 "Match.ConfirmationTarget",
                 "title",
-                &["discardRecording", "deleteDraft"],
+                &["discardMatch", "deleteDraft"],
             )],
             &["Match.ConfirmationTarget"],
         )
@@ -667,9 +667,9 @@ mod tests {
             vec![
                 group("status", "Match.Status", "statusMessage", &["idle"]),
                 group(
-                    "micButton",
+                    "syncButton",
                     "Match.Status",
-                    "microphoneAccessibilityLabel",
+                    "syncAccessibilityLabel",
                     &["idle"],
                 ),
             ],

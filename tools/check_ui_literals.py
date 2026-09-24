@@ -28,12 +28,11 @@ def check_swift_literals():
                         # Some exceptions
                         if "SampleDataNotice" in path or "Preview" in line:
                             continue
-                        # If it's something like "\(lives) / \(maxLives)", it's handled differently, but we should probably ignore it if it doesn't have real textual words. Wait, " / " is just a symbol. What about " XP"?
+                        # Interpolated strings with no real textual content to translate.
                         if content == "\\(vm.globalXp) XP" or content == "\\(core.viewModel.globalXp) XP":
-                            # We can allow XP or we can translate it. Let's ignore it for now.
                             pass
                         elif content == "AC" or content == "PROBLEM \\(String(letter))" or "RELÓGIO" in content:
-                            pass # We can ignore or fix them. Wait, RELÓGIO DA QUESTÃO is a literal!
+                            pass
                         
                         # Just a simple heuristic: if it has words that are not just variable names
                         words = [w for w in re.findall(r'[a-zA-Z]+', content) if w not in ['vm', 'row', 'core', 'viewModel', 'String', 'letter', 'lives', 'maxLives', 'solvedCount', 'node', 'prerequisites', 'count', 'problemsSolved', 'level', 'xpForLevel', 'challengesCompleted', 'balloonsUp', 'rank', 'solved', 'penalty', 'Int']]

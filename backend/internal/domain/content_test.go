@@ -13,7 +13,7 @@ func TestAssemblePayloadPutsTheTextBack(t *testing.T) {
 		"validation": {"type": "TAG_MATCH"}
 	}`)
 	got, err := AssemblePayload(neutral, ChallengeText{
-		Title: "Maior de Três", Description: "Marque os dois.", Explanation: "Explicação do desafio.",
+		Title: "Padrão de Solução", Description: "Marque os dois.", Explanation: "As duas opções descrevem a solução.",
 		WatchNote:    "estado inicial",
 		OptionLabels: map[string]string{"queue": "Tag A", "bfs": "Tag B"},
 	})
@@ -37,8 +37,8 @@ func TestAssemblePayloadPutsTheTextBack(t *testing.T) {
 	if err := json.Unmarshal(got, &p); err != nil {
 		t.Fatal(err)
 	}
-	if p.Content.Title != "Maior de Três" || p.Content.Description != "Marque os dois." ||
-		p.Content.WatchNote != "estado inicial" || p.Validation.Explanation != "Explicação do desafio." {
+	if p.Content.Title != "Padrão de Solução" || p.Content.Description != "Marque os dois." ||
+		p.Content.WatchNote != "estado inicial" || p.Validation.Explanation != "As duas opções descrevem a solução." {
 		t.Errorf("texto não voltou: %+v", p)
 	}
 	// Opção e gabarito ganham o mesmo rótulo; opção sem rótulo fica como está.

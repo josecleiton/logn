@@ -20,7 +20,7 @@ ALTER TABLE challenges ADD CONSTRAINT chk_explanation_presente CHECK (
 );
 
 -- 2. SPOT_THE_BUG: correct_line existe, é número, e aponta para uma linha que existe.
---    Era o buraco que deixou um desafio marcar a linha 4 com o bug na 7.
+--    Era o buraco que deixou um desafio apontar para uma linha que não era a do bug.
 --    A forma desta constraint é corrigida na 0006 — ver o comentário de lá.
 ALTER TABLE challenges ADD CONSTRAINT chk_spot_the_bug_linha_valida CHECK (
     template_type <> 'SPOT_THE_BUG' OR (

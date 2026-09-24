@@ -27,12 +27,12 @@ código dos desafios.
 
 ## 3. Código dos desafios em inglês
 
-Os identificadores e comentários hoje estão em português (`maisDivisores`, `melhor`).
+Os identificadores e comentários hoje estão em português (por exemplo `maiorValor`, `resultado`).
 Traduzir o código mudaria as linhas que o gabarito aponta: `correct_line` do SPOT_THE_BUG
 e `expected_string` do DRY_RUN e do FILL_IN_THE_BLANK. Com uma versão só, em inglês, o
 gabarito continua um só nas três línguas.
 
-- Os 36 desafios atuais são reescritos com identificadores e comentários em inglês, no
+- Os desafios atuais são reescritos com identificadores e comentários em inglês, no
   repositório de conteúdo, **com os mesmos ids**. O progresso de quem já jogou continua
   apontando para o desafio certo.
 - Saída de DRY_RUN e opção de FILL_IN_THE_BLANK não podem depender de língua: nada de
