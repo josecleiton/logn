@@ -232,7 +232,11 @@ struct LoginView: View {
         .navigationBarHidden(true)
         .onAppear {
             self.ssoEnabled = PostHogSDK.shared.isFeatureEnabled("sso_enabled")
+            prefillResumeEmail(core.viewModel.resumeEmail)
         }
+        // A sessão acabou: o login vem com o e-mail dela. Ele pode chegar depois de a
+        // tela aparecer, porque o Core o lê do aparelho.
+        .onChange(of: core.viewModel.resumeEmail) { prefillResumeEmail($0) }
         .sheet(item: $legalSheet) { kind in
             LegalDocumentView(kind: kind)
         }
@@ -240,6 +244,13 @@ struct LoginView: View {
             RegisterView().environmentObject(core)
         }
 
+    }
+
+    /// Só preenche o campo vazio: o que a pessoa já digitou manda.
+    private func prefillResumeEmail(_ resume: String) {
+        if email.isEmpty && !resume.isEmpty {
+            email = resume
+        }
     }
 
     /// Travado por um 429: o servidor mandou esperar, e o botão conta o tempo.

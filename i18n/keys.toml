@@ -316,6 +316,27 @@ row_accessibility = { placeholders = [{ name = "rank", type = "int" }, { name = 
 row_accessibility_user = { placeholders = [{ name = "rank", type = "int" }, { name = "handle", type = "text" }, { name = "university", type = "text" }, { name = "solved", type = "int" }, { name = "penalty", type = "int" }] }
 you = {}
 
+# A splash da abertura: o log das verificações. O Core manda `BootLine` com a
+# verificação e o veredito como enum; a frase de cada um mora aqui.
+[groups.boot.keys]
+check_session = {}
+check_sync = {}
+checking = {}
+token_renewed = {}
+local_token_valid = {}
+session_ended = {}
+sending = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+nothing_to_send = {}
+sent = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+no_network = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+rejected = {}
+still_sending = {}
+offline_notice = {}
+retry = {}
+continue_offline = {}
+line_accessibility = { placeholders = [{ name = "check", type = "text" }, { name = "detail", type = "text" }] }
+opening_accessibility = {}
+
 [groups.login.keys]
 slogan = {}
 sign_in_apple = {}

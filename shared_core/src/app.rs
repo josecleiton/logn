@@ -5,7 +5,10 @@ use facet_generate_attrs as fg;
 use crux_http::protocol::{HttpRequest, HttpResult};
 use crux_kv::{KeyValueOperation, KeyValueResult, KeyValueResponse};
 use crux_time::{Time, TimeRequest};
-use crate::domain::{GameEvent, SyncPayload, Challenge, StatusKey, TelemetryOperation};
+use crate::domain::{
+    BootCheck, BootDetail, BootLine, BootVerdict, Challenge, GameEvent, StatusKey, SyncPayload,
+    TelemetryOperation,
+};
 use crate::match_engine;
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
@@ -36,8 +39,9 @@ pub enum Event {
 
     SyncNow,
     SyncAndLogout,
-    RestoreOfflineQueue,
-    OfflineQueueRestored(KeyValueResult),
+    /// A fila guardada sob a chave de `owner`. Chega depois de `claim_queue` e é
+    /// descartada se o dono mudou no meio do caminho.
+    OfflineQueueRestored { owner: String, result: KeyValueResult },
     /// A trilha que viaja no bundle do app, entregue pelo shell na abertura.
     ///
     /// O Core não lê arquivo; quem lê é o shell, e aqui só se decide se a semente serve.
@@ -121,6 +125,29 @@ pub enum Event {
     /// Abertura do app: lê a escolha do interruptor guardada no aparelho.
     RestoreAnalyticsPreference,
     AnalyticsPreferenceRestored(KeyValueResult),
+    /// Abertura do app: confere a sessão, traz a fila de quem é a sessão e manda o que
+    /// estiver nela. É o que a splash mostra, linha a linha.
+    StartBoot,
+    /// Passou o tempo que a abertura espera pela rede numa das verificações.
+    /// `attempt` é a tentativa que pôs o relógio para correr: o de uma tentativa
+    /// anterior não corta a de agora.
+    BootWatchdogElapsed { check: crate::domain::BootCheck, attempt: u32 },
+    /// Sem rede na abertura: tentar de novo.
+    RetryBoot,
+    /// Sem rede na abertura: entrar com o que está no aparelho.
+    ContinueOffline,
+    /// O e-mail da sessão que acabou, para o login já vir preenchido.
+    ResumeEmailRead(KeyValueResult),
+    /// `account_user_id` do aparelho: de quem é a sessão que abriu sem rede.
+    QueueOwnerRead(KeyValueResult),
+    /// Uma fila de outro dono (visitante, ou a chave de antes das filas por conta),
+    /// lida para ser adotada pelo dono atual.
+    QueueToAdoptRead { from: String, result: KeyValueResult },
+    /// A fila adotada já está gravada sob o dono novo: a chave antiga pode sair.
+    QueueAdopted { from: String },
+    /// A fila de `owner` lida do disco, para tirar dela os eventos que um sync de antes
+    /// da troca de dono já entregou.
+    SyncedQueueRead { owner: String, sent: Vec<String>, result: KeyValueResult },
 }
 
 /// O que o desfazer devolve. Existe só entre a saída e o jogador deixar a tela.
@@ -139,6 +166,97 @@ pub struct LogoutSnapshot {
     pub nodes: Vec<crate::domain::SkillNode>,
     pub challenges: Vec<Challenge>,
     pub pending_events: Vec<GameEvent>,
+    pub queue_owner: String,
+}
+
+/// A abertura em andamento: o que a splash mostra.
+#[derive(Default, Clone)]
+pub struct Boot {
+    pub active: bool,
+    pub session: Option<crate::domain::BootLine>,
+    pub sync: Option<crate::domain::BootLine>,
+    pub awaiting_offline_choice: bool,
+    /// A espera pela sessão estourou e a abertura seguiu pelo caminho sem rede. A
+    /// resposta do refresh que chegar depois ainda vale — o servidor já trocou o token,
+    /// e jogá-la fora deixava no cofre um token revogado —, mas um erro de rede tardio
+    /// não roda o caminho sem rede de novo.
+    pub session_timed_out: bool,
+    /// Conta as tentativas ("Tentar de novo" começa outra).
+    pub attempt: u32,
+}
+
+impl Boot {
+    fn session_running(&self) -> bool {
+        self.active && matches!(&self.session, Some(l) if l.verdict == BootVerdict::Running)
+    }
+
+    fn sync_running(&self) -> bool {
+        self.active && matches!(&self.sync, Some(l) if l.verdict == BootVerdict::Running)
+    }
+
+    fn session_ok(&self) -> bool {
+        matches!(&self.session, Some(l) if l.verdict == BootVerdict::Ok)
+    }
+}
+
+fn boot_line(check: BootCheck, verdict: BootVerdict, detail: BootDetail, count: usize) -> BootLine {
+    BootLine { check, verdict, detail, count: count as u32 }
+}
+
+/// Quanto a abertura espera pela rede em cada verificação antes de seguir sem ela.
+/// Sem teto, o timeout padrão do `URLSession` prendia o jogador por um minuto.
+const BOOT_WAIT_SECS: u64 = 5;
+
+fn boot_watchdog(check: BootCheck, attempt: u32) -> Command<Effect, Event> {
+    let (tick, _handle) = Time::notify_after(std::time::Duration::from_secs(BOOT_WAIT_SECS));
+    tick.then_send(move |_| Event::BootWatchdogElapsed { check: check.clone(), attempt })
+}
+
+/// Dono da fila de quem joga sem conta.
+const GUEST_QUEUE_OWNER: &str = "guest";
+
+/// Onde a fila de `owner` mora no aparelho.
+///
+/// Era uma chave só, `offline_events`, e ela não dizia de quem era: entrar com outra
+/// conta depois de a sessão expirar subia a fila da primeira como se fosse da segunda.
+/// Dono vazio é essa chave antiga, que só existe até ser adotada.
+fn queue_key(owner: &str) -> String {
+    if owner.is_empty() {
+        "offline_events".to_string()
+    } else {
+        format!("offline_events:{}", owner)
+    }
+}
+
+/// Grava a fila do modelo sob a chave do dono dela.
+fn store_queue(model: &Model) -> KeyValueOperation {
+    KeyValueOperation::Set {
+        key: queue_key(&model.queue_owner),
+        value: serde_json::to_vec(&model.pending_events).unwrap_or_default(),
+    }
+}
+
+/// A sessão acabou (recusa do servidor, prazo local vencido): lê o e-mail dela para o
+/// login já vir preenchido.
+fn read_resume_email() -> Command<Effect, Event> {
+    Command::request_from_shell(KeyValueOperation::Get { key: "account_email".to_string() })
+        .then_send(Event::ResumeEmailRead)
+}
+
+/// A splash como a tela a desenha. A barra anda meia linha quando uma verificação
+/// começa e a outra meia quando ela fecha.
+fn boot_view(boot: &Boot) -> crate::domain::BootViewModel {
+    let lines: Vec<BootLine> = [&boot.session, &boot.sync].into_iter().flatten().cloned().collect();
+    let steps: u32 = lines
+        .iter()
+        .map(|l| if l.verdict == BootVerdict::Running { 1 } else { 2 })
+        .sum();
+    crate::domain::BootViewModel {
+        in_progress: boot.active,
+        progress: (steps * 100 / 4).min(100) as u8,
+        lines,
+        awaiting_offline_choice: boot.awaiting_offline_choice,
+    }
 }
 
 #[derive(Default, Clone)]
@@ -266,6 +384,25 @@ pub struct Model {
     /// Há um `notify_after` de bloqueio pendente no shell. Impede que dois 429 seguidos
     /// ponham dois relógios para bater ao mesmo tempo.
     pub cooldown_timer_running: bool,
+    pub boot: Boot,
+    /// De quem é a fila que está na memória: o id da conta, `guest`, ou vazio para a
+    /// chave antiga, sem dono.
+    pub queue_owner: String,
+    /// A fila do dono já veio do disco, com as adoções. Até lá, trocar de dono não tem
+    /// o que salvar, e o sync da abertura espera.
+    pub queue_loaded: bool,
+    /// Filas que o dono atual ainda vai adotar, na ordem.
+    pub queue_adoptions: Vec<String>,
+    /// E-mail da última sessão que acabou. É o que o login mostra preenchido.
+    pub resume_email: String,
+    /// Há um `/auth/refresh` no ar. Um segundo com o mesmo token, antes de o primeiro
+    /// voltar, é reuso para o servidor, e reuso derruba todas as sessões da conta.
+    pub refresh_in_flight: bool,
+    /// Os eventos que foram no sync que está no ar, pelo id, e de que dono é a fila.
+    /// A resposta é sobre eles: o que entrou na fila durante o envio fica. O id
+    /// sobrevive ao rebase, que só troca o elo.
+    pub sync_sent_ids: Vec<String>,
+    pub sync_owner: String,
 }
 
 /// Um bloqueio por 429: quantos segundos o servidor pediu e até quando isso vai.
@@ -437,6 +574,11 @@ pub struct ViewModel {
     pub account_restored_notice: bool,
     /// Estado do interruptor "Análise de uso".
     pub analytics_enabled: bool,
+    /// A splash da abertura.
+    pub boot: crate::domain::BootViewModel,
+    /// E-mail para o login já vir preenchido depois de uma sessão que acabou. Vazio
+    /// quando não há.
+    pub resume_email: String,
 }
 
 #[effect(facet_typegen)]
@@ -724,6 +866,117 @@ fn legal_acceptances(versions: &[(String, u32)], app_locale: &str) -> serde_json
     )
 }
 
+impl LogNApp {
+    /// Põe na memória a fila de `owner`, trazendo do disco a dele e, depois, as que ele
+    /// adota (`adopt`, na ordem).
+    ///
+    /// A fila que estava na memória não se perde: toda mudança nela já desceu para o
+    /// disco sob a chave do dono anterior. Trocar de dono é só ler outra chave.
+    fn claim_queue(&self, model: &mut Model, owner: &str, adopt: &[&str]) -> Command<Effect, Event> {
+        if model.queue_loaded && model.queue_owner == owner {
+            // Mesmo dono: nada a ler. A abertura, se estiver esperando a fila, segue.
+            return if model.boot.active { self.after_queue_loaded(model) } else { Command::done() };
+        }
+        model.queue_owner = owner.to_string();
+        model.queue_loaded = false;
+        model.queue_adoptions = adopt.iter().filter(|a| **a != owner).map(|a| a.to_string()).collect();
+        model.pending_events.clear();
+        model.last_hash.clear();
+        model.rebase_attempted = false;
+
+        let owner = owner.to_string();
+        Command::request_from_shell(KeyValueOperation::Get { key: queue_key(&owner) })
+            .then_send(move |result| Event::OfflineQueueRestored { owner: owner.clone(), result })
+    }
+
+    /// Lê a próxima fila a adotar, ou fecha o carregamento.
+    fn next_adoption(&self, model: &mut Model) -> Command<Effect, Event> {
+        if model.queue_adoptions.is_empty() {
+            model.queue_loaded = true;
+            return self.after_queue_loaded(model);
+        }
+        let from = model.queue_adoptions.remove(0);
+        Command::request_from_shell(KeyValueOperation::Get { key: queue_key(&from) })
+            .then_send(move |result| Event::QueueToAdoptRead { from: from.clone(), result })
+    }
+
+    /// A fila do dono está inteira na memória.
+    fn after_queue_loaded(&self, model: &mut Model) -> Command<Effect, Event> {
+        if model.boot.active {
+            if !model.boot.session_ok() {
+                return render::render();
+            }
+            if model.access_token.is_some() {
+                return self.boot_start_sync(model);
+            }
+            // Sessão de pé sem rede. Com fila, a splash para e deixa o jogador escolher
+            // entre tentar de novo e entrar com ela no aparelho. Sem fila não há o que
+            // esperar da rede: entra direto, e a tarja de sem rede avisa.
+            let queued = model.pending_events.len();
+            model.boot.sync = Some(boot_line(BootCheck::Sync, BootVerdict::Warn, BootDetail::NoNetwork, queued));
+            if queued == 0 {
+                return self.finish_boot(model);
+            }
+            model.boot.awaiting_offline_choice = true;
+            return render::render();
+        }
+        // Fora da abertura (acabou de entrar, adotou a fila do visitante): o que veio
+        // junto sobe logo.
+        if model.access_token.is_some() && !model.pending_events.is_empty() {
+            return self.update(Event::SyncNow, model).and(render::render());
+        }
+        render::render()
+    }
+
+    fn boot_start_sync(&self, model: &mut Model) -> Command<Effect, Event> {
+        let queued = model.pending_events.len();
+        if queued == 0 {
+            model.boot.sync = Some(boot_line(BootCheck::Sync, BootVerdict::Ok, BootDetail::NothingToSend, 0));
+            return self.finish_boot(model);
+        }
+        model.boot.sync = Some(boot_line(BootCheck::Sync, BootVerdict::Running, BootDetail::Sending, queued));
+        let sync = self.update(Event::SyncNow, model);
+        // `SyncNow` pode recusar sem ir à rede (sem id de conta). Aí a linha fecha já.
+        if !model.is_syncing && model.boot.sync_running() {
+            model.boot.sync = Some(boot_line(BootCheck::Sync, BootVerdict::Warn, BootDetail::Rejected, 0));
+            return sync.and(self.finish_boot(model));
+        }
+        sync.and(boot_watchdog(BootCheck::Sync, model.boot.attempt)).and(render::render())
+    }
+
+    /// Fecha a linha do sync da abertura, se ela estava rodando.
+    fn settle_boot_sync(&self, model: &mut Model, verdict: BootVerdict, detail: BootDetail, count: usize) -> Command<Effect, Event> {
+        if !model.boot.sync_running() {
+            return Command::done();
+        }
+        model.boot.sync = Some(boot_line(BootCheck::Sync, verdict, detail, count));
+        self.finish_boot(model)
+    }
+
+    /// A última linha fechou: a splash sai. Não há duração mínima.
+    fn finish_boot(&self, model: &mut Model) -> Command<Effect, Event> {
+        model.boot.active = false;
+        model.boot.awaiting_offline_choice = false;
+        render::render()
+    }
+
+    /// A sessão acabou (o servidor recusou, ou o prazo local venceu). A splash fecha na
+    /// linha da sessão, o login vem com o e-mail dela, e a fila na memória passa a ser a
+    /// do visitante — a da conta fica no disco, esperando ela voltar.
+    fn session_ended(&self, model: &mut Model) -> Command<Effect, Event> {
+        let boot = if model.boot.active {
+            model.boot.session = Some(boot_line(BootCheck::Session, BootVerdict::Fail, BootDetail::SessionEnded, 0));
+            model.boot.sync = None;
+            self.finish_boot(model)
+        } else {
+            Command::done()
+        };
+        read_resume_email()
+            .and(self.claim_queue(model, GUEST_QUEUE_OWNER, &[""]))
+            .and(boot)
+    }
+}
+
 impl App for LogNApp {
     type Event = Event;
     type Model = Model;
@@ -803,6 +1056,7 @@ impl App for LogNApp {
                             model.status_key = StatusKey::Silent;
                             // Entrar dentro da carência cancelou a exclusão pedida.
                             model.account_restored_notice = account_restored(&response.body);
+                            model.resume_email.clear();
 
                             // Salva refresh token no Keychain
                             return Command::request_from_shell(KeyValueOperation::Set {
@@ -839,7 +1093,10 @@ impl App for LogNApp {
             Event::ContinueAsGuest => {
                 model.is_guest = true;
                 model.status = "Modo Visitante".to_string();
-                self.update(Event::FetchNodes, model)
+                // A sessão que caiu no meio do jogo deixou a fila dela na memória, e o
+                // visitante não pode gravar por cima.
+                self.claim_queue(model, GUEST_QUEUE_OWNER, &[""])
+                    .and(self.update(Event::FetchNodes, model))
             }
 
             Event::TokenStored(_) => {
@@ -881,25 +1138,49 @@ impl App for LogNApp {
             }
 
             Event::SessionExpiryStored(_) => {
-                // Entrou agora: identifica na telemetria e busca o que já está no servidor.
-                // Com a análise de uso desligada, não identifica: o que o SDK ainda
-                // manda (erros, medições) sai com identificador anônimo.
+                // Entrou agora (login, cadastro ou troca de senha). O id da conta desce
+                // para o aparelho — é ele que diz de quem é a fila numa abertura sem
+                // rede — e a fila passa a ser a desta conta. Quem jogou como visitante
+                // antes de entrar leva o que jogou: a fila dele é adotada.
+                //
+                // A troca vem antes da busca do progresso: o XP que o servidor devolve
+                // soma a fila que está na memória, e ela já tem de ser a desta conta.
+                let owner = model.user_id.clone();
+                let queue = if owner.is_empty() {
+                    Command::done()
+                } else {
+                    Command::request_from_shell(KeyValueOperation::Set {
+                        key: "account_user_id".to_string(),
+                        value: owner.clone().into_bytes(),
+                    })
+                    .then_send(|_| Event::Ping)
+                    .and(self.claim_queue(model, &owner, &[GUEST_QUEUE_OWNER, ""]))
+                };
+
+                // Identifica na telemetria e busca o que já está no servidor. Com a
+                // análise de uso desligada, não identifica: o que o SDK ainda manda
+                // (erros, medições) sai com identificador anônimo.
                 if model.analytics_disabled {
-                    return self.update(Event::FetchProgress, model);
+                    return queue.and(self.update(Event::FetchProgress, model));
                 }
-                Command::request_from_shell(crate::domain::TelemetryOperation::Identify { user_id: model.user_id.clone() })
-                    .then_send(|_| Event::TelemetrySent)
+                queue
+                    .and(Command::request_from_shell(crate::domain::TelemetryOperation::Identify { user_id: model.user_id.clone() })
+                        .then_send(|_| Event::TelemetrySent))
                     .and(self.update(Event::FetchProgress, model))
             }
 
             Event::Logout => {
                 model.status = "Logging out".to_string();
                 model.status_key = StatusKey::SigningOut;
+                model.resume_email.clear();
                 Command::request_from_shell(KeyValueOperation::Delete { key: "refresh_token".into() })
                     .then_send(Event::TokenCleared)
                     .and(Command::request_from_shell(KeyValueOperation::Delete { key: "account_email".into() }).then_send(|_| Event::Ping))
+                    .and(Command::request_from_shell(KeyValueOperation::Delete { key: "account_user_id".into() }).then_send(|_| Event::Ping))
                     .and(Command::request_from_shell(KeyValueOperation::Delete { key: "session_expires_at".into() }).then_send(|_| Event::Ping))
-                    .and(Command::request_from_shell(KeyValueOperation::Delete { key: "offline_events".into() }).then_send(|_| Event::Ping))
+                    // Só a fila de quem está saindo. A de outra conta, que tenha ficado
+                    // no aparelho, espera a dona dela voltar.
+                    .and(Command::request_from_shell(KeyValueOperation::Delete { key: queue_key(&model.queue_owner) }).then_send(|_| Event::Ping))
                     .and(Command::request_from_shell(KeyValueOperation::Delete { key: "offline_snapshot".into() }).then_send(|_| Event::Ping))
                     // Depois de sair, os eventos não seguem presos ao id da conta, e quem
                     // entrar em seguida neste aparelho começa limpo.
@@ -925,6 +1206,7 @@ impl App for LogNApp {
                     nodes: std::mem::take(&mut model.nodes),
                     challenges: std::mem::take(&mut model.challenges),
                     pending_events: std::mem::take(&mut model.pending_events),
+                    queue_owner: model.queue_owner.clone(),
                 });
 
                 model.is_guest = false;
@@ -935,7 +1217,8 @@ impl App for LogNApp {
                 // aqui fazia a tela de login abrir com "Logged out successfully" em
                 // vermelho, como se sair fosse um erro.
                 model.status_key = StatusKey::Silent;
-                render::render()
+                // Quem jogar em seguida neste aparelho joga como visitante.
+                self.claim_queue(model, GUEST_QUEUE_OWNER, &[""]).and(render::render())
             }
 
             Event::UndoLogout => {
@@ -950,19 +1233,42 @@ impl App for LogNApp {
                 model.nodes = snapshot.nodes;
                 model.challenges = snapshot.challenges;
                 model.pending_events = snapshot.pending_events;
+                model.last_hash = model.pending_events.last().map(|e| e.current_hash.clone()).unwrap_or_default();
+                // A fila do visitante que a saída começou a carregar chega depois e é
+                // descartada: o dono voltou a ser quem saiu.
+                model.queue_owner = snapshot.queue_owner;
+                model.queue_loaded = true;
+                model.queue_adoptions.clear();
                 model.status_key = StatusKey::Silent;
 
-                // A saída apagou o refresh token do cofre. Sem regravar, o desfazer
-                // durava até o app fechar: a abertura seguinte caía no login.
-                match snapshot.refresh_token {
+                // A saída apagou do aparelho a sessão inteira, não só o token. Regravar
+                // só o refresh token deixava a fila, o e-mail e o prazo na memória: fechar
+                // o app depois do desfazer perdia a fila, e a abertura seguinte sem rede
+                // caía no login por falta de prazo.
+                let set = |key: &str, value: Vec<u8>| {
+                    Command::request_from_shell(KeyValueOperation::Set { key: key.to_string(), value })
+                        .then_send(|_| Event::Ping)
+                };
+                let token = match snapshot.refresh_token {
                     Some(token) => Command::request_from_shell(KeyValueOperation::Set {
                         key: "refresh_token".to_string(),
                         value: token,
                     })
-                    .then_send(Event::LogoutUndone)
-                    .and(render::render()),
-                    None => render::render(),
-                }
+                    .then_send(Event::LogoutUndone),
+                    None => Command::done(),
+                };
+                let account = if snapshot.was_guest {
+                    Command::done()
+                } else {
+                    set("account_email", model.account_email.clone().into_bytes())
+                        .and(set("account_user_id", model.user_id.clone().into_bytes()))
+                        .and(set("session_expires_at", model.session_expires_at.to_string().into_bytes()))
+                        .and(save_offline_snapshot(model))
+                };
+                token
+                    .and(account)
+                    .and(Command::request_from_shell(store_queue(model)).then_send(|_| Event::Ping))
+                    .and(render::render())
             }
 
             Event::LogoutUndone(_) => render::render(),
@@ -1068,6 +1374,7 @@ impl App for LogNApp {
                             }],
                             body: serde_json::to_vec(&body).unwrap_or_default(),
                         };
+                        model.refresh_in_flight = true;
                         return Command::request_from_shell(request).then_send(Event::RefreshCompleted);
                     }
                 }
@@ -1075,10 +1382,18 @@ impl App for LogNApp {
                 model.status_key = StatusKey::Silent;
                 model.access_token = None;
                 model.is_authenticating = false;
+
+                // Sem token no aparelho não há sessão a conferir: a abertura acaba aqui,
+                // antes de a splash ter o que mostrar, e quem joga agora é o visitante.
+                if model.boot.session_running() {
+                    model.boot.session = None;
+                    return self.claim_queue(model, GUEST_QUEUE_OWNER, &[""]).and(self.finish_boot(model));
+                }
                 render::render()
             }
 
             Event::RefreshCompleted(result) => {
+                model.refresh_in_flight = false;
                 match result {
                     HttpResult::Ok(response) if response.status == 200 => {
                         #[derive(Deserialize)]
@@ -1105,6 +1420,30 @@ impl App for LogNApp {
                             // Retomar a sessão é invisível por definição: nada a dizer.
                             model.status_key = StatusKey::Silent;
 
+                            // Na abertura, a linha da sessão fecha aqui — mesmo que a
+                            // espera já tenha estourado e a splash esteja parada no "sem
+                            // rede": a rede voltou, e a abertura segue para o sync.
+                            if model.boot.active {
+                                model.boot.session = Some(boot_line(BootCheck::Session, BootVerdict::Ok, BootDetail::TokenRenewed, 0));
+                                model.boot.sync = None;
+                                model.boot.awaiting_offline_choice = false;
+                            }
+
+                            // O id desce para o aparelho a cada refresh: a abertura sem
+                            // rede precisa dele para saber de quem é a fila. E a fila
+                            // passa a ser a desta conta, com a da chave antiga adotada.
+                            let owner = model.user_id.clone();
+                            let queue = if owner.is_empty() {
+                                Command::done()
+                            } else {
+                                Command::request_from_shell(KeyValueOperation::Set {
+                                    key: "account_user_id".to_string(),
+                                    value: owner.clone().into_bytes(),
+                                })
+                                .then_send(|_| Event::Ping)
+                                .and(self.claim_queue(model, &owner, &[""]))
+                            };
+
                             // O servidor rotaciona o refresh token a cada uso. Guardar o
                             // novo não é opcional: na abertura seguinte o antigo já está
                             // revogado, e apresentá-lo desloga quem não fez nada errado.
@@ -1116,14 +1455,18 @@ impl App for LogNApp {
                                     key: "refresh_token".to_string(),
                                     value: data.refresh_token.into_bytes(),
                                 })
-                                .then_send(Event::RotatedTokenStored);
+                                .then_send(Event::RotatedTokenStored)
+                                .and(queue)
+                                .and(render::render());
                             }
 
                             // O `/refresh` devolve só o token; quem a sessão é fica no cofre.
                             return Command::request_from_shell(KeyValueOperation::Get {
                                 key: "account_email".to_string(),
                             })
-                            .then_send(Event::AccountEmailRead);
+                            .then_send(Event::AccountEmailRead)
+                            .and(queue)
+                            .and(render::render());
                         } else {
                             model.status = "Failed to parse refresh response".to_string();
                         }
@@ -1133,12 +1476,20 @@ impl App for LogNApp {
                     // prazo. O 429 caía no braço de baixo e deslogava quem não tinha
                     // feito nada: bastava o limite por IP estourar num Wi-Fi cheio.
                     HttpResult::Ok(response) if response.status == 429 => {
+                        // A espera da abertura já estourou e mandou pelo caminho sem
+                        // rede: não há o que refazer.
+                        if model.boot.active && model.boot.session_timed_out {
+                            return render::render();
+                        }
                         return Command::request_from_shell(KeyValueOperation::Get {
                             key: "session_expires_at".to_string(),
                         })
                         .then_send(Event::OfflineSessionChecked);
                     }
                     HttpResult::Err(_) => {
+                        if model.boot.active && model.boot.session_timed_out {
+                            return render::render();
+                        }
                         return Command::request_from_shell(KeyValueOperation::Get {
                             key: "session_expires_at".to_string(),
                         })
@@ -1151,6 +1502,7 @@ impl App for LogNApp {
                         model.session_offline = false;
                         model.session_expires_at = 0;
                         model.is_authenticating = false;
+                        return self.session_ended(model).and(render::render());
                     }
                 }
                 render::render()
@@ -1172,19 +1524,31 @@ impl App for LogNApp {
                     model.is_guest = false;
                     model.status_key = StatusKey::Silent;
 
+                    // Na abertura, a fila de quem é a sessão sai do id guardado no
+                    // aparelho: sem rede, o servidor não diz.
+                    let owner = if model.boot.active {
+                        model.boot.session = Some(boot_line(BootCheck::Session, BootVerdict::Ok, BootDetail::LocalTokenValid, 0));
+                        Command::request_from_shell(KeyValueOperation::Get { key: "account_user_id".to_string() })
+                            .then_send(Event::QueueOwnerRead)
+                    } else {
+                        Command::done()
+                    };
+
                     // Offline não há o que buscar: devolve o retrato da última vez que
                     // o servidor respondeu — o XP e a trilha que são desta conta.
                     return Command::request_from_shell(KeyValueOperation::Get {
                         key: "offline_snapshot".to_string(),
                     })
-                    .then_send(Event::SnapshotRestored);
+                    .then_send(Event::SnapshotRestored)
+                    .and(owner)
+                    .and(render::render());
                 }
 
                 // Sem prazo guardado, ou prazo vencido: não dá para afirmar que há sessão.
                 model.status_key = StatusKey::Silent;
                 model.access_token = None;
                 model.session_offline = false;
-                render::render()
+                self.session_ended(model).and(render::render())
             }
 
             Event::AccountEmailRead(result) => {
@@ -1565,14 +1929,17 @@ Event::FetchChallenges => {
                         let delete = |key: &str| {
                             Command::request_from_shell(KeyValueOperation::Delete { key: key.into() }).then_send(|_| Event::Ping)
                         };
+                        let queue = queue_key(&model.queue_owner);
                         return delete("refresh_token")
                             .and(delete("account_email"))
+                            .and(delete("account_user_id"))
                             .and(delete("session_expires_at"))
-                            .and(delete("offline_events"))
+                            .and(delete(&queue))
                             .and(delete("offline_snapshot"))
                             // O aparelho para de mandar eventos com o id da conta apagada;
                             // os que já estão no PostHog somem pela retenção de 30 dias.
                             .and(Command::request_from_shell(TelemetryOperation::Reset).then_send(|_| Event::TelemetrySent))
+                            .and(self.claim_queue(model, GUEST_QUEUE_OWNER, &[""]))
                             .and(render::render());
                     }
                     HttpResult::Ok(response) if response.status == 401 => {
@@ -1770,6 +2137,8 @@ Event::FetchChallenges => {
                 model.is_syncing = true;
                 model.status = "Syncing".to_string();
                 model.status_key = StatusKey::Syncing;
+                model.sync_sent_ids = model.pending_events.iter().map(|e| e.id.clone()).collect();
+                model.sync_owner = model.queue_owner.clone();
 
                 let payload = SyncPayload {
                     user_id: model.user_id.clone(),
@@ -1790,36 +2159,66 @@ Event::FetchChallenges => {
             }
             Event::SyncCompleted(result) => {
                 model.is_syncing = false;
+                let queued = model.pending_events.len();
                 match result {
                     HttpResult::Ok(response) => {
                         if response.status == 200 {
                             model.status_key = StatusKey::Silent;
-                            model.pending_events.clear();
                             model.rebase_attempted = false;
+                            let sent = std::mem::take(&mut model.sync_sent_ids);
+                            let boot = self.settle_boot_sync(model, BootVerdict::Ok, BootDetail::Sent, sent.len());
+
+                            // A fila mudou de dono durante o envio (a sessão caiu, alguém
+                            // entrou): os enviados saem também da fila do dono que os
+                            // mandou, lida do disco. Sem isto ela os mandava de novo
+                            // quando ele voltasse. Na memória eles só estão se o dono
+                            // novo adotou essa fila, e o `retain` abaixo cuida disso.
+                            let owner = std::mem::take(&mut model.sync_owner);
+                            let previous_owner = if owner != model.queue_owner {
+                                let sent = sent.clone();
+                                Command::request_from_shell(KeyValueOperation::Get { key: queue_key(&owner) })
+                                    .then_send(move |result| Event::SyncedQueueRead {
+                                        owner: owner.clone(),
+                                        sent: sent.clone(),
+                                        result,
+                                    })
+                            } else {
+                                Command::done()
+                            };
+
+                            // Só sai da fila o que foi no envio. Limpar tudo apagava a
+                            // resposta dada enquanto o sync estava no ar, e ela nunca subia.
+                            model.pending_events.retain(|e| !sent.contains(&e.id));
+                            let boot = boot.and(previous_owner);
 
                             // O topo que o servidor confirmou vira o ponto de partida do
-                            // próximo evento, e desce para o disco junto com a fila vazia.
+                            // próximo evento. Se sobrou fila, o topo é o dela: ela já foi
+                            // encadeada a partir do último enviado.
                             #[derive(Deserialize)]
                             struct SyncOk { new_top: String }
-                            if let Ok(ok) = serde_json::from_slice::<SyncOk>(&response.body) {
-                                if !ok.new_top.is_empty() {
-                                    model.last_hash = ok.new_top;
+                            if model.pending_events.is_empty() {
+                                if let Ok(ok) = serde_json::from_slice::<SyncOk>(&response.body) {
+                                    if !ok.new_top.is_empty() {
+                                        model.last_hash = ok.new_top;
+                                    }
                                 }
                             }
 
-                            // Flush the empty queue to disk so it doesn't duplicate
-                            let bytes = serde_json::to_vec(&model.pending_events).unwrap_or_default();
-                            let flush = Command::request_from_shell(KeyValueOperation::Set {
-                                key: "offline_events".to_string(),
-                                value: bytes,
-                            }).then_send(|_| Event::Ping); // Ping just as a dummy no-op event
+                            // A fila que sobrou desce para o disco, sem os enviados.
+                            let flush = Command::request_from_shell(store_queue(model))
+                                .then_send(|_| Event::Ping);
 
+                            // Entrou evento durante o envio: ele sobe agora. A saída que
+                            // esperava o sync continua esperando.
+                            if !model.pending_events.is_empty() {
+                                return flush.and(boot).and(self.update(Event::SyncNow, model));
+                            }
                             if model.logout_after_sync {
                                 model.logout_after_sync = false;
                                 // A fila subiu: agora sair é seguro.
-                                return flush.and(self.update(Event::Logout, model));
+                                return flush.and(boot).and(self.update(Event::Logout, model));
                             }
-                            return flush;
+                            return flush.and(boot);
                         } else if response.status == 409 {
                             // Rebase: o conteúdo da fila continua bom, só o
                             // encadeamento é que partiu do lugar errado. Reencadeia a
@@ -1840,12 +2239,8 @@ Event::FetchChallenges => {
                                     .current_hash
                                     .clone();
 
-                                let bytes = serde_json::to_vec(&model.pending_events).unwrap_or_default();
-                                return Command::request_from_shell(KeyValueOperation::Set {
-                                    key: "offline_events".to_string(),
-                                    value: bytes,
-                                })
-                                .then_send(|_| Event::SyncNow);
+                                return Command::request_from_shell(store_queue(model))
+                                    .then_send(|_| Event::SyncNow);
                             }
 
                             model.status_key = StatusKey::SyncDiverged;
@@ -1859,11 +2254,17 @@ Event::FetchChallenges => {
                     }
                     HttpResult::Err(_err) => {
                         model.status_key = StatusKey::SyncOffline;
+                        model.logout_after_sync = false;
+                        return self
+                            .settle_boot_sync(model, BootVerdict::Warn, BootDetail::NoNetwork, queued)
+                            .and(render::render());
                     }
                 }
-                // Falhou: fica. Sair aqui apagaria a fila que não subiu.
+                // Falhou: fica. Sair aqui apagaria a fila que não subiu. Na abertura, a
+                // linha do sync fecha em aviso: não segura o jogador.
                 model.logout_after_sync = false;
-                render::render()
+                self.settle_boot_sync(model, BootVerdict::Warn, BootDetail::Rejected, 0)
+                    .and(render::render())
             }
             Event::QueueSavedForSync(_) => {
                 // Análise de uso desligada: acerto e erro de desafio não viram evento.
@@ -2049,38 +2450,17 @@ Event::FetchChallenges => {
                 //
                 // Só empilhar na memória não basta: fechar o app entre a resposta e o
                 // sync apagava tudo — o oposto de offline-first.
-                let bytes = serde_json::to_vec(&model.pending_events).unwrap_or_default();
-                Command::request_from_shell(KeyValueOperation::Set {
-                    key: "offline_events".to_string(),
-                    value: bytes,
-                })
-                .then_send(Event::QueueSavedForSync)
-                .and(render::render())
+                Command::request_from_shell(store_queue(model))
+                    .then_send(Event::QueueSavedForSync)
+                    .and(render::render())
             }
 
-            // Recupera a fila que ficou no disco de uma sessão anterior, e junto com ela
-            // as origens já lidas — as duas são estado de disco e chegam pelo mesmo
-            // gatilho de abertura, então não vale um evento a mais no shell.
-            Event::RestoreOfflineQueue => {
-                Command::request_from_shell(KeyValueOperation::Get {
-                    key: "offline_events".to_string(),
-                })
-                .then_send(Event::OfflineQueueRestored)
-                .and(
-                    Command::request_from_shell(KeyValueOperation::Get {
-                        key: "origins_seen".to_string(),
-                    })
-                    .then_send(Event::OriginsSeenRestored),
-                )
-                .and(
-                    Command::request_from_shell(KeyValueOperation::Get {
-                        key: "review_milestones_fired".to_string(),
-                    })
-                    .then_send(Event::ReviewMilestonesRestored),
-                )
-            }
-
-            Event::OfflineQueueRestored(result) => {
+            // A fila de um dono voltou do disco. Se o dono mudou enquanto ela vinha (a
+            // sessão caiu, alguém entrou), a resposta é de outra fila e fica de fora.
+            Event::OfflineQueueRestored { owner, result } => {
+                if owner != model.queue_owner || model.queue_loaded {
+                    return Command::done();
+                }
                 if let KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } = result {
                     if let Ok(queue) = serde_json::from_slice::<Vec<GameEvent>>(&bytes) {
                         if !queue.is_empty() {
@@ -2092,7 +2472,152 @@ Event::FetchChallenges => {
                         }
                     }
                 }
+                self.next_adoption(model).and(render::render())
+            }
+
+            // A fila de outro dono entra no fim da do dono atual, reencadeada a partir
+            // do topo dela: o conteúdo é o mesmo, só o elo muda — o rebase do Mini-Git.
+            Event::QueueToAdoptRead { from, result } => {
+                if model.queue_loaded {
+                    return Command::done();
+                }
+                let adopted = match result {
+                    KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } => {
+                        serde_json::from_slice::<Vec<GameEvent>>(&bytes).unwrap_or_default()
+                    }
+                    _ => vec![],
+                };
+                if adopted.is_empty() {
+                    return self.next_adoption(model);
+                }
+                let adopted = match model.pending_events.last() {
+                    Some(top) => GameEvent::rebase(&adopted, &top.current_hash),
+                    None => adopted,
+                };
+                model.pending_events.extend(adopted);
+                model.last_hash = model.pending_events[model.pending_events.len() - 1].current_hash.clone();
+                credit_queued_answers(model);
+
+                // Grava sob o dono novo antes de apagar a chave velha: fechar o app no
+                // meio duplica a fila, nunca a perde.
+                Command::request_from_shell(store_queue(model))
+                    .then_send(move |_| Event::QueueAdopted { from: from.clone() })
+                    .and(render::render())
+            }
+
+            Event::SyncedQueueRead { owner, sent, result } => {
+                let KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } = result else {
+                    return Command::done();
+                };
+                let mut queue = serde_json::from_slice::<Vec<GameEvent>>(&bytes).unwrap_or_default();
+                queue.retain(|e| !sent.contains(&e.id));
+                Command::request_from_shell(KeyValueOperation::Set {
+                    key: queue_key(&owner),
+                    value: serde_json::to_vec(&queue).unwrap_or_default(),
+                })
+                .then_send(|_| Event::Ping)
+            }
+
+            Event::QueueAdopted { from } => {
+                Command::request_from_shell(KeyValueOperation::Delete { key: queue_key(&from) })
+                    .then_send(|_| Event::Ping)
+                    .and(self.next_adoption(model))
+            }
+
+            Event::QueueOwnerRead(result) => {
+                let owner = match result {
+                    KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } => {
+                        String::from_utf8(bytes).unwrap_or_default()
+                    }
+                    _ => String::new(),
+                };
+                // Aparelho que ainda não guardava o id: a fila segue na chave antiga até
+                // o servidor dizer de quem ela é.
+                if owner.is_empty() {
+                    return self.claim_queue(model, "", &[]);
+                }
+                if model.user_id.is_empty() {
+                    model.user_id = owner.clone();
+                }
+                self.claim_queue(model, &owner, &[""])
+            }
+
+            Event::ResumeEmailRead(result) => {
+                if let KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } = result {
+                    model.resume_email = String::from_utf8(bytes).unwrap_or_default();
+                }
                 render::render()
+            }
+
+            // A abertura. A splash mostra cada verificação numa linha: a sessão, e depois
+            // o envio da fila de quem é a sessão. Junto vem o resto do estado de disco
+            // que a abertura sempre trouxe.
+            Event::StartBoot => {
+                let attempt = model.boot.attempt + 1;
+                model.boot = Boot {
+                    active: true,
+                    session: Some(boot_line(BootCheck::Session, BootVerdict::Running, BootDetail::Checking, 0)),
+                    attempt,
+                    ..Boot::default()
+                };
+                // Tentar de novo com o refresh anterior ainda no ar espera a resposta
+                // dele, em vez de mandar o mesmo token outra vez.
+                let session = if model.refresh_in_flight {
+                    Command::done()
+                } else {
+                    Command::request_from_shell(KeyValueOperation::Get { key: "refresh_token".to_string() })
+                        .then_send(Event::TokenRead)
+                };
+                session
+                    .and(
+                        Command::request_from_shell(KeyValueOperation::Get {
+                            key: "origins_seen".to_string(),
+                        })
+                        .then_send(Event::OriginsSeenRestored),
+                    )
+                    .and(
+                        Command::request_from_shell(KeyValueOperation::Get {
+                            key: "review_milestones_fired".to_string(),
+                        })
+                        .then_send(Event::ReviewMilestonesRestored),
+                    )
+                    .and(boot_watchdog(BootCheck::Session, attempt))
+                    .and(render::render())
+            }
+
+            Event::BootWatchdogElapsed { attempt, .. } if attempt != model.boot.attempt => Command::done(),
+            Event::BootWatchdogElapsed { check, .. } => match check {
+                // A rede não respondeu a tempo: segue como se não houvesse rede. O
+                // refresh continua no ar e, se voltar, ainda vale.
+                BootCheck::Session => {
+                    if !model.boot.session_running() {
+                        return Command::done();
+                    }
+                    model.boot.session_timed_out = true;
+                    Command::request_from_shell(KeyValueOperation::Get {
+                        key: "session_expires_at".to_string(),
+                    })
+                    .then_send(Event::OfflineSessionChecked)
+                }
+                // O envio demorou: a splash sai e ele termina por trás.
+                BootCheck::Sync => {
+                    let queued = model.pending_events.len();
+                    self.settle_boot_sync(model, BootVerdict::Warn, BootDetail::StillSending, queued)
+                }
+            },
+
+            Event::RetryBoot => {
+                if !model.boot.active || !model.boot.awaiting_offline_choice {
+                    return Command::done();
+                }
+                self.update(Event::StartBoot, model)
+            }
+
+            Event::ContinueOffline => {
+                if !model.boot.active || !model.boot.awaiting_offline_choice {
+                    return Command::done();
+                }
+                self.finish_boot(model)
             }
 
             // A semente só preenche o que está vazio. Retrato guardado e resposta do
@@ -2212,12 +2737,8 @@ Event::FetchChallenges => {
 
                 // Não passa por `QueueSavedForSync`: ele manda telemetria de resposta
                 // lendo o último evento da fila, e a saída não é resposta.
-                let bytes = serde_json::to_vec(&model.pending_events).unwrap_or_default();
-                Command::request_from_shell(KeyValueOperation::Set {
-                    key: "offline_events".to_string(),
-                    value: bytes,
-                })
-                .then_send(|_| Event::SyncNow)
+                Command::request_from_shell(store_queue(model))
+                    .then_send(|_| Event::SyncNow)
             }
 
             // O selo de origem abre o cartão de homenagem. A primeira leitura de cada
@@ -2454,6 +2975,8 @@ Event::FetchChallenges => {
             deletion_purge_after: model.deletion_purge_after,
             account_restored_notice: model.account_restored_notice,
             analytics_enabled: !model.analytics_disabled,
+            boot: boot_view(&model.boot),
+            resume_email: model.resume_email.clone(),
         }
     }
 }
@@ -2835,11 +3358,14 @@ mod tests {
             1, "0".repeat(64))];
 
         let _ = app.update(
-            Event::OfflineQueueRestored(KeyValueResult::Ok {
-                response: KeyValueResponse::Get {
-                    value: crux_kv::Value::Bytes(serde_json::to_vec(&queue).unwrap()),
+            Event::OfflineQueueRestored {
+                owner: String::new(),
+                result: KeyValueResult::Ok {
+                    response: KeyValueResponse::Get {
+                        value: crux_kv::Value::Bytes(serde_json::to_vec(&queue).unwrap()),
+                    },
                 },
-            }),
+            },
             &mut model,
         );
 
@@ -3547,7 +4073,7 @@ mod tests {
         let result = KeyValueResult::Ok {
             response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(stored) },
         };
-        let _ = app.update(Event::OfflineQueueRestored(result), &mut fresh);
+        let _ = app.update(Event::OfflineQueueRestored { owner: String::new(), result }, &mut fresh);
 
         assert_eq!(fresh.pending_events.len(), saved.len(), "a fila volta inteira");
         assert_eq!(
@@ -3713,17 +4239,16 @@ mod tests {
             &mut model,
         );
 
-        let req = cmd.expect_one_effect();
-        match req {
-            Effect::SecureStore(r) => match r.operation {
-                KeyValueOperation::Set { key, value } => {
-                    assert_eq!(key, "refresh_token");
-                    assert_eq!(String::from_utf8(value).unwrap(), "refresh_rotacionado");
-                }
-                _ => panic!("esperava gravar o refresh token rotacionado"),
-            },
-            _ => panic!("esperava efeito de cofre"),
-        }
+        let effects = kv_ops(&mut cmd);
+        let stored = effects.iter().find_map(|op| match op {
+            KeyValueOperation::Set { key, value } if key == "refresh_token" => Some(value.clone()),
+            _ => None,
+        });
+        assert_eq!(stored.as_deref(), Some(&b"refresh_rotacionado"[..]), "esperava gravar o refresh token rotacionado");
+        // E o id da conta desce junto: é ele que diz de quem é a fila sem rede.
+        assert!(effects.iter().any(|op| matches!(op,
+            KeyValueOperation::Set { key, value } if key == "account_user_id"
+                && value == b"66b670a2-41d2-4ba2-b863-78735b69ec7c")));
 
         assert_eq!(model.session_expires_at, 1_792_600_000);
         assert!(!model.session_offline, "falou com o servidor: a sessão está confirmada");
@@ -3951,12 +4476,10 @@ mod tests {
 
         // O refresh só devolve o token: antes de repetir o pedido o core repõe de quem
         // é a sessão, senão o perfil abre sem nome depois de um 401.
-        let kv_req = cmd.expect_one_effect();
-        if let Effect::SecureStore(r) = kv_req {
-            assert!(matches!(r.operation, KeyValueOperation::Get { ref key } if key == "account_email"));
-        } else {
-            panic!("Expected SecureStore effect reading the account e-mail");
-        }
+        assert!(
+            kv_ops(&mut cmd).iter().any(|op| matches!(op, KeyValueOperation::Get { key } if key == "account_email")),
+            "Expected SecureStore effect reading the account e-mail"
+        );
 
         let kv_result = KeyValueResult::Ok {
             response: KeyValueResponse::Get { value: crux_kv::Value::Bytes("jogador@example.com".into()) },
@@ -3998,6 +4521,613 @@ mod tests {
             .resolve(crux_time::TimeResponse::Now { instant: crux_time::Instant::new(now, 0) })
             .unwrap();
         cmd.events().next().expect("a hora volta como evento")
+    }
+
+    /// As operações de cofre que o comando pediu, na ordem.
+    fn kv_ops(cmd: &mut Command<Effect, Event>) -> Vec<KeyValueOperation> {
+        cmd.effects()
+            .filter_map(|e| match e {
+                Effect::SecureStore(r) => Some(r.operation.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn kv_bytes(bytes: Vec<u8>) -> KeyValueResult {
+        KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } }
+    }
+
+    fn kv_empty() -> KeyValueResult {
+        KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::None } }
+    }
+
+    fn http(status: u16, body: serde_json::Value) -> HttpResult {
+        HttpResult::Ok(crux_http::protocol::HttpResponse {
+            status,
+            headers: vec![],
+            body: serde_json::to_vec(&body).unwrap(),
+        })
+    }
+
+    const USER_A: &str = "66b670a2-41d2-4ba2-b863-78735b69ec7c";
+    const USER_B: &str = "0b7c1e53-9a0a-4d3f-8f5e-2d1c0a9b8e77";
+
+    fn answer(id: &str, previous: &str) -> GameEvent {
+        GameEvent::new(
+            id.into(), "MATCH_ANSWER".into(),
+            format!(r#"{{"is_correct":false,"challenge_id":"{id}"}}"#), 1_700_000_000, previous.into(),
+        )
+    }
+
+    fn queue_bytes(events: &[GameEvent]) -> Vec<u8> {
+        serde_json::to_vec(events).unwrap()
+    }
+
+    /// Abre o app com token no cofre e o refresh aceito para `user`.
+    fn boot_online(app: &LogNApp, model: &mut Model, user: &str) {
+        let _ = app.update(Event::StartBoot, model);
+        let _ = app.update(Event::TokenRead(kv_bytes(b"ref_tok".to_vec())), model);
+        let _ = app.update(
+            Event::RefreshCompleted(http(200, serde_json::json!({
+                "access_token": "acc", "refresh_token": "rot", "user_id": user,
+                "refresh_expires_at": 1_792_600_000i64,
+            }))),
+            model,
+        );
+    }
+
+    /// A abertura com rede: a sessão renova, a fila da conta sobe, a splash sai.
+    #[test]
+    fn test_boot_online_renews_the_session_and_sends_the_queue() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+
+        let mut cmd = app.update(Event::StartBoot, &mut model);
+        let view = app.view(&model);
+        assert!(view.boot.in_progress);
+        assert_eq!(view.boot.lines, vec![boot_line(BootCheck::Session, BootVerdict::Running, BootDetail::Checking, 0)]);
+        assert_eq!(view.boot.progress, 25);
+        assert!(
+            cmd.effects().any(|e| matches!(e, Effect::Time(_))),
+            "a espera pela rede tem teto"
+        );
+
+        let _ = app.update(Event::TokenRead(kv_bytes(b"ref_tok".to_vec())), &mut model);
+        let mut cmd = app.update(
+            Event::RefreshCompleted(http(200, serde_json::json!({
+                "access_token": "acc", "refresh_token": "rot", "user_id": USER_A,
+            }))),
+            &mut model,
+        );
+        assert_eq!(
+            model.boot.session,
+            Some(boot_line(BootCheck::Session, BootVerdict::Ok, BootDetail::TokenRenewed, 0))
+        );
+        let key = format!("offline_events:{USER_A}");
+        assert!(
+            kv_ops(&mut cmd).iter().any(|op| matches!(op, KeyValueOperation::Get { key: k } if *k == key)),
+            "lê a fila desta conta"
+        );
+
+        let queued = vec![answer("a1", GameEvent::GENESIS), answer("a2", GameEvent::GENESIS)];
+        let _ = app.update(
+            Event::OfflineQueueRestored { owner: USER_A.into(), result: kv_bytes(queue_bytes(&queued)) },
+            &mut model,
+        );
+        // A chave antiga, sem dono, é adotada: vazia, a fila fica como está.
+        let mut cmd = app.update(Event::QueueToAdoptRead { from: String::new(), result: kv_empty() }, &mut model);
+        assert!(
+            cmd.effects().any(|e| matches!(e, Effect::Http(ref r) if r.operation.url == "/api/v1/sync")),
+            "com a fila na memória, o sync da abertura sai"
+        );
+        assert_eq!(
+            model.boot.sync,
+            Some(boot_line(BootCheck::Sync, BootVerdict::Running, BootDetail::Sending, 2))
+        );
+        assert_eq!(app.view(&model).boot.progress, 75);
+
+        let _ = app.update(
+            Event::SyncCompleted(http(200, serde_json::json!({ "new_top": "abc" }))),
+            &mut model,
+        );
+        let view = app.view(&model);
+        assert!(!view.boot.in_progress, "a última linha fechou: a splash sai");
+        assert_eq!(view.boot.lines[1], boot_line(BootCheck::Sync, BootVerdict::Ok, BootDetail::Sent, 2));
+        assert!(view.has_session);
+    }
+
+    #[test]
+    fn test_boot_with_an_empty_queue_has_nothing_to_send() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        boot_online(&app, &mut model, USER_A);
+        let _ = app.update(Event::OfflineQueueRestored { owner: USER_A.into(), result: kv_empty() }, &mut model);
+        let mut cmd = app.update(Event::QueueToAdoptRead { from: String::new(), result: kv_empty() }, &mut model);
+
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))), "fila vazia não vai à rede");
+        let view = app.view(&model);
+        assert!(!view.boot.in_progress);
+        assert_eq!(view.boot.lines[1], boot_line(BootCheck::Sync, BootVerdict::Ok, BootDetail::NothingToSend, 0));
+    }
+
+    /// Sem token no cofre não há o que conferir: nada de splash, e a fila é a do visitante.
+    #[test]
+    fn test_boot_without_a_token_goes_straight_to_the_login() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let _ = app.update(Event::StartBoot, &mut model);
+        let mut cmd = app.update(Event::TokenRead(kv_empty()), &mut model);
+
+        let view = app.view(&model);
+        assert!(!view.boot.in_progress);
+        assert!(view.boot.lines.is_empty(), "não imprime linha de uma sessão que não existe");
+        assert!(!view.has_session);
+        assert!(kv_ops(&mut cmd).iter().any(|op| matches!(op, KeyValueOperation::Get { key } if key == "offline_events:guest")));
+    }
+
+    /// Sem rede e dentro do prazo, a splash para e deixa escolher.
+    #[test]
+    fn test_boot_offline_waits_for_retry_or_continue() {
+        let app = LogNApp::default();
+        let now = 1_790_000_000;
+        let mut model = Model::default();
+        let _ = app.update(Event::Tick { now }, &mut model);
+        let _ = app.update(Event::StartBoot, &mut model);
+        let _ = app.update(Event::TokenRead(kv_bytes(b"ref_tok".to_vec())), &mut model);
+        let _ = app.update(Event::RefreshCompleted(HttpResult::Err(crux_http::HttpError::Io("offline".into()))), &mut model);
+
+        let mut cmd = app.update(
+            Event::OfflineSessionChecked(kv_bytes((now + 3600).to_string().into_bytes())),
+            &mut model,
+        );
+        assert_eq!(
+            model.boot.session,
+            Some(boot_line(BootCheck::Session, BootVerdict::Ok, BootDetail::LocalTokenValid, 0))
+        );
+        assert!(kv_ops(&mut cmd).iter().any(|op| matches!(op, KeyValueOperation::Get { key } if key == "account_user_id")));
+
+        let mut cmd = app.update(Event::QueueOwnerRead(kv_bytes(USER_A.as_bytes().to_vec())), &mut model);
+        let key = format!("offline_events:{USER_A}");
+        assert!(kv_ops(&mut cmd).iter().any(|op| matches!(op, KeyValueOperation::Get { key: k } if *k == key)));
+        assert_eq!(model.user_id, USER_A, "o id guardado vale enquanto o servidor não fala");
+
+        let queued = vec![answer("a1", GameEvent::GENESIS)];
+        let _ = app.update(
+            Event::OfflineQueueRestored { owner: USER_A.into(), result: kv_bytes(queue_bytes(&queued)) },
+            &mut model,
+        );
+        let _ = app.update(Event::QueueToAdoptRead { from: String::new(), result: kv_empty() }, &mut model);
+
+        let view = app.view(&model);
+        assert!(view.boot.in_progress);
+        assert!(view.boot.awaiting_offline_choice);
+        assert_eq!(view.boot.lines[1], boot_line(BootCheck::Sync, BootVerdict::Warn, BootDetail::NoNetwork, 1));
+
+        // Tentar de novo volta a conferir a sessão.
+        let mut retry = model.clone();
+        let mut cmd = app.update(Event::RetryBoot, &mut retry);
+        assert!(kv_ops(&mut cmd).iter().any(|op| matches!(op, KeyValueOperation::Get { key } if key == "refresh_token")));
+        assert!(!retry.boot.awaiting_offline_choice);
+        assert_eq!(app.view(&retry).boot.lines.len(), 1);
+
+        // Continuar entra com o que está no aparelho.
+        let _ = app.update(Event::ContinueOffline, &mut model);
+        let view = app.view(&model);
+        assert!(!view.boot.in_progress);
+        assert!(view.has_session && view.is_offline_session);
+        assert_eq!(view.pending_sync_count, 1);
+    }
+
+    /// Sessão recusada: login com o e-mail dela, e a fila da conta fica no disco.
+    #[test]
+    fn test_boot_with_a_refused_session_prefills_the_login() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let _ = app.update(Event::StartBoot, &mut model);
+        let _ = app.update(Event::TokenRead(kv_bytes(b"ref_tok".to_vec())), &mut model);
+        let mut cmd = app.update(Event::RefreshCompleted(http(401, serde_json::json!({ "code": "session_invalid" }))), &mut model);
+
+        let ops = kv_ops(&mut cmd);
+        assert!(ops.iter().any(|op| matches!(op, KeyValueOperation::Get { key } if key == "account_email")));
+        assert!(ops.iter().any(|op| matches!(op, KeyValueOperation::Get { key } if key == "offline_events:guest")));
+        assert!(!ops.iter().any(|op| matches!(op, KeyValueOperation::Delete { .. })), "a sessão caiu, mas nada é apagado");
+        let view = app.view(&model);
+        assert!(!view.boot.in_progress);
+        assert!(!view.has_session);
+        assert_eq!(view.status, StatusKey::SessionExpired);
+
+        let _ = app.update(Event::ResumeEmailRead(kv_bytes(b"jogador@example.com".to_vec())), &mut model);
+        assert_eq!(app.view(&model).resume_email, "jogador@example.com");
+    }
+
+    /// A espera estoura, a splash segue sem rede, e a resposta tardia do refresh ainda
+    /// grava o token rodado — jogá-la fora deixava no cofre um token revogado, e o reuso
+    /// dele na abertura seguinte derruba todas as sessões da conta.
+    #[test]
+    fn test_boot_watchdog_goes_offline_but_keeps_the_late_token() {
+        let app = LogNApp::default();
+        let now = 1_790_000_000;
+        let mut model = Model::default();
+        let _ = app.update(Event::Tick { now }, &mut model);
+        let _ = app.update(Event::StartBoot, &mut model);
+        let _ = app.update(Event::TokenRead(kv_bytes(b"ref_tok".to_vec())), &mut model);
+        assert!(model.refresh_in_flight);
+
+        let mut cmd = app.update(Event::BootWatchdogElapsed { check: BootCheck::Session, attempt: 1 }, &mut model);
+        assert!(kv_ops(&mut cmd).iter().any(|op| matches!(op, KeyValueOperation::Get { key } if key == "session_expires_at")));
+        let _ = app.update(Event::OfflineSessionChecked(kv_bytes((now + 3600).to_string().into_bytes())), &mut model);
+        let _ = app.update(Event::QueueOwnerRead(kv_bytes(USER_A.as_bytes().to_vec())), &mut model);
+        let queued = vec![answer("a1", GameEvent::GENESIS)];
+        let _ = app.update(
+            Event::OfflineQueueRestored { owner: USER_A.into(), result: kv_bytes(queue_bytes(&queued)) },
+            &mut model,
+        );
+        let _ = app.update(Event::QueueToAdoptRead { from: String::new(), result: kv_empty() }, &mut model);
+        assert!(model.boot.awaiting_offline_choice);
+
+        // Tentar de novo com o refresh ainda no ar não manda o mesmo token outra vez.
+        let mut cmd = app.update(Event::RetryBoot, &mut model);
+        assert!(
+            !kv_ops(&mut cmd).iter().any(|op| matches!(op, KeyValueOperation::Get { key } if key == "refresh_token")),
+            "um segundo refresh com o mesmo token é reuso"
+        );
+        // O relógio da primeira tentativa não corta a segunda.
+        let _ = app.update(Event::BootWatchdogElapsed { check: BootCheck::Session, attempt: 1 }, &mut model);
+        assert!(model.boot.session_running());
+
+        let mut cmd = app.update(
+            Event::RefreshCompleted(http(200, serde_json::json!({
+                "access_token": "acc", "refresh_token": "rot", "user_id": USER_A,
+            }))),
+            &mut model,
+        );
+        let effects: Vec<Effect> = cmd.effects().collect();
+        assert!(effects.iter().any(|e| matches!(e,
+            Effect::SecureStore(r) if matches!(&r.operation, KeyValueOperation::Set { key, .. } if key == "refresh_token"))));
+        assert_eq!(
+            model.boot.session,
+            Some(boot_line(BootCheck::Session, BootVerdict::Ok, BootDetail::TokenRenewed, 0))
+        );
+        assert!(!model.session_offline);
+        assert!(!model.boot.awaiting_offline_choice, "a rede voltou: a pergunta sai");
+        // A fila já era desta conta: a abertura segue direto para o sync.
+        assert!(
+            effects.iter().any(|e| matches!(e, Effect::Http(r) if r.operation.url == "/api/v1/sync")),
+            "a fila sobe"
+        );
+        assert!(model.boot.sync_running());
+    }
+
+    /// A resposta dada com o sync no ar não some quando ele volta: só os enviados saem,
+    /// e o que sobrou sobe em seguida, encadeado a partir do último enviado.
+    #[test]
+    fn test_an_answer_during_the_sync_stays_and_goes_next() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("tok".into());
+        model.user_id = USER_A.into();
+        model.queue_owner = USER_A.into();
+        model.queue_loaded = true;
+        let first = answer("a1", GameEvent::GENESIS);
+        model.pending_events = vec![first.clone()];
+
+        let _ = app.update(Event::SyncNow, &mut model);
+        assert!(model.is_syncing);
+        // Responde enquanto o envio está no ar.
+        let late = answer("a2", &first.current_hash);
+        model.last_hash = late.current_hash.clone();
+        model.pending_events.push(late.clone());
+
+        let mut cmd = app.update(
+            Event::SyncCompleted(http(200, serde_json::json!({ "new_top": first.current_hash }))),
+            &mut model,
+        );
+        assert_eq!(model.pending_events.len(), 1, "a resposta do meio do envio fica");
+        assert_eq!(model.pending_events[0].id, "a2");
+        assert_eq!(model.last_hash, late.current_hash, "com fila sobrando, o topo é o dela, não o do servidor");
+        let effects: Vec<Effect> = cmd.effects().collect();
+        let stored = effects.iter().find_map(|e| match e {
+            Effect::SecureStore(r) => match &r.operation {
+                KeyValueOperation::Set { key, value } if *key == format!("offline_events:{USER_A}") => Some(value.clone()),
+                _ => None,
+            },
+            _ => None,
+        }).expect("a fila que sobrou desce para o disco");
+        assert_eq!(serde_json::from_slice::<Vec<GameEvent>>(&stored).unwrap().len(), 1);
+        let body = effects.iter().find_map(|e| match e {
+            Effect::Http(r) if r.operation.url == "/api/v1/sync" => Some(r.operation.body.clone()),
+            _ => None,
+        }).expect("e sobe em seguida");
+        let payload: SyncPayload = serde_json::from_slice(&body).unwrap();
+        assert_eq!(payload.events.len(), 1);
+        assert_eq!(payload.events[0].previous_hash, first.current_hash);
+    }
+
+    /// Se a fila trocou de dono com o sync no ar, os enviados saem da fila do dono que
+    /// os mandou, no disco — senão ela os mandava de novo quando ele voltasse.
+    #[test]
+    fn test_a_sync_that_lands_after_the_owner_changed_cleans_the_right_queue() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("tok".into());
+        model.user_id = USER_A.into();
+        model.queue_owner = USER_A.into();
+        model.queue_loaded = true;
+        let sent = answer("a1", GameEvent::GENESIS);
+        model.pending_events = vec![sent.clone()];
+        let _ = app.update(Event::SyncNow, &mut model);
+
+        // A sessão caiu no meio: a fila na memória passa a ser a do visitante.
+        let _ = app.update(Event::ContinueAsGuest, &mut model);
+        let mut cmd = app.update(
+            Event::SyncCompleted(http(200, serde_json::json!({ "new_top": sent.current_hash }))),
+            &mut model,
+        );
+        let key_a = format!("offline_events:{USER_A}");
+        assert!(kv_ops(&mut cmd).iter().any(|op| matches!(op, KeyValueOperation::Get { key } if *key == key_a)));
+
+        let later = answer("a2", &sent.current_hash);
+        let mut cmd = app.update(
+            Event::SyncedQueueRead {
+                owner: USER_A.into(),
+                sent: vec!["a1".into()],
+                result: kv_bytes(queue_bytes(&[sent, later])),
+            },
+            &mut model,
+        );
+        let stored = kv_ops(&mut cmd).into_iter().find_map(|op| match op {
+            KeyValueOperation::Set { key, value } if key == key_a => Some(value),
+            _ => None,
+        }).expect("regrava a fila de A");
+        let left: Vec<GameEvent> = serde_json::from_slice(&stored).unwrap();
+        assert_eq!(left.len(), 1);
+        assert_eq!(left[0].id, "a2", "fica só o que não foi enviado");
+    }
+
+    /// Sem rede e sem fila não há o que esperar da rede: entra direto, sem perguntar.
+    #[test]
+    fn test_boot_offline_with_an_empty_queue_goes_straight_in() {
+        let app = LogNApp::default();
+        let now = 1_790_000_000;
+        let mut model = Model::default();
+        let _ = app.update(Event::Tick { now }, &mut model);
+        let _ = app.update(Event::StartBoot, &mut model);
+        let _ = app.update(Event::TokenRead(kv_bytes(b"ref_tok".to_vec())), &mut model);
+        let _ = app.update(Event::RefreshCompleted(HttpResult::Err(crux_http::HttpError::Io("offline".into()))), &mut model);
+        let _ = app.update(Event::OfflineSessionChecked(kv_bytes((now + 3600).to_string().into_bytes())), &mut model);
+        let _ = app.update(Event::QueueOwnerRead(kv_bytes(USER_A.as_bytes().to_vec())), &mut model);
+        let _ = app.update(Event::OfflineQueueRestored { owner: USER_A.into(), result: kv_empty() }, &mut model);
+        let _ = app.update(Event::QueueToAdoptRead { from: String::new(), result: kv_empty() }, &mut model);
+
+        let view = app.view(&model);
+        assert!(!view.boot.in_progress);
+        assert!(!view.boot.awaiting_offline_choice);
+        assert!(view.has_session && view.is_offline_session);
+    }
+
+    /// Um erro de rede tardio, depois de a espera já ter mandado pelo caminho sem rede,
+    /// não roda esse caminho de novo.
+    #[test]
+    fn test_boot_ignores_a_late_network_error_after_the_watchdog() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let _ = app.update(Event::StartBoot, &mut model);
+        let _ = app.update(Event::TokenRead(kv_bytes(b"ref_tok".to_vec())), &mut model);
+        let _ = app.update(Event::BootWatchdogElapsed { check: BootCheck::Session, attempt: 1 }, &mut model);
+        let mut cmd = app.update(Event::RefreshCompleted(HttpResult::Err(crux_http::HttpError::Io("offline".into()))), &mut model);
+        assert!(kv_ops(&mut cmd).is_empty());
+    }
+
+    /// O sync que demora não prende a splash: ela sai e o envio termina por trás.
+    #[test]
+    fn test_a_slow_boot_sync_lets_the_player_in() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        boot_online(&app, &mut model, USER_A);
+        let queued = vec![answer("a1", GameEvent::GENESIS)];
+        let _ = app.update(
+            Event::OfflineQueueRestored { owner: USER_A.into(), result: kv_bytes(queue_bytes(&queued)) },
+            &mut model,
+        );
+        let _ = app.update(Event::QueueToAdoptRead { from: String::new(), result: kv_empty() }, &mut model);
+        assert!(model.is_syncing);
+
+        let _ = app.update(Event::BootWatchdogElapsed { check: BootCheck::Sync, attempt: 1 }, &mut model);
+        let view = app.view(&model);
+        assert!(!view.boot.in_progress);
+        assert_eq!(view.boot.lines[1], boot_line(BootCheck::Sync, BootVerdict::Warn, BootDetail::StillSending, 1));
+        assert!(model.is_syncing, "o envio segue");
+    }
+
+    /// Entrar com outra conta não sobe a fila da anterior.
+    ///
+    /// A fila era uma chave só e não dizia de quem era: depois de a sessão de A expirar,
+    /// B entrava e o sync mandava as partidas de A como se fossem de B.
+    #[test]
+    fn test_another_account_does_not_inherit_the_previous_queue() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.queue_owner = USER_A.into();
+        model.queue_loaded = true;
+        model.pending_events = vec![answer("a1", GameEvent::GENESIS)];
+        model.last_hash = model.pending_events[0].current_hash.clone();
+
+        let _ = app.update(Event::Login { email: "b@x.com".into(), password_hash: "senha".into() }, &mut model);
+        let _ = app.update(
+            Event::LoginCompleted(http(200, serde_json::json!({
+                "access_token": "acc_b", "refresh_token": "ref_b", "user_id": USER_B,
+            }))),
+            &mut model,
+        );
+        let _ = app.update(Event::TokenStored(kv_empty()), &mut model);
+        let _ = app.update(Event::AccountEmailStored(kv_empty()), &mut model);
+        let mut cmd = app.update(Event::SessionExpiryStored(kv_empty()), &mut model);
+
+        assert!(model.pending_events.is_empty(), "a fila de A saiu da memória antes do progresso de B chegar");
+        assert!(model.last_hash.is_empty());
+        let ops = kv_ops(&mut cmd);
+        let key_b = format!("offline_events:{USER_B}");
+        assert!(ops.iter().any(|op| matches!(op, KeyValueOperation::Get { key } if *key == key_b)));
+        assert!(ops.iter().any(|op| matches!(op, KeyValueOperation::Set { key, value } if key == "account_user_id" && value == USER_B.as_bytes())));
+        assert!(
+            !ops.iter().any(|op| matches!(op, KeyValueOperation::Delete { key } if key.contains(USER_A))),
+            "a fila de A fica no disco esperando A voltar"
+        );
+    }
+
+    /// Quem jogou como visitante e entra leva o que jogou: a fila do visitante vai para o
+    /// fim da fila da conta, reencadeada, e sobe.
+    #[test]
+    fn test_the_guest_queue_is_adopted_on_login() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.queue_owner = GUEST_QUEUE_OWNER.into();
+        model.queue_loaded = true;
+        let guest = vec![answer("g1", GameEvent::GENESIS)];
+        model.pending_events = guest.clone();
+
+        let _ = app.update(
+            Event::LoginCompleted(http(200, serde_json::json!({
+                "access_token": "acc_b", "refresh_token": "ref_b", "user_id": USER_B,
+            }))),
+            &mut model,
+        );
+        let _ = app.update(Event::SessionExpiryStored(kv_empty()), &mut model);
+
+        let own = vec![answer("b1", GameEvent::GENESIS)];
+        let mut cmd = app.update(
+            Event::OfflineQueueRestored { owner: USER_B.into(), result: kv_bytes(queue_bytes(&own)) },
+            &mut model,
+        );
+        assert!(kv_ops(&mut cmd).iter().any(|op| matches!(op, KeyValueOperation::Get { key } if key == "offline_events:guest")));
+
+        let mut cmd = app.update(
+            Event::QueueToAdoptRead { from: GUEST_QUEUE_OWNER.into(), result: kv_bytes(queue_bytes(&guest)) },
+            &mut model,
+        );
+        assert_eq!(model.pending_events.len(), 2);
+        assert_eq!(model.pending_events[0].id, "b1", "a fila da conta vem primeiro");
+        assert_eq!(model.pending_events[1].id, "g1");
+        assert_eq!(model.pending_events[1].previous_hash, model.pending_events[0].current_hash, "reencadeada");
+        let key_b = format!("offline_events:{USER_B}");
+        let stored = kv_ops(&mut cmd).into_iter().find_map(|op| match op {
+            KeyValueOperation::Set { key, value } if key == key_b => Some(value),
+            _ => None,
+        }).expect("grava a fila juntada sob a conta");
+        assert_eq!(serde_json::from_slice::<Vec<GameEvent>>(&stored).unwrap().len(), 2);
+
+        // Só depois de gravar apaga a do visitante.
+        let mut cmd = app.update(Event::QueueAdopted { from: GUEST_QUEUE_OWNER.into() }, &mut model);
+        assert!(kv_ops(&mut cmd).iter().any(|op| matches!(op, KeyValueOperation::Delete { key } if key == "offline_events:guest")));
+
+        let mut cmd = app.update(Event::QueueToAdoptRead { from: String::new(), result: kv_empty() }, &mut model);
+        assert!(
+            cmd.effects().any(|e| matches!(e, Effect::Http(ref r) if r.operation.url == "/api/v1/sync")),
+            "o que o visitante jogou sobe logo"
+        );
+    }
+
+    /// A fila da chave antiga, sem dono, passa para a conta da sessão na primeira abertura.
+    #[test]
+    fn test_the_legacy_queue_is_adopted_by_the_session() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        boot_online(&app, &mut model, USER_A);
+        let _ = app.update(Event::OfflineQueueRestored { owner: USER_A.into(), result: kv_empty() }, &mut model);
+        let legacy = vec![answer("old", GameEvent::GENESIS)];
+        let mut cmd = app.update(
+            Event::QueueToAdoptRead { from: String::new(), result: kv_bytes(queue_bytes(&legacy)) },
+            &mut model,
+        );
+        let key = format!("offline_events:{USER_A}");
+        assert!(kv_ops(&mut cmd).iter().any(|op| matches!(op, KeyValueOperation::Set { key: k, .. } if *k == key)));
+        let mut cmd = app.update(Event::QueueAdopted { from: String::new() }, &mut model);
+        let ops = kv_ops(&mut cmd);
+        assert!(ops.iter().any(|op| matches!(op, KeyValueOperation::Delete { key } if key == "offline_events")));
+        assert_eq!(model.pending_events.len(), 1);
+        assert_eq!(model.boot.sync.as_ref().map(|l| l.verdict.clone()), Some(BootVerdict::Running));
+    }
+
+    /// A resposta de uma fila que chega depois de o dono mudar é de outra fila.
+    #[test]
+    fn test_a_queue_of_a_previous_owner_is_ignored() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.queue_owner = USER_B.into();
+        let _ = app.update(
+            Event::OfflineQueueRestored { owner: USER_A.into(), result: kv_bytes(queue_bytes(&[answer("a1", GameEvent::GENESIS)])) },
+            &mut model,
+        );
+        assert!(model.pending_events.is_empty());
+    }
+
+    /// Sair apaga o id da conta e só a fila dela.
+    #[test]
+    fn test_logout_clears_the_account_id_and_only_its_queue() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.queue_owner = USER_A.into();
+        model.queue_loaded = true;
+        model.resume_email = "a@x.com".into();
+        let mut cmd = app.update(Event::Logout, &mut model);
+        let deleted: Vec<String> = kv_ops(&mut cmd).into_iter().filter_map(|op| match op {
+            KeyValueOperation::Delete { key } => Some(key),
+            _ => None,
+        }).collect();
+        assert!(deleted.contains(&"account_user_id".to_string()));
+        assert!(deleted.contains(&format!("offline_events:{USER_A}")));
+        assert!(!deleted.iter().any(|k| k == "offline_events:guest" || k == "offline_events"));
+        assert!(model.resume_email.is_empty(), "quem saiu de propósito não vê o e-mail no login");
+
+        let mut cmd = app.update(
+            Event::TokenCleared(KeyValueResult::Ok { response: KeyValueResponse::Delete { previous: crux_kv::Value::None } }),
+            &mut model,
+        );
+        assert_eq!(model.queue_owner, GUEST_QUEUE_OWNER, "quem jogar agora joga como visitante");
+        assert!(kv_ops(&mut cmd).iter().any(|op| matches!(op, KeyValueOperation::Get { key } if key == "offline_events:guest")));
+    }
+
+    /// Desfazer a saída devolve ao aparelho a sessão inteira — a fila, o id, o e-mail e o
+    /// prazo —, não só o token. Antes, fechar o app depois do desfazer perdia a fila.
+    #[test]
+    fn test_undo_logout_writes_the_session_back_to_the_device() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("tok".into());
+        model.user_id = USER_A.into();
+        model.account_email = "jogador@example.com".into();
+        model.session_expires_at = 1_792_600_000;
+        model.queue_owner = USER_A.into();
+        model.queue_loaded = true;
+        model.pending_events = vec![answer("a1", GameEvent::GENESIS)];
+
+        let _ = app.update(Event::Logout, &mut model);
+        let _ = app.update(
+            Event::TokenCleared(KeyValueResult::Ok {
+                response: KeyValueResponse::Delete { previous: crux_kv::Value::Bytes(b"ref".to_vec()) },
+            }),
+            &mut model,
+        );
+        let mut cmd = app.update(Event::UndoLogout, &mut model);
+        let sets: Vec<(String, Vec<u8>)> = kv_ops(&mut cmd).into_iter().filter_map(|op| match op {
+            KeyValueOperation::Set { key, value } => Some((key, value)),
+            _ => None,
+        }).collect();
+        let get = |k: &str| sets.iter().find(|(key, _)| key == k).map(|(_, v)| v.clone());
+
+        assert_eq!(get("refresh_token").as_deref(), Some(&b"ref"[..]));
+        assert_eq!(get("account_user_id").as_deref(), Some(USER_A.as_bytes()));
+        assert_eq!(get("account_email").as_deref(), Some(&b"jogador@example.com"[..]));
+        assert_eq!(get("session_expires_at").as_deref(), Some(&b"1792600000"[..]));
+        let queue = get(&format!("offline_events:{USER_A}")).expect("a fila volta para o disco");
+        assert_eq!(serde_json::from_slice::<Vec<GameEvent>>(&queue).unwrap().len(), 1);
+        assert!(get("offline_snapshot").is_some(), "e o retrato, que a saída também apagou");
+        assert_eq!(model.queue_owner, USER_A);
+        assert_eq!(model.last_hash, model.pending_events[0].current_hash);
+
+        // A fila do visitante que a saída pediu chega depois e não substitui a de A.
+        let _ = app.update(Event::OfflineQueueRestored { owner: GUEST_QUEUE_OWNER.into(), result: kv_empty() }, &mut model);
+        assert_eq!(model.pending_events.len(), 1);
     }
 
     /// O placar ainda sai do mock. Enquanto sair, a tela tem de dizer que é exemplo.
@@ -4438,6 +5568,8 @@ mod tests {
         model.access_token = Some("tok".into());
         model.user_id = "66b670a2-41d2-4ba2-b863-78735b69ec7c".into();
         model.account_email = "a@x.com".into();
+        model.queue_owner = model.user_id.clone();
+        model.queue_loaded = true;
         model.pending_events = vec![GameEvent::new(
             "evt_1".into(), "MATCH_ANSWER".into(), "{}".into(), 1_700_000_000,
             "0000000000000000000000000000000000000000000000000000000000000000".into(),
@@ -4460,7 +5592,10 @@ mod tests {
             },
             _ => None,
         }).collect();
-        for key in ["refresh_token", "account_email", "session_expires_at", "offline_events", "offline_snapshot"] {
+        for key in [
+            "refresh_token", "account_email", "account_user_id", "session_expires_at",
+            "offline_events:66b670a2-41d2-4ba2-b863-78735b69ec7c", "offline_snapshot",
+        ] {
             assert!(deleted.contains(&key.to_string()), "faltou apagar {key}");
         }
         assert!(model.access_token.is_none());

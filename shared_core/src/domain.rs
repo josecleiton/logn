@@ -265,6 +265,82 @@ pub enum StatusKey {
     EmailTaken,
 }
 
+/// Uma das verificações que a abertura roda antes de soltar o jogador no app.
+///
+/// A splash é o log de um juiz: cada verificação imprime o seu veredito numa linha, na
+/// ordem, e a splash some quando a última fecha. Termos entram aqui quando o app
+/// souber conferir se a versão aceita ainda é a vigente.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum BootCheck {
+    Session,
+    Sync,
+}
+
+/// Como uma linha da abertura está. `Warn` não segura o jogador; `Fail` na sessão
+/// manda para o login.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum BootVerdict {
+    Running,
+    Ok,
+    Warn,
+    Fail,
+}
+
+/// O que a linha tem a dizer, como chave. A frase mora no catálogo.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum BootDetail {
+    /// Sessão: falando com o servidor.
+    Checking,
+    /// Sessão: o servidor trocou o token.
+    TokenRenewed,
+    /// Sessão: sem rede, mas dentro do prazo guardado no aparelho.
+    LocalTokenValid,
+    /// Sessão: o servidor recusou, ou o prazo local venceu.
+    SessionEnded,
+    /// Sync: mandando a fila.
+    Sending,
+    NothingToSend,
+    /// Sync: `count` eventos subiram.
+    Sent,
+    /// Sync: sem rede; `count` eventos continuam na fila.
+    NoNetwork,
+    /// Sync: o servidor recusou a fila, ou ela divergiu depois do rebase.
+    Rejected,
+    /// Sync: passou do tempo da abertura. O envio segue por trás.
+    StillSending,
+}
+
+/// Uma linha do log da abertura.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[facet(fg::namespace = "LogN")]
+pub struct BootLine {
+    pub check: BootCheck,
+    pub verdict: BootVerdict,
+    pub detail: BootDetail,
+    /// Quantos eventos, para `Sent` e `NoNetwork`. Zero no resto.
+    pub count: u32,
+}
+
+/// A splash, como a tela precisa dela.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default)]
+#[facet(fg::namespace = "LogN")]
+pub struct BootViewModel {
+    /// A abertura ainda não terminou: a splash fica na frente de tudo.
+    pub in_progress: bool,
+    pub lines: Vec<BootLine>,
+    /// De 0 a 100, para a barra.
+    pub progress: u8,
+    /// Sem rede, com a sessão dentro do prazo: a splash para e pergunta se tenta de
+    /// novo ou entra com o que está no aparelho.
+    pub awaiting_offline_choice: bool,
+}
+
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
 #[facet(fg::namespace = "LogN")]
 #[repr(u8)]

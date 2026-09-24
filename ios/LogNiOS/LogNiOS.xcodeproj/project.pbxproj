@@ -39,6 +39,7 @@
 		92CE64A8F39A3BACBDFA7E2D /* ViewExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DA78EDFD4661B922FE1E389 /* ViewExtensions.swift */; };
 		936B6709633ADF906CB1E02F /* LogNiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80804A0792E45E01C5BE3D0B /* LogNiOSApp.swift */; };
 		9B73D9EDD483D4291A531CE4 /* CodeBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8EF036E181D0306E94D226 /* CodeBlock.swift */; };
+		A6548127959B72590C47D238 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D729B95C717FE4538867D790 /* SplashView.swift */; };
 		A7FE0DF6B468F1DB4208B401 /* SVGPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB03B22842CF2E79E83561F8 /* SVGPath.swift */; };
 		AA0490B0BA4AA0ED9BD72F41 /* SampleDataNotice.swift in Sources */ = {isa = PBXBuildFile; fileRef = C54D531EF24FAD3B3299DBF0 /* SampleDataNotice.swift */; };
 		AF4EF398751D584030B9F840 /* NodeSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9476B1DFF7AE686900CF32CD /* NodeSheetView.swift */; };
@@ -52,6 +53,7 @@
 		CF9D002B22CE05C3BC5D80D6 /* LeaveMatchSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4811EB169815262BA8CDC9F /* LeaveMatchSheet.swift */; };
 		D7C66D51C4C07B02BDCF7FD7 /* legal-terms.pt-BR.html in Resources */ = {isa = PBXBuildFile; fileRef = A22C79FFC5A566973EBC4A20 /* legal-terms.pt-BR.html */; };
 		E2D8CA6DB078DBFF781C1263 /* legal-privacy.es.html in Resources */ = {isa = PBXBuildFile; fileRef = AA26092B0334D250671544C2 /* legal-privacy.es.html */; };
+		E4D312CCDFFA8F61AEA205B5 /* BootLineCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45E6D51BEB841417BC35FF82 /* BootLineCopy.swift */; };
 		E51C5DD63A8796B58694D004 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2A37D7575A08B4C92B940D53 /* IBMPlexMono-Regular.ttf */; };
 		E618B59B0A839990BDA626EA /* MatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BCAD3D7D269E2D03F55181F /* MatchView.swift */; };
 		E6D95FDA93A65195F543436D /* OriginSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40FA716E89E041D22882546E /* OriginSheetView.swift */; };
@@ -78,6 +80,7 @@
 		3C3479CDAF7B4103E414DAC3 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		40FA716E89E041D22882546E /* OriginSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OriginSheetView.swift; sourceTree = "<group>"; };
 		42D4982DBEFBD646B4F5FD62 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		45E6D51BEB841417BC35FF82 /* BootLineCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BootLineCopy.swift; sourceTree = "<group>"; };
 		48659346006694BF96682CBE /* OTPInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTPInputView.swift; sourceTree = "<group>"; };
 		495013444502A57C6D127A7D /* trail-seed.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "trail-seed.json"; sourceTree = "<group>"; };
 		4AB77126A8B91B307CED33F7 /* legal-terms.es.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "legal-terms.es.html"; sourceTree = "<group>"; };
@@ -111,6 +114,7 @@
 		C5B7C9FB40CD745774D3BA3F /* IBMPlexMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Medium.ttf"; sourceTree = "<group>"; };
 		CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		D06AADFA16250D1A08A15AFE /* LognTopics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LognTopics.swift; sourceTree = "<group>"; };
+		D729B95C717FE4538867D790 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
 		DF70445FC4588B69074A5843 /* Strings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Strings.swift; sourceTree = "<group>"; };
 		DFC409C250EFC18B48AF0021 /* LognDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LognDesignSystem.swift; sourceTree = "<group>"; };
 		E24E7180F9C2D1ABF5578BE3 /* Telemetry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Telemetry.swift; sourceTree = "<group>"; };
@@ -251,6 +255,7 @@
 				C5B2B5EA563D4C0A69035BF3 /* ResetPasswordView.swift */,
 				50E1734BB756CB9066ECEC94 /* ScoreboardView.swift */,
 				2CEDA9E40AF59358F4F00143 /* SkillTreeView.swift */,
+				D729B95C717FE4538867D790 /* SplashView.swift */,
 				C2638F7B390A01676A65CFD9 /* StandingsView.swift */,
 			);
 			path = Views;
@@ -282,6 +287,7 @@
 		E4C57CC21C8B47F8AE6859FE /* DesignSystem */ = {
 			isa = PBXGroup;
 			children = (
+				45E6D51BEB841417BC35FF82 /* BootLineCopy.swift */,
 				CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */,
 				DFC409C250EFC18B48AF0021 /* LognDesignSystem.swift */,
 				D06AADFA16250D1A08A15AFE /* LognTopics.swift */,
@@ -390,6 +396,7 @@
 			files = (
 				6FEEE4F67862A78B1A8ED436 /* AccountNoticeViews.swift in Sources */,
 				FA39E591FFCF6E0D9F6EABC6 /* BalloonShape.swift in Sources */,
+				E4D312CCDFFA8F61AEA205B5 /* BootLineCopy.swift in Sources */,
 				9B73D9EDD483D4291A531CE4 /* CodeBlock.swift in Sources */,
 				03E8A94FF11F486216CC13B1 /* ContentView.swift in Sources */,
 				5B28C2226E5C4917A2F15B4E /* CoreWrapper.swift in Sources */,
@@ -414,6 +421,7 @@
 				AA0490B0BA4AA0ED9BD72F41 /* SampleDataNotice.swift in Sources */,
 				67E43BEE172F2659EA187C3B /* ScoreboardView.swift in Sources */,
 				C878D3C2E023BF3402DA39A2 /* SkillTreeView.swift in Sources */,
+				A6548127959B72590C47D238 /* SplashView.swift in Sources */,
 				1B3F7CCE389E70B29D4DC659 /* StandingsView.swift in Sources */,
 				847B9C5F21C81347B4C1204A /* StatusKeyCopy.swift in Sources */,
 				0ACF6DDB39EBC84AD6AABC71 /* StatusLine.swift in Sources */,

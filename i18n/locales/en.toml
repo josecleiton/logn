@@ -238,6 +238,25 @@ notice_ok = "Got it"
 [account]
 manage = "Manage account"
 
+[boot]
+check_session = "session"
+check_sync = "sync"
+checking = "checking"
+token_renewed = "token renewed"
+local_token_valid = "local token valid"
+session_ended = "session ended"
+sending = { one = "sending %{count} event", other = "sending %{count} events" }
+nothing_to_send = "nothing to send"
+sent = { one = "%{count} event sent", other = "%{count} events sent" }
+no_network = { one = "offline · %{count} queued", other = "offline · %{count} queued" }
+rejected = "rejected by the server"
+still_sending = "sending in the background"
+offline_notice = "You'll play with the progress on this device. It goes up to your account once there's a connection."
+retry = "Try again"
+continue_offline = "Continue"
+line_accessibility = "%{check}: %{detail}"
+opening_accessibility = "Opening LogN"
+
 [login]
 slogan = "REDUCE THE COMPLEXITY OF YOUR SOLUTIONS"
 sign_in_apple = "Continue with Apple"

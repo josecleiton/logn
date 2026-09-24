@@ -40,7 +40,10 @@ targets:
           - IBMPlexMono-Regular.ttf
           - IBMPlexMono-Medium.ttf
           - IBMPlexMono-SemiBold.ttf
-        UILaunchScreen: {}
+        # A cor do canvas (LognDark.canvas): a passagem da tela de lançamento para a
+        # splash não pisca em branco.
+        UILaunchScreen:
+          UIColorName: LaunchBackground
         UIRequiresFullScreen: true
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

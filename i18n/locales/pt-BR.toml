@@ -238,6 +238,25 @@ notice_ok = "Entendi"
 [account]
 manage = "Gerenciar conta"
 
+[boot]
+check_session = "sessão"
+check_sync = "sync"
+checking = "conferindo"
+token_renewed = "token renovado"
+local_token_valid = "token local válido"
+session_ended = "sessão encerrada"
+sending = { one = "enviando %{count} evento", other = "enviando %{count} eventos" }
+nothing_to_send = "nada a enviar"
+sent = { one = "%{count} evento enviado", other = "%{count} eventos enviados" }
+no_network = { one = "sem rede · %{count} na fila", other = "sem rede · %{count} na fila" }
+rejected = "recusado pelo servidor"
+still_sending = "enviando por trás"
+offline_notice = "Você entra com o progresso deste aparelho. Ele sobe para a conta quando houver conexão."
+retry = "Tentar de novo"
+continue_offline = "Continuar"
+line_accessibility = "%{check}: %{detail}"
+opening_accessibility = "Abrindo LogN"
+
 [login]
 slogan = "REDUCE THE COMPLEXITY OF YOUR SOLUTIONS"
 sign_in_apple = "Continuar com a Apple"

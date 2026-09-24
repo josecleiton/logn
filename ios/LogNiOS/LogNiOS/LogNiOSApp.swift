@@ -29,9 +29,14 @@ struct LogNiOSApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
+                // A abertura na frente de tudo, até a última verificação fechar.
+                if core.viewModel.boot.inProgress {
+                    SplashView()
+                        .environmentObject(core)
+                        .transition(.opacity)
                 // Sessão, não credencial: quem abre o app sem rede com a sessão dentro
                 // do prazo entra no jogo, não na tela de login.
-                if core.viewModel.hasSession || core.viewModel.isGuest {
+                } else if core.viewModel.hasSession || core.viewModel.isGuest {
                     ContentView()
                         .environmentObject(core)
                         .overlay(alignment: .bottom) {
@@ -57,6 +62,9 @@ struct LogNiOSApp: App {
                         .environmentObject(core)
                 }
             }
+            // A splash sai em fade: sem duração mínima, uma abertura rápida sem ele vira
+            // um piscar.
+            .animation(.easeOut(duration: 0.25), value: core.viewModel.boot.inProgress)
             .onOpenURL { url in
                 handleIncomingURL(url)
             }
