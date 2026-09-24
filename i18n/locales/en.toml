@@ -213,7 +213,7 @@ download_sub = "JSON with XP, trails, and submissions"
 back = "Back"
 irreversible = "IRREVERSIBLE"
 delete_account = "Delete account"
-delete_desc = "Wipes your e-mail, %{xp} XP, trails, and submission history from the server. None of this comes back."
+delete_desc = "Wipes your e-mail, %{xp} XP, trails, and submission history from the server. Pending offline queue will also be discarded. None of this comes back."
 delete_button = "Delete my account"
 delete_prompt = "asks for your password and the word EXCLUIR"
 

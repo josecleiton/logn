@@ -12,6 +12,8 @@ struct LogNiOSApp: App {
            let host = Bundle.main.object(forInfoDictionaryKey: "LogNPostHogHost") as? String, !host.isEmpty {
             let config = PostHogConfig(projectToken: key, host: host)
             config.captureApplicationLifecycleEvents = true
+            // App Store Plan: Discard IP
+            config.captureIP = false
             PostHogSDK.shared.setup(config)
         } else {
             print("PostHog telemetry is disabled (no key provided)")

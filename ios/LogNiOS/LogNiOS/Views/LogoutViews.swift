@@ -187,6 +187,7 @@ struct ManageAccountView: View {
             DeleteAccountSheet(onDelete: { password in
                 core.dispatch(event: .deleteAccount(passwordHash: password))
             })
+            .environmentObject(core)
         }
     }
 
@@ -285,6 +286,7 @@ struct ManageAccountView: View {
 struct DeleteAccountSheet: View {
     let onDelete: (String) -> Void
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var core: CoreWrapper
 
     @State private var password = ""
     @State private var confirmation = ""
@@ -295,8 +297,12 @@ struct DeleteAccountSheet: View {
                 .font(.plexSansSemiBold(18))
                 .foregroundColor(LognDark.textPrimary)
 
-            Text(Str.Logout.irreversible)
+            Text(Str.Logout.delete_desc(Int(core.viewModel.globalXp)))
                 .font(.plexSans(14))
+                .foregroundColor(LognDark.textSecondary)
+                
+            Text(Str.Logout.irreversible)
+                .font(.plexSansSemiBold(14))
                 .foregroundColor(LognDark.wrongInk)
 
             SecureField(Str.Login.password_prompt, text: $password)

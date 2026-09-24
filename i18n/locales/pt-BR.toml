@@ -213,7 +213,7 @@ download_sub = "JSON com XP, trilhas e submissões"
 back = "Voltar"
 irreversible = "IRREVERSÍVEL"
 delete_account = "Excluir conta"
-delete_desc = "Apaga o e-mail, os %{xp} XP, as trilhas e o histórico de submissões do servidor. Nada disso volta."
+delete_desc = "Apaga o e-mail, os %{xp} XP, as trilhas e o histórico de submissões do servidor. Fila pendente offline também será descartada. Nada disso volta."
 delete_button = "Excluir minha conta"
 delete_prompt = "pede a senha e a palavra EXCLUIR"
 
