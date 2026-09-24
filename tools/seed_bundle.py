@@ -27,8 +27,9 @@ import urllib.error
 import urllib.request
 
 # Sobe quando o formato muda de um jeito que um app antigo não consegue ler. Tem de
-# acompanhar TRAIL_SEED_VERSION em shared_core/src/domain.rs.
-VERSION = 2
+# acompanhar TRAIL_SEED_VERSION em shared_core/src/domain.rs. Foi de 2 para 3 quando os
+# cartões de origem passaram a viajar dentro da semente.
+VERSION = 3
 
 LINGUAS = ["pt-BR", "en", "es"]
 
@@ -65,10 +66,12 @@ def main() -> None:
 
     linguas = {}
     for lingua in LINGUAS:
-        nodes = buscar("/api/v1/nodes", lingua)
+        resposta_nodes = buscar("/api/v1/nodes", lingua)
+        nodes = resposta_nodes["nodes"]
+        origins = resposta_nodes.get("origins", [])
         challenges = buscar("/api/v1/challenges", lingua)
         if nodes:
-            linguas[lingua] = {"nodes": nodes, "challenges": challenges}
+            linguas[lingua] = {"nodes": nodes, "challenges": challenges, "origins": origins}
 
     if "pt-BR" not in linguas:
         sys.exit("a API devolveu zero nós em português; não vou empacotar uma trilha vazia")
