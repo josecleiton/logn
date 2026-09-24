@@ -72,7 +72,10 @@ pub enum Event {
     OTPRequested(HttpResult),
     VerifyOTP { email: String, code: String, purpose: String },
     OTPVerified(HttpResult),
-    Register { email: String, password: String, otp: String, age_confirmed: bool, legal_acceptances: Vec<String> },
+    /// `legal_accepted` é a caixa dos termos e da política. Quais versões e em que
+    /// língua quem decide é o Core, com o que `FetchLegalVersions` trouxe: o shell não
+    /// tem como saber a versão vigente.
+    Register { email: String, password: String, otp: String, age_confirmed: bool, legal_accepted: bool },
     RegisterCompleted(HttpResult),
     ResetPassword { email: String, new_password: String, otp: String },
     ResetPasswordCompleted(HttpResult),
@@ -100,6 +103,14 @@ pub enum Event {
     MatchReportClosed,
     ReviewMilestonesFired(KeyValueResult),
     ReviewMilestonesRestored(KeyValueResult),
+    /// A tela de cadastro abriu: busca as versões vigentes dos termos e da política,
+    /// que são as que o cadastro vai aceitar.
+    FetchLegalVersions,
+    LegalVersionsFetched(HttpResult),
+    /// Pede a exclusão da conta, com a senha. O nome do campo segue o do `Login`: o que
+    /// viaja é a senha em si, sobre TLS, e o servidor confere com Argon2.
+    DeleteAccount { password_hash: String },
+    AccountDeleted(HttpResult),
 }
 
 /// O que o desfazer devolve. Existe só entre a saída e o jogador deixar a tela.
@@ -202,6 +213,11 @@ pub struct Model {
     /// Impede que adicionar um desafio a um nó já dominado dispare o mesmo milestone de novo.
     /// Persistido via `crux_kv` para sobreviver ao fechamento do app.
     pub review_milestones_fired: Vec<usize>,
+    /// Versão vigente de cada documento legal, `(kind, version)`, como o servidor disse.
+    ///
+    /// O cadastro manda o aceite destas versões. Antes o app mandava `"terms_v1"` como
+    /// texto, o servidor esperava objeto, e todo cadastro caía em 400.
+    pub legal_versions: Vec<(String, u32)>,
     /// A trilha em uso veio da semente do bundle, e ninguém falou com o servidor ainda.
     ///
     /// A semente envelhece com o binário, não com o conteúdo: quem instalar hoje e
@@ -381,6 +397,9 @@ pub struct ViewModel {
     /// Segundos até enviar ou reenviar código voltar a valer. Inclui o bloqueio geral:
     /// o limite por IP também barra o envio.
     pub resend_cooldown_seconds: u32,
+    /// Já se sabe quais versões dos termos e da política o cadastro aceita. Sem isso o
+    /// cadastro não tem o que mandar, e a tela segura o envio do código.
+    pub legal_versions_ready: bool,
 }
 
 #[effect(facet_typegen)]
@@ -561,6 +580,37 @@ fn base_headers(locale: &str) -> Vec<crux_http::protocol::HttpHeader> {
             value: locale.to_string(),
         }
     ]
+}
+
+/// Os dois documentos que o cadastro precisa aceitar.
+const LEGAL_KINDS: [&str; 2] = ["terms", "privacy"];
+
+/// Já se conhece a versão vigente dos dois documentos.
+fn legal_versions_complete(versions: &[(String, u32)]) -> bool {
+    LEGAL_KINDS.iter().all(|k| versions.iter().any(|(kind, _)| kind == k))
+}
+
+/// A língua em que o jogador leu os documentos, na forma do banco. É a língua do app,
+/// que o shell informa por `SetLocale`; sem ela, o português, que é o que prevalece.
+fn legal_locale(app_locale: &str) -> &'static str {
+    let base = app_locale.split(['-', '_']).next().unwrap_or("").to_ascii_lowercase();
+    match base.as_str() {
+        "en" => "en",
+        "es" => "es",
+        _ => "pt-BR",
+    }
+}
+
+/// O aceite que vai no corpo do cadastro: um por documento, na versão vigente.
+fn legal_acceptances(versions: &[(String, u32)], app_locale: &str) -> serde_json::Value {
+    let locale = legal_locale(app_locale);
+    serde_json::Value::Array(
+        LEGAL_KINDS
+            .iter()
+            .filter_map(|k| versions.iter().find(|(kind, _)| kind == k))
+            .map(|(kind, version)| serde_json::json!({ "kind": kind, "version": version, "locale": locale }))
+            .collect(),
+    )
 }
 
 impl App for LogNApp {
@@ -1245,7 +1295,7 @@ Event::FetchChallenges => {
                 }
                 render::render()
             }
-            Event::Register { email, password, otp, age_confirmed, legal_acceptances } => {
+            Event::Register { email, password, otp, age_confirmed, legal_accepted } => {
                 if model.auth_cooldown.is_active() {
                     return still_rate_limited(model);
                 }
@@ -1254,7 +1304,14 @@ Event::FetchChallenges => {
                 model.status_key = StatusKey::CreatingAccount;
                 model.account_email = email.clone();
 
-                let body = serde_json::json!({ "email": email, "password": password, "otp": otp, "age_confirmed": age_confirmed, "legal_acceptances": legal_acceptances });
+                // Caixa desmarcada manda lista vazia, e o servidor recusa. Quem decide
+                // é ele; o Core só não inventa um aceite que a pessoa não deu.
+                let acceptances = if legal_accepted {
+                    legal_acceptances(&model.legal_versions, &model.locale)
+                } else {
+                    serde_json::json!([])
+                };
+                let body = serde_json::json!({ "email": email, "password": password, "otp": otp, "age_confirmed": age_confirmed, "legal_acceptances": acceptances });
                 let request = HttpRequest {
                     method: "POST".to_string(),
                     url: "/api/v1/auth/register".to_string(),
@@ -1298,10 +1355,101 @@ Event::FetchChallenges => {
                     HttpResult::Ok(response) if response.status == 429 => {
                         return rate_limited(model, &response, false);
                     }
+                    HttpResult::Ok(response) if response.status == 409 && response.body.starts_with(b"legal_version_outdated") => {
+                        // Saiu versão nova dos documentos enquanto a tela estava
+                        // aberta. Busca a vigente; o próximo toque já aceita a certa.
+                        model.status_key = StatusKey::AccountFailed;
+                        return self.update(Event::FetchLegalVersions, model).and(render::render());
+                    }
                     _ => {
                         model.status_key = StatusKey::AccountFailed;
                     }
                 }
+                render::render()
+            }
+            Event::DeleteAccount { password_hash } => {
+                if model.access_token.is_none() {
+                    // Sem sessão com o servidor (offline ou visitante) não há como
+                    // provar a senha; a tela só é alcançável com conta.
+                    model.status_key = StatusKey::NoConnection;
+                    return render::render();
+                }
+                model.is_authenticating = true;
+                let request = HttpRequest {
+                    method: "POST".to_string(),
+                    url: "/api/v1/users/me/delete".to_string(),
+                    headers: auth_headers(&model.access_token, &model.locale),
+                    body: serde_json::json!({ "password": password_hash }).to_string().into_bytes(),
+                };
+                Command::request_from_shell(request)
+                    .then_send(Event::AccountDeleted)
+                    .and(render::render())
+            }
+            Event::AccountDeleted(result) => {
+                model.is_authenticating = false;
+                match result {
+                    HttpResult::Ok(response) if response.status == 200 => {
+                        // A conta está desativada no servidor e as sessões, recusadas.
+                        // Aqui sai tudo o que ela deixou no aparelho, fila incluída — o
+                        // aviso da tela já disse que as respostas não enviadas se perdem.
+                        // Sem desfazer: `logout_undo` devolveria uma sessão que o
+                        // servidor não aceita mais.
+                        model.access_token = None;
+                        model.user_id = String::new();
+                        model.account_email = String::new();
+                        model.pending_events.clear();
+                        model.session_expires_at = 0;
+                        model.session_offline = false;
+                        model.is_guest = false;
+                        model.logout_undo = None;
+                        model.status_key = StatusKey::Silent;
+                        let delete = |key: &str| {
+                            Command::request_from_shell(KeyValueOperation::Delete { key: key.into() }).then_send(|_| Event::Ping)
+                        };
+                        return delete("refresh_token")
+                            .and(delete("account_email"))
+                            .and(delete("session_expires_at"))
+                            .and(delete("offline_events"))
+                            .and(delete("offline_snapshot"))
+                            .and(render::render());
+                    }
+                    HttpResult::Ok(response) if response.status == 401 => {
+                        model.status_key = StatusKey::WrongCredentials;
+                    }
+                    HttpResult::Ok(response) if response.status == 429 => {
+                        return rate_limited(model, &response, false);
+                    }
+                    HttpResult::Err(_) => {
+                        model.status_key = StatusKey::NoConnection;
+                    }
+                    _ => {
+                        model.status_key = StatusKey::ServerUnreadable;
+                    }
+                }
+                render::render()
+            }
+            Event::FetchLegalVersions => {
+                let request = HttpRequest {
+                    method: "GET".to_string(),
+                    url: "/api/v1/legal/current".to_string(),
+                    headers: base_headers(&model.locale),
+                    body: vec![],
+                };
+                Command::request_from_shell(request).then_send(Event::LegalVersionsFetched)
+            }
+            Event::LegalVersionsFetched(result) => {
+                #[derive(Deserialize)]
+                struct Current { kind: String, version: u32 }
+
+                if let HttpResult::Ok(response) = result {
+                    if response.status == 200 {
+                        if let Ok(current) = serde_json::from_slice::<Vec<Current>>(&response.body) {
+                            model.legal_versions = current.into_iter().map(|c| (c.kind, c.version)).collect();
+                        }
+                    }
+                }
+                // Falhou (sem rede, servidor fora): fica o que havia. A tela segue com
+                // o envio do código travado, e abrir o cadastro de novo tenta outra vez.
                 render::render()
             }
             Event::ResetPassword { email, new_password, otp } => {
@@ -2063,6 +2211,7 @@ Event::FetchChallenges => {
                 .resend_cooldown
                 .remaining(model.now)
                 .max(model.auth_cooldown.remaining(model.now)),
+            legal_versions_ready: legal_versions_complete(&model.legal_versions),
         }
     }
 }
@@ -3566,7 +3715,7 @@ mod tests {
             Event::Login { email: "a@x.com".into(), password_hash: "senha-forte".into() },
             Event::RequestOTP { email: "a@x.com".into(), purpose: "verify_email".into() },
             Event::VerifyOTP { email: "a@x.com".into(), code: "123456".into(), purpose: "verify_email".into() },
-            Event::Register { email: "a@x.com".into(), password: "senha-forte".into(), otp: "123456".into(), age_confirmed: true, legal_acceptances: vec![] },
+            Event::Register { email: "a@x.com".into(), password: "senha-forte".into(), otp: "123456".into(), age_confirmed: true, legal_accepted: true },
             Event::ResetPassword { email: "a@x.com".into(), new_password: "senha-forte".into(), otp: "123456".into() },
         ] {
             let mut cmd = app.update(event, &mut model);
@@ -3605,5 +3754,156 @@ mod tests {
         let asked_expiry = cmd.effects().any(|e| matches!(e,
             Effect::SecureStore(r) if matches!(&r.operation, KeyValueOperation::Get { key } if key == "session_expires_at")));
         assert!(asked_expiry, "decide pelo prazo guardado, como sem rede");
+    }
+
+    fn legal_current(body: &str) -> HttpResult {
+        HttpResult::Ok(crux_http::protocol::HttpResponse { status: 200, headers: vec![], body: body.as_bytes().to_vec() })
+    }
+
+    fn register_body(cmd: &mut Command<Effect, Event>) -> serde_json::Value {
+        let req = cmd.effects().find_map(|e| match e {
+            Effect::Http(r) if r.operation.url == "/api/v1/auth/register" => Some(r.operation.body.clone()),
+            _ => None,
+        });
+        serde_json::from_slice(&req.expect("o cadastro vai para o servidor")).unwrap()
+    }
+
+    /// O cadastro aceita a versão vigente dos dois documentos, na língua do app. Mandava
+    /// `["terms_v1", "privacy_v1"]` como texto, e o servidor, que espera objeto,
+    /// recusava todo cadastro com 400.
+    #[test]
+    fn test_register_sends_the_current_legal_versions() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+
+        let mut cmd = app.update(Event::FetchLegalVersions, &mut model);
+        assert!(matches!(cmd.expect_one_effect(), Effect::Http(ref r) if r.operation.url == "/api/v1/legal/current"));
+        assert!(!app.view(&model).legal_versions_ready);
+
+        let _ = app.update(Event::LegalVersionsFetched(legal_current(
+            r#"[{"kind":"terms","version":3,"effective_at":"2026-10-01"},{"kind":"privacy","version":2,"effective_at":"2026-09-24"}]"#,
+        )), &mut model);
+        assert!(app.view(&model).legal_versions_ready);
+
+        let _ = app.update(Event::SetLocale("es-MX".into()), &mut model);
+        let mut cmd = app.update(Event::Register {
+            email: "a@x.com".into(), password: "senha-forte".into(), otp: "123456".into(),
+            age_confirmed: true, legal_accepted: true,
+        }, &mut model);
+        let body = register_body(&mut cmd);
+        assert_eq!(body["age_confirmed"], true);
+        assert_eq!(body["legal_acceptances"], serde_json::json!([
+            { "kind": "terms", "version": 3, "locale": "es" },
+            { "kind": "privacy", "version": 2, "locale": "es" },
+        ]));
+    }
+
+    /// Caixa desmarcada não vira aceite. O servidor é quem recusa, mas o Core não
+    /// inventa um aceite que a pessoa não deu.
+    #[test]
+    fn test_register_without_the_box_sends_no_acceptance() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.legal_versions = vec![("terms".into(), 1), ("privacy".into(), 1)];
+
+        let mut cmd = app.update(Event::Register {
+            email: "a@x.com".into(), password: "senha-forte".into(), otp: "123456".into(),
+            age_confirmed: true, legal_accepted: false,
+        }, &mut model);
+        assert_eq!(register_body(&mut cmd)["legal_acceptances"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn test_legal_locale_falls_back_to_portuguese() {
+        assert_eq!(legal_locale("pt-BR"), "pt-BR");
+        assert_eq!(legal_locale("pt_PT"), "pt-BR");
+        assert_eq!(legal_locale("EN"), "en");
+        assert_eq!(legal_locale("es_AR"), "es");
+        assert_eq!(legal_locale("fr"), "pt-BR");
+        assert_eq!(legal_locale(""), "pt-BR");
+    }
+
+    /// Resposta ilegível ou falha de rede não apaga versões que já se sabiam, nem marca
+    /// como prontas versões que faltam.
+    #[test]
+    fn test_legal_versions_survive_a_failed_fetch() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.legal_versions = vec![("terms".into(), 1), ("privacy".into(), 1)];
+
+        let _ = app.update(Event::LegalVersionsFetched(HttpResult::Err(crux_http::HttpError::Io("offline".into()))), &mut model);
+        assert!(app.view(&model).legal_versions_ready);
+
+        let _ = app.update(Event::LegalVersionsFetched(legal_current(r#"[{"kind":"terms","version":2}]"#)), &mut model);
+        assert!(!app.view(&model).legal_versions_ready, "só os termos: a política ficou sem versão");
+    }
+
+    /// Excluir a conta manda a senha e, aceito, apaga do aparelho tudo o que a conta
+    /// deixou — sem desfazer, porque o servidor já recusa aquela sessão.
+    #[test]
+    fn test_delete_account_clears_the_device_without_undo() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("tok".into());
+        model.user_id = "66b670a2-41d2-4ba2-b863-78735b69ec7c".into();
+        model.account_email = "a@x.com".into();
+        model.pending_events = vec![GameEvent::new(
+            "evt_1".into(), "MATCH_ANSWER".into(), "{}".into(), 1_700_000_000,
+            "0000000000000000000000000000000000000000000000000000000000000000".into(),
+        )];
+
+        let mut cmd = app.update(Event::DeleteAccount { password_hash: "senha-forte".into() }, &mut model);
+        let body = cmd.effects().find_map(|e| match e {
+            Effect::Http(r) if r.operation.url == "/api/v1/users/me/delete" => Some(r.operation.body.clone()),
+            _ => None,
+        }).expect("pede a exclusão ao servidor");
+        assert_eq!(serde_json::from_slice::<serde_json::Value>(&body).unwrap()["password"], "senha-forte");
+
+        let mut cmd = app.update(Event::AccountDeleted(HttpResult::Ok(crux_http::protocol::HttpResponse {
+            status: 200, headers: vec![], body: vec![],
+        })), &mut model);
+        let deleted: Vec<String> = cmd.effects().filter_map(|e| match e {
+            Effect::SecureStore(r) => match &r.operation {
+                KeyValueOperation::Delete { key } => Some(key.clone()),
+                _ => None,
+            },
+            _ => None,
+        }).collect();
+        for key in ["refresh_token", "account_email", "session_expires_at", "offline_events", "offline_snapshot"] {
+            assert!(deleted.contains(&key.to_string()), "faltou apagar {key}");
+        }
+        assert!(model.access_token.is_none());
+        assert!(model.pending_events.is_empty());
+        assert!(model.logout_undo.is_none(), "sem desfazer");
+        assert!(!app.view(&model).has_session);
+    }
+
+    #[test]
+    fn test_delete_account_with_wrong_password_keeps_the_session() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("tok".into());
+
+        let _ = app.update(Event::AccountDeleted(HttpResult::Ok(crux_http::protocol::HttpResponse {
+            status: 401, headers: vec![], body: vec![],
+        })), &mut model);
+        assert_eq!(model.status_key, StatusKey::WrongCredentials);
+        assert!(model.access_token.is_some());
+    }
+
+    /// Versão nova publicada com a tela aberta: o servidor recusa com 409, e o Core
+    /// busca a vigente para o próximo toque aceitar a certa.
+    #[test]
+    fn test_outdated_legal_version_refetches_current() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.is_authenticating = true;
+
+        let mut cmd = app.update(Event::RegisterCompleted(HttpResult::Ok(crux_http::protocol::HttpResponse {
+            status: 409, headers: vec![], body: b"legal_version_outdated\n".to_vec(),
+        })), &mut model);
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Http(ref r) if r.operation.url == "/api/v1/legal/current")));
+        assert_eq!(model.status_key, StatusKey::AccountFailed);
+        assert!(!model.is_authenticating);
     }
 }
