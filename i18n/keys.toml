@@ -85,9 +85,6 @@ report_repeated = { plural = true, placeholders = [{ name = "count", type = "int
 
 [groups.origin.keys]
 eyebrow = {}
-origin_name = {}
-origin_role = {}
-origin_body = {}
 pause_notice = {}
 close = {}
 
