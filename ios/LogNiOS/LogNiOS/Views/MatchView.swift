@@ -2,6 +2,7 @@ import SwiftUI
 import LogNCoreFFI
 import LogN
 import App
+import PostHog
 import UniformTypeIdentifiers
 
 /// Partida — exploração `3b · Contest`.
@@ -19,6 +20,14 @@ struct MatchView: View {
     @State private var verdict: VerdictSnapshot?
     @State private var timer: Timer?
 
+    /// Flag `origin_story_enabled` do PostHog, desligada por padrão — sem chave de
+    /// telemetria ou sem rede ela não carrega, e o selo fica só como atribuição.
+    ///
+    /// O selo com o nome da origem é atribuição e não depende de autorização. A folha
+    /// com a história de quem escreveu o problema é outra coisa, e só abre quando a
+    /// flag estiver ligada.
+    @State private var originStoryEnabled = false
+
     struct VerdictSnapshot {
         let letter: Character
         let code: VerdictChip.Verdict
@@ -29,6 +38,21 @@ struct MatchView: View {
     private var mv: LogN.MatchViewModel { core.viewModel.matchView }
 
     private var currentLetter: Character { mv.currentLetter.first ?? "A" }
+
+    /// O selo da origem. Tocável, leva a cor de ação; só atribuição, fica como etiqueta
+    /// neutra — no design system o acento é de quem se toca.
+    private func originBadge(tappable: Bool) -> some View {
+        Text(mv.currentOrigin.uppercased())
+            .font(.plexMono(10))
+            .tracking(0.12 * 10)
+            .foregroundColor(tappable ? LognDark.accent : LognDark.textSecondary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.sm)
+                    .stroke(tappable ? LognDark.accent.opacity(0.5) : LognDark.lineStrong, lineWidth: 1)
+            )
+    }
 
     private var balloonStates: [(Character, Bool)] {
         mv.balloonStates.compactMap { state in
@@ -70,6 +94,7 @@ struct MatchView: View {
         .onAppear {
             core.dispatch(event: .startMatch(nodeId: nodeId))
             startTimer()
+            originStoryEnabled = PostHogSDK.shared.isFeatureEnabled("origin_story_enabled")
         }
         // Quem decide que a partida acabou é o Core; empilhar ou desempilhar tela é do
         // shell. Ele diz que a saída foi por vontade do jogador, e a tela volta.
@@ -197,24 +222,19 @@ struct MatchView: View {
                     .foregroundColor(LognDark.textMuted)
 
                 // Nem todo desafio nasceu aqui. Quando veio de fora, a origem fica na
-                // linha do título — atribuição que ninguém vê não é atribuição — e o
-                // selo abre a história de quem escreveu o problema.
+                // linha do título — atribuição que ninguém vê não é atribuição. Com a
+                // flag ligada, o selo também abre a história de quem escreveu o problema.
                 if !mv.currentOrigin.isEmpty {
-                    Button {
-                        core.dispatch(event: .openOriginSheet)
-                    } label: {
-                        Text(mv.currentOrigin.uppercased())
-                            .font(.plexMono(10))
-                            .tracking(0.12 * 10)
-                            .foregroundColor(LognDark.accent)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: Radius.sm)
-                                    .stroke(LognDark.accent.opacity(0.5), lineWidth: 1)
-                            )
+                    if originStoryEnabled {
+                        Button {
+                            core.dispatch(event: .openOriginSheet)
+                        } label: {
+                            originBadge(tappable: true)
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        originBadge(tappable: false)
                     }
-                    .buttonStyle(.plain)
                 }
 
                 Spacer(minLength: 0)
