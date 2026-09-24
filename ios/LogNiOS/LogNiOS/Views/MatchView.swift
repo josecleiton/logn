@@ -168,16 +168,18 @@ struct MatchView: View {
         // Quem manda no cartão é o Core: ele decide se esta leitura para o relógio, e
         // arrastar para fechar precisa avisá-lo para o relógio voltar.
         .sheet(isPresented: Binding(
-            get: { !mv.originSheet.isEmpty },
+            get: { mv.originSheet != nil },
             set: { aberto in if !aberto { core.dispatch(event: .closeOriginSheet) } }
         )) {
-            OriginSheetView(
-                origin: mv.originSheet,
-                clockPaused: mv.originSheetPaused,
-                onClose: { core.dispatch(event: .closeOriginSheet) }
-            )
-            .presentationDetents([.large])
-            .modifier(SheetCorners())
+            if let card = mv.originSheet {
+                OriginSheetView(
+                    card: card,
+                    clockPaused: mv.originSheetPaused,
+                    onClose: { core.dispatch(event: .closeOriginSheet) }
+                )
+                .presentationDetents([.large])
+                .modifier(SheetCorners())
+            }
         }
         // Arrastar para baixo é o mesmo que ficar: quem some com o cartão sem escolher
         // está voltando para a partida, e o relógio tem de voltar junto.

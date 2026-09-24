@@ -441,9 +441,9 @@ public struct Challenge: Hashable, Equatable {
     public var nodeId: String
     public var templateType: String
     public var payload: ChallengePayload
-    /// De onde o desafio veio, quando não foi escrito para o LogN — hoje só `FARIAS`,
-    /// a origem registrada no conteúdo. Vazio é o caso comum, e o
-    /// `default` mantém compatível o JSON gravado antes de a coluna existir.
+    /// De onde o desafio veio, quando não foi escrito para o LogN; vazio é o caso
+    /// comum. O `default` mantém compatível o JSON gravado antes de a coluna existir.
+    /// O texto por trás deste id vem em `Model::origins`.
     public var origin: String
 
     public init(id: String, nodeId: String, templateType: String, payload: ChallengePayload, origin: String) {
@@ -2333,8 +2333,10 @@ public struct MatchViewModel: Hashable, Equatable {
     public var maxSelections: Int32
     /// Origem do problema atual, vazia quando ele nasceu aqui.
     public var currentOrigin: String
-    /// Origem cujo cartão de homenagem está aberto. Vazia quando não há cartão.
-    public var originSheet: String
+    /// O cartão de origem aberto agora, já com o texto. `None` quando não há cartão na
+    /// tela. Quem resolve o id para o cartão, com o fallback de id sem texto conhecido,
+    /// é quem monta este ViewModel — ver `to_view_model`.
+    public var originSheet: OriginCard?
     /// O cartão aberto está segurando o relógio. Só na primeira leitura de cada origem,
     /// e é isso que o cartão avisa ao jogador.
     public var originSheetPaused: Bool
@@ -2369,7 +2371,7 @@ public struct MatchViewModel: Hashable, Equatable {
     public var trapTitle: String
     public var trapExplanation: String
 
-    public init(isActive: Bool, currentLetter: String, currentTitle: String, currentDescription: String, currentTemplateType: String, currentCodeLines: [String], currentOptions: [String], maxSelections: Int32, currentOrigin: String, originSheet: String, originSheetPaused: Bool, leavePending: Bool, solvedSoFar: Int32, lives: Int32, maxLives: Int32, penaltyMinutes: Int32, contestSeconds: Int32, questionSeconds: Int32, isFrozen: Bool, totalProblems: Int32, solvedCount: Int32, balloonStates: [BalloonState], xpEarned: Int32, selectedLine: Int32, answerString: String, dropTime: String, dropSpace: String, selectedTags: [String], predictedOutput: String, watchVariables: [WatchVariable], watchNote: String, lastVerdict: String, errors: [MatchError], hasTrap: Bool, trapKind: TrapKind, trapTitle: String, trapExplanation: String) {
+    public init(isActive: Bool, currentLetter: String, currentTitle: String, currentDescription: String, currentTemplateType: String, currentCodeLines: [String], currentOptions: [String], maxSelections: Int32, currentOrigin: String, originSheet: OriginCard?, originSheetPaused: Bool, leavePending: Bool, solvedSoFar: Int32, lives: Int32, maxLives: Int32, penaltyMinutes: Int32, contestSeconds: Int32, questionSeconds: Int32, isFrozen: Bool, totalProblems: Int32, solvedCount: Int32, balloonStates: [BalloonState], xpEarned: Int32, selectedLine: Int32, answerString: String, dropTime: String, dropSpace: String, selectedTags: [String], predictedOutput: String, watchVariables: [WatchVariable], watchNote: String, lastVerdict: String, errors: [MatchError], hasTrap: Bool, trapKind: TrapKind, trapTitle: String, trapExplanation: String) {
         self.isActive = isActive
         self.currentLetter = currentLetter
         self.currentTitle = currentTitle
@@ -2424,7 +2426,9 @@ public struct MatchViewModel: Hashable, Equatable {
         }
         try serializer.serialize_i32(value: self.maxSelections)
         try serializer.serialize_str(value: self.currentOrigin)
-        try serializer.serialize_str(value: self.originSheet)
+        try serializeOption(value: self.originSheet, serializer: serializer) { value, serializer in
+            try value.serialize(serializer: serializer)
+        }
         try serializer.serialize_bool(value: self.originSheetPaused)
         try serializer.serialize_bool(value: self.leavePending)
         try serializer.serialize_i32(value: self.solvedSoFar)
@@ -2484,7 +2488,9 @@ public struct MatchViewModel: Hashable, Equatable {
         }
         let maxSelections = try deserializer.deserialize_i32()
         let currentOrigin = try deserializer.deserialize_str()
-        let originSheet = try deserializer.deserialize_str()
+        let originSheet = try deserializeOption(deserializer: deserializer) { deserializer in
+            try LogN.OriginCard.deserialize(deserializer: deserializer)
+        }
         let originSheetPaused = try deserializer.deserialize_bool()
         let leavePending = try deserializer.deserialize_bool()
         let solvedSoFar = try deserializer.deserialize_i32()
@@ -2635,6 +2641,57 @@ indirect public enum NodeStatus: Hashable, Equatable {
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> NodeStatus {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+/// O cartão de origem: quem escreveu o desafio, quando não foi escrito para o LogN. O
+/// texto vem do servidor pelas tabelas de tradução (ADR 0011), como o resto da trilha —
+/// não é mais cópia fixa do catálogo de interface.
+public struct OriginCard: Hashable, Equatable {
+    public var id: String
+    public var name: String
+    public var role: String
+    public var body: String
+
+    public init(id: String, name: String, role: String, body: String) {
+        self.id = id
+        self.name = name
+        self.role = role
+        self.body = body
+    }
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        try serializer.serialize_str(value: self.id)
+        try serializer.serialize_str(value: self.name)
+        try serializer.serialize_str(value: self.role)
+        try serializer.serialize_str(value: self.body)
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> OriginCard {
+        try deserializer.increase_container_depth()
+        let id = try deserializer.deserialize_str()
+        let name = try deserializer.deserialize_str()
+        let role = try deserializer.deserialize_str()
+        let body = try deserializer.deserialize_str()
+        try deserializer.decrease_container_depth()
+        return OriginCard(id: id, name: name, role: role, body: body)
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> OriginCard {
         let deserializer = BincodeDeserializer.init(input: input);
         let obj = try deserialize(deserializer: deserializer)
         if deserializer.get_buffer_offset() < input.count {

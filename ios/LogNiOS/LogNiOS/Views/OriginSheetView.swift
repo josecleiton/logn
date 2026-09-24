@@ -4,12 +4,14 @@ import LogN
 
 /// De onde o problema veio, quando não foi escrito para o LogN.
 ///
-/// O Core manda a chave da origem — a coluna `origin` do desafio — e a cópia vive em
-/// `i18n/locales/`, como toda cópia do app. A primeira leitura de cada origem segura o
-/// relógio da questão, e o cartão avisa que isso acontece uma vez só: sem o aviso, quem
-/// abrisse de novo perderia tempo sem entender por quê.
+/// O Core manda o cartão pronto — nome, papel e corpo já na língua da trilha, vindos do
+/// servidor pelas tabelas de tradução (ADR 0011). Não é mais cópia fixa do catálogo de
+/// interface: só o rótulo ("Origem do problema") e o aviso de pausa vêm de lá, porque
+/// são interface, não conteúdo. A primeira leitura de cada origem segura o relógio da
+/// questão, e o cartão avisa que isso acontece uma vez só: sem o aviso, quem abrisse de
+/// novo perderia tempo sem entender por quê.
 struct OriginSheetView: View {
-    let origin: String
+    let card: OriginCard
     let clockPaused: Bool
     let onClose: () -> Void
 
@@ -106,9 +108,10 @@ struct OriginSheetView: View {
 
     // MARK: - Cópia por origem
 
-    // Só há uma origem hoje. Quando houver a segunda, isto vira um switch com uma
-    // entrada por chave — e a cópia continua vindo do i18n, não daqui.
-    private var name: String { origin == "FARIAS" ? Str.Origin.origin_name : origin }
-    private var role: String { origin == "FARIAS" ? Str.Origin.origin_role : "" }
-    private var body_: String { origin == "FARIAS" ? Str.Origin.origin_body : "" }
+    // O texto vem pronto do Core, na língua da trilha (ADR 0011). Sem cartão conhecido
+    // para o id, o Core já manda o próprio id como nome e o resto vazio — a tela não
+    // decide esse fallback, só mostra o que chegou.
+    private var name: String { card.name }
+    private var role: String { card.role }
+    private var body_: String { card.body }
 }
