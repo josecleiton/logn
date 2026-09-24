@@ -140,7 +140,7 @@ pub struct Key {
 pub struct Group {
     pub name: String,
     pub comment: Option<String>,
-    /// A type from the generated `Recording` module this group is the copy for.
+    /// A type from the generated `Match` module this group is the copy for.
     pub enum_type: Option<String>,
     /// Member generated on that type. Defaults to the group name.
     pub property: String,
@@ -166,7 +166,7 @@ pub struct Catalog {
     /// device with no matching locale falls back to.
     pub source_language: String,
     /// Core enums with at least one data-carrying variant, keyed by the
-    /// `enum = "Recording.X"` a group binds to. Read through
+    /// `enum = "Match.X"` a group binds to. Read through
     /// [`Catalog::has_data_variants`].
     ///
     /// The flattened form of `[enums]` rather than the file's own shape: what
@@ -595,7 +595,7 @@ mod tests {
         let mut problems = Vec::new();
         check_placeholders(
             "pt-BR",
-            "transcript.wordCount",
+            "explanation.lineCount",
             &key(false, vec![]),
             &Message::Simple("%{count} palavras".to_owned()),
             &mut problems,
@@ -610,7 +610,7 @@ mod tests {
         let mut problems = Vec::new();
         check_placeholders(
             "en",
-            "transcript.wordCount",
+            "explanation.lineCount",
             &key(false, vec![count_placeholder()]),
             &Message::Simple("words".to_owned()),
             &mut problems,
@@ -625,7 +625,7 @@ mod tests {
         let mut problems = Vec::new();
         check_placeholders(
             "en",
-            "drafts.progress",
+            "sync.progress",
             &key(false, vec![]),
             &Message::Simple("50% done".to_owned()),
             &mut problems,
@@ -646,7 +646,7 @@ mod tests {
 
         check_placeholders(
             "pt-BR",
-            "transcript.wordCount",
+            "explanation.lineCount",
             &key(true, vec![count_placeholder()]),
             &Message::Plural(forms),
             &mut problems,
@@ -661,7 +661,7 @@ mod tests {
         let mut problems = Vec::new();
         check_plural(
             "en",
-            "transcript.wordCount",
+            "explanation.lineCount",
             &key(true, vec![]),
             &Message::Simple("words".to_owned()),
             &mut problems,
@@ -681,7 +681,7 @@ mod tests {
 
         check_plural(
             "en",
-            "transcript.wordCount",
+            "explanation.lineCount",
             &key(true, vec![count_placeholder()]),
             &Message::Plural(forms),
             &mut problems,
@@ -782,7 +782,7 @@ mod tests {
 
         check_plural(
             "en",
-            "transcript.wordCount",
+            "explanation.lineCount",
             &key(true, vec![count_placeholder()]),
             &Message::Plural(forms),
             &mut problems,

@@ -194,7 +194,7 @@ fn mappers_file(catalog: &Catalog) -> String {
 
     let mut out = String::from(BANNER);
     // One import per namespace the catalog actually binds to, rather than a
-    // fixed `Recording`: the day a second namespace appeared, the generated
+    // fixed `Match`: the day a second namespace appeared, the generated
     // mappers stopped compiling and the generator was the last place anyone
     // would look.
     let mut namespaces: Vec<&str> = by_type
@@ -228,7 +228,7 @@ fn mappers_file(catalog: &Catalog) -> String {
                 // associated values and hand them to the accessor. Without this the
                 // mapper names the function where a `String` belongs, which does not
                 // compile — the safeguard working, but only once somebody has written
-                // such a key, and `challengeSubmitFailure.refused` is the first.
+                // such a key, and `submitFailure.refused` is the first.
                 let bindings = key
                     .placeholders
                     .iter()
@@ -476,7 +476,7 @@ mod tests {
                 Group {
                     name: "notice".to_owned(),
                     comment: Some("Unrequested things".to_owned()),
-                    enum_type: Some("Recording.Notice".to_owned()),
+                    enum_type: Some("Match.Notice".to_owned()),
                     property: "text".to_owned(),
                     resource: false,
                     info_plist: false,
@@ -488,14 +488,14 @@ mod tests {
                     }],
                 },
                 Group {
-                    name: "transcript".to_owned(),
+                    name: "explanation".to_owned(),
                     comment: None,
                     enum_type: None,
-                    property: "transcript".to_owned(),
+                    property: "explanation".to_owned(),
                     resource: false,
                     info_plist: false,
                     keys: vec![Key {
-                        name: "wordCount".to_owned(),
+                        name: "lineCount".to_owned(),
                         comment: None,
                         placeholders: vec![Placeholder {
                             name: "count".to_owned(),
@@ -513,10 +513,10 @@ mod tests {
                         Message::Simple("Couldn't reach the match server".to_owned()),
                     ),
                     (
-                        "transcript.wordCount".to_owned(),
+                        "explanation.lineCount".to_owned(),
                         Message::Plural(BTreeMap::from([
-                            ("one".to_owned(), "%{count} word".to_owned()),
-                            ("other".to_owned(), "%{count} words".to_owned()),
+                            ("one".to_owned(), "%{count} line".to_owned()),
+                            ("other".to_owned(), "%{count} lines".to_owned()),
                         ])),
                     ),
                 ]),
@@ -539,7 +539,7 @@ mod tests {
     #[test]
     fn a_key_with_placeholders_takes_them_as_arguments() {
         assert!(strings_file(&catalog()).contains(
-            "static func wordCount(_ count: Int) -> String { localized(\"transcript.wordCount\", [count]) }"
+            "static func lineCount(_ count: Int) -> String { localized(\"explanation.lineCount\", [count]) }"
         ));
     }
 
@@ -547,7 +547,7 @@ mod tests {
     fn a_group_bound_to_a_core_type_becomes_an_exhaustive_switch() {
         let swift = mappers_file(&catalog());
 
-        assert!(swift.contains("extension Recording.Notice {"));
+        assert!(swift.contains("extension Match.Notice {"));
         assert!(swift.contains("var text: String {"));
         assert!(swift.contains("case .startFailed: Str.Notice.startFailed"));
         // No `default:` — that is what makes a new Rust variant a build failure.
@@ -558,7 +558,7 @@ mod tests {
     fn a_variant_whose_copy_interpolates_it_binds_what_it_carries() {
         let catalog = Catalog {
             groups: vec![Group {
-                name: "crmFailure".to_owned(),
+                name: "submitFailure".to_owned(),
                 comment: None,
                 enum_type: Some("ChallengeDetail.SubmitFailure".to_owned()),
                 property: "message".to_owned(),
@@ -592,17 +592,17 @@ mod tests {
     fn a_number_bound_out_of_a_variant_is_converted_to_what_the_accessor_takes() {
         let catalog = Catalog {
             groups: vec![Group {
-                name: "diskSpace".to_owned(),
+                name: "queueBacklog".to_owned(),
                 comment: None,
-                enum_type: Some("Recording.DiskSpaceState".to_owned()),
+                enum_type: Some("Match.QueueState".to_owned()),
                 property: "message".to_owned(),
                 resource: false,
                 info_plist: false,
                 keys: vec![Key {
-                    name: "low".to_owned(),
+                    name: "critical".to_owned(),
                     comment: None,
                     placeholders: vec![Placeholder {
-                        name: "minutes".to_owned(),
+                        name: "count".to_owned(),
                         kind: PlaceholderKind::Int,
                     }],
                     plural: false,
@@ -615,22 +615,22 @@ mod tests {
 
         assert!(
             mappers_file(&catalog)
-                .contains("case .low(let minutes): Str.DiskSpace.low(Int(minutes))")
+                .contains("case .critical(let count): Str.QueueBacklog.critical(Int(count))")
         );
     }
 
     #[test]
     fn plurals_become_catalog_variations() {
         let json: Value = serde_json::from_str(&string_catalog(&catalog()).unwrap()).unwrap();
-        let entry = &json["strings"]["transcript.wordCount"]["localizations"]["en"];
+        let entry = &json["strings"]["explanation.lineCount"]["localizations"]["en"];
 
         assert_eq!(
             entry["variations"]["plural"]["one"]["stringUnit"]["value"],
-            "%1$lld word"
+            "%1$lld line"
         );
         assert_eq!(
             entry["variations"]["plural"]["other"]["stringUnit"]["value"],
-            "%1$lld words"
+            "%1$lld lines"
         );
     }
 }
