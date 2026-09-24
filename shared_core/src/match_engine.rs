@@ -567,7 +567,7 @@ mod tests {
                 template_type: "SPOT_THE_BUG".into(),
                 title: "A · Soma de Dois Números".into(),
                 description: "Encontre o bug.".into(),
-                code_lines: vec!["int a = 0;".into(), "while (a < b)".into()],
+                code_lines: vec!["int i = 0;".into(), "while (i < n)".into()],
                 correct_line: Some(1),
                 expected_string: None,
                 explanation: String::new(),
@@ -603,14 +603,14 @@ mod tests {
                 letter: "C".into(),
                 challenge_id: "ch3".into(),
                 template_type: "TAG_THE_PATTERN".into(),
-                title: "C · Maior de Três".into(),
+                title: "C · Padrão de Solução".into(),
                 description: "Qual pattern?".into(),
                 code_lines: vec![],
                 correct_line: None,
                 expected_string: None,
                 explanation: String::new(),
-                options: vec!["Grafos".into(), "BFS".into(), "DP".into(), "Greedy".into()],
-                correct_options: vec!["Grafos".into(), "BFS".into()],
+                options: vec!["Tag A".into(), "Tag B".into(), "Tag C".into(), "Tag D".into()],
+                correct_options: vec!["Tag A".into(), "Tag B".into()],
                 max_selections: 2,
                 origin: String::new(),
                 seconds: 60,
@@ -689,7 +689,7 @@ mod tests {
         state.submit(); // A
         state.selection.answer_string = Some("a".into());
         state.submit(); // B
-        state.selection.selected_tags = vec!["Grafos".into(), "BFS".into()];
+        state.selection.selected_tags = vec!["Tag A".into(), "Tag B".into()];
         state.submit(); // C
         assert_eq!(state.current_template_type(), "DRY_RUN");
         state
@@ -806,14 +806,14 @@ mod tests {
         // aprender nada. O cartão traz os dois, nessa ordem.
         let mut problems = sample_problems();
         problems[0].explanation =
-            "Explicação do desafio de teste.".into();
+            "O laço não anda porque a variável de controle nunca muda de valor.".into();
 
         let mut state = MatchState::new(problems);
         state.submit_tle();
 
         let trap = state.trap.as_ref().expect("o TLE tem de montar o cartão");
         assert_eq!(trap.kind, TrapKind::TimeLimit, "o cliente põe o enquadramento do contest pelo tipo");
-        assert_eq!(trap.explanation, "Explicação do desafio de teste.",
+        assert_eq!(trap.explanation, "O laço não anda porque a variável de controle nunca muda de valor.",
             "a explicação do desafio tem de sobreviver ao estouro");
         assert_eq!(
             state.errors[0].explanation, trap.explanation,
@@ -870,7 +870,7 @@ mod tests {
         state.selection.answer_string = Some("a".into());
         state.submit();
         // Now on C (TAG_THE_PATTERN)
-        state.selection.selected_tags = vec!["Grafos".into(), "BFS".into()];
+        state.selection.selected_tags = vec!["Tag A".into(), "Tag B".into()];
         let verdict = state.submit();
         assert_eq!(verdict, VerdictCode::Accepted);
     }

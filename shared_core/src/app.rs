@@ -699,8 +699,8 @@ struct OfflineSnapshot {
 /// Tira o "A · " da frente do nome do problema.
 ///
 /// A letra é posição na partida, não parte do nome: o mesmo desafio pode ser o A de um
-/// nó e o C de outro. O seed guardava "A · Soma de Dois Números" e o core prefixava de novo,
-/// então o enunciado abria como "A · A · SOMA DE DOIS NÚMEROS".
+/// nó e o C de outro. O seed guardava "A · Soma de Dois Números" e o core prefixava de
+/// novo, então o enunciado abria como "A · A · SOMA DE DOIS NÚMEROS".
 pub fn strip_problem_letter(title: &str) -> String {
     let mut chars = title.chars();
     match (chars.next(), chars.next()) {
@@ -3008,7 +3008,7 @@ mod tests {
         let app = LogNApp::default();
         let mut model = Model::default();
         model.challenges = vec![Challenge {
-            id: "ch_001".into(),
+            id: "ch_t01".into(),
             node_id: "node_1".into(),
             template_type: "SPOT_THE_BUG".into(),
             origin: String::new(),
@@ -3017,10 +3017,10 @@ mod tests {
                     title: "Soma de Dois Números".into(),
                     description: "Ache o laço infinito.".into(),
                     code_lines: vec![
-                        "int l = 0, r = n - 1;".into(),
-                        "while (a < b) {".into(),
-                        "    int mid = l + (r - l) / 2;".into(),
-                        "    if (a >= b) {".into(),
+                        "int i = 0, total = 0;".into(),
+                        "while (i < n) {".into(),
+                        "    total += nums[i];".into(),
+                        "    if (total >= limit) {".into(),
                     ],
                     options: None,
                     correct_options: None,
@@ -3090,7 +3090,7 @@ mod tests {
         model.session_expires_at = 1_792_600_000;
         model.nodes = vec![crate::domain::SkillNode {
             id: "10000000-0000-0000-0000-000000000001".into(),
-            name: "Nó A".into(),
+            name: "1. Fundamentos & Notação".into(),
             description: "Descrição".into(),
             row: 0,
             column: 0,
@@ -3183,7 +3183,7 @@ mod tests {
         let app = LogNApp::default();
         let mut model = Model::default();
         model.challenges = vec![Challenge {
-            id: "ch_001".into(),
+            id: "ch_t01".into(),
             node_id: "10000000-0000-0000-0000-000000000001".into(),
             template_type: "SPOT_THE_BUG".into(),
             origin: String::new(),
@@ -3191,7 +3191,7 @@ mod tests {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
                     description: "Ache o laço infinito.".into(),
-                    code_lines: vec!["while (a < b) {".into(), "    a = a;".into()],
+                    code_lines: vec!["while (i < n) {".into(), "    i = i;".into()],
                     options: None,
                     correct_options: None,
                     watch_variables: None,
@@ -3239,7 +3239,7 @@ mod tests {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
                     description: "Ache o laço infinito.".into(),
-                    code_lines: vec!["while (a < b) {".into(), "    a = a;".into()],
+                    code_lines: vec!["while (i < n) {".into(), "    i = i;".into()],
                     options: None,
                     correct_options: None,
                     watch_variables: None,
@@ -3257,10 +3257,10 @@ mod tests {
 
         let app = LogNApp::default();
         let mut model = Model::default();
-        model.challenges = vec![bug("ch_001"), bug("ch_002")];
+        model.challenges = vec![bug("ch_t01"), bug("ch_t02")];
         model.nodes = vec![crate::domain::SkillNode {
             id: NODE.into(),
-            name: "Nó A".into(),
+            name: "1. Fundamentos & Notação".into(),
             description: "Descrição".into(),
             row: 0,
             column: 0,
@@ -3297,7 +3297,7 @@ mod tests {
             .find(|e| e.event_type == "MATCH_ANSWER")
             .expect("a resposta vira evento de sync");
         assert!(
-            last.payload_json.contains(r#""challenge_id":"ch_002""#),
+            last.payload_json.contains(r#""challenge_id":"ch_t02""#),
             "sem challenge_id o servidor não sabe se já pagou: {}",
             last.payload_json
         );
@@ -3387,8 +3387,8 @@ mod tests {
             "version": crate::domain::TRAIL_SEED_VERSION,
             "generated_at": "2026-09-22T00:00:00Z",
             "locales": {
-                "pt-BR": { "nodes": [node("Nó A")], "challenges": [] },
-                "es": { "nodes": [node("Nó A y Big-O")], "challenges": [] }
+                "pt-BR": { "nodes": [node("1. Fundamentos & Notação")], "challenges": [] },
+                "es": { "nodes": [node("1. Fundamentos y Notación")], "challenges": [] }
             }
         })
         .to_string()
@@ -3445,11 +3445,11 @@ mod tests {
         let mut model = Model::default();
         model.nodes = vec![crate::domain::SkillNode {
             id: "70000000-0000-0000-0000-000000000007".into(),
-            name: "Nó G".into(),
+            name: "7. Tópicos Avançados".into(),
             description: "Descrição".into(),
             row: 4,
             column: 0,
-            required_xp: 60,
+            required_xp: 1100,
             prerequisites: vec![],
             topic: String::new(),
             status: Default::default(),
@@ -3458,7 +3458,7 @@ mod tests {
         let _ = app.update(Event::BundledTrailLoaded { json: seed_json() }, &mut model);
         assert_eq!(model.nodes.len(), 1);
         assert_eq!(
-            model.nodes[0].name, "Nó G",
+            model.nodes[0].name, "7. Tópicos Avançados",
             "o que veio do servidor manda; a semente não regride o conteúdo"
         );
     }
@@ -3472,14 +3472,14 @@ mod tests {
         let mut model = Model::default();
         model.locale = "es-AR".into();
         let _ = app.update(Event::BundledTrailLoaded { json: seed_json() }, &mut model);
-        assert_eq!(model.nodes[0].name, "Nó A y Big-O");
+        assert_eq!(model.nodes[0].name, "1. Fundamentos y Notación");
         assert_eq!(model.content_locale, "es");
 
         // A semente de teste não tem inglês.
         let mut model = Model::default();
         model.locale = "en-US".into();
         let _ = app.update(Event::BundledTrailLoaded { json: seed_json() }, &mut model);
-        assert_eq!(model.nodes[0].name, "Nó A");
+        assert_eq!(model.nodes[0].name, "1. Fundamentos & Notação");
         assert_eq!(
             model.content_locale, "pt-BR",
             "o modelo diz a língua do que tem, não a que pediu"
@@ -3494,7 +3494,7 @@ mod tests {
             "paid_challenge_ids": ["ch_001"],
             "nodes": [{
                 "id": "20000000-0000-0000-0000-000000000002",
-                "name": "Nó B", "description": "Do servidor.",
+                "name": "2. Estruturas Básicas", "description": "Do servidor.",
                 "row": 1, "column": -1, "required_xp": 100, "prerequisites": []
             }],
             "challenges": []
@@ -3527,7 +3527,7 @@ mod tests {
         restore(&app, &mut model, snapshot_in(Some("pt-BR")));
         assert_eq!(model.global_xp, 340);
         assert_eq!(model.paid_challenges, vec!["ch_001".to_string()]);
-        assert_eq!(model.nodes[0].name, "Nó A y Big-O", "fica a semente em espanhol");
+        assert_eq!(model.nodes[0].name, "1. Fundamentos y Notación", "fica a semente em espanhol");
         assert_eq!(model.content_locale, "es");
         assert!(model.trail_from_bundle);
     }
@@ -3540,7 +3540,7 @@ mod tests {
 
         let mut model = Model::default();
         restore(&app, &mut model, snapshot_in(None));
-        assert_eq!(model.nodes[0].name, "Nó B");
+        assert_eq!(model.nodes[0].name, "2. Estruturas Básicas");
         assert_eq!(model.content_locale, "pt-BR");
 
         let mut model = Model::default();
@@ -3560,7 +3560,7 @@ mod tests {
         assert_eq!(model.content_locale, "pt-BR");
 
         let mut cmd = app.update(Event::SetLocale("es-MX".into()), &mut model);
-        assert_eq!(model.nodes[0].name, "Nó A y Big-O");
+        assert_eq!(model.nodes[0].name, "1. Fundamentos y Notación");
         assert_eq!(model.content_locale, "es");
         let pediu = cmd.effects().any(|e| matches!(
             e,
@@ -3781,7 +3781,7 @@ mod tests {
             "global_xp": 0, "bugs_found": 0, "dry_runs_completed": 0,
             "nodes": [{
                 "id": "20000000-0000-0000-0000-000000000002",
-                "name": "Nó B", "description": "Do servidor.",
+                "name": "2. Estruturas Básicas", "description": "Do servidor.",
                 "row": 1, "column": -1, "required_xp": 100, "prerequisites": []
             }],
             "challenges": []
@@ -3996,17 +3996,17 @@ mod tests {
         // Tags: a ordem em que o jogador marca não importa.
         let mut model = Model::default();
         model.challenges = vec![seeded_challenge(
-            "ch_005",
+            "ch_t05",
             "TAG_THE_PATTERN",
-            vec!["Grafos".into(), "BFS".into(), "DP".into(), "Greedy".into()],
-            vec!["Grafos".into(), "BFS".into()],
+            vec!["Tag A".into(), "Tag B".into(), "Tag C".into(), "Tag D".into()],
+            vec!["Tag A".into(), "Tag B".into()],
             "",
         )];
         let _ = app.update(Event::StartMatch { node_id: "10000000-0000-0000-0000-000000000001".into() }, &mut model);
         assert_eq!(app.view(&model).match_view.max_selections, 2, "duas tags, duas marcações");
 
-        let _ = app.update(Event::MatchToggleTag { tag: "BFS".into() }, &mut model);
-        let _ = app.update(Event::MatchToggleTag { tag: "Grafos".into() }, &mut model);
+        let _ = app.update(Event::MatchToggleTag { tag: "Tag B".into() }, &mut model);
+        let _ = app.update(Event::MatchToggleTag { tag: "Tag A".into() }, &mut model);
         let _ = app.update(Event::MatchSubmit { timestamp: 1_700_000_000 }, &mut model);
         assert_eq!(app.view(&model).match_view.last_verdict, "AC");
     }
@@ -4022,7 +4022,7 @@ mod tests {
         let app = LogNApp::default();
         let mut model = Model::default();
         model.challenges = vec![Challenge {
-            id: "ch_001".into(),
+            id: "ch_t01".into(),
             node_id: "node_1".into(),
             template_type: "SPOT_THE_BUG".into(),
             origin: String::new(),
@@ -4030,7 +4030,7 @@ mod tests {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
                     description: "Ache o laço infinito.".into(),
-                    code_lines: vec!["while (a < b) {".into(), "    a = a;".into()],
+                    code_lines: vec!["while (i < n) {".into(), "    i = i;".into()],
                     options: None,
                     correct_options: None,
                     watch_variables: None,

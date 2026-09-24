@@ -20,9 +20,9 @@ func trail() map[string]any {
 		"trilha/nos.json": []any{map[string]any{
 			"id": nodeID, "row": 0, "col": 0, "required_xp": 0, "prerequisites": []any{}, "topic": "adhoc",
 		}},
-		"trilha/nos.pt-BR.json": map[string]any{nodeID: map[string]any{"name": "Nó A", "description": ""}},
-		"trilha/nos.en.json":    map[string]any{nodeID: map[string]any{"name": "Nó A", "description": ""}},
-		"trilha/nos.es.json":    map[string]any{nodeID: map[string]any{"name": "Nó A", "description": ""}},
+		"trilha/nos.pt-BR.json": map[string]any{nodeID: map[string]any{"name": "1. Fundamentos", "description": ""}},
+		"trilha/nos.en.json":    map[string]any{nodeID: map[string]any{"name": "1. Fundamentos", "description": ""}},
+		"trilha/nos.es.json":    map[string]any{nodeID: map[string]any{"name": "1. Fundamentos", "description": ""}},
 		"trilha/desafios/ch_1.json": map[string]any{
 			"id": "ch_1", "node_id": nodeID, "template_type": "DRY_RUN", "position_idx": 1, "origin": "",
 			"payload": map[string]any{

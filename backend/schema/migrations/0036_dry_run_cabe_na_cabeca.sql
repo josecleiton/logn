@@ -3,9 +3,8 @@
 -- O jogo é de celular, e quem joga no ônibus não tem papel. Sem papel, o limite de um
 -- traço não é o relógio, é a memória de trabalho — umas quatro coisas ao mesmo tempo.
 -- Dar mais tempo a quem não tem onde anotar só adia o momento em que ele perde o fio.
--- Quatro dos sete DRY_RUN da trilha pediam de 5 a 24 células (a tabela de troco com
--- sete posições, a BFS com seis distâncias e a fila, o crivo com 21 posições) e foram
--- reescritos na migração de conteúdo anterior a esta.
+-- Vários DRY_RUN da trilha pediam bem mais que quatro células e foram reescritos na
+-- migração de conteúdo anterior a esta.
 --
 -- Quem escreve o desafio declara o pico em validation.trace_cells. A regra de contagem,
 -- que está no guia de escrita de desafios:
