@@ -30,7 +30,7 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    no `SET` de todo `UPDATE`. Coluna que nasce com a linha e nunca mais anda mente pior
    que coluna nenhuma.
 
-   **Estado atual, para quem for mexer:** a regra está cumprida desde a `0013_carimbos_de_tempo.sql`. Toda tabela tem `created_at` (agora com `NOT NULL` aplicado pela 0034). `users`, `skill_nodes`, `refresh_tokens`, `otps`, `user_progress`, `challenges` e `user_sync_state` têm `updated_at` mantido pelo trigger `trg_<tabela>_updated_at`, que chama `set_updated_at()` — a função já existe, tabela nova só cria o trigger dela. Ficam só com `created_at` as que nunca sofrem `UPDATE`: `game_events` (append-only por desenho, ADR 0002) e `user_paid_challenges` (0032). `schema_migrations` resolve com `applied_at`. Em `otps` o `updated_at` anda a cada tentativa errada; por isso o intervalo entre envios usa `sent_at` (0031), não ele.
+   **Estado atual, para quem for mexer:** a regra está cumprida desde a `0013_carimbos_de_tempo.sql`. Toda tabela tem `created_at` (agora com `NOT NULL` aplicado pela 0034). `users`, `skill_nodes`, `refresh_tokens`, `otps`, `user_progress`, `challenges`, `user_sync_state`, `skill_node_translations` e `challenge_translations` (0043) têm `updated_at` mantido pelo trigger `trg_<tabela>_updated_at`, que chama `set_updated_at()` — a função já existe, tabela nova só cria o trigger dela. Ficam só com `created_at` as que nunca sofrem `UPDATE`: `game_events` (append-only por desenho, ADR 0002) e `user_paid_challenges` (0032). `schema_migrations` resolve com `applied_at`. Em `otps` o `updated_at` anda a cada tentativa errada; por isso o intervalo entre envios usa `sent_at` (0031), não ele.
 
 6. **Todo texto que o jogador lê ou ouve sai do catálogo de i18n, nunca de literal no código.**
    Vale para rótulo, botão, legenda, veredito e `accessibilityLabel`, em qualquer cliente.
@@ -41,6 +41,20 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
 
    Nome de chave não pode ser palavra reservada do Swift ou do Kotlin (`continue`,
    `default`, `in`…): vira identificador no código gerado.
+
+   O catálogo é da **interface**. Texto de **conteúdo** — nome de nó, enunciado,
+   explicação, rótulo de opção de TAG — vem do servidor já na língua pedida, das
+   tabelas de tradução (ADR 0009), e o cliente mostra como chegou. O Core também não
+   escreve frase em volta do conteúdo: manda o tipo (`TrapKind`) e o texto cru, e o
+   shell compõe com o catálogo. Conteúdo novo se escreve em `logn-conteudo/trilha/`,
+   passa por `just content-check` e vira migração por `gen_conteudo.py`.
+
+7. **Erro de rota que o app lê é `writeError(w, status, code)`, nunca `http.Error`
+   com frase.** Ficam fora a rota interna de purga, o `/ready` e as páginas HTML de
+   `/legal`, que ninguém do app lê. O corpo é `{"code", "message"}`; o código está em `backend/api_errors.go` e é
+   contrato com app instalado — acrescente, não renomeie. O Core decide pelo código
+   (`api_code` em `app.rs`), e erro que o jogador pode corrigir ganha `StatusKey`
+   próprio.
 
 
 ## 🔄 Fluxo de Trabalho do Agente
