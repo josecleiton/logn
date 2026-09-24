@@ -193,19 +193,13 @@ struct BrandLockup: View {
     }
 }
 
-/// Fileira decorativa A—M das telas de entrada. Cinco balões no ar, o resto em aberto.
+/// Fileira decorativa A—M das telas de entrada. Os treze balões no ar, como na landing:
+/// é a paleta inteira se apresentando, não um placar.
 struct BalloonMarquee: View {
-    var filledCount: Int = 5
-
     var body: some View {
         HStack(spacing: 7) {
-            ForEach(Array(BalloonColor.all.enumerated()), id: \.element) { index, letter in
-                BalloonShape(
-                    style: index < filledCount
-                        ? .filled(BalloonColor.forLetter(letter))
-                        : .outline(LognDark.lineStrong, 5),
-                    width: 13
-                )
+            ForEach(BalloonColor.all, id: \.self) { letter in
+                BalloonShape(style: .filled(BalloonColor.forLetter(letter)), width: 13)
             }
         }
         .opacity(0.5)
