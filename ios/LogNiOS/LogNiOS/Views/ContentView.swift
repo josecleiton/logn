@@ -232,7 +232,7 @@ struct SkillTreeHostView: View {
 
             Spacer(minLength: 0)
 
-            Text("\(core.viewModel.globalXp) XP")
+            Text(Str.Profile.xp(Int(core.viewModel.globalXp)))
                 .font(.plexMono(12))
                 .monospacedDigit()
                 .foregroundColor(LognDark.accentInk)

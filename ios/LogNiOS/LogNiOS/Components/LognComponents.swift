@@ -92,7 +92,7 @@ struct LifeBar: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(lives) de \(maxLives) vidas")
+        .accessibilityLabel(Str.Profile.lives_accessibility(lives, maxLives))
     }
 }
 
@@ -112,7 +112,7 @@ struct ContestClock: View {
                     .monospacedDigit()
                     .foregroundColor(LognDark.wrongInk)
 
-                Text("RELÓGIO DA QUESTÃO · CRÍTICO")
+                Text(Str.Match.clock_critical)
                     .font(.plexMono(11))
                     .tracking(0.1 * 11)
                     .foregroundColor(LognDark.wrongInk)
@@ -232,7 +232,7 @@ struct VerdictChip: View {
                 RoundedRectangle(cornerRadius: Radius.xs)
                     .stroke(verdict == .judging ? LognDark.lineDim : verdict.tone, lineWidth: 1)
             )
-            .accessibilityLabel("\(verdict.rawValue), \(verdict.meaning)")
+            .accessibilityLabel(Str.Profile.verdict_accessibility(verdict.rawValue, verdict.meaning))
     }
 }
 
@@ -286,7 +286,7 @@ struct MatchHeader: View {
                     showString: true
                 )
 
-                Text("PROBLEM \(String(letter))")
+                Text(Str.Match.problem_letter(String(letter)))
                     .font(.plexMono(12))
                     .tracking(0.12 * 12)
                     .foregroundColor(LognDark.textMuted)
@@ -297,7 +297,7 @@ struct MatchHeader: View {
                     .font(.plexMonoMedium(15))
                     .monospacedDigit()
                     .foregroundColor(clockColor)
-                    .accessibilityLabel("tempo restante \(remainingSeconds) segundos")
+                    .accessibilityLabel(Str.Match.time_remaining(remainingSeconds))
 
                 LifeBar(lives: lives, maxLives: maxLives, showsCounter: false, heartSize: 14)
                     .padding(.leading, 12)

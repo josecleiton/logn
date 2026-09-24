@@ -103,7 +103,7 @@ private struct CodeLineRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Text("\(number)")
+            Text(verbatim: "\(number)")
                 .font(.plexMono(fontSize))
                 .monospacedDigit()
                 .foregroundColor(isSelected ? highlightInk : LognDark.textMuted)
@@ -146,7 +146,7 @@ private struct CodeLineRow: View {
             .strokeBorder(LognDark.accent, style: StrokeStyle(lineWidth: 1, dash: [3]))
             .frame(minWidth: 74, maxWidth: 74, minHeight: 30)
             .padding(.horizontal, 2)
-            .accessibilityLabel("lacuna a preencher")
+            .accessibilityLabel(Str.Arena.gap_to_fill)
     }
 
     private var background: Color {

@@ -212,7 +212,7 @@ struct ProfileHubView: View {
 
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Text("\(vm.globalXp) XP")
+                    Text(Str.Profile.xp(Int(vm.globalXp)))
                     Spacer(minLength: 0)
                     Text("\(Int(vm.level) * Int(vm.xpForLevel))")
                 }
@@ -290,7 +290,7 @@ struct ProfileHubView: View {
     }
 
     private var summary: some View {
-        Text("\(Str.Profile.challenges_completed(Int(vm.challengesCompleted))) · \(Str.Dashboard.balloons_up(Int(vm.balloonsUp)))")
+        Text(Str.Profile.stats_summary(Str.Profile.challenges_completed(Int(vm.challengesCompleted)), Str.Dashboard.balloons_up(Int(vm.balloonsUp))))
             .font(.plexMono(10.5))
             .monospacedDigit()
             .foregroundColor(LognDark.textMuted)
