@@ -47,7 +47,7 @@ func (s *Server) pingHandler(w http.ResponseWriter, r *http.Request) {
 //
 // Responde 401 e devolve `false` quando não há token válido — o chamador só precisa
 // desistir.
-func authenticate(w http.ResponseWriter, r *http.Request) (string, bool) {
+func (s *Server) authenticate(w http.ResponseWriter, r *http.Request) (string, bool) {
 	header := r.Header.Get("Authorization")
 	if !strings.HasPrefix(header, "Bearer ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -59,6 +59,13 @@ func authenticate(w http.ResponseWriter, r *http.Request) (string, bool) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return "", false
 	}
+	
+	// Ensure user exists and has not requested deletion
+	if !s.repo.IsUserActive(r.Context(), userID) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return "", false
+	}
+
 	return userID, true
 }
 
@@ -68,7 +75,7 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, ok := authenticate(w, r)
+	userID, ok := s.authenticate(w, r)
 	if !ok {
 		return
 	}
@@ -232,10 +239,21 @@ func main() {
 		log.Println("Migrações concluídas com sucesso. Encerrando (MIGRATE_ONLY=true).")
 		return
 	}
+	
+
 
 	repo := domain.NewRepository(pool)
 	mailer := email.NewMailer()
 	server := &Server{repo: repo, mailer: mailer}
+
+	if os.Getenv("PURGE_ONLY") == "true" {
+		log.Println("Rodando rotina de expurgo (PURGE_ONLY=true)...")
+		if err := server.repo.PurgeDeletedAccounts(context.Background()); err != nil {
+			log.Fatalf("Erro no expurgo: %v", err)
+		}
+		log.Println("Expurgo concluído com sucesso. Encerrando.")
+		return
+	}
 
 	// Rotas de autenticação passam por um limite por IP. Nenhuma tinha limite, e é
 	// por elas que se força senha, se varre OTP e se dispara e-mail. Trinta por
@@ -257,9 +275,19 @@ func main() {
 	mux.HandleFunc("POST /api/v1/auth/verify-otp", auth(server.verifyOTPHandler))
 	mux.HandleFunc("POST /api/v1/auth/register", auth(server.registerHandler))
 	mux.HandleFunc("POST /api/v1/auth/reset-password", auth(server.resetPasswordHandler))
+	mux.HandleFunc("POST /api/v1/users/me/delete", auth(server.deleteAccountHandler))
 
 	mux.HandleFunc("GET /api/v1/nodes", server.getNodesHandler)
 	mux.HandleFunc("GET /api/v1/progress", server.getUserProgressHandler)
+	
+	mux.HandleFunc("GET /legal/privacy", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte("<html><body><h1>Privacy Policy</h1><p>Em breve.</p></body></html>"))
+	})
+	mux.HandleFunc("GET /legal/terms", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte("<html><body><h1>Terms of Service</h1><p>Em breve.</p></body></html>"))
+	})
 
 	port := os.Getenv("PORT")
 	if port == "" {

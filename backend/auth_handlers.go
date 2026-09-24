@@ -305,3 +305,45 @@ func (s *Server) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 
 	s.issueSession(ctx, w, userID)
 }
+
+type DeleteAccountRequest struct {
+	Password string `json:"password"`
+}
+
+func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID, ok := s.authenticate(w, r)
+	if !ok {
+		return
+	}
+
+	var req DeleteAccountRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	match, compareErr := domain.ComparePasswordAndHash(req.Password, user.PasswordHash)
+	if err != nil || user.PasswordHash == "" || compareErr != nil || !match {
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	if err := s.repo.MarkAccountForDeletion(ctx, userID); err != nil {
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}

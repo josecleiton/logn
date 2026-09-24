@@ -164,6 +164,7 @@ struct CriticalLogoutSheet: View {
 struct ManageAccountView: View {
     @EnvironmentObject var core: CoreWrapper
     @Environment(\.dismiss) private var dismiss
+    @State private var showingDeleteConfirm = false
 
     var body: some View {
         ZStack {
@@ -172,13 +173,7 @@ struct ManageAccountView: View {
             VStack(alignment: .leading, spacing: 0) {
                 header
 
-                VStack(spacing: 10) {
-                    actionRow(Str.Logout.change_email, sub: core.viewModel.accountEmail)
-                    actionRow(Str.Logout.change_password, sub: nil)
-                    actionRow(Str.Logout.download_data, sub: Str.Logout.download_sub)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 18)
+
 
                 Spacer(minLength: 18)
 
@@ -188,6 +183,11 @@ struct ManageAccountView: View {
             }
         }
         .navigationBarHidden(true)
+        .sheet(isPresented: $showingDeleteConfirm) {
+            DeleteAccountSheet(onDelete: { password in
+                core.dispatch(event: .deleteAccount(passwordHash: password))
+            })
+        }
     }
 
     private var header: some View {
@@ -260,12 +260,14 @@ struct ManageAccountView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 7)
 
-            Text(Str.Logout.delete_button)
-                .font(.plexSansSemiBold(14.5))
-                .foregroundColor(LognDark.wrongInk)
-                .frame(maxWidth: .infinity, minHeight: 46)
-                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.wrong, lineWidth: 1))
-                .padding(.top, 14)
+            Button(action: { showingDeleteConfirm = true }) {
+                Text(Str.Logout.delete_button)
+                    .font(.plexSansSemiBold(14.5))
+                    .foregroundColor(LognDark.wrongInk)
+                    .frame(maxWidth: .infinity, minHeight: 46)
+                    .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.wrong, lineWidth: 1))
+            }
+            .padding(.top, 14)
 
             Text(Str.Logout.delete_prompt)
                 .font(.plexMono(10.5))
@@ -277,5 +279,65 @@ struct ManageAccountView: View {
         .background(LognDark.tintErr)
         .cornerRadius(Radius.sm)
         .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.wrong, lineWidth: 1))
+    }
+}
+
+struct DeleteAccountSheet: View {
+    let onDelete: (String) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var password = ""
+    @State private var confirmation = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text(Str.Logout.delete_account)
+                .font(.plexSansSemiBold(18))
+                .foregroundColor(LognDark.textPrimary)
+
+            Text(Str.Logout.irreversible)
+                .font(.plexSans(14))
+                .foregroundColor(LognDark.wrongInk)
+
+            SecureField(Str.Login.password_prompt, text: $password)
+                .font(.plexMono(14))
+                .padding(.horizontal, 14)
+                .frame(height: 52)
+                .background(LognDark.surface)
+                .cornerRadius(Radius.sm)
+                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+                .foregroundColor(LognDark.textPrimary)
+
+            TextField("Digite EXCLUIR", text: $confirmation)
+                .font(.plexMono(14))
+                .padding(.horizontal, 14)
+                .frame(height: 52)
+                .background(LognDark.surface)
+                .cornerRadius(Radius.sm)
+                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+                .foregroundColor(LognDark.textPrimary)
+
+            Button(action: {
+                if canDelete {
+                    onDelete(password)
+                    dismiss()
+                }
+            }) {
+                Text(Str.Logout.delete_button)
+                    .font(.plexSansSemiBold(15))
+                    .foregroundColor(canDelete ? LognDark.onAccent : LognDark.textDim)
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                    .background(canDelete ? LognDark.wrong : LognDark.buttonDisabled)
+                    .cornerRadius(Radius.sm)
+            }
+            .disabled(!canDelete)
+        }
+        .padding(20)
+        .background(LognDark.surfaceRaised)
+        .preferredColorScheme(.dark)
+    }
+
+    private var canDelete: Bool {
+        return !password.isEmpty && confirmation == "EXCLUIR"
     }
 }

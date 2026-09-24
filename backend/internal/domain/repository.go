@@ -377,3 +377,93 @@ func (r *Repository) UpdatePasswordHash(ctx context.Context, userID, passwordHas
 	_, err := r.db.Exec(ctx, `UPDATE users SET password_hash = $1 WHERE id = $2`, passwordHash, userID)
 	return err
 }
+
+func (r *Repository) GetUserByID(ctx context.Context, userID string) (*User, error) {
+	query := `
+		SELECT id, email, password_hash
+		FROM users
+		WHERE id = $1
+	`
+	row := r.db.QueryRow(ctx, query, userID)
+	var user User
+	err := row.Scan(&user.ID, &user.Email, &user.PasswordHash)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *Repository) MarkAccountForDeletion(ctx context.Context, userID string) error {
+	_, err := r.db.Exec(ctx, `UPDATE users SET deletion_requested_at = CURRENT_TIMESTAMP WHERE id = $1`, userID)
+	return err
+}
+
+func (r *Repository) IsUserActive(ctx context.Context, userID string) bool {
+	var deletionRequestedAt *time.Time
+	err := r.db.QueryRow(ctx, "SELECT deletion_requested_at FROM users WHERE id = $1", userID).Scan(&deletionRequestedAt)
+	if err != nil {
+		return false
+	}
+	return deletionRequestedAt == nil
+}
+
+// PurgeDeletedAccounts apaga contas que pediram exclusão há mais de 30 dias.
+// Apaga os dados em cascata manualmente para game_events e user_sync_state.
+func (r *Repository) PurgeDeletedAccounts(ctx context.Context) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Seleciona usuários a apagar
+	query := `
+		SELECT id FROM users
+		WHERE deletion_requested_at IS NOT NULL
+		  AND deletion_requested_at < CURRENT_TIMESTAMP - INTERVAL '30 days'
+	`
+	rows, err := tx.Query(ctx, query)
+	if err != nil {
+		return err
+	}
+
+	var userIDs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return err
+		}
+		userIDs = append(userIDs, id)
+	}
+	rows.Close()
+
+	if len(userIDs) == 0 {
+		return nil
+	}
+
+	for _, uid := range userIDs {
+		// game_events depende de user_sync_state, que logicamente depende de users
+		_, err = tx.Exec(ctx, "DELETE FROM game_events WHERE user_id = $1", uid)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, "DELETE FROM user_sync_state WHERE user_id = $1", uid)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, "DELETE FROM user_progress WHERE user_id = $1", uid)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, "DELETE FROM refresh_tokens WHERE user_id = $1", uid)
+		if err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, "DELETE FROM users WHERE id = $1", uid)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
+}

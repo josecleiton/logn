@@ -1,6 +1,7 @@
 import SwiftUI
 import LogNCoreFFI
 import LogN
+import PostHog
 
 struct LoginView: View {
     @EnvironmentObject var core: CoreWrapper
@@ -9,6 +10,7 @@ struct LoginView: View {
     
     @State private var email = ""
     @State private var password = ""
+    @State private var ssoEnabled = false
     
     var body: some View {
         // Sem este container os `NavigationLink` daqui não empurram nada: "Criar conta"
@@ -42,71 +44,75 @@ struct LoginView: View {
                 
                 // Content
                 VStack(spacing: Space.sm) {
+                    if ssoEnabled {
                     // SSO (Apple, Google, GitHub)
-                    Button(action: {}) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "applelogo")
-                                .font(.system(size: 20))
-                                .foregroundColor(.black)
-                            Text(Str.Login.sign_in_apple)
-                                .font(.plexSansMedium(15))
-                                .foregroundColor(.black)
+                        Button(action: {}) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "applelogo")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.black)
+                                Text(Str.Login.sign_in_apple)
+                                    .font(.plexSansMedium(15))
+                                    .foregroundColor(.black)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
+                            .background(Color.white)
+                            .cornerRadius(Radius.sm)
+                            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(Color.clear, lineWidth: 1))
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(Color.white)
-                        .cornerRadius(Radius.sm)
-                        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(Color.clear, lineWidth: 1))
-                    }
-                    
-                    Button(action: {}) {
-                        HStack(spacing: 12) {
-                            Image("GoogleIcon")
-                                .renderingMode(.original)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 20, height: 20)
-                            Text(Str.Login.sign_in_google)
-                                .font(.plexSansMedium(15))
-                                .foregroundColor(LognDark.textPrimary)
+                        
+                        Button(action: {}) {
+                            HStack(spacing: 12) {
+                                Image("GoogleIcon")
+                                    .renderingMode(.original)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 20, height: 20)
+                                Text(Str.Login.sign_in_google)
+                                    .font(.plexSansMedium(15))
+                                    .foregroundColor(LognDark.textPrimary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
+                            .background(LognDark.surface)
+                            .cornerRadius(Radius.sm)
+                            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(LognDark.surface)
-                        .cornerRadius(Radius.sm)
-                        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
-                    }
-                    
-                    Button(action: {}) {
-                        HStack(spacing: 12) {
-                            Image("GitHubIcon")
-                                .renderingMode(.original)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 20, height: 20)
-                            Text(Str.Login.sign_in_github)
-                                .font(.plexSansMedium(15))
-                                .foregroundColor(LognDark.textPrimary)
+                        
+                        Button(action: {}) {
+                            HStack(spacing: 12) {
+                                Image("GitHubIcon")
+                                    .renderingMode(.original)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 20, height: 20)
+                                Text(Str.Login.sign_in_github)
+                                    .font(.plexSansMedium(15))
+                                    .foregroundColor(LognDark.textPrimary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
+                            .background(LognDark.surface)
+                            .cornerRadius(Radius.sm)
+                            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(LognDark.surface)
-                        .cornerRadius(Radius.sm)
-                        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
-                    }
-                    
-                    // Divider
-                    HStack(spacing: 12) {
-                        Rectangle().fill(LognDark.line).frame(height: 1)
-                        Text(Str.Login.or_email)
-                            .font(.plexMono(10))
-                            .tracking(0.14 * 10)
-                            .foregroundColor(LognDark.textMuted)
-                        Rectangle().fill(LognDark.line).frame(height: 1)
-                    }
-                    .padding(.vertical, 8)
-                    
-                    // E-mail field
+                        
+                        // Divider
+                        HStack(spacing: 12) {
+                            Rectangle().fill(LognDark.line).frame(height: 1)
+                            Text(Str.Login.or_email)
+                                .font(.plexMono(10))
+                                .tracking(0.14 * 10)
+                                .foregroundColor(LognDark.textMuted)
+                            Rectangle().fill(LognDark.line).frame(height: 1)
+                        }
+                        .padding(.vertical, 8)
+                        
+                        
+                }
+                
+                // E-mail field
                     TextField("", text: $email, prompt: Text(Str.Login.email_prompt).foregroundColor(LognDark.textDim))
                         .font(.plexMono(14))
                         .padding(.horizontal, 14)
@@ -218,6 +224,10 @@ struct LoginView: View {
             }
         }
         .navigationBarHidden(true)
+        .onAppear {
+            self.ssoEnabled = PostHogSDK.shared.isFeatureEnabled("sso_enabled")
+        }
+
     }
 
     /// Travado por um 429: o servidor mandou esperar, e o botão conta o tempo.

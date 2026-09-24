@@ -68,10 +68,14 @@ i18n:
 # O caminho normal para compilar tudo junto é o `build-ios-ffi`.
 codegen:
 	cd shared_core && cargo run --bin codegen --features codegen -- --language swift --output-dir ../ios/LogNCoreFFI/Sources/CodegenOut
+	mv ios/LogNCoreFFI/Sources/App/BoltFFI ios/LogNCoreFFI/BoltFFI_tmp
+	mv ios/LogNCoreFFI/Sources/App/boltffi.h ios/LogNCoreFFI/boltffi.h_tmp
 	rm -rf ios/LogNCoreFFI/Sources/App ios/LogNCoreFFI/Sources/LogN ios/LogNCoreFFI/Sources/Serde
 	cp -R ios/LogNCoreFFI/Sources/CodegenOut/App/Sources/App ios/LogNCoreFFI/Sources/
 	cp -R ios/LogNCoreFFI/Sources/CodegenOut/App/Sources/LogN ios/LogNCoreFFI/Sources/
 	cp -R ios/LogNCoreFFI/Sources/CodegenOut/App/Sources/Serde ios/LogNCoreFFI/Sources/
+	mv ios/LogNCoreFFI/BoltFFI_tmp ios/LogNCoreFFI/Sources/App/BoltFFI
+	mv ios/LogNCoreFFI/boltffi.h_tmp ios/LogNCoreFFI/Sources/App/boltffi.h
 	rm -rf ios/LogNCoreFFI/Sources/CodegenOut
 
 # Compila as bibliotecas estáticas (Rust) para iOS e empacota no XCFramework

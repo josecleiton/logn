@@ -699,7 +699,12 @@ impl App for LogNApp {
             Event::Logout => {
                 model.status = "Logging out".to_string();
                 model.status_key = StatusKey::SigningOut;
-                Command::request_from_shell(KeyValueOperation::Delete { key: "refresh_token".into() }).then_send(Event::TokenCleared)
+                Command::request_from_shell(KeyValueOperation::Delete { key: "refresh_token".into() })
+                    .then_send(Event::TokenCleared)
+                    .and(Command::request_from_shell(KeyValueOperation::Delete { key: "account_email".into() }).then_send(|_| Event::Ping))
+                    .and(Command::request_from_shell(KeyValueOperation::Delete { key: "session_expires_at".into() }).then_send(|_| Event::Ping))
+                    .and(Command::request_from_shell(KeyValueOperation::Delete { key: "offline_events".into() }).then_send(|_| Event::Ping))
+                    .and(Command::request_from_shell(KeyValueOperation::Delete { key: "offline_snapshot".into() }).then_send(|_| Event::Ping))
             }
             Event::TokenCleared(result) => {
                 // Guarda o que dá para devolver. Sair estando sincronizado é
@@ -2086,7 +2091,7 @@ mod tests {
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
-                    description: crate::domain::TrapKey::InfiniteLoop,
+                    description: crate::domain::TrapKey::FindTheBug,
                     code_lines: vec![
                         "int l = 0, r = n - 1;".into(),
                         "while (a < b) {".into(),
@@ -2162,7 +2167,7 @@ mod tests {
         model.nodes = vec![crate::domain::SkillNode {
             id: "10000000-0000-0000-0000-000000000001".into(),
             name: "Nó A".into(),
-            description: crate::domain::TrapKey::FindTheBug,
+            description: "Descrição".into(),
             row: 0,
             column: 0,
             required_xp: 0,
@@ -2172,13 +2177,14 @@ mod tests {
         }];
 
         let mut cmd = app.update(Event::Logout, &mut model);
-        match cmd.expect_one_effect() {
-            Effect::SecureStore(r) => assert!(matches!(
-                r.operation,
-                KeyValueOperation::Delete { ref key } if key == "refresh_token"
-            )),
-            _ => panic!("esperava apagar o refresh token"),
-        }
+        let has_refresh_delete = cmd.effects().any(|e| {
+            if let Effect::SecureStore(r) = e {
+                matches!(r.operation, KeyValueOperation::Delete { ref key } if key == "refresh_token")
+            } else {
+                false
+            }
+        });
+        assert!(has_refresh_delete, "esperava apagar o refresh token");
 
         let _ = app.update(
             Event::TokenCleared(KeyValueResult::Ok {
@@ -2259,7 +2265,7 @@ mod tests {
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
-                    description: crate::domain::TrapKey::InfiniteLoop,
+                    description: crate::domain::TrapKey::FindTheBug,
                     code_lines: vec!["while (a < b) {".into(), "    a = a;".into()],
                     options: None,
                     correct_options: None,
@@ -2307,7 +2313,7 @@ mod tests {
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
-                    description: crate::domain::TrapKey::InfiniteLoop,
+                    description: crate::domain::TrapKey::FindTheBug,
                     code_lines: vec!["while (a < b) {".into(), "    a = a;".into()],
                     options: None,
                     correct_options: None,
@@ -2330,7 +2336,7 @@ mod tests {
         model.nodes = vec![crate::domain::SkillNode {
             id: NODE.into(),
             name: "Nó A".into(),
-            description: crate::domain::TrapKey::FindTheBug,
+            description: "Descrição".into(),
             row: 0,
             column: 0,
             required_xp: 0,
@@ -2508,7 +2514,7 @@ mod tests {
         model.nodes = vec![crate::domain::SkillNode {
             id: "70000000-0000-0000-0000-000000000007".into(),
             name: "Nó G".into(),
-            description: crate::domain::TrapKey::FindTheBug,
+            description: "Descrição".into(),
             row: 4,
             column: 0,
             required_xp: 60,
@@ -2956,7 +2962,7 @@ mod tests {
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
-                    description: crate::domain::TrapKey::InfiniteLoop,
+                    description: crate::domain::TrapKey::FindTheBug,
                     code_lines: vec!["while (a < b) {".into(), "    a = a;".into()],
                     options: None,
                     correct_options: None,

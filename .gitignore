@@ -61,3 +61,4 @@ tools/dump_conteudo.py
 ios/LogNiOS/LogNiOS/Resources/trail-seed.json
 backend/backend
 backend/test_match_sync
+!backend/schema/migrations/0037_exclusao_de_conta_e_idade.sql

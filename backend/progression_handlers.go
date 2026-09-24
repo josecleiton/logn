@@ -30,7 +30,7 @@ func (s *Server) getUserProgressHandler(w http.ResponseWriter, r *http.Request) 
 
 	// Era um UUID fixo, escrito à mão, que não pertencia a ninguém: a rota respondia
 	// `null` para todo mundo e nenhum cliente a chamava.
-	userID, ok := authenticate(w, r)
+	userID, ok := s.authenticate(w, r)
 	if !ok {
 		return
 	}
