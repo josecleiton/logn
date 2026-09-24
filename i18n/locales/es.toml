@@ -72,9 +72,6 @@ report_repeated = { one = "%{count} ya resuelto antes, sin XP", other = "%{count
 
 [origin]
 eyebrow = "Origen del problema"
-origin_name = "Farias"
-origin_role = ""
-origin_body = "Tarjeta de origen: el texto viene del servidor."
 pause_notice = "El cronómetro está detenido mientras lees. Esto ocurre solo esta vez — en la próxima, el reloj sigue corriendo."
 close = "Volver a la partida"
 

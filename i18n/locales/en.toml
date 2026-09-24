@@ -74,9 +74,6 @@ report_repeated = { one = "%{count} solved before, no XP", other = "%{count} sol
 
 [origin]
 eyebrow = "Where this problem came from"
-origin_name = "Farias"
-origin_role = ""
-origin_body = "Origin card: the text comes from the server."
 pause_notice = "The clock is paused while you read. This happens only this once — next time it keeps running."
 close = "Back to the match"
 

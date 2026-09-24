@@ -179,7 +179,8 @@ pub struct ChallengePayload {
 /// um app antigo não consegue ler — aí ele ignora a semente em vez de quebrar.
 ///
 /// 2: a semente leva as três línguas, uma trilha por língua em `locales`.
-pub const TRAIL_SEED_VERSION: i32 = 2;
+/// 3: cada trilha ganha `origins`, os cartões de origem (ADR 0011).
+pub const TRAIL_SEED_VERSION: i32 = 3;
 
 /// A trilha que viaja dentro do app, gerada por `just seed-bundle`.
 ///
@@ -202,6 +203,8 @@ pub struct TrailSeed {
 pub struct SeedTrail {
     pub nodes: Vec<SkillNode>,
     pub challenges: Vec<Challenge>,
+    #[serde(default)]
+    pub origins: Vec<OriginCard>,
 }
 
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
@@ -211,11 +214,23 @@ pub struct Challenge {
     pub node_id: String,
     pub template_type: String,
     pub payload: ChallengePayload, // Typed for Facet
-    /// De onde o desafio veio, quando não foi escrito para o LogN — hoje só `FARIAS`,
-    /// a origem registrada no conteúdo. Vazio é o caso comum, e o
-    /// `default` mantém compatível o JSON gravado antes de a coluna existir.
+    /// De onde o desafio veio, quando não foi escrito para o LogN; vazio é o caso
+    /// comum. O `default` mantém compatível o JSON gravado antes de a coluna existir.
+    /// O texto por trás deste id vem em `Model::origins`.
     #[serde(default)]
     pub origin: String,
+}
+
+/// O cartão de origem: quem escreveu o desafio, quando não foi escrito para o LogN. O
+/// texto vem do servidor pelas tabelas de tradução (ADR 0011), como o resto da trilha —
+/// não é mais cópia fixa do catálogo de interface.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default)]
+#[facet(fg::namespace = "LogN")]
+pub struct OriginCard {
+    pub id: String,
+    pub name: String,
+    pub role: String,
+    pub body: String,
 }
 
 /// O que o Core tem a dizer ao jogador, como **chave**, não como frase.

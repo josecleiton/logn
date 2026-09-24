@@ -262,6 +262,43 @@ func (r *Repository) RotateRefreshToken(
 	return tx.Commit(ctx)
 }
 
+// OriginCard é o texto do selo de origem, na língua pedida: de onde um desafio veio,
+// quando não foi escrito para o LogN. O cliente troca a string `origin` do desafio pelo
+// cartão com este id.
+type OriginCard struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Role string `json:"role"`
+	Body string `json:"body"`
+}
+
+// GetOriginCards devolve os cartões de origem na língua pedida. Uma origem sem
+// tradução nela fica de fora, como um nó sem tradução fica de fora de GetSkillNodes; o
+// cliente que não achar o cartão pelo id abre um com só o id como nome, mas isso é
+// decisão do Core, não do servidor.
+func (r *Repository) GetOriginCards(ctx context.Context, locale string) ([]OriginCard, error) {
+	query := `
+		SELECT o.id, t.name, t.role, t.body
+		FROM challenge_origins o
+		JOIN challenge_origin_translations t ON t.origin_id = o.id AND t.locale = $1
+		ORDER BY o.id`
+	rows, err := r.db.Query(ctx, query, locale)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	cards := []OriginCard{}
+	for rows.Next() {
+		var c OriginCard
+		if err := rows.Scan(&c.ID, &c.Name, &c.Role, &c.Body); err != nil {
+			return nil, err
+		}
+		cards = append(cards, c)
+	}
+	return cards, rows.Err()
+}
+
 type SkillNode struct {
 	ID            string   `json:"id"`
 	Name          string   `json:"name"`

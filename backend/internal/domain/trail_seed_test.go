@@ -33,11 +33,13 @@ type trailSeed struct {
 type seedTrailJSON struct {
 	Nodes      []json.RawMessage `json:"nodes"`
 	Challenges []json.RawMessage `json:"challenges"`
+	Origins    []json.RawMessage `json:"origins"`
 }
 
 // Tem de acompanhar TRAIL_SEED_VERSION em shared_core/src/domain.rs e VERSION em
-// tools/seed_bundle.py.
-const trailSeedVersion = 2
+// tools/seed_bundle.py. Subiu de 2 para 3 quando os cartões de origem passaram a
+// viajar dentro da semente.
+const trailSeedVersion = 3
 
 func TestTrailSeedMatchesTheDatabase(t *testing.T) {
 	caminho := filepath.Join("..", "..", "..", "ios", "LogNiOS", "LogNiOS", "Resources", "trail-seed.json")
@@ -70,6 +72,10 @@ func TestTrailSeedMatchesTheDatabase(t *testing.T) {
 		if err != nil {
 			t.Fatalf("lendo desafios em %s: %v", l, err)
 		}
+		origens, err := repo.GetOriginCards(ctx, l)
+		if err != nil {
+			t.Fatalf("lendo origens em %s: %v", l, err)
+		}
 
 		trilha, veio := semente.Locales[l]
 		if !veio {
@@ -94,6 +100,12 @@ func TestTrailSeedMatchesTheDatabase(t *testing.T) {
 			noBanco[c.ID] = hashValue(t, c)
 		}
 		compararImpressoes(t, l+" · desafios", impressoes(t, trilha.Challenges), noBanco)
+
+		noBanco = map[string]string{}
+		for _, o := range origens {
+			noBanco[o.ID] = hashValue(t, o)
+		}
+		compararImpressoes(t, l+" · origens", impressoes(t, trilha.Origins), noBanco)
 	}
 
 	if _, temPortugues := semente.Locales[locale.PtBR]; !temPortugues {

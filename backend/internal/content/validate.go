@@ -81,6 +81,20 @@ type challengeText struct {
 	WatchNote   string `json:"watch_note"`
 }
 
+// originCard é o texto do cartão de origem numa língua: quem escreveu o desafio,
+// quando não foi escrito para o LogN. `origens.json` traz o pt-BR (o id nasce ali);
+// `origens.<locale>.json` traz as outras línguas, indexadas pelo mesmo id.
+type originCard struct {
+	Name string `json:"name"`
+	Role string `json:"role"`
+	Body string `json:"body"`
+}
+
+type originEntry struct {
+	ID string `json:"id"`
+	originCard
+}
+
 var (
 	topicRe = regexp.MustCompile(`^[a-z][a-z_]*$`)
 	slugRe  = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
@@ -260,6 +274,9 @@ func (c *checker) checkChallenges(trilha string, nodeIDs map[string]bool, glossa
 
 	ids := map[string]bool{}
 	positions := map[string]map[int]string{}
+	// originsUsed lembra, para cada desafio com origin não vazio, de qual origem —
+	// para a checagem do cartão nomear o desafio e não só o id da origem.
+	originsUsed := map[string]string{}
 	var texts []string
 	for _, e := range entries {
 		base, ok := strings.CutSuffix(e.Name(), ".json")
@@ -293,6 +310,9 @@ func (c *checker) checkChallenges(trilha string, nodeIDs map[string]bool, glossa
 		if ch.PositionIdx < 1 {
 			c.fail(where, "position_idx começa em 1")
 		}
+		if strings.TrimSpace(ch.Origin) != "" {
+			originsUsed[base] = ch.Origin
+		}
 		p := c.checkPayload(where, ch, glossary)
 
 		for _, l := range locale.Supported {
@@ -307,6 +327,65 @@ func (c *checker) checkChallenges(trilha string, nodeIDs map[string]bool, glossa
 		}
 		if !locale.IsSupported(l) {
 			c.fail("trilha/desafios/"+t+".json", "língua %q não é servida", l)
+		}
+	}
+
+	c.checkOrigins(trilha, originsUsed)
+}
+
+// checkOrigins confere que toda origem usada por um desafio tem cartão nas três
+// línguas. `origens.json` traz o pt-BR e é onde o id nasce; `origens.<locale>.json`
+// traz as outras, no mesmo formato de `nos.<locale>.json`. O erro nomeia o desafio, não
+// só a origem, porque é o desafio que a pessoa está editando quando lê o achado.
+func (c *checker) checkOrigins(trilha string, originsUsed map[string]string) {
+	if len(originsUsed) == 0 {
+		return
+	}
+
+	cardsByLocale := map[string]map[string]originCard{}
+
+	var base []originEntry
+	if err := readJSON(filepath.Join(trilha, "origens.json"), &base); err != nil {
+		c.fail("trilha/origens.json", "%v", err)
+		return
+	}
+	baseCards := map[string]originCard{}
+	for _, o := range base {
+		baseCards[o.ID] = o.originCard
+	}
+	cardsByLocale[locale.PtBR] = baseCards
+
+	for _, l := range locale.Supported {
+		if l == locale.PtBR {
+			continue
+		}
+		name := "origens." + l + ".json"
+		texts := map[string]originCard{}
+		err := readJSON(filepath.Join(trilha, name), &texts)
+		if os.IsNotExist(err) {
+			cardsByLocale[l] = map[string]originCard{}
+			continue
+		}
+		if err != nil {
+			c.fail("trilha/"+name, "%v", err)
+			continue
+		}
+		cardsByLocale[l] = texts
+	}
+
+	for _, challengeID := range sortedKeys(originsUsed) {
+		origin := originsUsed[challengeID]
+		where := "trilha/desafios/" + challengeID + ".json"
+		for _, l := range locale.Supported {
+			card, ok := cardsByLocale[l][origin]
+			switch {
+			case !ok:
+				c.missingLocale(where, l, "o cartão de origem "+origin)
+			case strings.TrimSpace(card.Name) == "" || strings.TrimSpace(card.Role) == "" || strings.TrimSpace(card.Body) == "":
+				c.fail(where, "cartão de origem %s em %s com campo vazio", origin, l)
+			default:
+				c.checkText(where, card.Name, card.Role, card.Body)
+			}
 		}
 	}
 }

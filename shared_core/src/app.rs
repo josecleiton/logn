@@ -268,6 +268,10 @@ pub struct Model {
     pub pending_events: Vec<GameEvent>,
     pub challenges: Vec<Challenge>,
     pub nodes: Vec<crate::domain::SkillNode>,
+    /// Os cartões de origem na língua da trilha carregada — de `/api/v1/nodes` ou da
+    /// semente empacotada. `origins_seen` (abaixo) é quem já foi lido, por id; isto é
+    /// o texto de cada id.
+    pub origins: Vec<crate::domain::OriginCard>,
     pub last_hash: String,
     pub user_id: String,
     pub access_token: Option<String>,
@@ -317,7 +321,8 @@ pub struct Model {
     /// dentro do prazo — num app que promete offline-first, era pedir para o jogador
     /// digitar a senha para ver o que já estava no aparelho.
     pub session_offline: bool,
-    /// Origens cujo cartão de homenagem o jogador já leu, por chave (`FARIAS`).
+    /// De onde o desafio veio, quando não foi escrito para o LogN; vazio é o caso
+    /// comum. Aqui vão as origens cujo cartão o jogador já leu, por id (`FARIAS`).
     ///
     /// A primeira leitura de cada origem pausa o relógio da questão; as seguintes não.
     /// Sobrevive ao fechamento do app pelo `crux_kv`, senão a cortesia viraria uma
@@ -789,6 +794,30 @@ fn apply_seed(model: &mut Model, locale: &str) {
     model.challenges = trail.challenges;
     model.content_locale = used;
     model.trail_from_bundle = true;
+}
+
+/// Resolve `Model::origin_sheet` (o id) para o cartão com o texto, em `Model::origins`.
+///
+/// Servidor ou semente sem o cartão daquele id — conteúdo atrasado em relação ao app, ou
+/// id que mudou — nunca trava a partida: abre um cartão com o próprio id no lugar do
+/// nome e o resto vazio, em vez de recusar abrir.
+fn resolve_origin_card(model: &Model) -> Option<crate::domain::OriginCard> {
+    if model.origin_sheet.is_empty() {
+        return None;
+    }
+    Some(
+        model
+            .origins
+            .iter()
+            .find(|o| o.id == model.origin_sheet)
+            .cloned()
+            .unwrap_or_else(|| crate::domain::OriginCard {
+                id: model.origin_sheet.clone(),
+                name: model.origin_sheet.clone(),
+                role: String::new(),
+                body: String::new(),
+            }),
+    )
 }
 
 /// A língua do conteúdo que o servidor mandou, do `Content-Language`. Servidor antigo
@@ -1637,12 +1666,23 @@ impl App for LogNApp {
                 match result {
                     HttpResult::Ok(response) => {
                         if response.status == 200 {
-                            if let Ok(nodes) = serde_json::from_slice::<Vec<crate::domain::SkillNode>>(&response.body) {
+                            // O corpo de `/api/v1/nodes` é `{"nodes": [...], "origins": [...]}`
+                            // desde o ADR 0011: o cartão de origem viaja junto, como
+                            // conteúdo da trilha.
+                            #[derive(Deserialize)]
+                            struct NodesResponse {
+                                nodes: Vec<crate::domain::SkillNode>,
+                                #[serde(default)]
+                                origins: Vec<crate::domain::OriginCard>,
+                            }
+
+                            if let Ok(parsed) = serde_json::from_slice::<NodesResponse>(&response.body) {
                                 // Substitui a lista inteira, e não completa a que
                                 // estava: servidor que devolve menos nós — um nó
                                 // removido — tem de encolher a trilha, não conviver
                                 // com sobra da semente.
-                                model.nodes = nodes;
+                                model.nodes = parsed.nodes;
+                                model.origins = parsed.origins;
                                 model.trail_from_bundle = false;
                                 model.content_locale = content_language(&response, &model.locale);
                                 model.status = "Skill tree loaded".to_string();
@@ -2641,6 +2681,9 @@ Event::FetchChallenges => {
                         if model.challenges.is_empty() {
                             model.challenges = trail.challenges;
                         }
+                        if model.origins.is_empty() {
+                            model.origins = trail.origins;
+                        }
                         // Só marca quando a semente de fato entrou. Se o retrato já
                         // tinha enchido tudo, o jogador não está vendo conteúdo velho.
                         if encheu {
@@ -2955,7 +2998,7 @@ Event::FetchChallenges => {
                 model.logout_undo.as_ref().map(|s| s.email.as_str()).unwrap_or(&model.account_email),
             ),
             match_view: model.match_state.as_ref()
-                .map(|ms| ms.to_view_model(&model.origin_sheet))
+                .map(|ms| ms.to_view_model(resolve_origin_card(model).as_ref()))
                 .unwrap_or_default(),
             // Placar e ranking ainda não têm API; os dados vivem no core para o
             // cliente seguir sendo uma camada burra, como manda a arquitetura.
@@ -3583,7 +3626,7 @@ mod tests {
         model.locale = "es".into();
         let response = |headers: Vec<crux_http::protocol::HttpHeader>| {
             Event::NodesFetched(HttpResult::Ok(crux_http::protocol::HttpResponse {
-                status: 200, headers, body: b"[]".to_vec(),
+                status: 200, headers, body: br#"{"nodes":[],"origins":[]}"#.to_vec(),
             }))
         };
 
@@ -3813,7 +3856,7 @@ mod tests {
         // Servidor responde com lista vazia: o nó tem de sumir.
         let _ = app.update(
             Event::NodesFetched(HttpResult::Ok(crux_http::protocol::HttpResponse {
-                status: 200, headers: vec![], body: b"[]".to_vec(),
+                status: 200, headers: vec![], body: br#"{"nodes":[],"origins":[]}"#.to_vec(),
             })),
             &mut model,
         );
@@ -3862,6 +3905,12 @@ mod tests {
         );
         ch.origin = "FARIAS".into();
         model.challenges = vec![ch];
+        model.origins = vec![crate::domain::OriginCard {
+            id: "FARIAS".into(),
+            name: "Nome de teste".into(),
+            role: "Papel de teste".into(),
+            body: "Corpo de teste.".into(),
+        }];
 
         let node = "10000000-0000-0000-0000-000000000001";
         let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
@@ -3871,6 +3920,8 @@ mod tests {
         assert_eq!(model.origin_sheet, "FARIAS");
         assert!(model.match_state.as_ref().unwrap().is_paused, "a primeira leitura para o relógio");
         assert_eq!(model.origins_seen, vec!["FARIAS".to_string()]);
+        let cartao = app.view(&model).match_view.origin_sheet.expect("cartão achado por id");
+        assert_eq!(cartao.name, "Nome de teste", "o ViewModel carrega o cartão, não só o id");
 
         let antes = model.match_state.as_ref().unwrap().question_seconds_remaining;
         let _ = app.update(Event::MatchTimerTick, &mut model);
@@ -3918,6 +3969,12 @@ mod tests {
         );
         ch.origin = "FARIAS".into();
         model.challenges = vec![ch];
+        model.origins = vec![crate::domain::OriginCard {
+            id: "FARIAS".into(),
+            name: "Nome de teste".into(),
+            role: "Papel de teste".into(),
+            body: "Corpo de teste.".into(),
+        }];
 
         let node = "10000000-0000-0000-0000-000000000001";
         let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
@@ -3928,6 +3985,36 @@ mod tests {
             !model.match_state.as_ref().unwrap().is_paused,
             "já lida numa sessão anterior: abre sem parar o relógio"
         );
+    }
+
+    /// Origem que a semente ou o servidor não conhecem mais — id mudou, conteúdo
+    /// atrasado — nunca trava a partida: o cartão abre com o próprio id no lugar do
+    /// nome, e o resto vazio.
+    #[test]
+    fn test_origin_sheet_falls_back_to_the_id_when_the_card_is_unknown() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+
+        let mut ch = seeded_challenge(
+            "ch_004",
+            "COMPLEXITY_MATCH",
+            vec!["O(n)".into(), "O(1)".into()],
+            vec!["O(n)".into(), "O(1)".into()],
+            "Irrelevante para este teste.",
+        );
+        ch.origin = "DESCONHECIDA".into();
+        model.challenges = vec![ch];
+        // model.origins fica vazio de propósito: nem servidor nem semente trazem
+        // o cartão desta origem.
+
+        let node = "10000000-0000-0000-0000-000000000001";
+        let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
+        let _ = app.update(Event::OpenOriginSheet, &mut model);
+
+        let cartao = app.view(&model).match_view.origin_sheet.expect("abre mesmo sem cartão conhecido");
+        assert_eq!(cartao.name, "DESCONHECIDA", "sem texto conhecido, o id vira o nome");
+        assert!(cartao.role.is_empty());
+        assert!(cartao.body.is_empty());
     }
 
     /// Desafio sem origem não tem selo, e tocar em nada não pode abrir cartão vazio.

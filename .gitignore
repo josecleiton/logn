@@ -65,6 +65,8 @@ backend/test_match_sync
 !backend/schema/migrations/0038_legal_documents_prd.sql
 !backend/schema/migrations/0041_pais_no_cadastro.sql
 !backend/schema/migrations/0043_conteudo_por_lingua.sql
+!backend/schema/migrations/0046_origens_de_desafio.sql
+!backend/schema/migrations/0048_origem_referencia_cartao.sql
 
 # Termos e política no modo do app, para ler sem rede. `just legal-bundle` gera a partir
 # do servidor, como a trilha empacotada.
