@@ -1,4 +1,5 @@
 import SwiftUI
+import LogNCoreFFI
 import LogN
 
 /// Trilha como DAG — exploração `4b · Grafo de balões`, escolhida e promovida ao DS.

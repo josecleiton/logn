@@ -2086,7 +2086,7 @@ mod tests {
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
-                    description: "Ache o laço infinito.".into(),
+                    description: crate::domain::TrapKey::InfiniteLoop,
                     code_lines: vec![
                         "int l = 0, r = n - 1;".into(),
                         "while (a < b) {".into(),
@@ -2162,7 +2162,7 @@ mod tests {
         model.nodes = vec![crate::domain::SkillNode {
             id: "10000000-0000-0000-0000-000000000001".into(),
             name: "Nó A".into(),
-            description: "".into(),
+            description: crate::domain::TrapKey::FindTheBug,
             row: 0,
             column: 0,
             required_xp: 0,
@@ -2259,7 +2259,7 @@ mod tests {
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
-                    description: "Ache o laço infinito.".into(),
+                    description: crate::domain::TrapKey::InfiniteLoop,
                     code_lines: vec!["while (a < b) {".into(), "    a = a;".into()],
                     options: None,
                     correct_options: None,
@@ -2307,7 +2307,7 @@ mod tests {
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
-                    description: "Ache o laço infinito.".into(),
+                    description: crate::domain::TrapKey::InfiniteLoop,
                     code_lines: vec!["while (a < b) {".into(), "    a = a;".into()],
                     options: None,
                     correct_options: None,
@@ -2330,7 +2330,7 @@ mod tests {
         model.nodes = vec![crate::domain::SkillNode {
             id: NODE.into(),
             name: "Nó A".into(),
-            description: "".into(),
+            description: crate::domain::TrapKey::FindTheBug,
             row: 0,
             column: 0,
             required_xp: 0,
@@ -2474,7 +2474,7 @@ mod tests {
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Merge Sort".into(),
-                    description: "Merge Sort sobre n elementos".into(),
+                    description: crate::domain::TrapKey::FindTheBug,
                     code_lines: vec![],
                     options: Some(options),
                     correct_options: Some(correct),
@@ -2508,7 +2508,7 @@ mod tests {
         model.nodes = vec![crate::domain::SkillNode {
             id: "70000000-0000-0000-0000-000000000007".into(),
             name: "Nó G".into(),
-            description: "Vindo do servidor.".into(),
+            description: crate::domain::TrapKey::FindTheBug,
             row: 4,
             column: 0,
             required_xp: 60,
@@ -2956,7 +2956,7 @@ mod tests {
             payload: ChallengePayload {
                 content: ChallengeContent {
                     title: "Soma de Dois Números".into(),
-                    description: "Ache o laço infinito.".into(),
+                    description: crate::domain::TrapKey::InfiniteLoop,
                     code_lines: vec!["while (a < b) {".into(), "    a = a;".into()],
                     options: None,
                     correct_options: None,

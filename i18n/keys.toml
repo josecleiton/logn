@@ -20,7 +20,9 @@ try_again = {}
 arena_desc = {}
 arena_sub = {}
 
+[groups.status]
 [groups.status.keys]
+
 signing_in = {}
 wrong_credentials = {}
 sign_in_failed = {}
@@ -131,6 +133,11 @@ drop_here_accessibility = {}
 filled_accessibility = { placeholders = [{ name = "value", type = "text" }] }
 
 [groups.match.keys]
+blank_accessibility = {}
+clock_critical = {}
+problem_letter = { placeholders = [{ name = "letter", type = "text" }] }
+time_remaining = { placeholders = [{ name = "seconds", type = "int" }] }
+
 balloon_up = { placeholders = [{ name = "letter", type = "text" }] }
 xp_earned = { placeholders = [{ name = "xp", type = "int" }] }
 accepted_accessibility = { placeholders = [{ name = "letter", type = "text" }, { name = "xp", type = "int" }] }
@@ -174,6 +181,10 @@ arena = {}
 standings = {}
 
 [groups.profile.keys]
+lives_accessibility = { placeholders = [{ name = "lives", type = "int" }, { name = "max_lives", type = "int" }] }
+verdict_accessibility = { placeholders = [{ name = "raw", type = "text" }, { name = "meaning", type = "text" }] }
+xp = { placeholders = [{ name = "xp", type = "int" }] }
+
 guest_mode = {}
 guest_sub = {}
 all_synced = {}
@@ -285,3 +296,21 @@ without_saving = {}
 core_ready = {}
 loading = {}
 sign_in = {}
+
+[enums."LogN.TrapKey"]
+
+[groups.trap]
+enum = "LogN.TrapKey"
+[groups.trap.keys]
+findTheBug = {}
+completeTheLine = {}
+finalValueOfAcc = {}
+complexity = {}
+findTheCrash = {}
+nullTerminatedString = {}
+dynamicSubarrays = {}
+twoPointers = {}
+
+
+
+

@@ -1,4 +1,5 @@
 import SwiftUI
+import LogNCoreFFI
 import LogN
 
 /// Dry run — exploração `2b · Watch`.

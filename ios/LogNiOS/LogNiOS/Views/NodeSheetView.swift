@@ -1,4 +1,5 @@
 import SwiftUI
+import LogNCoreFFI
 import LogN
 
 /// Sheet do nó — exploração `4b · Nó ativo · vizinhança`.

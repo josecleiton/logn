@@ -15,6 +15,7 @@ arena_desc = "Timed contests land here."
 arena_sub = "For now, the three-minute sessions live on the trails."
 
 [status]
+
 signing_in = "Signing in…"
 wrong_credentials = "That e-mail and password don't match."
 sign_in_failed = "I couldn't sign you in. Try again."
@@ -118,6 +119,11 @@ drop_here_accessibility = "drop here"
 filled_accessibility = "filled with %{value}"
 
 [match]
+blank_accessibility = "blank to fill"
+clock_critical = "PROBLEM CLOCK · CRITICAL"
+problem_letter = "PROBLEM %{letter}"
+time_remaining = "time remaining %{seconds} seconds"
+
 balloon_up = "BALLOON %{letter} UP"
 xp_earned = "+%{xp} XP"
 accepted_accessibility = "Accepted. Balloon %{letter} up. Plus %{xp} XP."
@@ -161,6 +167,10 @@ arena = "ARENA"
 standings = "STANDINGS"
 
 [profile]
+lives_accessibility = "%{lives} out of %{max_lives} lives"
+verdict_accessibility = "%{raw}, %{meaning}"
+xp = "%{xp} XP"
+
 guest_mode = "GUEST MODE"
 guest_sub = "NO ACCOUNT · LOCAL ONLY"
 all_synced = "FULLY SYNCED"
@@ -272,3 +282,13 @@ full_screen = "VIEW FULL SCREEN"
 row_accessibility = "%{rank}º, %{handle}, %{university}, %{solved} accepted, %{penalty} penalty"
 row_accessibility_user = "your position, %{rank}º, %{handle}, %{university}, %{solved} accepted, %{penalty} penalty"
 you = "you"
+
+[trap]
+findTheBug = "Find the bug."
+completeTheLine = "Complete the line."
+finalValueOfAcc = "What is the final value of acc?"
+complexity = "What is the complexity?"
+findTheCrash = "Find the memory crash."
+nullTerminatedString = "Complete the null-terminated string."
+dynamicSubarrays = "Dynamic subarrays."
+twoPointers = "Two pointers."

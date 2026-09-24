@@ -1,4 +1,5 @@
 import SwiftUI
+import LogNCoreFFI
 
 /// Bloco de código com numeração de linha, realce de sintaxe e seleção de linha.
 ///

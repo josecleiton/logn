@@ -1,4 +1,5 @@
 import SwiftUI
+import LogNCoreFFI
 import App
 
 struct ResetPasswordView: View {

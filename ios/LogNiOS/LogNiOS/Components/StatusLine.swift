@@ -1,4 +1,5 @@
 import SwiftUI
+import LogNCoreFFI
 import LogN
 
 /// A linha de status das telas de autenticação.

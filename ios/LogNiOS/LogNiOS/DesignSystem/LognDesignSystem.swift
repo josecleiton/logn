@@ -1,4 +1,5 @@
 import SwiftUI
+import LogNCoreFFI
 
 // Gerado a partir do LogN Design System v2. Não invente cores fora deste arquivo.
 

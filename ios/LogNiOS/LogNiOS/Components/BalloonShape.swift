@@ -1,4 +1,5 @@
 import SwiftUI
+import LogNCoreFFI
 
 /// Primitiva do Balão LogN, desenhada a partir dos paths SVG do Design System.
 ///

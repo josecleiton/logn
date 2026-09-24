@@ -67,7 +67,12 @@ i18n:
 # ATENÇÃO: este target sozinho deixa a biblioteca estática (.a) velha.
 # O caminho normal para compilar tudo junto é o `build-ios-ffi`.
 codegen:
-	cd shared_core && cargo run --bin codegen --features codegen -- --language swift --output-dir ../ios/SharedCore
+	cd shared_core && cargo run --bin codegen --features codegen -- --language swift --output-dir ../ios/LogNCoreFFI/Sources/CodegenOut
+	rm -rf ios/LogNCoreFFI/Sources/App ios/LogNCoreFFI/Sources/LogN ios/LogNCoreFFI/Sources/Serde
+	cp -R ios/LogNCoreFFI/Sources/CodegenOut/App/Sources/App ios/LogNCoreFFI/Sources/
+	cp -R ios/LogNCoreFFI/Sources/CodegenOut/App/Sources/LogN ios/LogNCoreFFI/Sources/
+	cp -R ios/LogNCoreFFI/Sources/CodegenOut/App/Sources/Serde ios/LogNCoreFFI/Sources/
+	rm -rf ios/LogNCoreFFI/Sources/CodegenOut
 
 # Compila as bibliotecas estáticas (Rust) para iOS e empacota no XCFramework
 build-ios-ffi: codegen
@@ -81,7 +86,7 @@ build-ios-ffi: codegen
 	# Monta o XCFramework do zero
 	rm -rf ios/LogNCoreFFI/LogNCoreFFI.xcframework
 	mkdir -p shared_core/target/headers/shared_core
-	cp ios/LogNCoreFFI/Sources/boltffi.h shared_core/target/headers/shared_core/shared_core.h
+	cp ios/LogNCoreFFI/Sources/App/boltffi.h shared_core/target/headers/shared_core/shared_core.h
 	echo 'module LogNCoreFFIFFI { header "shared_core/shared_core.h" export * }' > shared_core/target/headers/module.modulemap
 	xcodebuild -create-xcframework -library shared_core/target/aarch64-apple-ios/release/libshared_core.a -headers shared_core/target/headers -library shared_core/target/universal-sim/libshared_core.a -headers shared_core/target/headers -output ios/LogNCoreFFI/LogNCoreFFI.xcframework
 
@@ -123,3 +128,7 @@ clean:
 	cd shared_core && cargo clean
 	rm -rf ios/LogNiOS/LogNiOS.xcodeproj
 	rm -rf ios/LogNiOS/.build
+
+# Checa se há literais hardcoded nas views do iOS
+i18n-check:
+	tools/check_ui_literals.py

@@ -42,11 +42,6 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    Nome de chave não pode ser palavra reservada do Swift ou do Kotlin (`continue`,
    `default`, `in`…): vira identificador no código gerado.
 
-   **Estado atual, para quem for mexer:** várias telas ainda têm literal em português
-   (`INFLANDO`, `CONQUISTADO`, `VEM DE`, `CONTEST ENCERRADO`, …). Isso é dívida, não
-   padrão a seguir. String nova entra no catálogo; string velha que você tocar, migre
-   junto. O simulador em inglês denuncia o que ficou de fora: a tela sai metade em cada
-   língua.
 
 ## 🔄 Fluxo de Trabalho do Agente
 1. Ao iniciar, revise sempre se as dependências do `Crux` e o pacote `boltffi` exigem recompilação (`cargo build --features codegen`).

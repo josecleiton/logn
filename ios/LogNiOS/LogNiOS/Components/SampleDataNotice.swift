@@ -1,4 +1,5 @@
 import SwiftUI
+import LogNCoreFFI
 import App
 
 /// Tarja de "dados de exemplo", no topo do ranking e do telão.

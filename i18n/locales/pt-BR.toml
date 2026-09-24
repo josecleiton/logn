@@ -15,6 +15,7 @@ arena_desc = "Contests cronometrados entram aqui."
 arena_sub = "Por enquanto, as sessões de três minutos vivem nas trilhas."
 
 [status]
+
 signing_in = "Entrando…"
 wrong_credentials = "E-mail ou senha não conferem."
 sign_in_failed = "Não consegui entrar agora. Tente de novo."
@@ -118,6 +119,11 @@ drop_here_accessibility = "solte aqui"
 filled_accessibility = "preenchido com %{value}"
 
 [match]
+blank_accessibility = "lacuna a preencher"
+clock_critical = "RELÓGIO DA QUESTÃO · CRÍTICO"
+problem_letter = "PROBLEM %{letter}"
+time_remaining = "tempo restante %{seconds} segundos"
+
 balloon_up = "BALÃO %{letter} NO AR"
 xp_earned = "+%{xp} XP"
 accepted_accessibility = "Accepted. Balão %{letter} no ar. Mais %{xp} XP."
@@ -161,6 +167,10 @@ arena = "ARENA"
 standings = "PLACAR"
 
 [profile]
+lives_accessibility = "%{lives} de %{max_lives} vidas"
+verdict_accessibility = "%{raw}, %{meaning}"
+xp = "%{xp} XP"
+
 guest_mode = "MODO VISITANTE"
 guest_sub = "SEM CONTA · SÓ NESTE APARELHO"
 all_synced = "TUDO SINCRONIZADO"
@@ -272,3 +282,13 @@ full_screen = "VER O TELÃO COMPLETO"
 row_accessibility = "%{rank}º, %{handle}, %{university}, %{solved} aceitos, %{penalty} de penalidade"
 row_accessibility_user = "sua posição, %{rank}º, %{handle}, %{university}, %{solved} aceitos, %{penalty} de penalidade"
 you = "você"
+
+[trap]
+findTheBug = "Encontre o bug."
+completeTheLine = "Complete a linha."
+finalValueOfAcc = "Qual o valor final de acc?"
+complexity = "Qual a complexidade?"
+findTheCrash = "Encontre o crash de memória."
+nullTerminatedString = "Complete a string nula."
+dynamicSubarrays = "Subarrays dinâmicos."
+twoPointers = "Dois ponteiros."

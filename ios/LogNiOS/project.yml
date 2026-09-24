@@ -9,8 +9,6 @@ configFiles:
 packages:
   LogNCoreFFI:
     path: ../LogNCoreFFI
-  App:
-    path: ../SharedCore/App
   PostHog:
     url: https://github.com/PostHog/posthog-ios.git
     from: 3.0.0
@@ -25,7 +23,6 @@ targets:
     - path: LogNiOS
     dependencies:
     - package: LogNCoreFFI
-    - package: App
     - package: PostHog
     settings:
       DEVELOPMENT_TEAM: $(DEVELOPMENT_TEAM)

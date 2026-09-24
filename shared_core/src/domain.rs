@@ -146,7 +146,7 @@ pub struct WatchVariable {
 #[facet(fg::namespace = "LogN")]
 pub struct ChallengeContent {
     pub title: String,
-    pub description: String,
+    pub description: TrapKey,
     pub code_lines: Vec<String>,
     pub options: Option<Vec<String>>,
     pub correct_options: Option<Vec<String>>,
@@ -212,6 +212,21 @@ pub struct Challenge {
 /// português. A cópia vive em `i18n/locales/`; o cliente resolve a chave.
 ///
 /// `Silent` é o estado normal — a maior parte do que acontece não precisa ser narrada.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum TrapKey {
+    #[default]
+    FindTheBug,
+    CompleteTheLine,
+    FinalValueOfAcc,
+    Complexity,
+    FindTheCrash,
+    NullTerminatedString,
+    DynamicSubarrays,
+    TwoPointers,
+}
+
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
 #[facet(fg::namespace = "LogN")]
 #[repr(u8)]

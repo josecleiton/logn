@@ -52,7 +52,7 @@ public class CoreWrapper: ObservableObject {
             passwordResetDone: false,
             displayName: "",
             matchView: MatchViewModel(
-                isActive: false, currentLetter: "", currentTitle: "", currentDescription: "",
+                isActive: false, currentLetter: "", currentTitle: "", currentDescription: .findTheBug,
                 currentTemplateType: "", currentCodeLines: [], currentOptions: [],
                 maxSelections: 0, currentOrigin: "", originSheet: "", originSheetPaused: false,
                 leavePending: false, solvedSoFar: 0,

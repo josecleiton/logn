@@ -1,4 +1,5 @@
 import SwiftUI
+import LogNCoreFFI
 
 /// Converte a string `d` de um path SVG do Design System em um `Path` do SwiftUI.
 ///

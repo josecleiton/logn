@@ -1,4 +1,5 @@
 import SwiftUI
+import LogNCoreFFI
 import StoreKit
 import LogN
 import App

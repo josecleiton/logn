@@ -1,4 +1,5 @@
 import SwiftUI
+import LogNCoreFFI
 import LogN
 import App
 import UniformTypeIdentifiers
@@ -219,7 +220,7 @@ struct MatchView: View {
                 Spacer(minLength: 0)
             }
 
-            Text(mv.currentDescription)
+            Text(mv.currentDescription.trap)
                 .font(.plexSansSemiBold(19, relativeTo: .title3))
                 .lineSpacing(19 * 0.3)
                 .foregroundColor(LognDark.textPrimary)
@@ -495,7 +496,7 @@ struct MatchVerdictScreen: View {
         VStack(spacing: 8) {
             BalloonShape(style: .filled(letterColor), width: 52, showString: true)
 
-            Text("AC")
+            Text(verbatim: "AC")
                 .font(.plexMonoSemiBold(54))
                 .tracking(-0.03 * 54)
                 .foregroundColor(LognDark.correctInk)
@@ -670,7 +671,7 @@ struct MatchReportView: View {
                 .foregroundColor(LognDark.textMuted)
 
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("\(mv.solvedCount)")
+                Text(verbatim: "\(mv.solvedCount)")
                     .font(.plexSansSemiBold(40))
                     .tracking(-0.03 * 40)
                     .monospacedDigit()

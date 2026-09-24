@@ -40,7 +40,7 @@
 		B25F010AFF41794BFC439A02 /* LogNCoreFFI in Frameworks */ = {isa = PBXBuildFile; productRef = 13135BDC590A9C01156FE7B3 /* LogNCoreFFI */; };
 		C1C10995476705C547B2E3F3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F486C5E97DFDCE2C80818FB7 /* Assets.xcassets */; };
 		C878D3C2E023BF3402DA39A2 /* SkillTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CEDA9E40AF59358F4F00143 /* SkillTreeView.swift */; };
-		CF0A1EB4CE4E50CC539A134C /* App in Frameworks */ = {isa = PBXBuildFile; productRef = DD2764DB02225A48407F7CA7 /* App */; };
+		CF0A1EB4CE4E50CC539A134C /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 6CFC8719D13EE3EF51651524 /* PostHog */; };
 		CF9D002B22CE05C3BC5D80D6 /* LeaveMatchSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4811EB169815262BA8CDC9F /* LeaveMatchSheet.swift */; };
 		E51C5DD63A8796B58694D004 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2A37D7575A08B4C92B940D53 /* IBMPlexMono-Regular.ttf */; };
 		E618B59B0A839990BDA626EA /* MatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BCAD3D7D269E2D03F55181F /* MatchView.swift */; };
@@ -49,7 +49,6 @@
 		EA1F6042A86DDF791B09AB41 /* StringsMappers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D238C31B32D323BF620359D /* StringsMappers.swift */; };
 		F78BA7613AF912F27820D2ED /* OTPInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48659346006694BF96682CBE /* OTPInputView.swift */; };
 		FA39E591FFCF6E0D9F6EABC6 /* BalloonShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = 911B685B7906CC9801E098A1 /* BalloonShape.swift */; };
-		FBB822FFB68E1D690E79EB10 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 6CFC8719D13EE3EF51651524 /* PostHog */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -91,7 +90,6 @@
 		C5B7C9FB40CD745774D3BA3F /* IBMPlexMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Medium.ttf"; sourceTree = "<group>"; };
 		CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		D06AADFA16250D1A08A15AFE /* LognTopics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LognTopics.swift; sourceTree = "<group>"; };
-		DDFF15C0C673EF7D549B36D0 /* App */ = {isa = PBXFileReference; lastKnownFileType = folder; name = App; path = ../SharedCore/App; sourceTree = SOURCE_ROOT; };
 		DF70445FC4588B69074A5843 /* Strings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Strings.swift; sourceTree = "<group>"; };
 		DFC409C250EFC18B48AF0021 /* LognDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LognDesignSystem.swift; sourceTree = "<group>"; };
 		E30F815E4AC253B06790AAE8 /* IBMPlexSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Medium.ttf"; sourceTree = "<group>"; };
@@ -107,8 +105,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B25F010AFF41794BFC439A02 /* LogNCoreFFI in Frameworks */,
-				CF0A1EB4CE4E50CC539A134C /* App in Frameworks */,
-				FBB822FFB68E1D690E79EB10 /* PostHog in Frameworks */,
+				CF0A1EB4CE4E50CC539A134C /* PostHog in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -235,7 +232,6 @@
 		E2EC91FCB3848B0791696A6C /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				DDFF15C0C673EF7D549B36D0 /* App */,
 				39639030FF1ABF8B56AB4F26 /* LogNCoreFFI */,
 			);
 			name = Packages;
@@ -273,7 +269,6 @@
 			name = LogNiOS;
 			packageProductDependencies = (
 				13135BDC590A9C01156FE7B3 /* LogNCoreFFI */,
-				DD2764DB02225A48407F7CA7 /* App */,
 				6CFC8719D13EE3EF51651524 /* PostHog */,
 			);
 			productName = LogNiOS;
@@ -306,7 +301,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				82BBFE6DA8C6F0D163CF59EA /* XCRemoteSwiftPackageReference "posthog-ios" */,
-				5F97853FCE9AE8E9167B7203 /* XCLocalSwiftPackageReference "../SharedCore/App" */,
 				2F1A4366EF6C4E77585CB8D4 /* XCLocalSwiftPackageReference "../LogNCoreFFI" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -458,6 +452,7 @@
 				INFOPLIST_FILE = LogNiOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LogN;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.educational-games";
+				INFOPLIST_KEY_LSApplicationSecondaryCategoryType = "public.app-category.education";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -542,6 +537,7 @@
 				INFOPLIST_FILE = LogNiOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LogN;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.educational-games";
+				INFOPLIST_KEY_LSApplicationSecondaryCategoryType = "public.app-category.education";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -581,10 +577,6 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../LogNCoreFFI;
 		};
-		5F97853FCE9AE8E9167B7203 /* XCLocalSwiftPackageReference "../SharedCore/App" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../SharedCore/App;
-		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -607,10 +599,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 82BBFE6DA8C6F0D163CF59EA /* XCRemoteSwiftPackageReference "posthog-ios" */;
 			productName = PostHog;
-		};
-		DD2764DB02225A48407F7CA7 /* App */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = App;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -1,4 +1,5 @@
 import SwiftUI
+import LogNCoreFFI
 
 // MARK: - LognButton
 

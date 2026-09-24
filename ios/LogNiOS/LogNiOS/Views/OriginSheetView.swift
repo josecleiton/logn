@@ -1,4 +1,5 @@
 import SwiftUI
+import LogNCoreFFI
 import LogN
 
 /// De onde o problema veio, quando não foi escrito para o LogN.

@@ -1,4 +1,5 @@
 import SwiftUI
+import LogNCoreFFI
 
 /// Ícone de assunto da trilha. ViewBox 24×24, traço 2, cap e join redondos.
 ///

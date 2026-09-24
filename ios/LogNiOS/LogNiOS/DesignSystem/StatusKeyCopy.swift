@@ -1,4 +1,5 @@
 import Foundation
+import LogNCoreFFI
 import LogN
 
 /// A cópia de cada estado que o Core reporta.
