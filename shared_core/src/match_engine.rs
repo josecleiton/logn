@@ -208,8 +208,10 @@ pub struct MatchViewModel {
     pub max_selections: i32,
     /// Origem do problema atual, vazia quando ele nasceu aqui.
     pub current_origin: String,
-    /// Origem cujo cartão de homenagem está aberto. Vazia quando não há cartão.
-    pub origin_sheet: String,
+    /// O cartão de origem aberto agora, já com o texto. `None` quando não há cartão na
+    /// tela. Quem resolve o id para o cartão, com o fallback de id sem texto conhecido,
+    /// é quem monta este ViewModel — ver `to_view_model`.
+    pub origin_sheet: Option<crate::domain::OriginCard>,
     /// O cartão aberto está segurando o relógio. Só na primeira leitura de cada origem,
     /// e é isso que o cartão avisa ao jogador.
     pub origin_sheet_paused: bool,
@@ -496,9 +498,11 @@ impl MatchState {
         self.verdicts.values().filter(|v| **v == VerdictCode::Accepted).count() as i32
     }
 
-    /// `origin_sheet` vem do `Model`, não do motor: qual cartão está aberto é estado de
-    /// navegação, e a partida não precisa saber dele para julgar nada.
-    pub fn to_view_model(&self, origin_sheet: &str) -> MatchViewModel {
+    /// `origin_card` vem do `Model`, não do motor: qual cartão está aberto é estado de
+    /// navegação, e a partida não precisa saber dele para julgar nada. Quem chama já
+    /// resolveu o id (`Model::origin_sheet`) para o cartão, com o fallback de id sem
+    /// texto conhecido — este método só decide se o relógio está pausado por causa dele.
+    pub fn to_view_model(&self, origin_card: Option<&crate::domain::OriginCard>) -> MatchViewModel {
         let problem = self.current_problem();
 
         let balloon_states: Vec<BalloonState> = self.problems.iter().map(|p| {
@@ -523,8 +527,8 @@ impl MatchState {
             current_options: problem.map(|p| p.options.clone()).unwrap_or_default(),
             max_selections: problem.map(|p| p.max_selections).unwrap_or(1),
             current_origin: problem.map(|p| p.origin.clone()).unwrap_or_default(),
-            origin_sheet: origin_sheet.to_string(),
-            origin_sheet_paused: !origin_sheet.is_empty() && self.is_paused,
+            origin_sheet: origin_card.cloned(),
+            origin_sheet_paused: origin_card.is_some() && self.is_paused,
             leave_pending: self.leave_pending,
             solved_so_far: self.solved_count(),
             lives: self.lives,
@@ -725,25 +729,25 @@ mod tests {
     #[test]
     fn test_view_model_exposes_last_verdict() {
         let mut state = MatchState::new(sample_problems());
-        assert_eq!(state.to_view_model("").last_verdict, "");
+        assert_eq!(state.to_view_model(None).last_verdict, "");
 
         state.selection.selected_line = Some(0); // errada
         state.submit();
-        assert_eq!(state.to_view_model("").last_verdict, "WA");
+        assert_eq!(state.to_view_model(None).last_verdict, "WA");
 
         state.selection.answer_string = Some("a".into()); // certa
         state.submit();
-        assert_eq!(state.to_view_model("").last_verdict, "AC");
+        assert_eq!(state.to_view_model(None).last_verdict, "AC");
     }
 
     #[test]
     fn test_view_model_exposes_watch_panel_only_for_dry_run() {
         let state = MatchState::new(sample_problems());
         // Problema A é SPOT_THE_BUG — sem painel de watch.
-        assert!(state.to_view_model("").watch_variables.is_empty());
+        assert!(state.to_view_model(None).watch_variables.is_empty());
 
         let dry = state_at_dry_run();
-        let vm = dry.to_view_model("");
+        let vm = dry.to_view_model(None);
         assert_eq!(vm.watch_variables.len(), 1);
         assert_eq!(vm.watch_variables[0].name, "acc");
         assert_eq!(vm.watch_note, "antes da linha 2");
@@ -785,7 +789,7 @@ mod tests {
         assert_eq!(state.errors[1].letter, "B");
         assert_eq!(state.errors[1].given_answer, "errado");
         assert_eq!(state.errors[1].given_line, -1, "FILL não tem linha");
-        assert_eq!(state.to_view_model("").errors.len(), 2);
+        assert_eq!(state.to_view_model(None).errors.len(), 2);
     }
 
     #[test]
@@ -819,7 +823,7 @@ mod tests {
             state.errors[0].explanation, trap.explanation,
             "o relatório pós-partida mostra o mesmo texto do cartão"
         );
-        assert_eq!(state.to_view_model("").trap_kind, TrapKind::TimeLimit);
+        assert_eq!(state.to_view_model(None).trap_kind, TrapKind::TimeLimit);
     }
 
     /// Nenhuma frase em português sai do motor: o cartão leva tipo, título e a
@@ -847,7 +851,7 @@ mod tests {
         state.contest_seconds_remaining = MatchState::FREEZE_SECONDS;
         state.refresh_freeze();
         assert!(state.is_frozen, "no limiar o placar congela");
-        assert!(state.to_view_model("").is_frozen);
+        assert!(state.to_view_model(None).is_frozen);
     }
 
     #[test]
