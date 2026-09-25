@@ -89,6 +89,71 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    voltar vazio. Mensagem de commit entra na conta: ela também vai para o público.
    Na dúvida se algo é conteúdo ou engenharia, é conteúdo, e vai para `logn-conteudo`.
 
+9. **Segurança: o código é público, o atacante lê tudo. Nenhuma mudança pode afrouxar
+   uma defesa que existe, e toda rota nova nasce com as mesmas.** O que está abaixo é o
+   que o backend faz hoje; mudar qualquer item é decisão com ADR, não ajuste de
+   passagem.
+
+   **Segredos e configuração.** Nenhum segredo, chave, URL de produção ou credencial
+   em código, teste, doc, fixture, `.xcconfig` versionado ou mensagem de commit; o
+   lugar é variável de ambiente (`.env`, ignorado) e Secret Manager. Fallback fixo só
+   em desenvolvimento, e o servidor **aborta** em produção (`K_SERVICE` setado) se
+   `JWT_SECRET` faltar; não crie outro fallback nem enfraqueça esse. Chave de
+   telemetria e URL da API chegam ao iOS por `Local.xcconfig` (ignorado) e
+   `Info.plist`, nunca em literal Swift. Placeholder em exemplo é visivelmente falso
+   (`phc_SuaChaveAqui`). Não logue token, senha, OTP, e-mail completo nem corpo de
+   requisição.
+
+   **Autenticação e sessão.** Senha só com Argon2id nos parâmetros de
+   `credentials.go`, comparação em tempo constante, e login contra `DummyHash` quando
+   a conta não existe, para o tempo não denunciar e-mail. Erro de credencial, de OTP e
+   de reset devolve o **mesmo código** para conta inexistente e senha errada; nada de
+   "e-mail não cadastrado". OTP guardado como HMAC, nunca em claro, com
+   `OTPMaxAttempts`, `OTPResendCooldown` e consumo atômico; refresh token guardado como
+   SHA-256, rotacionado a cada uso, e reuso de token já rotacionado derruba todas as
+   sessões da conta. JWT com `exp` verificado e algoritmo fixo; nunca aceite `none`
+   nem leia o `alg` do token. No iOS, credencial vai ao Keychain (`keychainKeys` em
+   `CoreWrapper.swift`), nunca a `UserDefaults`.
+
+   **Autorização.** Toda rota autenticada tira o `user_id` do token, nunca do corpo:
+   `/sync` sobrescreve `payload.UserID`, e é assim que toda rota nova se comporta.
+   Exclusão de conta, aceite de termos, progresso e qualquer leitura por id só do
+   próprio usuário. Rota interna (`/api/v1/internal/*`) só com OIDC do Cloud Scheduler
+   validando emissor e `CLOUD_SCHEDULER_AUDIENCE`, e falha fechada (403) se a variável
+   faltar; token estático compartilhado não é opção.
+
+   **Integridade do jogo.** XP é constante do servidor (`XPPerAcceptedAnswer`); o
+   cliente manda `is_correct`, `challenge_id`, `node_id`, nunca quantia. Pagamento é
+   idempotente por `user_paid_challenges`; replay de evento não dá XP duas vezes. A
+   cadeia de hash do `/sync` é validada, nunca recalculada para "consertar" histórico
+   (ADR 0002), e a corrida em `user_sync_state` continua guardada por `ErrStaleChain`.
+   Gabarito não sai para o cliente além do que o formato exige para julgar localmente.
+
+   **Entrada e transporte.** Query só com parâmetros posicionais do `pgx` (`$1`), sem
+   concatenar string em SQL, inclusive em JSONB e traduções. Corpo limitado por rota
+   (`authBodyLimit`, `syncBodyLimit`) e `http.Server` com timeouts; rota nova passa
+   por `limitBody` e pelo `rateLimiter` que couber. `X-Forwarded-For` só conta atrás do
+   Cloud Run (`K_SERVICE`), pegando a última entrada. Rota que o app lê responde
+   `writeError` com código, nunca mensagem interna, stack ou SQL. Locale e qualquer
+   valor que vire caminho ou chave vem de lista fechada (`locale.Negotiate`), nunca do
+   pedido cru.
+
+   **Saída HTML e e-mail.** E-mail só por `html/template` (auto-escape); páginas de
+   `/legal` passam pela allowlist de tags de `internal/legal` e saem com CSP com hash,
+   `X-Content-Type-Options: nosniff` e `Referrer-Policy: no-referrer`. Nada de
+   `template.HTML` com texto de usuário nem de `innerHTML` com conteúdo do servidor no
+   cliente.
+
+   **Dependências e imagem.** Dependência nova é ADR, com `go.sum` e `Cargo.lock`
+   versionados e sem `replace` apontando para fora. Imagem continua `distroless`,
+   não-root, multi-stage, sem shell e sem segredo em camada. Migração aplicada não se
+   edita (só comentário), e `schema_migrations` é a única fonte do que rodou.
+
+   **Ao tocar em auth, sync, legal, internal ou limites**, o commit traz teste que
+   prova o caso negativo (token de outro usuário, OTP na sexta tentativa, refresh
+   reutilizado, corpo acima do limite, audiência errada). Um PR que remove ou
+   relaxa um desses testes é recusado até vir com a ADR que justifica.
+
 
 ## 🔄 Fluxo de Trabalho do Agente
 1. Ao iniciar, revise sempre se as dependências do `Crux` e o pacote `boltffi` exigem recompilação (`cargo build --features codegen`).
