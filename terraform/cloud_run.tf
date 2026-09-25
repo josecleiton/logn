@@ -24,7 +24,6 @@ resource "google_cloud_run_v2_service" "logn" {
     timeout         = "60s"
 
     scaling {
-      min_instance_count = 0
       max_instance_count = 1
     }
 
@@ -159,6 +158,8 @@ resource "google_cloud_run_v2_service" "logn" {
       # O startup probe usa run.googleapis.com/startupProbeType=Custom, campo que o
       # provider ainda não expõe — não deixar isso gerar diff eterno.
       template[0].labels,
+      # Ignora a imagem para que o Terraform não desfaça o `just deploy-backend`
+      template[0].containers[0].image,
     ]
   }
 }
