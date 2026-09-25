@@ -89,12 +89,25 @@ resource "google_cloud_run_v2_service" "logn" {
         name  = "CLOUD_SCHEDULER_AUDIENCE"
         value = var.service_audience_url
       }
+      env {
+        name  = "RUN_MIGRATIONS"
+        value = "true"
+      }
 
       env {
         name = "DATABASE_URL"
         value_source {
           secret_key_ref {
             secret  = google_secret_manager_secret.db_url.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "DATABASE_MIGRATION_URL"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.db_migrator_url.secret_id
             version = "latest"
           }
         }
