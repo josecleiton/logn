@@ -1,4 +1,10 @@
 locals {
+  # Alvo da rota interna de purga (Cloud Scheduler + a env que o backend valida). Com
+  # Cloudflare ligada, vira o domínio custom — o request passa pelo proxy e a rota
+  # interna deixa de precisar de exceção na verificação de origem. Scheduler.tf usa o
+  # mesmo valor; os dois têm que bater ou o OIDC falha.
+  scheduler_audience = var.enable_cloudflare ? "https://${var.api_subdomain}.${var.domain_name}" : var.service_audience_url
+
   # Com Cloudflare ligada, os CIDRs vêm do data source em cloudflare.tf (sempre
   # atualizados); senão, cai no que foi preenchido à mão em origin_trusted_cidrs — é o
   # caminho pra usar verificação de origem com outro proxy que não a Cloudflare.
@@ -92,7 +98,7 @@ resource "google_cloud_run_v2_service" "logn" {
       }
       env {
         name  = "CLOUD_SCHEDULER_AUDIENCE"
-        value = var.service_audience_url
+        value = local.scheduler_audience
       }
 
       env {
