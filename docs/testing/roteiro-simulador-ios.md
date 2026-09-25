@@ -299,7 +299,7 @@ trilhas carrega sozinho — sem passar pelo estado vazio.
 
 ### 4.2 Árvore de trilhas
 
-**Conferir:** sete nós com ícones distintos (dois deles usam o asterisco), cordinha
+**Conferir:** sete nós com ícones distintos (dois deles usam o asterisco), ativo com miolo tint e traço accent; bloqueado como balão cinza inteiro, sem traço nem brilho; conquistado sempre com brilho, cordinha
 sólida entre nós destravados e tracejada entre os fechados, contador com plural
 certo (`1 balão`, não `1 balões`).
 
@@ -310,6 +310,8 @@ certo (`1 balão`, não `1 balões`).
 xcrun simctl io booted screenshot "$SP/02-no.png"
 "$SP/tap" $GEO 0.5 0.901          # Começar partida
 ```
+
+**Conferir:** o balão do cabeçalho usa as mesmas regras de estado.
 
 ### 4.4 Partida — SPOT_THE_BUG (problema A)
 

@@ -264,7 +264,7 @@ Prefixo: letra da alternativa em Plex Mono 12sp, largura fixa 18dp.
 | Estado | Borda | Fundo | Sufixo |
 |---|---|---|---|
 | default | `lineStrong` | `surfaceRaised` | — |
-| selected | `accent` | accent @14% sobre canvas | — |
+| selected | `accent` | accentTint | — |
 | correct | `correct` | `tintOk` | `AC` mono 11sp |
 | wrong | `wrong` | `tintErr` | `WA` mono 11sp + shake |
 
@@ -327,11 +327,11 @@ Rótulo acima em `label` (Plex Mono 10.5sp, tracking +0.16em).
 
 ### Tag
 Plex Mono 12sp, padding 8×12, raio 2dp. Default: borda `lineStrong`, texto `textSecondary`.
-Selecionada: borda + texto `accent`, fundo accent @14%.
+Selecionada: borda + texto `accent`, fundo accentTint.
 
 ### DropZone
 Altura 38–46dp, raio 2dp, Plex Mono 13sp.
-Vazia: tracejado `lineDim`, texto `textDim`. Hover de arraste: tracejado `accent`, fundo accent @14%.
+Vazia: tracejado `lineDim`, texto `textDim`. Hover de arraste: tracejado `accent`, fundo accentTint.
 Preenchida: borda sólida `lineStrong`, fundo `surfaceRaised`, texto `textPrimary`.
 
 ### CodeBlock
@@ -381,9 +381,7 @@ decorativo: carrega direção, estado e grau de entrada. Um nó com duas arestas
 dos dois pré-requisitos, e o jogador entende por que está fechado sem ler texto.
 
 **Vértices são balões da marca.** Mesma primitiva de `Balloon`, tamanho por importância:
-56 para conquistado, 70 para o ativo, 54 para bloqueado. Preenchido na cor da família =
-conquistado; contorno accent traço 5 = ativo; contorno tracejado `lineDim` (5 4) na silhueta
-murcha = bloqueado.
+56 para conquistado, 70 para o ativo, 54 para bloqueado. Preenchido na cor da família com brilho branco = conquistado (o brilho passa a ser obrigatório); miolo tint accent (accentTint) e ícone em `accentInk` = ativo; silhueta inteira preenchida em `lineStrong` (`line2`), sem contorno nem brilho, ícone em `textSecondary` = bloqueado.
 
 **Arestas são as cordinhas.** Curvas de Bézier que saem de dentro da etiqueta do nó de origem
 e chegam ao topo do balão de destino.
@@ -401,7 +399,7 @@ cordinha lê como se atravessasse a etiqueta.
 | Estado | Borda | Fundo | Texto |
 |---|---|---|---|
 | conquistado | `line` | `canvas` | `textPrimary` |
-| ativo | `accent` | accent @14% | `textPrimary` + 2ª linha `INFLANDO · 2/5` em **`accentInk`** mono 9.5sp |
+| ativo | `accent` | accentTint | `textPrimary` + 2ª linha `INFLANDO · 2/5` em **`accentInk`** mono 9.5sp |
 | bloqueado | `line` | `canvas` | `textSecondary` |
 
 **Badge de grau de entrada** — círculo 18dp no canto superior direito do balão, fundo `canvas`,
@@ -497,7 +495,7 @@ CTA desabilitado até preencher.
 
 ### SPOT_THE_BUG
 Enunciado 19sp/600 · CodeBlock com linhas tocáveis (34dp cada + folga invisível, divisor `rowLine`).
-Linha selecionada: fundo accent @14%, barra lateral 2dp `accent`, número em accent.
+Linha selecionada: fundo accentTint, barra lateral 2dp `accent`, número em accent.
 CTA nomeia a escolha: "Confirmar linha 3".
 
 ### COMPLEXITY_MATCH

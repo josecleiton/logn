@@ -92,23 +92,6 @@ descontinuada continua com ela.
 
 PRD: [`specs/logn_trilhas_pagas_spec.md`](specs/logn_trilhas_pagas_spec.md).
 
-## Os balões da árvore ainda usam o desenho antigo
-
-O design fechou dois estados do nó:
-
-- **Bloqueado (1b):** um balão cinza inteiro.
-- **Ativo (3b):** o contorno accent, agora com o miolo tint.
-
-O handoff do design system já traz os dois. O app ainda desenha o bloqueado como silhueta
-murcha tracejada e o ativo oco. Com a troca, o brilho passa a ser obrigatório no
-conquistado, porque é o que o separa do bloqueado. O dado do Core já basta e não entra
-texto novo: a mudança fica no `BalloonShape` e nos dois lugares que o usam.
-
-O tint do ativo fica no `#241610` que o app já usa. O "14%" do README do handoff é que
-precisa ser corrigido.
-
-Spec: [`specs/logn_balao_estados_spec.md`](specs/logn_balao_estados_spec.md).
-
 ## Instituição de ensino no perfil
 
 O design ("LogN Instituicao") põe a instituição no Perfil, abaixo dos números, como a

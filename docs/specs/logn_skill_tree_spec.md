@@ -11,11 +11,10 @@ Diferente da visualização padrão de lista (List nativa), o mapa adotará a es
 ## 2. Estados Visuais dos Nós
 A progressão é baseada no `global_xp` do usuário cruzado com o `required_xp` do nó. Em uma abordagem matemática de MVP:
 - **Nó Ativo (Active):** O nó cujo `required_xp <= global_xp` E que ainda não foi superado pelo XP do próximo nó.
-  - *UI:* Exibe a cor do balão (ex: Azul Neon), preenchido, e possui uma animação de "Pulse" (ScaleUp/Down) contínua para chamar a atenção de que é ali que ele deve clicar.
 - **Nó Completado (Completed):** Nós anteriores ao nó ativo.
-  - *UI:* Preenchimento sólido, com ícone brilhante ou um "Checkmark" (SFSymbol `checkmark`). Clicável para Replay.
 - **Nó Bloqueado (Locked):** Nós cujo `required_xp > global_xp`.
-  - *UI:* Cinza opaco/desaturado (`LognDark.surfaceRaised` com borda `lineDim`), não interativo (disabled). O ícone interno aparece escurecido.
+
+> **UI:** Consulte a seção "Skill tree" do README do Design System para a descrição visual correta dos três estados (conquistado, ativo e bloqueado).
 
 ## 3. Iconografia
 - **SFSymbols:** No lugar de texto seco, a face do nó exibirá um SFSymbol representativo de seu assunto. Exemplo: `brain.head.profile` para Ad-Hoc, `network` para Grafos, `bolt.fill` para Otimização.
