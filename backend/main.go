@@ -310,6 +310,31 @@ func main() {
 	mux.HandleFunc("GET /api/v1/legal/pending", auth(server.pendingLegalHandler))
 	mux.HandleFunc("POST /api/v1/legal/accept", auth(server.acceptLegalHandler))
 
+	// Sondas do Cloud Run e a rota interna do Cloud Scheduler chegam direto do Google,
+	// nunca pelo proxy na frente — ficam fora da checagem de origem.
+	originExempt := func(r *http.Request) bool {
+		switch r.URL.Path {
+		case "/health", "/ready", "/ping":
+			return true
+		}
+		return strings.HasPrefix(r.URL.Path, "/api/v1/internal/")
+	}
+
+	var handler http.Handler = mux
+	if os.Getenv("K_SERVICE") != "" {
+		origin, err := newOriginVerifierFromEnv()
+		if err != nil {
+			log.Fatalf("Verificação de origem não configurada: %v", err)
+		}
+		handler = origin.wrap(handler, originExempt)
+	} else if os.Getenv("ORIGIN_TRUSTED_CIDRS") != "" || os.Getenv("ORIGIN_SHARED_SECRET") != "" {
+		origin, err := newOriginVerifierFromEnv()
+		if err != nil {
+			log.Fatalf("Verificação de origem mal configurada: %v", err)
+		}
+		handler = origin.wrap(handler, originExempt)
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -319,7 +344,7 @@ func main() {
 	// conta-gotas segura a conexão para sempre.
 	httpServer := &http.Server{
 		Addr:              ":" + port,
-		Handler:           withGzip(mux),
+		Handler:           withGzip(handler),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      60 * time.Second,

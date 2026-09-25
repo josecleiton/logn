@@ -29,6 +29,7 @@ const (
 	codeSyncRejected            = "sync_rejected"
 	codeOTPResendTooSoon        = "otp_resend_too_soon"
 	codeRateLimited             = "rate_limited"
+	codeOriginNotVerified       = "origin_not_verified"
 	codeInternal                = "internal"
 )
 
