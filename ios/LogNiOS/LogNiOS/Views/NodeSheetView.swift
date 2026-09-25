@@ -102,15 +102,15 @@ struct NodeSheetView: View {
         switch node.status {
         case .completed: return .filled(topic.color)
         case .active:    return .active
-        case .locked:    return .deflated
+        case .locked:    return .locked
         }
     }
 
     private var iconColor: Color {
         switch node.status {
         case .completed: return LognDark.onAccent
-        case .active:    return LognDark.accent
-        case .locked:    return LognDark.textMuted
+        case .active:    return LognDark.accentInk
+        case .locked:    return LognDark.textSecondary
         }
     }
 

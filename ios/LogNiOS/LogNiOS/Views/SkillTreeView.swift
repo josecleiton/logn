@@ -314,15 +314,15 @@ struct SkillNodeView: View {
         switch node.status {
         case .completed: return .filled(topic.color)
         case .active:    return .active
-        case .locked:    return .deflated
+        case .locked:    return .locked
         }
     }
 
     private var iconColor: Color {
         switch node.status {
         case .completed: return LognDark.onAccent   // tinta escura sobre o corpo cheio
-        case .active:    return LognDark.accent
-        case .locked:    return LognDark.textMuted
+        case .active:    return LognDark.accentInk
+        case .locked:    return LognDark.textSecondary
         }
     }
 
@@ -330,10 +330,9 @@ struct SkillNodeView: View {
         node.status == .locked ? 0.34 : 0.36
     }
 
-    /// Centro óptico do ícone dentro do corpo. A silhueta murcha do nó bloqueado
-    /// se apoia mais abaixo na viewBox, então o ícone acompanha.
+    /// Centro óptico do ícone dentro do corpo.
     private var iconCenterRatio: CGFloat {
-        node.status == .locked ? 0.50 : 0.42
+        0.42
     }
 
     private var iconLineWidth: CGFloat {

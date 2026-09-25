@@ -10,13 +10,14 @@ struct BalloonShape: View {
 
     enum Style: Equatable {
         /// Problema aceito / nó conquistado — corpo preenchido na cor.
+        /// Em nó o brilho é obrigatório (separa de bloqueado); `showHighlight: false` só em problema.
         case filled(Color)
         /// Em aberto — contorno na cor, com a espessura dada (unidades de viewBox).
         case outline(Color, CGFloat)
-        /// Nó ativo da trilha — contorno accent, traço 5, brilho em accent.
+        /// Nó ativo da trilha — contorno accent traço 5 com miolo `accentTint`.
         case active
-        /// Bloqueado — silhueta murcha, contorno tracejado.
-        case deflated
+        /// Bloqueado — balão cinza: corpo inteiro em `lineStrong`, sem traço nem brilho.
+        case locked
     }
 
     let style: Style
@@ -32,9 +33,6 @@ struct BalloonShape: View {
         static let knot    = "M41 76 L55 76 L48 91 Z"
         static let shine   = "M31 21 C27 27 25 33 25 40"
         static let string  = "M48 90 C38 98 58 106 48 114 C38 122 58 130 48 138"
-        // Silhueta murcha do nó bloqueado — corpo menor, nó mais curto.
-        static let bodyDeflated = "M48 14 C62 14 74 26 74 42 C74 56 62 68 52 74 L48 80 L44 74 C34 68 22 56 22 42 C22 26 34 14 48 14 Z"
-        static let knotDeflated = "M42 74 L54 74 L48 88 Z"
     }
 
     private static let viewBoxWidth: CGFloat = 96
@@ -52,9 +50,8 @@ struct BalloonShape: View {
         Canvas { context, size in
             let s = size.width / Self.viewBoxWidth
 
-            let isDeflated = style == .deflated
-            let bodyPath = scaled(isDeflated ? D.bodyDeflated : D.body, s)
-            let knotPath = scaled(isDeflated ? D.knotDeflated : D.knot, s)
+            let bodyPath = scaled(D.body, s)
+            let knotPath = scaled(D.knot, s)
 
             switch style {
             case .filled(let color):
@@ -67,17 +64,14 @@ struct BalloonShape: View {
                 context.fill(knotPath, with: .color(color))
 
             case .active:
+                context.fill(bodyPath, with: .color(LognDark.accentTint))
                 context.stroke(bodyPath, with: .color(LognDark.accent), lineWidth: 5 * s)
-                drawShine(context, s, color: LognDark.accent.opacity(0.4))
+                drawShine(context, s, color: LognDark.accent.opacity(0.45))
                 context.fill(knotPath, with: .color(LognDark.accent))
 
-            case .deflated:
-                context.stroke(
-                    bodyPath,
-                    with: .color(LognDark.lineDim),
-                    style: StrokeStyle(lineWidth: 4 * s, dash: [5 * s, 4 * s])
-                )
-                context.fill(knotPath, with: .color(LognDark.lineDim))
+            case .locked:
+                context.fill(bodyPath, with: .color(LognDark.lineStrong))
+                context.fill(knotPath, with: .color(LognDark.lineStrong))
             }
 
             if showString {
@@ -113,7 +107,7 @@ struct BalloonShape: View {
         case .filled(let color):     return color
         case .outline(let color, _): return color
         case .active:                return LognDark.accent
-        case .deflated:              return LognDark.lineDim
+        case .locked:                return LognDark.lineStrong
         }
     }
 }

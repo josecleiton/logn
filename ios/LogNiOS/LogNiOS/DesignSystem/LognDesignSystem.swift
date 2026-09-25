@@ -82,6 +82,7 @@ enum LognLight {
     static let tintInfo        = Color(hex: "E6EFFB")
     static let synKeyword      = Color(hex: "7A28C4")
     static let synFunction     = Color(hex: "0A4FA8")
+    static let accentTint      = Color(hex: "FDE9DF")
 }
 
 /// Balões A—M. Identidade categórica do problema, NUNCA estado.
