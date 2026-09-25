@@ -1,10 +1,15 @@
 locals {
+  # Com Cloudflare ligada, os CIDRs vêm do data source em cloudflare.tf (sempre
+  # atualizados); senão, cai no que foi preenchido à mão em origin_trusted_cidrs — é o
+  # caminho pra usar verificação de origem com outro proxy que não a Cloudflare.
+  origin_cidrs = var.enable_cloudflare ? local.cloudflare_cidrs : var.origin_trusted_cidrs
+
   # Env vars fixos de verificação de origem só entram na lista quando ligada — assim
   # o plano fica idêntico ao estado atual enquanto enable_origin_verification=false.
   origin_env = var.enable_origin_verification ? [
     {
       name  = "ORIGIN_TRUSTED_CIDRS"
-      value = var.origin_trusted_cidrs
+      value = local.origin_cidrs
     }
   ] : []
 }
