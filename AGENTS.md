@@ -56,6 +56,39 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    (`api_code` em `app.rs`), e erro que o jogador pode corrigir ganha `StatusKey`
    próprio.
 
+8. **Este repositório vai ser público. Currículo, dado pessoal e material de terceiros
+   não entram nele, em arquivo nenhum, em commit nenhum.** Engenharia é pública; a
+   trilha vive em `logn-conteudo` (privado) e só de lá. Uma vez commitado, só
+   `git filter-repo` tira; `git rm` não resolve. Por isso a regra é na entrada.
+
+   **É currículo, e fica fora:** enunciado, código do desafio, `correct_line`,
+   `expected_string`, opções e `correct_options` reais, explicação de erro, `watch_note`,
+   nome e descrição reais dos nós, portões de XP (`required_xp`) e arestas do grafo
+   real, ordem e contagem dos desafios por nó, ids `ch_NNN` ao lado de qualquer texto de
+   conteúdo, texto do cartão de origem, o prompt que ensina a escrever desafio, e a
+   trilha empacotada (`trail-seed.json`, já ignorada).
+
+   **É dado pessoal ou de terceiro, e fica fora:** CNPJ, razão social, endereço e
+   deliberação sobre natureza jurídica (`logn-conteudo/legal/entidade.md`); e-mail real
+   de qualquer pessoa em teste, doc ou mock (use `@example.com`); nome completo,
+   instituição e história de quem cedeu problema — a origem `FARIAS` é identificador e
+   a atribuição pública é "exercícios de Farias", sem explicação; nome, pacote ou texto
+   de qualquer outro produto ou empregador, em código, teste, doc, comentário ou
+   mensagem de commit.
+
+   **O que é permitido, e como:** schema, `CHECK CONSTRAINT`, motor de julgamento,
+   telas, ADRs e specs sobre mecânica. Fixture e mock usam desafio de manual inventado
+   (`ch_t01` soma de dois números, "Nó A" com portão 10), nunca um real com nome
+   trocado. Doc que precisa de exemplo descreve a forma ("um desafio de busca tinha a
+   linha errada"), não o caso. Plano de trabalho e dump de sessão vão para
+   `logn-conteudo/docs/planos/`; `tmp/` é ignorado e continua assim.
+
+   **Antes de todo commit**, `git grep -n -i -E` na árvore com os marcadores da última
+   varredura (nomes reais de nó, `expected_string: Some(`, `correct_line:` com valor,
+   `ch_[0-9]{3}` perto de texto, e-mails reais, CNPJ, nome de outro produto) tem de
+   voltar vazio. Mensagem de commit entra na conta: ela também vai para o público.
+   Na dúvida se algo é conteúdo ou engenharia, é conteúdo, e vai para `logn-conteudo`.
+
 
 ## 🔄 Fluxo de Trabalho do Agente
 1. Ao iniciar, revise sempre se as dependências do `Crux` e o pacote `boltffi` exigem recompilação (`cargo build --features codegen`).
