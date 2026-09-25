@@ -11,6 +11,14 @@ resource "google_secret_manager_secret" "db_url" {
   }
 }
 
+resource "google_secret_manager_secret" "db_migrator_url" {
+  secret_id = "logn-db-migrator-url"
+
+  replication {
+    auto {}
+  }
+}
+
 resource "google_secret_manager_secret" "jwt_secret" {
   secret_id = "logn-jwt-secret"
 

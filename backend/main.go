@@ -239,7 +239,22 @@ func main() {
 	}
 
 	if runMigrations {
-		applied, err := schema.Migrate(context.Background(), pool)
+		migratePool := pool
+		if migrationUrl := os.Getenv("DATABASE_MIGRATION_URL"); migrationUrl != "" {
+			log.Println("Usando DATABASE_MIGRATION_URL para aplicar as migrações...")
+			migrationConfig, err := pgxpool.ParseConfig(migrationUrl)
+			if err != nil {
+				log.Fatalf("Invalid DATABASE_MIGRATION_URL: %v\n", err)
+			}
+			migrationConfig.ConnConfig.ConnectTimeout = 15 * time.Second
+			migratePool, err = pgxpool.NewWithConfig(context.Background(), migrationConfig)
+			if err != nil {
+				log.Fatalf("Unable to connect to migration database: %v\n", err)
+			}
+			defer migratePool.Close()
+		}
+
+		applied, err := schema.Migrate(context.Background(), migratePool)
 		if err != nil {
 			log.Fatalf("Migração falhou: %v\n", err)
 		}
@@ -321,13 +336,7 @@ func main() {
 	}
 
 	var handler http.Handler = mux
-	if os.Getenv("K_SERVICE") != "" {
-		origin, err := newOriginVerifierFromEnv()
-		if err != nil {
-			log.Fatalf("Verificação de origem não configurada: %v", err)
-		}
-		handler = origin.wrap(handler, originExempt)
-	} else if os.Getenv("ORIGIN_TRUSTED_CIDRS") != "" || os.Getenv("ORIGIN_SHARED_SECRET") != "" {
+	if os.Getenv("ORIGIN_TRUSTED_CIDRS") != "" || os.Getenv("ORIGIN_SHARED_SECRET") != "" {
 		origin, err := newOriginVerifierFromEnv()
 		if err != nil {
 			log.Fatalf("Verificação de origem mal configurada: %v", err)

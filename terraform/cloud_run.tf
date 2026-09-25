@@ -35,7 +35,6 @@ resource "google_cloud_run_v2_service" "logn" {
     timeout         = "60s"
 
     scaling {
-      min_instance_count = 0
       max_instance_count = 1
     }
 
@@ -100,12 +99,25 @@ resource "google_cloud_run_v2_service" "logn" {
         name  = "CLOUD_SCHEDULER_AUDIENCE"
         value = local.scheduler_audience
       }
+      env {
+        name  = "RUN_MIGRATIONS"
+        value = "true"
+      }
 
       env {
         name = "DATABASE_URL"
         value_source {
           secret_key_ref {
             secret  = google_secret_manager_secret.db_url.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "DATABASE_MIGRATION_URL"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.db_migrator_url.secret_id
             version = "latest"
           }
         }
@@ -157,6 +169,8 @@ resource "google_cloud_run_v2_service" "logn" {
       # O startup probe usa run.googleapis.com/startupProbeType=Custom, campo que o
       # provider ainda não expõe — não deixar isso gerar diff eterno.
       template[0].labels,
+      # Ignora a imagem para que o Terraform não desfaça o `just deploy-backend`
+      template[0].containers[0].image,
     ]
   }
 }

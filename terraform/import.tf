@@ -34,3 +34,8 @@ import {
 }
 
 # Este não existe ainda no Secret Manager — cria na primeira apply, não importa.
+
+import {
+  to = google_secret_manager_secret.db_migrator_url
+  id = "projects/${var.project_id}/secrets/logn-db-migrator-url"
+}
