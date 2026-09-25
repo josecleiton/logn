@@ -1,0 +1,18 @@
+# Copie para terraform.tfvars (que é ignorado pelo git) e preencha com os valores
+# reais do seu projeto. Nenhum valor aqui é real — são placeholders.
+
+project_id             = "seu-projeto-gcp"
+region                 = "us-east1"
+service_account_email  = "sua-service-account@seu-projeto-gcp.iam.gserviceaccount.com"
+service_audience_url   = "https://seu-servico-xxxxx.a.run.app"
+
+smtp_user = "seu-email-de-envio@example.com"
+smtp_from = "LogN App <seu-email-de-envio@example.com>"
+
+# Imagem já publicada no Artifact Registry (ver README para como gerar).
+container_image = "us-east1-docker.pkg.dev/seu-projeto-gcp/cloud-run-source-deploy/logn@sha256:..."
+
+# Verificação de origem (Cloudflare na frente do Cloud Run) — deixe como está até o
+# domínio custom e a Cloudflare estarem configurados.
+enable_origin_verification = false
+origin_trusted_cidrs       = ""

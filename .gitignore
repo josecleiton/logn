@@ -29,6 +29,16 @@ backend/logn-backend
 !*.xcconfig.example
 contest/
 
+# Terraform — estado e variáveis reais nunca entram no git, só o esquema (*.tf), o
+# terraform.tfvars.example e o .terraform.lock.hcl (esse fixa versão de provider,
+# entra normal).
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/terraform.tfvars
+terraform/generated_resources.tf
+crash.log
+
 # Conteúdo da trilha — vive no repositório privado logn-conteudo.
 #
 # Engenharia é pública, currículo não: enunciados, gabaritos, explicações e a árvore de
