@@ -336,7 +336,13 @@ func main() {
 	}
 
 	var handler http.Handler = mux
-	if os.Getenv("ORIGIN_TRUSTED_CIDRS") != "" || os.Getenv("ORIGIN_SHARED_SECRET") != "" {
+	if os.Getenv("K_SERVICE") != "" {
+		origin, err := newOriginVerifierFromEnv()
+		if err != nil {
+			log.Fatalf("Verificação de origem não configurada: %v", err)
+		}
+		handler = origin.wrap(handler, originExempt)
+	} else if os.Getenv("ORIGIN_TRUSTED_CIDRS") != "" || os.Getenv("ORIGIN_SHARED_SECRET") != "" {
 		origin, err := newOriginVerifierFromEnv()
 		if err != nil {
 			log.Fatalf("Verificação de origem mal configurada: %v", err)
