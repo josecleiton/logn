@@ -1,0 +1,124 @@
+# Cópia da landing page em português do Brasil.
+#
+# Toda língua em `i18n/` tem exatamente estas chaves; o `build.mjs` recusa arquivo com
+# chave a mais ou a menos. Valor é texto puro: o build escapa HTML, então `<`, `&` e
+# aspas entram como são.
+#
+# Nada de currículo aqui (AGENTS.md, regra 8). O desafio do celular e os trechos dos
+# formatos são inventados, no molde de `ch_t01`; o placar usa times fictícios.
+
+[meta]
+title = "LogN — Reduza a complexidade das suas soluções"
+description = "Treino de algoritmos, DevOps e engenharia com IA em sessões de três minutos, com a gramática de uma maratona de programação. Código aberto."
+lang_name = "Português"
+lang_switch = "Idioma"
+skip = "Pular para o conteúdo"
+
+[nav]
+session = "SESSÃO"
+tracks = "TRILHAS"
+board = "PLACAR"
+code = "CÓDIGO"
+home = "LogN, início"
+
+[cta]
+short_live = "Baixar"
+short_soon = "Em breve"
+over_live = "Baixar na"
+over_soon = "Em breve na"
+note_live = "IPHONE · GRÁTIS · ANDROID A CAMINHO"
+note_soon = "CHEGANDO À APP STORE · ANDROID A CAMINHO"
+read_code = "ler o código"
+
+[hero]
+kicker = "13 PROBLEMAS · 5 HORAS · UM PLACAR — AGORA EM 3 MINUTOS"
+title = "Reduza a complexidade das suas soluções."
+lead = "Treino de algoritmos, DevOps e engenharia com IA na gramática de uma maratona de programação: problemas por letra, balão por cor, placar que congela na última hora."
+balloons_label = "Treze balões, um por problema"
+
+[phone]
+label = "Tela do app durante uma questão"
+problem = "PROBLEM F"
+lives = "Duas vidas de três"
+title = "F · SOMA DE DOIS NÚMEROS"
+statement = "Devolva a soma de a e b. Complete a expressão."
+fn = "soma"
+drag = "ARRASTE O BLOCO"
+drop = "solte aqui"
+confirm = "Confirmar resposta"
+
+[session]
+kicker = "A SESSÃO"
+title = "Três vidas, relógio correndo, quatro formatos."
+lead = "Nada de editor em branco no celular. Cada questão isola uma decisão — a linha certa, o bug, a complexidade — e cabe numa fila de ônibus."
+a_name = "Complete a linha"
+a_desc = "O algoritmo está pronto, falta uma linha. Você escolhe entre quatro candidatas quase iguais."
+a_sample = "i < n  │  i <= n"
+b_name = "Ache o bug"
+b_desc = "Seis linhas, uma errada. Toque na linha que quebra no caso de borda."
+b_sample = "for (i = 0; i <= n; i++)  ← aqui"
+c_name = "Case a complexidade"
+c_desc = "Arraste cada trecho até a notação certa. O relógio conta."
+c_sample = "dois laços aninhados → O(n²)"
+d_name = "Dry run"
+d_desc = "Execute de cabeça e diga o que sai. Sem compilar, sem print."
+d_sample = "saída: [1, 3, 3, 7]"
+traps = "Errou numa trap clássica — off-by-one, overflow em mid, visitado marcado tarde — e o app explica por quê antes da próxima questão."
+
+[tracks]
+kicker = "TRILHAS"
+title = "O currículo é um grafo. Você vê as arestas."
+lead = "Cada técnica é um balão; cada pré-requisito, uma cordinha. Uma técnica só abre depois das que ela usa — e o mapa mostra por quê."
+algo_name = "Algoritmos e estruturas"
+algo_topics = "busca, grafos, DP, heaps"
+devops_name = "DevOps"
+devops_topics = "infraestrutura, nuvem, esteiras de entrega"
+ai_name = "Engenharia com IA"
+ai_topics = "sistemas com LLMs"
+map_label = "Exemplo de mapa de técnicas, com as resolvidas coloridas, a atual destacada e a próxima bloqueada"
+node_adhoc = "Ad-hoc"
+node_arrays = "Arrays"
+node_strings = "Strings"
+node_two_pointers = "Two pointers"
+node_binary_search = "Binary search"
+node_sliding_window = "Sliding window"
+
+[board]
+kicker = "PLACAR"
+title = "Congela na última hora. Como tem que ser."
+lead = "Penalidade somada como numa maratona: cada tentativa errada custa 20 minutos. Na última hora o placar congela, e o resultado só aparece na revelação."
+label = "Exemplo de placar congelado"
+site = "STANDINGS"
+frozen = "CONGELADO"
+rank = "#"
+team = "TIME"
+ac = "AC"
+pen = "PEN"
+you = "você"
+
+[code]
+kicker = "CÓDIGO ABERTO"
+title = "O app inteiro está no GitHub. Só as questões ficam na gaveta."
+lead = "Core, clientes e backend são abertos para ler, forkar e mandar PR. O único pedaço fechado é o conteúdo das trilhas — publicar o gabarito estragaria o contest."
+open = "ABERTO"
+soon = "EM BREVE"
+core_note = "Regras do jogo, placar e sincronização offline num núcleo só."
+ios_note = "Cliente nativo sobre o core."
+android_note = "Mesmo core, mesmo design system."
+backend_note = "Contas, standings e eventos sincronizados."
+github = "abrir no GitHub"
+
+[end]
+title = "Seu primeiro balão está a três minutos."
+
+[footer]
+tagline = "Reduza a complexidade das suas soluções."
+privacy = "Privacidade"
+terms = "Termos"
+trademarks = "Apple e App Store são marcas da Apple Inc."
+
+[notfound]
+title = "Página não encontrada — LogN"
+heading = "Wrong Answer."
+lead = "Esta página não existe. Volte ao início e tente de novo — sem penalidade."
+back = "voltar ao início"

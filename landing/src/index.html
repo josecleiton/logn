@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="{{page.lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{meta.title}}</title>
+<meta name="description" content="{{meta.description}}">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0B0C0D" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F6F6F4" media="(prefers-color-scheme: light)">
+<link rel="canonical" href="{{page.canonical}}">
+{{{page.alternates}}}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="LogN">
+<meta property="og:title" content="{{meta.title}}">
+<meta property="og:description" content="{{meta.description}}">
+<meta property="og:url" content="{{page.canonical}}">
+<meta property="og:locale" content="{{page.og_locale}}">
+<link rel="icon" href="/assets/logn-symbol-accent.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/IBMPlexSans-SemiBold.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="{{page.css}}">
+<script src="{{page.js}}" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">{{meta.skip}}</a>
+
+<svg class="defs" aria-hidden="true" focusable="false">
+  <symbol id="b-head" viewBox="0 0 96 95">
+    <path d="M48 4 C66 4 80 20 80 41 C80 60 66 74 53 79 L48 83 L43 79 C30 74 16 60 16 41 C16 20 30 4 48 4 Z"/>
+    <path d="M41 76 L55 76 L48 91 Z"/>
+  </symbol>
+  <symbol id="b-full" viewBox="0 0 96 122">
+    <path d="M48 4 C66 4 80 20 80 41 C80 60 66 74 53 79 L48 83 L43 79 C30 74 16 60 16 41 C16 20 30 4 48 4 Z"/>
+    <path d="M31 21 C27 27 25 33 25 40" fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="5.5" stroke-linecap="round" opacity="0.72"/>
+    <path d="M41 76 L55 76 L48 91 Z"/>
+    <path d="M48 90 C49 104 56 111 68 113 C78 115 84 115 90 116" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  </symbol>
+</svg>
+
+<header class="top">
+  <div class="wrap top-row">
+    <a href="{{page.home}}#top" class="brand" aria-label="{{nav.home}}">
+      <svg class="brand-mark" viewBox="0 0 96 122" width="19" height="24" aria-hidden="true"><use href="#b-full"/></svg>
+      <span class="brand-name">LogN</span>
+    </a>
+    <nav class="nav mono">
+      <a href="#sessao">{{nav.session}}</a>
+      <a href="#trilhas">{{nav.tracks}}</a>
+      <a href="#placar">{{nav.board}}</a>
+      <a href="#codigo">{{nav.code}}</a>
+    </nav>
+    <div class="top-end">
+      {{{page.lang_switcher}}}
+      <a class="gh mono" href="https://github.com/josecleiton/logn">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span>josecleiton/logn</span>
+      </a>
+      <a class="btn-accent" href="{{cta.href}}">{{cta.short}}</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+<section id="top" class="wrap hero">
+  <div class="hero-copy">
+    <div class="stack-10">
+      <div class="hero-row" role="img" aria-label="{{hero.balloons_label}}">
+        <svg viewBox="0 0 96 95" width="16" height="16" fill="#E4572E"><use href="#b-head"/></svg>
+        <svg viewBox="0 0 96 95" width="16" height="16" fill="#F5C451"><use href="#b-head"/></svg>
+        <svg viewBox="0 0 96 95" width="16" height="16" fill="#3DB2FF"><use href="#b-head"/></svg>
+        <svg viewBox="0 0 96 95" width="16" height="16" fill="#6BCB77"><use href="#b-head"/></svg>
+        <svg viewBox="0 0 96 95" width="16" height="16" fill="#C77DFF"><use href="#b-head"/></svg>
+        <svg viewBox="0 0 96 95" width="16" height="16" fill="#FF6FB5"><use href="#b-head"/></svg>
+        <svg viewBox="0 0 96 95" width="16" height="16" fill="#4ECDC4"><use href="#b-head"/></svg>
+        <svg viewBox="0 0 96 95" width="16" height="16" fill="#F4A261"><use href="#b-head"/></svg>
+        <svg viewBox="0 0 96 95" width="16" height="16" fill="#9BC53D"><use href="#b-head"/></svg>
+        <svg viewBox="0 0 96 95" width="16" height="16" fill="#D64550"><use href="#b-head"/></svg>
+        <svg viewBox="0 0 96 95" width="16" height="16" fill="#7C8BFF"><use href="#b-head"/></svg>
+        <svg viewBox="0 0 96 95" width="16" height="16" fill="#D8DEE4"><use href="#b-head"/></svg>
+        <svg viewBox="0 0 96 95" width="16" height="16" fill="#00B894"><use href="#b-head"/></svg>
+      </div>
+      <p class="eyebrow mono">{{hero.kicker}}</p>
+    </div>
+    <h1>{{hero.title}}</h1>
+    <p class="lead-lg">{{hero.lead}}</p>
+    <div class="cta-row">
+      {{{page.store}}}
+      <a class="btn-ghost mono" href="https://github.com/josecleiton/logn">{{cta.read_code}} <span class="accent" aria-hidden="true">↗</span></a>
+    </div>
+    <p class="note mono">{{cta.note}}</p>
+  </div>
+
+  <div class="phone-wrap">
+    <div class="phone" role="img" aria-label="{{phone.label}}">
+      <div class="phone-screen" aria-hidden="true">
+        <div class="ph-status"><span>16:58</span><span class="ph-island"></span><span class="mono ph-net">5G</span></div>
+        <div class="ph-bar">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="ph-close"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          <svg viewBox="0 0 96 122" width="11" height="14" fill="#FF6FB5" color="#FF6FB5"><use href="#b-full"/></svg>
+          <span class="mono ph-problem">{{phone.problem}}</span>
+          <span class="mono ph-clock">00:51</span>
+          <span class="ph-lives" title="{{phone.lives}}"><span>♥</span><span>♥</span><span class="ph-lost">♥</span></span>
+        </div>
+        <div class="ph-letters">
+          <span class="ph-l"><svg viewBox="0 0 96 95" width="11" height="12" fill="#E4572E"><use href="#b-head"/></svg><span>A</span></span>
+          <span class="ph-l"><svg viewBox="0 0 96 95" width="11" height="12" fill="#F5C451"><use href="#b-head"/></svg><span>B</span></span>
+          <span class="ph-l"><svg viewBox="0 0 96 95" width="11" height="12" fill="#3DB2FF"><use href="#b-head"/></svg><span>C</span></span>
+          <span class="ph-l"><svg viewBox="0 0 96 95" width="11" height="12" class="b-open"><use href="#b-head"/></svg><span>D</span></span>
+          <span class="ph-l"><svg viewBox="0 0 96 95" width="11" height="12" fill="#C77DFF"><use href="#b-head"/></svg><span>E</span></span>
+          <span class="ph-l"><svg viewBox="0 0 96 95" width="11" height="12" class="b-current"><use href="#b-head"/></svg><span>F</span></span>
+        </div>
+        <div class="ph-body">
+          <div class="mono ph-title">{{phone.title}}</div>
+          <p class="ph-statement">{{phone.statement}}</p>
+          <div class="ph-code mono">
+            <div class="ph-line"><span class="ln">1</span><span><span class="kw">int</span> <span class="fn">{{phone.fn}}</span>(<span class="kw">int</span> a, <span class="kw">int</span> b) {</span></div>
+            <div class="ph-line"><span class="ln">2</span><span class="indent"><span class="kw">return</span></span><span class="ph-slot"></span><span>;</span></div>
+            <div class="ph-line"><span class="ln">3</span><span>}</span></div>
+          </div>
+          <div class="mono ph-drag">{{phone.drag}}</div>
+          <div class="mono ph-drop">{{phone.drop}}</div>
+          <div class="ph-chips mono">
+            <span>a + b</span><span>a - b</span><span>a * b</span><span>b - a</span>
+          </div>
+          <div class="ph-confirm">{{phone.confirm}}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="sessao" class="band">
+  <div class="wrap section stack-40">
+    <div class="intro">
+      <p class="kicker mono">{{session.kicker}}</p>
+      <h2>{{session.title}}</h2>
+      <p class="lead">{{session.lead}}</p>
+    </div>
+    <div class="grid-cells formats">
+      <article class="cell">
+        <div class="cell-head"><span class="mono letter">A</span><span class="mono verdict t-ok">AC</span></div>
+        <h3>{{session.a_name}}</h3>
+        <p>{{session.a_desc}}</p>
+        <code class="sample mono">{{session.a_sample}}</code>
+      </article>
+      <article class="cell">
+        <div class="cell-head"><span class="mono letter">B</span><span class="mono verdict t-err">WA</span></div>
+        <h3>{{session.b_name}}</h3>
+        <p>{{session.b_desc}}</p>
+        <code class="sample mono">{{session.b_sample}}</code>
+      </article>
+      <article class="cell">
+        <div class="cell-head"><span class="mono letter">C</span><span class="mono verdict t-warn">TLE</span></div>
+        <h3>{{session.c_name}}</h3>
+        <p>{{session.c_desc}}</p>
+        <code class="sample mono">{{session.c_sample}}</code>
+      </article>
+      <article class="cell">
+        <div class="cell-head"><span class="mono letter">D</span><span class="mono verdict t-ok">AC</span></div>
+        <h3>{{session.d_name}}</h3>
+        <p>{{session.d_desc}}</p>
+        <code class="sample mono">{{session.d_sample}}</code>
+      </article>
+    </div>
+    <p class="footnote mono">{{session.traps}}</p>
+  </div>
+</section>
+
+<section id="trilhas" class="band band-alt">
+  <div class="wrap section split split-420">
+    <div class="stack-18">
+      <p class="kicker mono">{{tracks.kicker}}</p>
+      <h2>{{tracks.title}}</h2>
+      <p class="lead">{{tracks.lead}}</p>
+      <ul class="families">
+        <li><span class="dot" data-c="algo"></span><span class="fam-name">{{tracks.algo_name}}</span><span class="mono fam-topics">{{tracks.algo_topics}}</span></li>
+        <li><span class="dot" data-c="devops"></span><span class="fam-name">{{tracks.devops_name}}</span><span class="mono fam-topics">{{tracks.devops_topics}}</span></li>
+        <li><span class="dot" data-c="ai"></span><span class="fam-name">{{tracks.ai_name}}</span><span class="mono fam-topics">{{tracks.ai_topics}}</span></li>
+      </ul>
+    </div>
+
+    <figure class="map-frame" role="img" aria-label="{{tracks.map_label}}">
+      <div class="map" aria-hidden="true">
+        <svg class="map-edges" viewBox="0 0 340 430" width="340" height="430">
+          <path d="M170 97 C166 106 92 110 82 120" stroke="#F4A261"/>
+          <path d="M170 97 C174 106 246 110 256 120" stroke="#F4A261"/>
+          <path d="M82 197 C77 205 87 212 82 220" stroke="#F4A261"/>
+          <path d="M256 197 C262 204 252 208 256 214" stroke="#3DB2FF"/>
+          <path d="M257 317 C242 328 200 340 178 350" class="edge-next"/>
+          <path d="M82 297 C100 316 140 338 160 352" class="edge-locked"/>
+        </svg>
+        <div class="node n-adhoc"><svg viewBox="0 0 96 95" width="56" height="56" fill="#F4A261"><use href="#b-head"/><path d="M31 21 C27 27 25 33 25 40" class="hl"/></svg><span class="tag">{{tracks.node_adhoc}}</span></div>
+        <div class="node n-arrays"><svg viewBox="0 0 96 95" width="56" height="56" fill="#F4A261"><use href="#b-head"/><path d="M31 21 C27 27 25 33 25 40" class="hl"/></svg><span class="tag">{{tracks.node_arrays}}</span></div>
+        <div class="node n-strings"><svg viewBox="0 0 96 95" width="56" height="56" fill="#F4A261"><use href="#b-head"/><path d="M31 21 C27 27 25 33 25 40" class="hl"/></svg><span class="tag">{{tracks.node_strings}}</span></div>
+        <div class="node n-two"><svg viewBox="0 0 96 95" width="56" height="56" fill="#3DB2FF"><use href="#b-head"/><path d="M31 21 C27 27 25 33 25 40" class="hl"/></svg><span class="tag">{{tracks.node_two_pointers}}</span></div>
+        <div class="node n-bs is-current"><svg viewBox="0 0 96 95" width="70" height="70"><use href="#b-head"/><path d="M31 21 C27 27 25 33 25 40" class="hl"/></svg><span class="tag">{{tracks.node_binary_search}}</span></div>
+        <div class="node n-sw is-locked"><svg viewBox="0 0 96 95" width="54" height="54"><use href="#b-head"/></svg><span class="tag">{{tracks.node_sliding_window}}</span></div>
+      </div>
+    </figure>
+  </div>
+</section>
+
+<section id="placar" class="band">
+  <div class="wrap section split split-520">
+    <div class="stack-18">
+      <p class="kicker mono">{{board.kicker}}</p>
+      <h2>{{board.title}}</h2>
+      <p class="lead">{{board.lead}}</p>
+    </div>
+    <figure class="board-frame" aria-label="{{board.label}}">
+      <table class="board">
+        <caption class="mono"><div class="board-cap"><span>{{board.site}}</span><span class="badge-info">{{board.frozen}}</span></div></caption>
+        <thead class="mono">
+          <tr><th scope="col">{{board.rank}}</th><th scope="col" class="team">{{board.team}}</th><th scope="col" class="num">{{board.ac}}</th><th scope="col" class="num">{{board.pen}}</th><th scope="col">A</th><th scope="col">B</th><th scope="col">C</th><th scope="col">D</th><th scope="col">E</th><th scope="col">F</th><th scope="col">G</th></tr>
+        </thead>
+        <tbody>
+          {{{page.board_rows}}}
+        </tbody>
+      </table>
+    </figure>
+  </div>
+</section>
+
+<section id="codigo" class="band band-alt">
+  <div class="wrap section stack-40">
+    <div class="intro intro-wide">
+      <p class="kicker mono">{{code.kicker}}</p>
+      <h2>{{code.title}}</h2>
+      <p class="lead">{{code.lead}}</p>
+    </div>
+    <div class="grid-cells stack-grid">
+      <article class="cell cell-canvas">
+        <div class="cell-head"><span class="mono layer">CORE</span><span class="mono status t-ok">{{code.open}}</span></div>
+        <h3>Rust + Crux</h3>
+        <p>{{code.core_note}}</p>
+      </article>
+      <article class="cell cell-canvas">
+        <div class="cell-head"><span class="mono layer">iOS</span><span class="mono status t-ok">{{code.open}}</span></div>
+        <h3>SwiftUI</h3>
+        <p>{{code.ios_note}}</p>
+      </article>
+      <article class="cell cell-canvas">
+        <div class="cell-head"><span class="mono layer">ANDROID</span><span class="mono status t-warn">{{code.soon}}</span></div>
+        <h3>Jetpack Compose</h3>
+        <p>{{code.android_note}}</p>
+      </article>
+      <article class="cell cell-canvas">
+        <div class="cell-head"><span class="mono layer">BACKEND</span><span class="mono status t-ok">{{code.open}}</span></div>
+        <h3>Go + PostgreSQL</h3>
+        <p>{{code.backend_note}}</p>
+      </article>
+    </div>
+    <div class="clone-row mono">
+      <div class="clone"><span class="accent" aria-hidden="true">$</span><span>git clone github.com/josecleiton/logn</span></div>
+      <a class="btn-ghost btn-ghost-sm" href="https://github.com/josecleiton/logn">{{code.github}} <span class="accent" aria-hidden="true">↗</span></a>
+    </div>
+  </div>
+</section>
+
+<section id="fim" class="band">
+  <div class="wrap end">
+    <svg class="brand-mark" viewBox="0 0 96 122" width="48" height="61" aria-hidden="true"><use href="#b-full"/></svg>
+    <h2 class="end-title">{{end.title}}</h2>
+    {{{page.store}}}
+    <p class="note mono">{{cta.note}}</p>
+  </div>
+</section>
+
+</main>
+
+<footer class="band">
+  <div class="wrap foot mono">
+    <span class="foot-domain">logn.sh</span>
+    <span>{{footer.tagline}}</span>
+    <div class="foot-links">
+      <a href="https://github.com/josecleiton/logn">GitHub</a>
+      <a href="/legal/privacy?lang={{page.lang}}">{{footer.privacy}}</a>
+      <a href="/legal/terms?lang={{page.lang}}">{{footer.terms}}</a>
+    </div>
+    <p class="foot-legal">{{footer.trademarks}}</p>
+  </div>
+</footer>
+
+<div class="party" aria-hidden="true"></div>
+</body>
+</html>

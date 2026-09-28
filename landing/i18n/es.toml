@@ -1,0 +1,117 @@
+# Texto de la landing page en español. Mismas claves que `pt-BR.toml`; ver las notas de allí.
+
+[meta]
+title = "LogN — Reduce la complejidad de tus soluciones"
+description = "Práctica de algoritmos, DevOps e ingeniería con IA en sesiones de tres minutos, con la gramática de una maratón de programación. Código abierto."
+lang_name = "Español"
+lang_switch = "Idioma"
+skip = "Saltar al contenido"
+
+[nav]
+session = "SESIÓN"
+tracks = "RUTAS"
+board = "MARCADOR"
+code = "CÓDIGO"
+home = "LogN, inicio"
+
+[cta]
+short_live = "Descargar"
+short_soon = "Próximamente"
+over_live = "Descárgalo en el"
+over_soon = "Próximamente en el"
+note_live = "IPHONE · GRATIS · ANDROID EN CAMINO"
+note_soon = "LLEGANDO AL APP STORE · ANDROID EN CAMINO"
+read_code = "leer el código"
+
+[hero]
+kicker = "13 PROBLEMAS · 5 HORAS · UN MARCADOR — AHORA EN 3 MINUTOS"
+title = "Reduce la complejidad de tus soluciones."
+lead = "Práctica de algoritmos, DevOps e ingeniería con IA en la gramática de una maratón de programación: problemas por letra, globo por color, marcador que se congela en la última hora."
+balloons_label = "Trece globos, uno por problema"
+
+[phone]
+label = "La app durante una pregunta"
+problem = "PROBLEM F"
+lives = "Dos vidas de tres"
+title = "F · SUMA DE DOS NÚMEROS"
+statement = "Devuelve la suma de a y b. Completa la expresión."
+fn = "suma"
+drag = "ARRASTRA EL BLOQUE"
+drop = "suelta aquí"
+confirm = "Confirmar respuesta"
+
+[session]
+kicker = "LA SESIÓN"
+title = "Tres vidas, reloj corriendo, cuatro formatos."
+lead = "Nada de editor en blanco en el celular. Cada pregunta aísla una decisión — la línea correcta, el bug, la complejidad — y cabe en la fila del autobús."
+a_name = "Completa la línea"
+a_desc = "El algoritmo está listo, falta una línea. Eliges entre cuatro candidatas casi iguales."
+a_sample = "i < n  │  i <= n"
+b_name = "Encuentra el bug"
+b_desc = "Seis líneas, una equivocada. Toca la línea que falla en el caso borde."
+b_sample = "for (i = 0; i <= n; i++)  ← aquí"
+c_name = "Empareja la complejidad"
+c_desc = "Arrastra cada fragmento a la notación correcta. El reloj corre."
+c_sample = "dos bucles anidados → O(n²)"
+d_name = "Dry run"
+d_desc = "Ejecútalo de cabeza y di qué sale. Sin compilar, sin print."
+d_sample = "salida: [1, 3, 3, 7]"
+traps = "Caíste en una trampa clásica — off-by-one, overflow en mid, visitado marcado tarde — y la app explica por qué antes de la siguiente pregunta."
+
+[tracks]
+kicker = "RUTAS"
+title = "El currículo es un grafo. Tú ves las aristas."
+lead = "Cada técnica es un globo; cada prerrequisito, un hilo. Una técnica solo se abre después de las que usa — y el mapa muestra por qué."
+algo_name = "Algoritmos y estructuras"
+algo_topics = "búsqueda, grafos, DP, heaps"
+devops_name = "DevOps"
+devops_topics = "infraestructura, nube, pipelines de entrega"
+ai_name = "Ingeniería con IA"
+ai_topics = "sistemas con LLMs"
+map_label = "Ejemplo de mapa de técnicas, con las resueltas en color, la actual destacada y la siguiente bloqueada"
+node_adhoc = "Ad-hoc"
+node_arrays = "Arrays"
+node_strings = "Strings"
+node_two_pointers = "Two pointers"
+node_binary_search = "Binary search"
+node_sliding_window = "Sliding window"
+
+[board]
+kicker = "MARCADOR"
+title = "Se congela en la última hora. Como debe ser."
+lead = "Penalización sumada como en una maratón: cada intento fallido cuesta 20 minutos. En la última hora el marcador se congela, y el resultado solo aparece en la revelación."
+label = "Ejemplo de marcador congelado"
+site = "STANDINGS"
+frozen = "CONGELADO"
+rank = "#"
+team = "EQUIPO"
+ac = "AC"
+pen = "PEN"
+you = "tú"
+
+[code]
+kicker = "CÓDIGO ABIERTO"
+title = "Toda la app está en GitHub. Solo las preguntas quedan en el cajón."
+lead = "Core, clientes y backend están abiertos para leer, hacer fork y mandar PR. La única pieza cerrada es el contenido de las rutas — publicar las respuestas arruinaría el contest."
+open = "ABIERTO"
+soon = "PRONTO"
+core_note = "Reglas del juego, marcador y sincronización offline en un solo núcleo."
+ios_note = "Cliente nativo sobre el core."
+android_note = "Mismo core, mismo design system."
+backend_note = "Cuentas, standings y eventos sincronizados."
+github = "abrir en GitHub"
+
+[end]
+title = "Tu primer globo está a tres minutos."
+
+[footer]
+tagline = "Reduce la complejidad de tus soluciones."
+privacy = "Privacidad"
+terms = "Términos"
+trademarks = "Apple y App Store son marcas de Apple Inc."
+
+[notfound]
+title = "Página no encontrada — LogN"
+heading = "Wrong Answer."
+lead = "Esta página no existe. Vuelve al inicio e inténtalo de nuevo — sin penalización."
+back = "volver al inicio"

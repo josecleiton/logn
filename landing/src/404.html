@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="{{page.lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{notfound.title}}</title>
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="/assets/logn-symbol-accent.svg" type="image/svg+xml">
+<link rel="stylesheet" href="{{page.css}}">
+</head>
+<body>
+<main class="wrap nf">
+  <a href="/" class="brand" aria-label="{{nav.home}}">
+    <svg class="brand-mark" viewBox="0 0 96 122" width="19" height="24" aria-hidden="true">
+      <path d="M48 4 C66 4 80 20 80 41 C80 60 66 74 53 79 L48 83 L43 79 C30 74 16 60 16 41 C16 20 30 4 48 4 Z"/>
+      <path d="M41 76 L55 76 L48 91 Z"/>
+      <path d="M48 90 C49 104 56 111 68 113 C78 115 84 115 90 116" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+    </svg>
+    <span class="brand-name">LogN</span>
+  </a>
+  <span class="mono verdict t-err">404 · WA</span>
+  <h1>{{notfound.heading}}</h1>
+  <p class="lead-lg">{{notfound.lead}}</p>
+  <div class="cta-row"><a class="btn-ghost mono" href="/">{{notfound.back}} <span class="accent" aria-hidden="true">↩</span></a></div>
+</main>
+</body>
+</html>

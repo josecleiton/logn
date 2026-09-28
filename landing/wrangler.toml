@@ -1,0 +1,37 @@
+# Landing page do LogN — Cloudflare Worker com assets estáticos.
+#
+# Sobe o mesmo site em `logn.sh` e `www.logn.sh`. As duas rotas são custom domains:
+# o Cloudflare cria o registro DNS e o certificado sozinho, desde que a zona `logn.sh`
+# esteja na conta. O `<link rel="canonical">` de cada página aponta para `logn.sh`,
+# para o buscador não contar o `www` como conteúdo duplicado.
+#
+# Deploy: `just landing-deploy` (ou `npx wrangler deploy` dentro de `landing/`).
+# O `[build]` roda antes e gera `dist/` a partir de `src/` e `i18n/`.
+
+name = "logn-landing"
+main = "src/worker.js"
+compatibility_date = "2026-09-01"
+workers_dev = false
+preview_urls = false
+
+routes = [
+  { pattern = "logn.sh", custom_domain = true },
+  { pattern = "www.logn.sh", custom_domain = true },
+]
+
+[build]
+command = "node build.mjs"
+watch_dir = ["src", "i18n"]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+not_found_handling = "404-page"
+# Só `/legal/*` passa pelo Worker (proxy para as páginas legais do backend); o resto
+# sai direto dos assets, com os cabeçalhos de `dist/_headers`.
+run_worker_first = ["/legal/*"]
+
+# `LEGAL_ORIGIN` — origem do backend que serve `/legal/terms` e `/legal/privacy`.
+# Não mora aqui: URL de produção fica fora do repositório (AGENTS.md, regra 9).
+# Configure uma vez com `npx wrangler secret put LEGAL_ORIGIN`.

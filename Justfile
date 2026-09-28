@@ -95,6 +95,27 @@ deploy-scheduler:
     	--oidc-token-audience="$URL" \
     	--location=us-east1
 
+# --- Landing page (Cloudflare Worker) ---
+
+# Gera landing/dist nas três línguas. Com LOGN_APP_STORE_URL no ambiente, os botões
+# viram "baixar na App Store"; sem ele, "em breve".
+landing-build:
+    node landing/build.mjs
+
+# Serve a landing em http://127.0.0.1:8788, com o mesmo Worker e os mesmos cabeçalhos.
+landing-dev:
+    cd landing && npx wrangler dev --port 8788
+
+# Sobe a landing em logn.sh e www.logn.sh (rotas em landing/wrangler.toml).
+landing-deploy:
+    cd landing && npx wrangler deploy
+
+# Aponta o proxy /legal/* da landing para o serviço `logn` do Cloud Run. A URL sai do
+# gcloud direto para o secret do Worker, sem passar por arquivo versionado.
+landing-legal-origin:
+    gcloud run services describe logn --region us-east1 --format 'value(status.url)' \
+        | (cd landing && npx wrangler secret put LEGAL_ORIGIN)
+
 # --- Core (Rust) ---
 
 # Roda os testes da maquina de estados Crux

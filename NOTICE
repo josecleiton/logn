@@ -39,3 +39,13 @@ Crux
 PostHog iOS SDK
   PostHog — MIT License
   https://github.com/PostHog/posthog-ios
+
+--------------------------------------------------------------------------------
+MARCAS DE TERCEIROS
+--------------------------------------------------------------------------------
+
+Selo "Download on the App Store"
+  Apple Inc. Apple, o logotipo da Apple e App Store são marcas da Apple Inc.
+  Os arquivos em landing/src/assets/badges/ são a arte oficial da Apple, sem
+  alteração, e NÃO estão sob a Apache 2.0. O uso segue as App Store Marketing
+  Guidelines: https://developer.apple.com/app-store/marketing/guidelines/

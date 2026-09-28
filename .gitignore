@@ -84,3 +84,9 @@ backend/test_match_sync
 # Termos e política no modo do app, para ler sem rede. `just legal-bundle` gera a partir
 # do servidor, como a trilha empacotada.
 ios/LogNiOS/LogNiOS/Resources/Legal/
+
+# Landing page: `dist/` é gerado por `landing/build.mjs` a cada deploy, e `.wrangler/` é
+# o estado local do `wrangler dev`.
+landing/dist/
+landing/.wrangler/
+landing/.dev.vars
