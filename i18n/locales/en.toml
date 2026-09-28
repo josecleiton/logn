@@ -316,6 +316,8 @@ loading_accessibility = "Loading document"
 [reset]
 title = "Reset password"
 subtitle = "Choose a new password for\n%{email}"
+subtitle_with_code = "Enter the code sent to\n%{email}\nand choose a new password"
+code_prompt = "6-digit code"
 password_prompt = "new password · min 8 characters"
 confirm_prompt = "confirm password"
 save_password = "Save new password"

@@ -301,6 +301,8 @@ loading_accessibility = {}
 [groups.reset.keys]
 title = {}
 subtitle = { placeholders = [{ name = "email", type = "text" }] }
+subtitle_with_code = { placeholders = [{ name = "email", type = "text" }] }
+code_prompt = {}
 password_prompt = {}
 confirm_prompt = {}
 save_password = {}
