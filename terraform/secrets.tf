@@ -35,6 +35,18 @@ resource "google_secret_manager_secret" "smtp_pass" {
   }
 }
 
+# Cifra as chaves de conteúdo das trilhas pagas em `track_keys` (ADR 0012): 32 bytes em
+# base64. O servidor não sobe no Cloud Run sem ele. Trocar o valor invalida as chaves
+# guardadas — é rotação com migração de dados, não troca de variável.
+#   openssl rand -base64 32 | tr -d '\n' | gcloud secrets versions add logn-track-key-secret --data-file=-
+resource "google_secret_manager_secret" "track_key_secret" {
+  secret_id = "logn-track-key-secret"
+
+  replication {
+    auto {}
+  }
+}
+
 # Criado sempre, mesmo com a verificação desligada (enable_origin_verification=false) —
 # assim o container existe pra você já subir o valor com gcloud antes de ligar a
 # checagem no Cloud Run, sem depender de ordem entre dois applies.
