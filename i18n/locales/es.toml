@@ -314,6 +314,8 @@ loading_accessibility = "Cargando documento"
 [reset]
 title = "Restablecer contraseña"
 subtitle = "Elige una nueva contraseña para\n%{email}"
+subtitle_with_code = "Escribe el código enviado a\n%{email}\ny elige una nueva contraseña"
+code_prompt = "código de 6 dígitos"
 password_prompt = "nueva contraseña · mínimo 8 caracteres"
 confirm_prompt = "confirmar contraseña"
 save_password = "Guardar nueva contraseña"

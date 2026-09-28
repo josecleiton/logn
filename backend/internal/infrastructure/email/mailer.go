@@ -7,9 +7,12 @@ import (
 	"html/template"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"gopkg.in/gomail.v2"
+
+	"github.com/josecleiton/logn/backend/internal/domain"
 )
 
 //go:embed templates/*.html templates/assets/*
@@ -59,10 +62,21 @@ type OTPData struct {
 	CodeSpaced             string
 	D1, D2, D3, D4, D5, D6 string
 	Purpose                string
-	RequestMeta            string
+	// Lang é a língua do e-mail, já resolvida para uma das servidas.
+	Lang string
+	// T é o texto do e-mail na língua, com código, prazo e data já preenchidos.
+	T OTPText
 }
 
-func newOTPData(email, code, purpose string) OTPData {
+// OTPText é o texto pronto de um e-mail de código. O prazo sai de domain.OTPValidity:
+// estava escrito "10 minutos" à mão enquanto o código valia quinze.
+type OTPText struct {
+	Subject, Preheader, Eyebrow, Heading, Lead, LeadAfter, Expires, Button string
+	NotYouLabel, NotYou                                                    string
+	RequestedAt, Footer                                                    string
+}
+
+func newOTPData(email, code, purpose, lang string) OTPData {
 	spaced := ""
 	for i, c := range code {
 		if i > 0 {
@@ -76,7 +90,16 @@ func newOTPData(email, code, purpose string) OTPData {
 		digits[i] = string(code[i])
 	}
 
-	meta := fmt.Sprintf("%s · LogN App", time.Now().Format("02 Jan 2006, 15:04"))
+	c, common, lang := copyFor(lang, purpose)
+	minutes := domain.OTPValidityMinutes()
+	// Só formata o campo que tem verbo; os outros passam como estão.
+	withMinutes := func(s string) string {
+		if !strings.Contains(s, "%d") {
+			return s
+		}
+		return fmt.Sprintf(s, minutes)
+	}
+	requested := fmt.Sprintf("%s · LogN App", time.Now().Format(common.DateLayout))
 
 	return OTPData{
 		Email:      email,
@@ -84,30 +107,56 @@ func newOTPData(email, code, purpose string) OTPData {
 		CodeSpaced: spaced,
 		D1:         digits[0], D2: digits[1], D3: digits[2],
 		D4: digits[3], D5: digits[4], D6: digits[5],
-		Purpose:     purpose,
-		RequestMeta: meta,
+		Purpose: purpose,
+		Lang:    lang,
+		T: OTPText{
+			Subject:     c.Subject,
+			Preheader:   fmt.Sprintf(c.Preheader, spaced, minutes),
+			Eyebrow:     c.Eyebrow,
+			Heading:     c.Heading,
+			Lead:        withMinutes(c.Lead),
+			LeadAfter:   withMinutes(c.LeadAfter),
+			Expires:     fmt.Sprintf(common.Expires, minutes),
+			Button:      c.Button,
+			NotYouLabel: c.NotYouLabel,
+			NotYou:      c.NotYou,
+			RequestedAt: fmt.Sprintf(common.RequestedAt, requested),
+			Footer:      common.Footer,
+		},
 	}
 }
 
-func (m *Mailer) SendOTP(toEmail, purpose, code string) error {
-	data := newOTPData(toEmail, code, purpose)
-
-	templateName := "otp.html"
-	subject := "Seu código de verificação — LogN"
-
-	if purpose == "reset_password" {
-		templateName = "reset_password.html"
-		subject = "Redefinição de senha — LogN"
+// otpTemplate é o HTML de cada propósito de código.
+func otpTemplate(purpose string) string {
+	if purpose == domain.OTPPurposeResetPassword {
+		return "reset_password.html"
 	}
-
-	return m.send(toEmail, subject, templateName, data)
+	return "otp.html"
 }
 
-func (m *Mailer) SendWelcome(toEmail string) error {
-	// welcome.html from Claude Design — static, no dynamic fields needed
-	// We still render it via template in case future fields are added
-	data := struct{ Email string }{Email: toEmail}
-	return m.send(toEmail, "Bem-vindo ao LogN!", "welcome.html", data)
+// SendOTP manda o código na língua pedida (ver locale.Negotiate); língua desconhecida
+// sai em locale.Default.
+func (m *Mailer) SendOTP(toEmail, purpose, code, lang string) error {
+	data := newOTPData(toEmail, code, purpose, lang)
+	return m.send(toEmail, data.T.Subject, otpTemplate(purpose), data)
+}
+
+// WelcomeData é o que o e-mail de boas-vindas recebe.
+type WelcomeData struct {
+	Lang string
+	T    welcomeCopy
+}
+
+// NewWelcomeData monta os dados do e-mail de boas-vindas, para teste e para o envio.
+func NewWelcomeData(lang string) WelcomeData {
+	c, lang := welcomeFor(lang)
+	return WelcomeData{Lang: lang, T: c}
+}
+
+// SendWelcome manda as boas-vindas na língua pedida, depois do cadastro.
+func (m *Mailer) SendWelcome(toEmail, lang string) error {
+	data := NewWelcomeData(lang)
+	return m.send(toEmail, data.T.Subject, "welcome.html", data)
 }
 
 // Render devolve o HTML final de um template. Existe para o teste poder olhar o que
@@ -122,7 +171,13 @@ func (m *Mailer) Render(templateName string, data interface{}) (string, error) {
 }
 
 // NewOTPData monta os dados de um e-mail de código, para teste e para o envio.
-func NewOTPData(email, code, purpose string) OTPData { return newOTPData(email, code, purpose) }
+func NewOTPData(email, code, purpose, lang string) OTPData {
+	return newOTPData(email, code, purpose, lang)
+}
+
+// OTPTemplate diz qual HTML leva o código de um propósito, para o teste renderizar o
+// mesmo que o envio.
+func OTPTemplate(purpose string) string { return otpTemplate(purpose) }
 
 func (m *Mailer) send(to, subject, templateName string, data interface{}) error {
 	var body bytes.Buffer

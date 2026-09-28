@@ -7,10 +7,17 @@ struct ResetPasswordView: View {
     @Environment(\.dismiss) var dismiss
     
     let email: String
+    /// O código que veio no link do e-mail. Vazio quando a tela abre pelo "Esqueci a
+    /// senha" do login: aí o jogador digita o código que recebeu.
     let otp: String
-    
+
+    @State private var typedCode = ""
     @State private var password = ""
     @State private var confirmPassword = ""
+
+    /// Pedir o campo só quando o link não trouxe código.
+    private var asksForCode: Bool { otp.isEmpty }
+    private var code: String { asksForCode ? typedCode : otp }
     
     var body: some View {
         ZStack {
@@ -27,12 +34,16 @@ struct ResetPasswordView: View {
                     .font(LognFont.headlineMedium)
                     .foregroundColor(LognDark.textPrimary)
                 
-                Text(Str.Reset.subtitle(email))
+                Text(asksForCode ? Str.Reset.subtitle_with_code(email) : Str.Reset.subtitle(email))
                     .font(LognFont.bodyLarge)
                     .foregroundColor(LognDark.textSecondary)
                     .multilineTextAlignment(.center)
-                
+
                 VStack(spacing: Space.md) {
+                    if asksForCode {
+                        codeField
+                    }
+
                     SecureField(Str.Reset.password_prompt, text: $password)
                         .textContentType(.newPassword)
                         .font(LognFont.bodyLarge)
@@ -58,7 +69,7 @@ struct ResetPasswordView: View {
                         )
                     
                     Button(action: {
-                        core.dispatch(event: .resetPassword(email: email, newPassword: password, otp: otp))
+                        core.dispatch(event: .resetPassword(email: email, newPassword: password, otp: code))
                     }) {
                         Text(resetLocked
                              ? Str.Status.wait_seconds(Int(core.viewModel.authCooldownSeconds))
@@ -89,14 +100,52 @@ struct ResetPasswordView: View {
         }
     }
     
+    /// O código num campo só, e não nos seis da `OTPInputView`: aquela confere o código
+    /// no servidor ao completar, e aqui quem o consome é a própria troca de senha.
+    @ViewBuilder
+    private var codeField: some View {
+        TextField(Str.Reset.code_prompt, text: $typedCode)
+            .textContentType(.oneTimeCode)
+            .keyboardType(.numberPad)
+            .font(.plexMonoSemiBold(20))
+            .foregroundColor(LognDark.textPrimary)
+            .padding()
+            .background(LognDark.surface)
+            .cornerRadius(Radius.sm)
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.sm)
+                    .stroke(LognDark.lineDim, lineWidth: 1)
+            )
+            .onChange(of: typedCode) { newValue in
+                let digits = String(newValue.filter(\.isNumber).prefix(6))
+                if digits != newValue { typedCode = digits }
+            }
+
+        Button(action: {
+            core.dispatch(event: .requestOtp(email: email, purpose: "reset_password"))
+        }) {
+            Text(resendLocked
+                 ? Str.Status.wait_seconds(Int(core.viewModel.resendCooldownSeconds))
+                 : Str.Otp.resend_code)
+                .font(.plexSans(13.5))
+                .monospacedDigit()
+                .foregroundColor(resendLocked ? LognDark.textDim : LognDark.textSecondary)
+                .underline(!resendLocked)
+                .frame(minHeight: Space.minTouch)
+        }
+        .buttonStyle(.plain)
+        .disabled(resendLocked)
+    }
+
     private var passwordsMatch: Bool {
         confirmPassword.isEmpty || password == confirmPassword
     }
-    
+
     private var canSubmit: Bool {
-        password.count >= 8 && password == confirmPassword && !resetLocked
+        code.count == 6 && password.count >= 8 && password == confirmPassword && !resetLocked
     }
 
     /// Travado por um 429: o servidor mandou esperar, e o botão conta o tempo.
     private var resetLocked: Bool { core.viewModel.authCooldownSeconds > 0 }
+    private var resendLocked: Bool { core.viewModel.resendCooldownSeconds > 0 }
 }

@@ -15,6 +15,9 @@ struct LoginView: View {
     /// Só em DEBUG: `-LogNStartScreen cadastro` abre o cadastro direto. O toque
     /// sintético no link depende da janela do Simulator estar acessível, e nem sempre está.
     @State private var showsRegisterOnLaunch = LognTab.launchScreen == "cadastro"
+    /// "Esqueci a senha" pede o código e já abre a tela onde ele é digitado. Antes só
+    /// pedia: o e-mail chegava e o app não tinha onde usar o código.
+    @State private var showsReset = false
 
     var body: some View {
         // Sem este container os `NavigationLink` daqui não empurram nada: "Criar conta"
@@ -164,18 +167,17 @@ struct LoginView: View {
                         }
                         Spacer()
                         Button(action: {
-                            if !email.isEmpty {
-                                core.dispatch(event: .requestOtp(email: email, purpose: "reset_password"))
-                            }
+                            core.dispatch(event: .requestOtp(email: email, purpose: "reset_password"))
+                            showsReset = true
                         }) {
                             Text(resendLocked
                                  ? Str.Status.wait_seconds(Int(core.viewModel.resendCooldownSeconds))
                                  : Str.Login.forgot_password)
                                 .font(.plexSans(13.5))
                                 .monospacedDigit()
-                                .foregroundColor(resendLocked ? LognDark.textDim : LognDark.textSecondary)
+                                .foregroundColor(canRequestReset ? LognDark.textSecondary : LognDark.textDim)
                         }
-                        .disabled(resendLocked)
+                        .disabled(!canRequestReset)
                     }
                     .padding(.top, 6)
                 }
@@ -243,6 +245,9 @@ struct LoginView: View {
         .navigationDestination(isPresented: $showsRegisterOnLaunch) {
             RegisterView().environmentObject(core)
         }
+        .navigationDestination(isPresented: $showsReset) {
+            ResetPasswordView(email: email, otp: "").environmentObject(core)
+        }
 
     }
 
@@ -256,6 +261,8 @@ struct LoginView: View {
     /// Travado por um 429: o servidor mandou esperar, e o botão conta o tempo.
     private var signInLocked: Bool { core.viewModel.authCooldownSeconds > 0 }
     private var resendLocked: Bool { core.viewModel.resendCooldownSeconds > 0 }
+    /// Sem e-mail não há para onde mandar o código; o link fica apagado, como o "Entrar".
+    private var canRequestReset: Bool { !email.isEmpty && !resendLocked }
 
     private var canSignIn: Bool { !email.isEmpty && !password.isEmpty && !signInLocked }
 

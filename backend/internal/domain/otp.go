@@ -23,6 +23,15 @@ func ValidOTPPurpose(purpose string) bool {
 	return purpose == OTPPurposeVerifyEmail || purpose == OTPPurposeResetPassword
 }
 
+// OTPValidity é quanto tempo um código vale depois de enviado.
+//
+// O e-mail diz esse prazo ao jogador e lê daqui: o texto estava escrito à mão como
+// dez minutos enquanto o servidor aceitava por quinze.
+const OTPValidity = 15 * time.Minute
+
+// OTPValidityMinutes é OTPValidity como o e-mail escreve.
+func OTPValidityMinutes() int { return int(OTPValidity / time.Minute) }
+
 // OTPMaxAttempts é quantos códigos errados um OTP aguenta antes de morrer.
 //
 // Sem limite, seis dígitos se varriam inteiros pelo `verify-otp` dentro dos quinze

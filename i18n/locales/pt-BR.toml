@@ -316,6 +316,8 @@ loading_accessibility = "Carregando documento"
 [reset]
 title = "Redefinir senha"
 subtitle = "Escolha uma nova senha para\n%{email}"
+subtitle_with_code = "Digite o código enviado para\n%{email}\ne escolha uma nova senha"
+code_prompt = "código de 6 dígitos"
 password_prompt = "nova senha · mínimo 8 caracteres"
 confirm_prompt = "confirmar senha"
 save_password = "Salvar nova senha"

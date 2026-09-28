@@ -12,6 +12,7 @@ import (
 
 	"github.com/josecleiton/logn/backend/internal/domain"
 	"github.com/josecleiton/logn/backend/internal/legal"
+	"github.com/josecleiton/logn/backend/internal/locale"
 )
 
 type LoginRequest struct {
@@ -301,6 +302,16 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, codeEmailTaken)
 		return
 	}
+
+	// Boas-vindas só depois da conta criada, e fora do caminho da resposta: e-mail que
+	// falha não desfaz cadastro. A língua é negociada aqui porque o pedido já terá
+	// acabado quando a goroutine rodar.
+	lang := locale.Negotiate(r)
+	go func(email, lang string) {
+		if err := s.mailer.SendWelcome(email, lang); err != nil {
+			log.Printf("boas-vindas não enviadas: user=%s erro=%v", userID, err)
+		}
+	}(email, lang)
 
 	s.issueSession(ctx, w, userID, false)
 }
