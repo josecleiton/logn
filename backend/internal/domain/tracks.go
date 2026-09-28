@@ -61,8 +61,8 @@ type Track struct {
 }
 
 // GetTracks devolve o catálogo, a principal primeiro. A descontinuada sai para quem não
-// comprou e fica para quem comprou (spec, seção 2). Trilha sem nome na língua não
-// aparece, como o nó.
+// comprou e fica para quem comprou (spec, seção 2); a indisponível só aparece para quem
+// a conta libera (`visibleTrack`). Trilha sem nome na língua não aparece, como o nó.
 func (r *Repository) GetTracks(ctx context.Context, lang, userID string) ([]Track, error) {
 	rows, err := r.db.Query(ctx, `
 		WITH mine AS (
@@ -76,7 +76,7 @@ func (r *Repository) GetTracks(ctx context.Context, lang, userID string) ([]Trac
 		       COALESCE((SELECT mine.revoked_reason FROM mine WHERE mine.track_id = t.id AND mine.status = 'revoked'), '')
 		FROM tracks t
 		JOIN track_translations tt ON tt.track_id = t.id AND tt.locale = $1
-		WHERE t.status = 'active'
+		WHERE (t.status = 'active' AND `+visibleTrack("$2")+`)
 		   OR EXISTS (SELECT 1 FROM mine WHERE mine.track_id = t.id AND mine.status = 'active')
 		ORDER BY t.kind = 'paid', t.slug`, lang, userID)
 	if err != nil {

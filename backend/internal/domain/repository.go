@@ -137,16 +137,33 @@ const publishedNodes = `
 // XP da amostra no sync: mudar uma é mudar as três.
 const openNode = `(t.kind = 'free' OR n.row_idx = 0)`
 
+// visibleTrack diz se a trilha `t` aparece para a conta do parâmetro `user` (o texto
+// vazio é sem conta): está disponível, a conta está em `track_previewers` dela, ou tem
+// direito ativo a ela — a compra vale mais que a flag (ADR 0014). É a regra do
+// catálogo, dos nós, dos desafios abertos e do XP da amostra no sync: mudar uma é mudar
+// as quatro.
+//
+// O `::text` deixa o parâmetro servir tanto onde ele já é uuid (sync) quanto onde é o
+// texto vazio de quem não entrou.
+func visibleTrack(user string) string {
+	account := `NULLIF(` + user + `::text, '')::uuid`
+	return `(t.available
+		OR EXISTS (SELECT 1 FROM track_previewers tp WHERE tp.track_id = t.id AND tp.user_id = ` + account + `)
+		OR EXISTS (SELECT 1 FROM entitlements e
+		           WHERE e.track_id = t.id AND e.user_id = ` + account + ` AND e.status = 'active'))`
+}
+
 // challengeColumns são as colunas que scanChallenges lê, na ordem.
 const challengeColumns = `
 	SELECT c.id, c.node_id, c.template_type, c.payload, c.position_idx, COALESCE(c.origin, ''),
 	       ct.title, ct.description, ct.explanation, COALESCE(ct.watch_note, ''), ct.option_labels`
 
-// GetChallenges devolve os desafios abertos dos nós publicados na língua, com o texto dela.
+// GetChallenges devolve os desafios abertos dos nós publicados na língua, com o texto dela,
+// das trilhas que a conta vê (`userID` vazio é sem conta).
 //
 // Antes saía tudo, inclusive a trilha paga, para quem nem tinha conta: o pacote cifrado
 // não protegia nada se o mesmo conteúdo estava em claro aqui.
-func (r *Repository) GetChallenges(ctx context.Context, locale string) ([]Challenge, error) {
+func (r *Repository) GetChallenges(ctx context.Context, locale, userID string) ([]Challenge, error) {
 	// A ordem define as letras A, B, C da partida: o core enumera esta lista já
 	// ordenada. Ordenava por `id`, que é VARCHAR — ch_10 vinha antes de ch_2. Agora sai
 	// de position_idx, que é dado explícito (ADR 0006).
@@ -156,9 +173,9 @@ func (r *Repository) GetChallenges(ctx context.Context, locale string) ([]Challe
 		JOIN skill_nodes n ON n.id = c.node_id
 		JOIN tracks t ON t.id = n.track_id
 		JOIN challenge_translations ct ON ct.challenge_id = c.id AND ct.locale = $1
-		WHERE ` + openNode + `
+		WHERE ` + openNode + ` AND ` + visibleTrack("$2") + `
 		ORDER BY c.node_id, c.position_idx`
-	return r.queryChallenges(ctx, locale, query, locale)
+	return r.queryChallenges(ctx, locale, query, locale, userID)
 }
 
 // GetTrackChallenges devolve os desafios fechados da trilha paga, os que vão no pacote.
@@ -442,8 +459,9 @@ func (r *Repository) paidTrackXP(ctx context.Context, userID string) (map[string
 	return xp, rows.Err()
 }
 
-// GetSkillNodes devolve os nós publicados na língua, com o nome nela.
-func (r *Repository) GetSkillNodes(ctx context.Context, locale string) ([]SkillNode, error) {
+// GetSkillNodes devolve os nós publicados na língua, com o nome nela, das trilhas que a
+// conta vê (`userID` vazio é sem conta).
+func (r *Repository) GetSkillNodes(ctx context.Context, locale, userID string) ([]SkillNode, error) {
 	query := publishedNodes + `
 		SELECT n.id, n.track_id, NOT ` + openNode + `, nt.name, COALESCE(nt.description, ''), n.row_idx, n.col_idx, n.required_xp,
 		       n.prerequisites, COALESCE(n.topic, '')
@@ -451,8 +469,9 @@ func (r *Repository) GetSkillNodes(ctx context.Context, locale string) ([]SkillN
 		JOIN publicados p ON p.id = n.id
 		JOIN tracks t ON t.id = n.track_id
 		JOIN skill_node_translations nt ON nt.node_id = n.id AND nt.locale = $1
+		WHERE ` + visibleTrack("$2") + `
 		ORDER BY n.row_idx ASC`
-	rows, err := r.db.Query(ctx, query, locale)
+	rows, err := r.db.Query(ctx, query, locale, userID)
 	if err != nil {
 		return nil, err
 	}

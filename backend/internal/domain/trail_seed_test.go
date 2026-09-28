@@ -64,11 +64,11 @@ func TestTrailSeedMatchesTheDatabase(t *testing.T) {
 	ctx := context.Background()
 
 	for _, l := range locale.Supported {
-		nos, err := repo.GetSkillNodes(ctx, l)
+		nos, err := repo.GetSkillNodes(ctx, l, "")
 		if err != nil {
 			t.Fatalf("lendo nós em %s: %v", l, err)
 		}
-		desafios, err := repo.GetChallenges(ctx, l)
+		desafios, err := repo.GetChallenges(ctx, l, "")
 		if err != nil {
 			t.Fatalf("lendo desafios em %s: %v", l, err)
 		}

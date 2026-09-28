@@ -176,6 +176,96 @@ func TestEachRuleIsCaught(t *testing.T) {
 	}
 }
 
+const (
+	freeTrackID = "00000000-0000-0000-0000-000000000000"
+	paidTrackID = "00000000-0000-0000-0000-00000000000a"
+	paidNodeID  = "a0000000-0000-0000-0000-000000000001"
+)
+
+// withPaidTrack junta à trilha mínima o `tracks.json` e uma trilha paga inventada,
+// "Trilha T", com um nó e um desafio de ids próprios.
+func withPaidTrack() map[string]any {
+	files := trail()
+	product := "com.example.logn.track.t"
+	files["trilhas/tracks.json"] = []any{
+		map[string]any{"id": freeTrackID, "slug": "free", "kind": "free", "status": "active", "author": "LogN", "app_store_product_id": nil},
+		map[string]any{"id": paidTrackID, "slug": "paga", "kind": "paid", "status": "active", "author": "LogN",
+			"app_store_product_id": product, "available": false},
+	}
+	for _, l := range []string{"pt-BR", "en", "es"} {
+		files["trilhas/tracks."+l+".json"] = map[string]any{
+			freeTrackID: map[string]any{"name": "Problem Solving"},
+			paidTrackID: map[string]any{"name": "Trilha T", "description": "Uma trilha de teste."},
+		}
+		files["trilhas/paga/nos."+l+".json"] = map[string]any{paidNodeID: map[string]any{"name": "Nó A", "description": ""}}
+		files["trilhas/paga/desafios/ch_t01."+l+".json"] = map[string]any{"title": "Soma", "description": "d", "explanation": "e"}
+	}
+	files["trilhas/paga/nos.json"] = []any{map[string]any{
+		"id": paidNodeID, "row": 0, "col": 0, "required_xp": 0, "prerequisites": []any{}, "topic": "adhoc",
+	}}
+	files["trilhas/paga/desafios/ch_t01.json"] = map[string]any{
+		"id": "ch_t01", "node_id": paidNodeID, "template_type": "SPOT_THE_BUG", "position_idx": 1, "origin": "",
+		"payload": map[string]any{
+			"content":    map[string]any{"code_lines": []any{"int a = 1;", "int b = a + 1;"}},
+			"validation": map[string]any{"type": "LINE_MATCH", "correct_line": 2},
+		},
+	}
+	return files
+}
+
+func TestTracksArePassedOneByOne(t *testing.T) {
+	if f := Validate(write(t, withPaidTrack())); len(f) > 0 {
+		t.Fatalf("duas trilhas completas deveriam passar, achou: %v", f)
+	}
+
+	cases := []struct {
+		name  string
+		spoil func(files map[string]any)
+		want  string
+	}{
+		// O gerador faz upsert por id: o repetido sobrescrevia a gratuita no banco.
+		{"nó com o id de outra trilha", func(f map[string]any) {
+			f["trilhas/paga/nos.json"].([]any)[0].(map[string]any)["id"] = nodeID
+			for _, l := range []string{"pt-BR", "en", "es"} {
+				f["trilhas/paga/nos."+l+".json"] = map[string]any{nodeID: map[string]any{"name": "Nó A", "description": ""}}
+			}
+			f["trilhas/paga/desafios/ch_t01.json"].(map[string]any)["node_id"] = nodeID
+		}, "repete o de um nó de trilhas/free"},
+		{"desafio com o id de outra trilha", func(f map[string]any) {
+			for _, suffix := range []string{"", ".pt-BR", ".en", ".es"} {
+				f["trilhas/paga/desafios/ch_1"+suffix+".json"] = f["trilhas/paga/desafios/ch_t01"+suffix+".json"]
+				f["trilhas/paga/desafios/ch_t01"+suffix+".json"] = nil
+			}
+			f["trilhas/paga/desafios/ch_1.json"].(map[string]any)["id"] = "ch_1"
+		}, "repete o de um desafio de trilhas/free"},
+		{"gratuita fora da vitrine", func(f map[string]any) {
+			f["trilhas/tracks.json"].([]any)[0].(map[string]any)["available"] = false
+		}, "a gratuita não sai da vitrine"},
+		{"paga sem produto", func(f map[string]any) {
+			f["trilhas/tracks.json"].([]any)[1].(map[string]any)["app_store_product_id"] = nil
+		}, "trilha paga sem app_store_product_id"},
+		{"trilha sem nome em português", func(f map[string]any) {
+			delete(f["trilhas/tracks.pt-BR.json"].(map[string]any), paidTrackID)
+		}, "falta a trilha em português"},
+		{"trilha sem pasta", func(f map[string]any) {
+			f["trilhas/tracks.json"].([]any)[1].(map[string]any)["slug"] = "outra"
+		}, "sem a pasta trilhas/outra"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			files := withPaidTrack()
+			tc.spoil(files)
+			findings := Validate(write(t, files))
+			if len(findings) != 1 {
+				t.Fatalf("esperava um achado com %q, veio %d: %v", tc.want, len(findings), findings)
+			}
+			if !strings.Contains(findings[0].String(), tc.want) {
+				t.Errorf("achado %q não fala de %q", findings[0], tc.want)
+			}
+		})
+	}
+}
+
 // Índice citado do código não é marcação: as explicações falam de v[i] o tempo todo.
 func TestIndexingInTextIsNotMarkup(t *testing.T) {
 	files := trail()

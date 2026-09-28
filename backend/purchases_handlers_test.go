@@ -327,6 +327,59 @@ func TestTheCatalogMarksWhatWasBought(t *testing.T) {
 	expect(t, rr, http.StatusUnauthorized, codeUnauthenticated)
 }
 
+// Trilha indisponível pela rota (ADR 0014): some do catálogo de quem não testa nem
+// comprou. Com conta, as rotas de conteúdo respondem só para ela, e token inválido é
+// 401, não a resposta do visitante.
+func TestTheContentRoutesHideAnUnavailableTrack(t *testing.T) {
+	f := newStoreFixture(t)
+	ctx := context.Background()
+	f.conn.Exec(ctx, `UPDATE tracks SET available = false WHERE id = $1`, f.trackID)
+	if _, err := f.conn.Exec(ctx, `INSERT INTO track_previewers (track_id, user_id) VALUES ($1, $2)`, f.trackID, f.alice); err != nil {
+		t.Fatal(err)
+	}
+
+	get := func(handler http.HandlerFunc, path, authorization string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.Header.Set("Accept-Language", "pt-BR")
+		if authorization != "" {
+			req.Header.Set("Authorization", authorization)
+		}
+		rr := httptest.NewRecorder()
+		handler(rr, req)
+		return rr
+	}
+	listed := func(authorization string) bool {
+		rr := get(f.server.tracksHandler, "/api/v1/tracks", authorization)
+		var tracks []domain.Track
+		json.Unmarshal(rr.Body.Bytes(), &tracks)
+		for _, tr := range tracks {
+			if tr.ID == f.trackID {
+				return true
+			}
+		}
+		return false
+	}
+	if listed("") || listed(bearer(t, f.bob)) {
+		t.Fatal("indisponível aparece para quem não testa")
+	}
+	if !listed(bearer(t, f.alice)) {
+		t.Fatal("indisponível some de quem testa")
+	}
+
+	for path, handler := range map[string]http.HandlerFunc{
+		"/api/v1/nodes":      f.server.getNodesHandler,
+		"/api/v1/challenges": f.server.challengesHandler,
+	} {
+		expect(t, get(handler, path, "Bearer invalido"), http.StatusUnauthorized, codeUnauthenticated)
+		if cc := get(handler, path, bearer(t, f.alice)).Header().Get("Cache-Control"); cc != "private, no-store" {
+			t.Errorf("%s com conta saiu com Cache-Control %q", path, cc)
+		}
+		if cc := get(handler, path, "").Header().Get("Cache-Control"); cc != "no-cache" {
+			t.Errorf("%s sem conta saiu com Cache-Control %q", path, cc)
+		}
+	}
+}
+
 // O catálogo abre pela principal, e a trilha revogada fica com o motivo, para a tela
 // oferecer a recompra (LogN Trilhas, estado "revogada").
 func TestTheCatalogLeadsWithTheFreeTrackAndShowsRevocation(t *testing.T) {

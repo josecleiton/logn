@@ -126,7 +126,7 @@ func TestContentIsPublishedPerLanguage(t *testing.T) {
 	}
 
 	nodesIn := func(locale string) map[string]SkillNode {
-		nodes, err := repo.GetSkillNodes(ctx, locale)
+		nodes, err := repo.GetSkillNodes(ctx, locale, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -137,7 +137,7 @@ func TestContentIsPublishedPerLanguage(t *testing.T) {
 		return out
 	}
 	challengesIn := func(locale string) map[string]bool {
-		chs, err := repo.GetChallenges(ctx, locale)
+		chs, err := repo.GetChallenges(ctx, locale, "")
 		if err != nil {
 			t.Fatal(err)
 		}
