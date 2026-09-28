@@ -83,6 +83,7 @@ backend/test_match_sync
 !backend/schema/migrations/0049_trilhas_pagas.sql
 !backend/schema/migrations/0050_store_transactions.sql
 !backend/schema/migrations/0051_trilha_disponivel.sql
+!backend/schema/migrations/0053_template_trade_off.sql
 
 # Termos e política no modo do app, para ler sem rede. `just legal-bundle` gera a partir
 # do servidor, como a trilha empacotada.

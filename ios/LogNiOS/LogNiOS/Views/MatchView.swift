@@ -324,6 +324,17 @@ struct MatchView: View {
                 chipBank(mv.currentOptions.filter { $0 != mv.dropTime && $0 != mv.dropSpace })
             }
 
+        case "TRADEOFF_MATCH":
+            TradeoffPanel(
+                codeLines: mv.currentCodeLines,
+                options: mv.currentOptions,
+                benefit: mv.tradeoffBenefit,
+                drawback: mv.tradeoffDrawback,
+                onPick: { core.dispatch(event: .matchPickTradeoff(value: $0)) },
+                onClearBenefit: { core.dispatch(event: .matchClearBenefit) },
+                onClearDrawback: { core.dispatch(event: .matchClearDrawback) }
+            )
+
         case "TAG_THE_PATTERN":
             VStack(alignment: .leading, spacing: 18) {
                 if !mv.currentCodeLines.isEmpty {
@@ -382,6 +393,7 @@ struct MatchView: View {
         case "FILL_IN_THE_BLANK": return !mv.answerString.isEmpty
         case "TAG_THE_PATTERN":   return mv.selectedTags.count == Int(mv.maxSelections)
         case "COMPLEXITY_MATCH":  return !mv.dropTime.isEmpty && !mv.dropSpace.isEmpty
+        case "TRADEOFF_MATCH":    return !mv.tradeoffBenefit.isEmpty && !mv.tradeoffDrawback.isEmpty
         case "DRY_RUN":           return !mv.predictedOutput.trimmingCharacters(in: .whitespaces).isEmpty
         default:                  return false
         }
@@ -400,6 +412,8 @@ struct MatchView: View {
                 : Str.Arena.confirm_tags(mv.selectedTags.count)
         case "COMPLEXITY_MATCH":
             return Str.Arena.confirm_complexity
+        case "TRADEOFF_MATCH":
+            return Str.Arena.confirm_tradeoff
         case "DRY_RUN":
             return Str.Arena.confirm_output
         default:
@@ -877,6 +891,116 @@ enum TrapCopy {
         case .wrongAnswer:
             return own.isEmpty ? Str.Match.generic_wrong_answer : own
         }
+    }
+}
+
+// MARK: - Trade-off
+
+/// TRADEOFF_MATCH (design `LogN Trade-off Match`, proposta A): duas casas no topo e as
+/// opções como linhas de largura total, porque são frases e não cabem no chip mono do
+/// COMPLEXITY_MATCH. Toque, não arraste: a opção vai para a próxima casa vazia, e tocar
+/// na casa a esvazia. Quem decide a casa é o Core.
+struct TradeoffPanel: View {
+    let codeLines: [String]
+    let options: [String]
+    let benefit: String
+    let drawback: String
+    let onPick: (String) -> Void
+    let onClearBenefit: () -> Void
+    let onClearDrawback: () -> Void
+
+    /// A próxima casa que um toque preenche: é ela que fica com o rótulo em accent.
+    private var nextIsBenefit: Bool { benefit.isEmpty }
+    private var nextIsDrawback: Bool { !benefit.isEmpty && drawback.isEmpty }
+
+    private var rows: [(letter: String, text: String, used: Bool)] {
+        var out: [(letter: String, text: String, used: Bool)] = []
+        for (i, option) in options.enumerated() {
+            let letter = String(UnicodeScalar(UInt8(65 + i % 26)))
+            out.append((letter, option, option == benefit || option == drawback))
+        }
+        return out
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if !codeLines.isEmpty {
+                CodeBlock(lines: codeLines)
+            }
+            slot(Str.Arena.benefit_slot, value: benefit, isNext: nextIsBenefit, onClear: onClearBenefit)
+            slot(Str.Arena.drawback_slot, value: drawback, isNext: nextIsDrawback, onClear: onClearDrawback)
+
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(LognDark.line)
+                .padding(.vertical, 4)
+
+            ForEach(rows, id: \.text) { row in
+                optionRow(row.letter, row.text, used: row.used)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func slot(_ label: String, value: String, isNext: Bool, onClear: @escaping () -> Void) -> some View {
+        let filled = !value.isEmpty
+        Button(action: { if filled { onClear() } }) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.plexMonoMedium(11))
+                    .tracking(0.14 * 11)
+                    .foregroundColor(isNext ? LognDark.accentInk : LognDark.textSecondary)
+                Text(filled ? value : Str.Arena.tap_an_option)
+                    .font(.plexSans(15))
+                    .foregroundColor(filled ? LognDark.textPrimary : LognDark.textMuted)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, minHeight: Space.matchTouch, alignment: .leading)
+            .background(filled ? LognDark.surfaceRaised : Color.clear)
+            .cornerRadius(Radius.sm)
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.sm)
+                    .stroke(
+                        filled ? LognDark.lineStrong : (isNext ? LognDark.accent : LognDark.lineDim),
+                        style: StrokeStyle(lineWidth: 1, dash: filled ? [] : [4, 3])
+                    )
+            )
+        }
+        .buttonStyle(PressSinkStyle())
+        .accessibilityLabel(filled ? Str.Arena.slot_filled_accessibility(label, value) : Str.Arena.slot_empty_accessibility(label))
+    }
+
+    private func optionRow(_ letter: String, _ text: String, used: Bool) -> some View {
+        Button(action: { onPick(text) }) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(letter)
+                    .font(.plexMono(12))
+                    .foregroundColor(LognDark.textMuted)
+                    .frame(width: 18, alignment: .leading)
+                Text(text)
+                    .font(.plexSans(15))
+                    .foregroundColor(used ? LognDark.textDim : LognDark.textPrimary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            // O padding vem antes da altura mínima: depois, ele somava aos 56 e a linha
+            // ficava com quase 80.
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, minHeight: Space.matchTouch, alignment: .leading)
+            .background(used ? Color.clear : LognDark.surfaceRaised)
+            .cornerRadius(Radius.sm)
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.sm)
+                    .stroke(used ? LognDark.line : LognDark.lineStrong, lineWidth: 1)
+            )
+        }
+        .buttonStyle(PressSinkStyle())
+        .disabled(used)
     }
 }
 

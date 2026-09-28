@@ -99,6 +99,9 @@ type challengeText struct {
 	Description string `json:"description"`
 	Explanation string `json:"explanation"`
 	WatchNote   string `json:"watch_note"`
+	// O texto de cada opção do TRADEOFF_MATCH nesta língua, pelo identificador do
+	// payload. Os outros templates não têm: TAG tira o rótulo do glossário.
+	OptionLabels map[string]string `json:"option_labels"`
 }
 
 // originCard é o texto do cartão de origem numa língua: quem escreveu o desafio,
@@ -129,7 +132,7 @@ var (
 
 var templates = map[string]bool{
 	"SPOT_THE_BUG": true, "DRY_RUN": true, "FILL_IN_THE_BLANK": true,
-	"COMPLEXITY_MATCH": true, "TAG_THE_PATTERN": true,
+	"COMPLEXITY_MATCH": true, "TAG_THE_PATTERN": true, "TRADEOFF_MATCH": true,
 }
 
 // Palavras em português tiradas dos identificadores do código da trilha antes da
@@ -467,7 +470,7 @@ func (c *checker) checkChallenges(trilha, label string, nodeIDs map[string]bool,
 		p := c.checkPayload(where, ch, glossary)
 
 		for _, l := range locale.Supported {
-			c.checkChallengeText(dir, label, base, l, p)
+			c.checkChallengeText(dir, label, base, l, ch.TemplateType, p)
 		}
 	}
 
@@ -632,6 +635,30 @@ func (c *checker) checkPayload(where string, ch challenge, glossary map[string]m
 				}
 			}
 		}
+	case "TRADEOFF_MATCH":
+		// Mesma régua da CHECK da 0053. As opções são identificadores: o texto vai no
+		// arquivo de cada língua, em option_labels.
+		seen := map[string]bool{}
+		for _, o := range ct.Options {
+			if !slugRe.MatchString(o) {
+				c.fail(where, "opção %q fora de ^[a-z][a-z0-9_]*$: é identificador, o texto vai em option_labels", o)
+			}
+			if seen[o] {
+				c.fail(where, "opção %q repetida", o)
+			}
+			seen[o] = true
+		}
+		if len(ct.Options) < 3 {
+			c.fail(where, "TRADEOFF_MATCH precisa de ao menos três opções: duas respostas e uma que não é")
+		}
+		if len(ct.CorrectOptions) != 2 || ct.CorrectOptions[0] == ct.CorrectOptions[1] {
+			c.fail(where, "TRADEOFF_MATCH tem par benefício e desvantagem, diferentes")
+		}
+		for _, o := range ct.CorrectOptions {
+			if !seen[o] {
+				c.fail(where, "resposta certa %q fora das opções", o)
+			}
+		}
 	}
 
 	for i, line := range ct.CodeLines {
@@ -645,7 +672,7 @@ func (c *checker) checkPayload(where string, ch challenge, glossary map[string]m
 	return &p
 }
 
-func (c *checker) checkChallengeText(dir, label, id, l string, p *payload) {
+func (c *checker) checkChallengeText(dir, label, id, l, template string, p *payload) {
 	name := id + "." + l + ".json"
 	where := label + name
 	var t challengeText
@@ -667,6 +694,42 @@ func (c *checker) checkChallengeText(dir, label, id, l string, p *payload) {
 		c.fail(where, "watch_note vazio num desafio com watch_variables")
 	}
 	c.checkText(where, t.Title, t.Description, t.Explanation, t.WatchNote)
+	c.checkOptionLabels(where, template, p, t.OptionLabels)
+}
+
+// checkOptionLabels confere o texto das opções do TRADEOFF_MATCH numa língua: toda opção
+// tem texto, nenhum sobra, e dois não se repetem — o Core julga comparando texto, e
+// duas opções com o mesmo rótulo seriam a mesma resposta.
+func (c *checker) checkOptionLabels(where, template string, p *payload, labels map[string]string) {
+	if template != "TRADEOFF_MATCH" {
+		if len(labels) > 0 {
+			c.fail(where, "option_labels só vale no TRADEOFF_MATCH")
+		}
+		return
+	}
+	if p == nil {
+		return
+	}
+	options := map[string]bool{}
+	byText := map[string]string{}
+	for _, o := range p.Content.Options {
+		options[o] = true
+		text := strings.TrimSpace(labels[o])
+		if text == "" {
+			c.fail(where, "falta o texto da opção %q em option_labels", o)
+			continue
+		}
+		if other, ok := byText[strings.ToLower(text)]; ok {
+			c.fail(where, "as opções %q e %q têm o mesmo texto", other, o)
+		}
+		byText[strings.ToLower(text)] = o
+		c.checkText(where, text)
+	}
+	for _, o := range sortedKeys(labels) {
+		if !options[o] {
+			c.fail(where, "option_labels tem %q, que não é opção do desafio", o)
+		}
+	}
 }
 
 func (c *checker) checkText(where string, texts ...string) {

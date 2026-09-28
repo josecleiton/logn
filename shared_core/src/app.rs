@@ -142,6 +142,10 @@ pub enum Event {
     MatchSetDropSpace { value: String },
     MatchToggleTag { tag: String },
     MatchSetOutput { value: String },
+    /// TRADEOFF_MATCH: a opção tocada vai para a primeira casa vazia.
+    MatchPickTradeoff { value: String },
+    MatchClearBenefit,
+    MatchClearDrawback,
     MatchSubmit { timestamp: i64 },
     MatchDismissTrap,
     MatchTimerTick,
@@ -3459,6 +3463,27 @@ Event::FetchChallenges => {
                 render::render()
             }
 
+            Event::MatchPickTradeoff { value } => {
+                if let Some(ref mut ms) = model.match_state {
+                    ms.selection.pick_tradeoff(value);
+                }
+                render::render()
+            }
+
+            Event::MatchClearBenefit => {
+                if let Some(ref mut ms) = model.match_state {
+                    ms.selection.tradeoff_benefit = None;
+                }
+                render::render()
+            }
+
+            Event::MatchClearDrawback => {
+                if let Some(ref mut ms) = model.match_state {
+                    ms.selection.tradeoff_drawback = None;
+                }
+                render::render()
+            }
+
             Event::MatchToggleTag { tag } => {
                 if let Some(ref mut ms) = model.match_state {
                     if let Some(pos) = ms.selection.selected_tags.iter().position(|t| *t == tag) {
@@ -5219,6 +5244,59 @@ mod tests {
 
         let _ = app.update(Event::MatchToggleTag { tag: "Tag B".into() }, &mut model);
         let _ = app.update(Event::MatchToggleTag { tag: "Tag A".into() }, &mut model);
+        let _ = app.update(Event::MatchSubmit { timestamp: 1_700_000_000 }, &mut model);
+        assert_eq!(app.view(&model).match_view.last_verdict, "AC");
+    }
+
+    /// TRADEOFF_MATCH: o toque preenche a próxima casa, benefício antes de desvantagem,
+    /// e o gabarito é [benefício, desvantagem] posição a posição.
+    #[test]
+    fn test_tradeoff_fills_the_next_slot_and_judges_in_order() {
+        let app = LogNApp::default();
+        let options = vec!["Opção A".to_string(), "Opção B".into(), "Opção C".into()];
+        let answer = vec!["Opção A".to_string(), "Opção B".into()];
+        let start = |model: &mut Model| {
+            model.challenges = vec![seeded_challenge("ch_t06", "TRADEOFF_MATCH", options.clone(), answer.clone(), "")];
+            let _ = app.update(Event::StartMatch { node_id: "10000000-0000-0000-0000-000000000001".into() }, model);
+        };
+
+        let mut model = Model::default();
+        start(&mut model);
+        assert_eq!(model.match_state.as_ref().unwrap().problems[0].seconds, 75);
+
+        let _ = app.update(Event::MatchPickTradeoff { value: "Opção A".into() }, &mut model);
+        let _ = app.update(Event::MatchPickTradeoff { value: "Opção A".into() }, &mut model);
+        let view = app.view(&model).match_view;
+        assert_eq!(view.tradeoff_benefit, "Opção A");
+        assert_eq!(view.tradeoff_drawback, "", "a mesma opção não entra nas duas casas");
+
+        let _ = app.update(Event::MatchPickTradeoff { value: "Opção B".into() }, &mut model);
+        let _ = app.update(Event::MatchPickTradeoff { value: "Opção C".into() }, &mut model);
+        let view = app.view(&model).match_view;
+        assert_eq!((view.tradeoff_benefit.as_str(), view.tradeoff_drawback.as_str()), ("Opção A", "Opção B"),
+            "com as duas casas cheias, o toque não troca nada");
+
+        // Tirar o benefício deixa a desvantagem e devolve o próximo toque ao benefício.
+        let _ = app.update(Event::MatchClearBenefit, &mut model);
+        let _ = app.update(Event::MatchPickTradeoff { value: "Opção C".into() }, &mut model);
+        let view = app.view(&model).match_view;
+        assert_eq!((view.tradeoff_benefit.as_str(), view.tradeoff_drawback.as_str()), ("Opção C", "Opção B"));
+        let _ = app.update(Event::MatchSubmit { timestamp: 1_700_000_000 }, &mut model);
+        assert_eq!(app.view(&model).match_view.last_verdict, "WA");
+
+        // As duas certas, mas trocadas de casa, é erro.
+        let mut model = Model::default();
+        start(&mut model);
+        let _ = app.update(Event::MatchPickTradeoff { value: "Opção B".into() }, &mut model);
+        let _ = app.update(Event::MatchPickTradeoff { value: "Opção A".into() }, &mut model);
+        let _ = app.update(Event::MatchSubmit { timestamp: 1_700_000_000 }, &mut model);
+        assert_eq!(app.view(&model).match_view.last_verdict, "WA", "trocar benefício e desvantagem é erro");
+
+        let mut model = Model::default();
+        start(&mut model);
+        let _ = app.update(Event::MatchPickTradeoff { value: "Opção A".into() }, &mut model);
+        let _ = app.update(Event::MatchClearDrawback, &mut model);
+        let _ = app.update(Event::MatchPickTradeoff { value: "Opção B".into() }, &mut model);
         let _ = app.update(Event::MatchSubmit { timestamp: 1_700_000_000 }, &mut model);
         assert_eq!(app.view(&model).match_view.last_verdict, "AC");
     }

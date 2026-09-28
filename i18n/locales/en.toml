@@ -128,6 +128,12 @@ gap_to_fill = "gap to fill"
 drop_here = "drop here"
 drop_here_accessibility = "drop here"
 filled_accessibility = "filled with %{value}"
+benefit_slot = "BENEFIT"
+drawback_slot = "DRAWBACK"
+tap_an_option = "Tap an option"
+confirm_tradeoff = "Submit trade-off"
+slot_empty_accessibility = "%{slot}, empty"
+slot_filled_accessibility = "%{slot}: %{value}. Tap to remove"
 
 [match]
 trap_classic = "CLASSIC TRAP"

@@ -46,11 +46,27 @@ func trail() map[string]any {
 		"trilhas/free/desafios/ch_2.pt-BR.json": text("Fila"),
 		"trilhas/free/desafios/ch_2.en.json":    text("Queue"),
 		"trilhas/free/desafios/ch_2.es.json":    text("Cola"),
+		"trilhas/free/desafios/ch_3.json": map[string]any{
+			"id": "ch_3", "node_id": nodeID, "template_type": "TRADEOFF_MATCH", "position_idx": 3, "origin": "",
+			"payload": map[string]any{
+				"content":    map[string]any{"code_lines": []any{}, "options": []any{"fast", "cheap", "simple"}, "correct_options": []any{"fast", "cheap"}},
+				"validation": map[string]any{"type": "TRADEOFF_MATCH"},
+			},
+		},
+		"trilhas/free/desafios/ch_3.pt-BR.json": withLabels(text("Troca"), "Rápido", "Barato", "Simples"),
+		"trilhas/free/desafios/ch_3.en.json":    withLabels(text("Trade"), "Fast", "Cheap", "Simple"),
+		"trilhas/free/desafios/ch_3.es.json":    withLabels(text("Cambio"), "Rápido", "Barato", "Sencillo"),
 		"glossario/tags.json": map[string]any{
 			"queue": map[string]any{"pt-BR": "Fila", "en": "Queue", "es": "Cola"},
 			"stack": map[string]any{"pt-BR": "Pilha", "en": "Stack", "es": "Pila"},
 		},
 	}
+}
+
+// withLabels põe no texto de um TRADEOFF_MATCH o rótulo de fast, cheap e simple.
+func withLabels(text map[string]any, fast, cheap, simple string) map[string]any {
+	text["option_labels"] = map[string]any{"fast": fast, "cheap": cheap, "simple": simple}
+	return text
 }
 
 func write(t *testing.T, files map[string]any) string {
@@ -153,6 +169,30 @@ func TestEachRuleIsCaught(t *testing.T) {
 			dig(f["trilhas/free/desafios/ch_1.json"], "payload", "content")["code_lines"] =
 				[]any{"int sum = 0; // soma é zero"}
 		}, "linha 1 fora de ASCII", true},
+		{"trade-off sem texto de uma opção", func(f map[string]any) {
+			delete(dig(f["trilhas/free/desafios/ch_3.en.json"], "option_labels"), "simple")
+		}, `falta o texto da opção "simple"`, false},
+		{"trade-off com duas opções de mesmo texto", func(f map[string]any) {
+			dig(f["trilhas/free/desafios/ch_3.es.json"], "option_labels")["simple"] = "barato"
+		}, "têm o mesmo texto", false},
+		{"trade-off com rótulo que não é opção", func(f map[string]any) {
+			dig(f["trilhas/free/desafios/ch_3.pt-BR.json"], "option_labels")["slow"] = "Lento"
+		}, `tem "slow", que não é opção`, false},
+		{"trade-off com a mesma resposta duas vezes", func(f map[string]any) {
+			dig(f["trilhas/free/desafios/ch_3.json"], "payload", "content")["correct_options"] = []any{"fast", "fast"}
+		}, "par benefício e desvantagem, diferentes", false},
+		{"trade-off com frase no lugar do identificador", func(f map[string]any) {
+			dig(f["trilhas/free/desafios/ch_3.json"], "payload", "content")["options"] = []any{"fast", "cheap", "Mais simples"}
+			dig(f["trilhas/free/desafios/ch_3.pt-BR.json"], "option_labels")["Mais simples"] = "Simples"
+			delete(dig(f["trilhas/free/desafios/ch_3.pt-BR.json"], "option_labels"), "simple")
+			dig(f["trilhas/free/desafios/ch_3.en.json"], "option_labels")["Mais simples"] = "Simple"
+			delete(dig(f["trilhas/free/desafios/ch_3.en.json"], "option_labels"), "simple")
+			dig(f["trilhas/free/desafios/ch_3.es.json"], "option_labels")["Mais simples"] = "Sencillo"
+			delete(dig(f["trilhas/free/desafios/ch_3.es.json"], "option_labels"), "simple")
+		}, "é identificador, o texto vai em option_labels", false},
+		{"option_labels fora do trade-off", func(f map[string]any) {
+			f["trilhas/free/desafios/ch_1.en.json"].(map[string]any)["option_labels"] = map[string]any{"x": "y"}
+		}, "option_labels só vale no TRADEOFF_MATCH", false},
 		{"nó sem topic", func(f map[string]any) {
 			f["trilhas/free/nos.json"].([]any)[0].(map[string]any)["topic"] = ""
 		}, "sem topic", true},
