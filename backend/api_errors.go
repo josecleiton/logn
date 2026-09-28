@@ -31,6 +31,15 @@ const (
 	codeRateLimited             = "rate_limited"
 	codeOriginNotVerified       = "origin_not_verified"
 	codeInternal                = "internal"
+
+	// Trilhas pagas.
+	codePurchaseInvalid             = "purchase_invalid"
+	codePurchaseAccountMismatch     = "purchase_account_mismatch"
+	codePurchaseOwnedByOtherAccount = "purchase_owned_by_other_account"
+	codePurchaseRevoked             = "purchase_revoked"
+	codeUnknownProduct              = "unknown_product"
+	codeEntitlementRequired         = "entitlement_required"
+	codeDeviceIDRequired            = "device_id_required"
 )
 
 // apiError é o corpo de todo erro da API. `message` é para quem lê log e curl, em

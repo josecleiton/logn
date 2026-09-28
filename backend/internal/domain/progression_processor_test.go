@@ -25,7 +25,25 @@ func TestProcessEventXPPagaUmaVezPorDesafio(t *testing.T) {
 	}
 	defer conn.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
 
-	const adHocNode = "10000000-0000-0000-0000-000000000001"
+	// Os desafios existem no banco, num nó da trilha gratuita: id que o banco não
+	// conhece não paga mais.
+	const adHocNode = "90000000-0000-0000-0000-0000000000a1"
+	cleanup := func() {
+		conn.Exec(ctx, `DELETE FROM challenges WHERE id IN ('ch_xp_1', 'ch_xp_2')`)
+		conn.Exec(ctx, `DELETE FROM skill_nodes WHERE id = $1`, adHocNode)
+	}
+	cleanup()
+	defer cleanup()
+	if _, err := conn.Exec(ctx, `INSERT INTO skill_nodes (id, track_id, row_idx, col_idx, required_xp, prerequisites)
+		VALUES ($1, '00000000-0000-0000-0000-000000000000', 95, 0, 0, '[]')`, adHocNode); err != nil {
+		t.Fatalf("nó: %v", err)
+	}
+	if _, err := conn.Exec(ctx, `INSERT INTO challenges (id, node_id, template_type, payload, position_idx) VALUES
+		('ch_xp_1', $1, 'SPOT_THE_BUG', '{"content":{"code_lines":["int a;"]},"validation":{"type":"LINE_MATCH","correct_line":1}}', 1),
+		('ch_xp_2', $1, 'SPOT_THE_BUG', '{"content":{"code_lines":["int b;"]},"validation":{"type":"LINE_MATCH","correct_line":1}}', 2)`, adHocNode); err != nil {
+		t.Fatalf("desafios: %v", err)
+	}
+
 	answer := func(challengeID string, correct bool, template string) GameEvent {
 		return GameEvent{
 			EventType: "MATCH_ANSWER",

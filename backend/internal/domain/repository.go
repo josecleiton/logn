@@ -131,19 +131,51 @@ const publishedNodes = `
 				SELECT 1 FROM challenge_translations t
 				WHERE t.challenge_id = c.id AND t.locale = $1)))`
 
-// GetChallenges devolve os desafios dos nós publicados na língua, com o texto dela.
+// openNode diz se o nó `n`, da trilha `t`, sai nas rotas abertas: é da trilha gratuita
+// ou é a amostra da paga, o primeiro nó (`row_idx = 0`). O resto da trilha paga só sai
+// cifrado, no pacote de quem comprou. É a mesma regra do `requires_purchase` do nó e do
+// XP da amostra no sync: mudar uma é mudar as três.
+const openNode = `(t.kind = 'free' OR n.row_idx = 0)`
+
+// challengeColumns são as colunas que scanChallenges lê, na ordem.
+const challengeColumns = `
+	SELECT c.id, c.node_id, c.template_type, c.payload, c.position_idx, COALESCE(c.origin, ''),
+	       ct.title, ct.description, ct.explanation, COALESCE(ct.watch_note, ''), ct.option_labels`
+
+// GetChallenges devolve os desafios abertos dos nós publicados na língua, com o texto dela.
+//
+// Antes saía tudo, inclusive a trilha paga, para quem nem tinha conta: o pacote cifrado
+// não protegia nada se o mesmo conteúdo estava em claro aqui.
 func (r *Repository) GetChallenges(ctx context.Context, locale string) ([]Challenge, error) {
 	// A ordem define as letras A, B, C da partida: o core enumera esta lista já
 	// ordenada. Ordenava por `id`, que é VARCHAR — ch_10 vinha antes de ch_2. Agora sai
 	// de position_idx, que é dado explícito (ADR 0006).
-	query := publishedNodes + `
-		SELECT c.id, c.node_id, c.template_type, c.payload, c.position_idx, COALESCE(c.origin, ''),
-		       t.title, t.description, t.explanation, COALESCE(t.watch_note, ''), t.option_labels
+	query := publishedNodes + challengeColumns + `
 		FROM challenges c
 		JOIN publicados p ON p.id = c.node_id
-		JOIN challenge_translations t ON t.challenge_id = c.id AND t.locale = $1
+		JOIN skill_nodes n ON n.id = c.node_id
+		JOIN tracks t ON t.id = n.track_id
+		JOIN challenge_translations ct ON ct.challenge_id = c.id AND ct.locale = $1
+		WHERE ` + openNode + `
 		ORDER BY c.node_id, c.position_idx`
-	rows, err := r.db.Query(ctx, query, locale)
+	return r.queryChallenges(ctx, locale, query, locale)
+}
+
+// GetTrackChallenges devolve os desafios fechados da trilha paga, os que vão no pacote.
+func (r *Repository) GetTrackChallenges(ctx context.Context, trackID, locale string) ([]Challenge, error) {
+	query := publishedNodes + challengeColumns + `
+		FROM challenges c
+		JOIN publicados p ON p.id = c.node_id
+		JOIN skill_nodes n ON n.id = c.node_id
+		JOIN tracks t ON t.id = n.track_id
+		JOIN challenge_translations ct ON ct.challenge_id = c.id AND ct.locale = $1
+		WHERE n.track_id = $2 AND NOT ` + openNode + `
+		ORDER BY c.node_id, c.position_idx`
+	return r.queryChallenges(ctx, locale, query, locale, trackID)
+}
+
+func (r *Repository) queryChallenges(ctx context.Context, locale, query string, args ...any) ([]Challenge, error) {
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -300,13 +332,17 @@ func (r *Repository) GetOriginCards(ctx context.Context, locale string) ([]Origi
 }
 
 type SkillNode struct {
-	ID            string   `json:"id"`
-	Name          string   `json:"name"`
-	Description   string   `json:"description"`
-	Row           int      `json:"row"`
-	Column        int      `json:"column"`
-	RequiredXP    int      `json:"required_xp"`
-	Prerequisites []string `json:"prerequisites"`
+	ID      string `json:"id"`
+	TrackID string `json:"track_id"`
+	// O nó é de trilha paga e não é a amostra: só abre com licença. Quem decide é o
+	// servidor, pela mesma regra que filtra os desafios abertos (`openNode`).
+	RequiresPurchase bool     `json:"requires_purchase"`
+	Name             string   `json:"name"`
+	Description      string   `json:"description"`
+	Row              int      `json:"row"`
+	Column           int      `json:"column"`
+	RequiredXP       int      `json:"required_xp"`
+	Prerequisites    []string `json:"prerequisites"`
 	// Assunto do nó, neutro (`adhoc`, `graphs`): decide cor e ícone no app, que antes
 	// adivinhava pelo nome. Vazio enquanto o conteúdo não preencher.
 	Topic string `json:"topic"`
@@ -331,6 +367,12 @@ type UserStats struct {
 	// Desafios que já renderam XP. O cliente precisa deles para não prometer XP de novo
 	// por um desafio que o servidor não vai pagar, inclusive depois de trocar de aparelho.
 	PaidChallengeIDs []string `json:"paid_challenge_ids"`
+	// XP ganho em cada trilha paga, amostra incluída. O portão de um nó conta só o XP da
+	// trilha dele (spec, seção 8); o da trilha gratuita é o global menos a soma destes.
+	//
+	// Sai daqui e não do Core porque o Core pode não conhecer mais os desafios de uma
+	// trilha revogada, e aí somaria o XP dela no portão da gratuita.
+	PaidTrackXP map[string]int `json:"paid_track_xp"`
 }
 
 func (r *Repository) GetUserStats(ctx context.Context, userID string) (UserStats, error) {
@@ -367,16 +409,47 @@ func (r *Repository) GetUserStats(ctx context.Context, userID string) (UserStats
 		}
 		stats.PaidChallengeIDs = append(stats.PaidChallengeIDs, id)
 	}
-	return stats, rows.Err()
+	if err := rows.Err(); err != nil {
+		return stats, err
+	}
+
+	stats.PaidTrackXP, err = r.paidTrackXP(ctx, userID)
+	return stats, err
+}
+
+func (r *Repository) paidTrackXP(ctx context.Context, userID string) (map[string]int, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT n.track_id, count(*)
+		FROM user_paid_challenges up
+		JOIN challenges c ON c.id = up.challenge_id
+		JOIN skill_nodes n ON n.id = c.node_id
+		JOIN tracks t ON t.id = n.track_id
+		WHERE up.user_id = $1 AND t.kind = 'paid'
+		GROUP BY n.track_id`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	xp := map[string]int{}
+	for rows.Next() {
+		var trackID string
+		var paid int
+		if err := rows.Scan(&trackID, &paid); err != nil {
+			return nil, err
+		}
+		xp[trackID] = paid * XPPerAcceptedAnswer
+	}
+	return xp, rows.Err()
 }
 
 // GetSkillNodes devolve os nós publicados na língua, com o nome nela.
 func (r *Repository) GetSkillNodes(ctx context.Context, locale string) ([]SkillNode, error) {
 	query := publishedNodes + `
-		SELECT n.id, nt.name, COALESCE(nt.description, ''), n.row_idx, n.col_idx, n.required_xp,
+		SELECT n.id, n.track_id, NOT ` + openNode + `, nt.name, COALESCE(nt.description, ''), n.row_idx, n.col_idx, n.required_xp,
 		       n.prerequisites, COALESCE(n.topic, '')
 		FROM skill_nodes n
 		JOIN publicados p ON p.id = n.id
+		JOIN tracks t ON t.id = n.track_id
 		JOIN skill_node_translations nt ON nt.node_id = n.id AND nt.locale = $1
 		ORDER BY n.row_idx ASC`
 	rows, err := r.db.Query(ctx, query, locale)
@@ -389,7 +462,7 @@ func (r *Repository) GetSkillNodes(ctx context.Context, locale string) ([]SkillN
 	for rows.Next() {
 		var n SkillNode
 		var prereqsJSON []byte
-		if err := rows.Scan(&n.ID, &n.Name, &n.Description, &n.Row, &n.Column, &n.RequiredXP, &prereqsJSON, &n.Topic); err != nil {
+		if err := rows.Scan(&n.ID, &n.TrackID, &n.RequiresPurchase, &n.Name, &n.Description, &n.Row, &n.Column, &n.RequiredXP, &prereqsJSON, &n.Topic); err != nil {
 			return nil, err
 		}
 		json.Unmarshal(prereqsJSON, &n.Prerequisites)
