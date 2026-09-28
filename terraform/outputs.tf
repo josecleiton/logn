@@ -13,6 +13,18 @@ output "secret_ids" {
   ]
 }
 
+# Os três valores que o workflow de deploy lê como variáveis do repositório de conteúdo
+# (Settings › Variables). Nenhum é segredo: sem passar na condição do provider, não
+# servem para nada.
+output "github_deploy_variables" {
+  description = "Variáveis do repositório de conteúdo para o workflow de deploy (ADR 0015)."
+  value = {
+    GCP_WORKLOAD_IDENTITY_PROVIDER = google_iam_workload_identity_pool_provider.github.name
+    GCP_DEPLOYER_SERVICE_ACCOUNT   = google_service_account.deployer.email
+    GCP_BUILDER_SERVICE_ACCOUNT    = google_service_account.builder.id
+  }
+}
+
 output "cloudflare_nameservers" {
   description = "Nameservers que a Cloudflare atribuiu à zona — aponte o registrador do domínio pra eles."
   value       = var.enable_cloudflare ? data.cloudflare_zone.logn[0].name_servers : null

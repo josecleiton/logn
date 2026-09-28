@@ -6,6 +6,10 @@ region                 = "us-east1"
 service_account_email  = "sua-service-account@seu-projeto-gcp.iam.gserviceaccount.com"
 service_audience_url   = "https://seu-servico-xxxxx.a.run.app"
 
+# Quem pode fazer deploy pelo GitHub Actions (ADR 0015): o repositório de conteúdo.
+github_deploy_repository    = "seu-usuario/seu-repo-de-conteudo"
+github_deploy_repository_id = "123456789" # gh api repos/seu-usuario/seu-repo-de-conteudo --jq .id
+
 smtp_user = "seu-email-de-envio@example.com"
 smtp_from = "LogN App <seu-email-de-envio@example.com>"
 smtp_host = "smtp.example.com"

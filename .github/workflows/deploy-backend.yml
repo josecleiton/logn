@@ -1,0 +1,35 @@
+# Pede o deploy do backend ao repositório de conteúdo (ADR 0015).
+#
+# O deploy não roda aqui: as migrações de conteúdo não estão neste repositório, e ele
+# não guarda credencial do Google nem acesso ao conteúdo. Este workflow só dispara o
+# de lá, que publica o head da main deste repositório — nunca um commit escolhido
+# aqui.
+#
+# O segredo CONTENT_DEPLOY_DISPATCH_TOKEN mora no environment `deployment`, que só
+# aceita a main (Settings › Environments › Deployment branches): um workflow novo em
+# outra branch não o recebe. É um token fine-grained com uma permissão só, Actions:
+# read and write, e só no repositório de conteúdo. Ele dispara, cancela e reexecuta
+# workflow e lê o log de lá; não lê nem escreve o repositório.
+name: Deploy backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - backend/**
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    # Fork não tem o segredo, e não deve nem tentar.
+    if: github.repository == 'josecleiton/logn' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: deployment
+    steps:
+      - name: Dispara o deploy no repositório de conteúdo
+        env:
+          GH_TOKEN: ${{ secrets.CONTENT_DEPLOY_DISPATCH_TOKEN }}
+        run: gh workflow run deploy-backend.yml --repo josecleiton/logn-conteudo --ref main

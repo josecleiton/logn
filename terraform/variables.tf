@@ -28,6 +28,22 @@ variable "service_audience_url" {
   type        = string
 }
 
+variable "github_deploy_repository" {
+  description = "Repositório do GitHub (dono/nome) cujo workflow pode fazer deploy — o de conteúdo, privado (ADR 0015)."
+  type        = string
+}
+
+variable "github_deploy_repository_id" {
+  description = "Id numérico desse repositório (gh api repos/<dono>/<nome> --jq .id). Não muda com renomeação nem volta se o nome for recriado."
+  type        = string
+}
+
+variable "github_deploy_ref" {
+  description = "Única branch desse repositório que pode fazer deploy."
+  type        = string
+  default     = "refs/heads/main"
+}
+
 variable "smtp_user" {
   description = "Usuário SMTP (conta de e-mail que envia OTP e notificação)."
   type        = string
