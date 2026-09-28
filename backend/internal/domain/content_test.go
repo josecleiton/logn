@@ -108,8 +108,8 @@ func TestContentIsPublishedPerLanguage(t *testing.T) {
 		sql  string
 		args []any
 	}{
-		{`INSERT INTO skill_nodes (id, row_idx, col_idx, required_xp, prerequisites, topic) VALUES ($1, 90, 0, 0, '[]', 'graphs')`, []any{parent}},
-		{`INSERT INTO skill_nodes (id, row_idx, col_idx, required_xp, prerequisites) VALUES ($1, 91, 0, 0, $2)`, []any{child, `["` + parent + `"]`}},
+		{`INSERT INTO skill_nodes (id, track_id, row_idx, col_idx, required_xp, prerequisites, topic) VALUES ($1, '00000000-0000-0000-0000-000000000000', 90, 0, 0, '[]', 'graphs')`, []any{parent}},
+		{`INSERT INTO skill_nodes (id, track_id, row_idx, col_idx, required_xp, prerequisites) VALUES ($1, '00000000-0000-0000-0000-000000000000', 91, 0, 0, $2)`, []any{child, `["` + parent + `"]`}},
 		{`INSERT INTO skill_node_translations (node_id, locale, name) VALUES ($1, 'pt-BR', 'Pai'), ($1, 'es', 'Padre'), ($2, 'pt-BR', 'Filho'), ($2, 'es', 'Hijo')`, []any{parent, child}},
 		{`INSERT INTO challenges (id, node_id, template_type, payload, position_idx) VALUES
 		  ('test_i18n_1', $1, 'SPOT_THE_BUG', '{"content":{"code_lines":["int a;"]},"validation":{"type":"LINE_MATCH","correct_line":1}}', 1),
