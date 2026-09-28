@@ -105,6 +105,14 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    (`phc_SuaChaveAqui`). Não logue token, senha, OTP, e-mail completo nem corpo de
    requisição.
 
+   **Segredo novo tem acesso declarado, um por um.** A conta com que o Cloud Run roda lê
+   só os segredos do mapa `runtime_secrets` (`terraform/secrets.tf`), cada um com o seu
+   `google_secret_manager_secret_iam_member` — nunca `secretAccessor` no projeto, que
+   daria a ela todo segredo criado ali. Segredo novo que o serviço use entra no mesmo
+   commit em três lugares: o `google_secret_manager_secret`, o mapa `runtime_secrets` e a
+   referência no `cloud_run.tf`. Sem o acesso, a revisão nova não sobe. Confira com
+   `terraform plan` antes do deploy.
+
    **Autenticação e sessão.** Senha só com Argon2id nos parâmetros de
    `credentials.go`, comparação em tempo constante, e login contra `DummyHash` quando
    a conta não existe, para o tempo não denunciar e-mail. Erro de credencial, de OTP e
