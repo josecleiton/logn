@@ -8,7 +8,7 @@ O deploy do backend era `just deploy-backend` na máquina do dono: `gcloud run d
 
 **O workflow de deploy mora no repositório de conteúdo, que é privado.** Ele copia as migrações de conteúdo para `backend/schema/migrations/`, recusa documento legal em rascunho (a mesma trava do `just migrate-prod`), confere que o upload leva todas as migrações e roda o mesmo `gcloud run deploy --source`. A API aplica as migrações no boot, como antes. Um nome de migração que exista nos dois repositórios reprova o deploy.
 
-**Publicar é confiança total, e só a main do app é publicada.** O código publicado roda com a conta de runtime e aplica SQL no boot com a role de migração. Por isso o workflow resolve o head da main do app no começo e publica aquele SHA, sem aceitar commit ou branch escolhido por quem dispara. A main do app e a do conteúdo precisam de branch protection: é ela que garante que o que chega lá foi revisado.
+**Publicar é confiança total, e só a main do app é publicada.** O código publicado roda com a conta de runtime e aplica SQL no boot com a role de migração. Por isso o workflow resolve o head da main do app no começo e publica aquele SHA, sem aceitar commit ou branch escolhido por quem dispara. O que chega à main vai para produção: ver a seção 4, sobre a falta de branch protection.
 
 **Código do app não roda perto do token.** O `content-check` executa código do app, então roda num job sem `id-token`. O job de deploy, com `id-token`, só copia arquivos e chama o `gcloud`, e exige o environment `production`. A saída do check vai para o log só como veredito, sem o texto dos achados, porque o log é legível por quem tem o token de dispatch.
 
@@ -28,6 +28,9 @@ O deploy do backend era `just deploy-backend` na máquina do dono: `gcloud run d
 - **`roles/run.builder` para a conta de build.** Tem as mesmas permissões, mas no projeto inteiro.
 
 ## 4. Consequências e risco conhecido
+
+- **As mains não têm branch protection.** Os dois repositórios são privados numa conta Free, e o GitHub só oferece ruleset e proteção de branch nesse caso com o Pro. Qualquer push na main de um dos dois vai para produção sem revisão, e force push na main não é barrado. O que continua de pé sem isso: o Google só aceita o token do job de deploy da main do repositório de conteúdo, no environment `production`; e o token de disparo do app mora no environment `deployment`, que só aceita a main. Quando o app ficar público, ruleset nele passa a ser gratuito e entra aqui; o repositório de conteúdo continua sem, a menos que a conta mude de plano.
+- **Não está confirmado que a restrição de branch dos environments é aplicada em repositório privado no plano Free.** O GitHub aceitou configurá-la. A condição do Google não depende dela: exige `refs/heads/main` e o arquivo do workflow.
 
 - **O deployer vale o que a conta de runtime vale.** Agir como ela é poder rodar código com as permissões dela. Hoje ela tem `secretmanager.secretAccessor` no projeto (todos os segredos, não só os do serviço), `storage.editor` e `firebase.editor`. O CI não piora o que um deploy à mão já podia, mas o alcance de um workflow comprometido é esse. A correção é uma conta de runtime dedicada, com `secretAccessor` só nos segredos do `logn`; é mudança no serviço no ar e fica para uma decisão à parte.
 - **`roles/run.sourceDeveloper` inclui criar serviço e job** (`run.services.create`, `run.jobs.create`) e SSH na revisão. Com o `actAs` acima, um workflow comprometido poderia criar outro serviço rodando como a conta de runtime.
