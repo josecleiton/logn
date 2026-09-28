@@ -14,6 +14,7 @@ struct ProfileHubView: View {
     /// Sheet crítico de saída, quando há evento na fila.
     @State private var showsCriticalLogout = false
     @State private var showsManageAccount = false
+    @State private var showsStorage = false
     @State private var legalSheet: LegalKind?
 
     /// Altura de partida do sheet, só até a primeira medição chegar.
@@ -346,6 +347,49 @@ struct ProfileHubView: View {
             .buttonStyle(.plain)
             .padding(.top, 6)
         } else {
+            // Estado próprio: dividia o `showsManageAccount` e abria a conta junto.
+            Button {
+                showsStorage = true
+            } label: {
+                HStack(spacing: 9) {
+                    Image(systemName: "internaldrive")
+                        .font(.system(size: 14, weight: .medium))
+                    Text(Str.Profile.storage)
+                        .font(.plexSans(14, relativeTo: .subheadline))
+                    Spacer()
+                }
+                .foregroundColor(LognDark.textSecondary)
+                .frame(maxWidth: .infinity, minHeight: 42)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 16)
+            .sheet(isPresented: $showsStorage) {
+                StorageManagementView()
+                    .environmentObject(core)
+            }
+
+            Button {
+                Task { await StoreKitManager.shared.restore() }
+            } label: {
+                HStack(spacing: 9) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 14, weight: .medium))
+                    Text(Str.Profile.restore_purchases)
+                        .font(.plexSans(14, relativeTo: .subheadline))
+                    Spacer()
+                }
+                .foregroundColor(LognDark.textSecondary)
+                .frame(maxWidth: .infinity, minHeight: 42)
+            }
+            .buttonStyle(.plain)
+            .sheet(isPresented: Binding(
+                get: { core.viewModel.restoreResult.active },
+                set: { shown in if !shown { core.dispatch(event: .dismissRestoreResult) } }
+            )) {
+                RestoreResultSheet()
+                    .environmentObject(core)
+            }
+
             Rectangle()
                 .frame(height: 1)
                 .foregroundColor(LognDark.line)

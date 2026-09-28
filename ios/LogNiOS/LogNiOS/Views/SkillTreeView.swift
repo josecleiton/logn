@@ -12,6 +12,7 @@ struct SkillTreeView: View {
 
     @EnvironmentObject var core: CoreWrapper
     @State private var selectedNode: SkillNode? = nil
+    @State private var paywallNode: SkillNode? = nil
     @State private var matchNodeId: String = ""
     @State private var navigateToMatch: Bool = false
 
@@ -19,7 +20,7 @@ struct SkillTreeView: View {
         GeometryReader { geo in
             let layout = SkillTreeLayout(nodes: nodes, canvasWidth: geo.size.width)
 
-            ZStack {
+            ZStack(alignment: .top) {
                 NavigationLink(
                     destination: MatchView(nodeId: matchNodeId).environmentObject(core),
                     isActive: $navigateToMatch
@@ -39,7 +40,11 @@ struct SkillTreeView: View {
                                             y: placement.balloonTop + placement.totalHeight / 2
                                         )
                                         .onTapGesture {
-                                            selectedNode = node
+                                            if node.status == .paywallLocked {
+                                                paywallNode = node
+                                            } else {
+                                                selectedNode = node
+                                            }
                                         }
                                 }
                             }
@@ -57,6 +62,12 @@ struct SkillTreeView: View {
                         .padding(.bottom, 14)
                         .padding(.top, Space.sm)
                 }
+            }
+            // O nó fechado tocado na árvore (1e): o preço aparece quando a pessoa quer
+            // seguir, sobre a própria árvore.
+            .sheet(item: $paywallNode) { node in
+                LockedNodeSheet(node: node, track: core.viewModel.currentTrack)
+                    .environmentObject(StoreKitManager.shared)
             }
             .sheet(item: $selectedNode) { node in
                 NodeSheetView(
@@ -179,7 +190,7 @@ struct SkillTreeLayout {
         switch status {
         case .completed: return 56
         case .active:    return 70
-        case .locked:    return 54
+        case .locked, .paywallLocked: return 54
         }
     }
 
@@ -314,7 +325,7 @@ struct SkillNodeView: View {
         switch node.status {
         case .completed: return .filled(topic.color)
         case .active:    return .active
-        case .locked:    return .locked
+        case .locked, .paywallLocked: return .locked
         }
     }
 
@@ -322,12 +333,12 @@ struct SkillNodeView: View {
         switch node.status {
         case .completed: return LognDark.onAccent   // tinta escura sobre o corpo cheio
         case .active:    return LognDark.accentInk
-        case .locked:    return LognDark.textSecondary
+        case .locked, .paywallLocked: return LognDark.textSecondary
         }
     }
 
     private var iconSizeRatio: CGFloat {
-        node.status == .locked ? 0.34 : 0.36
+        (node.status == .locked || node.status == .paywallLocked) ? 0.34 : 0.36
     }
 
     /// Centro óptico do ícone dentro do corpo.
@@ -339,7 +350,7 @@ struct SkillNodeView: View {
         switch node.status {
         case .completed: return 2.4
         case .active:    return 2.2
-        case .locked:    return 2.0
+        case .locked, .paywallLocked: return 2.0
         }
     }
 
@@ -370,9 +381,9 @@ struct SkillNodeView: View {
             HStack(spacing: 6) {
                 Text(node.name)
                     .font(.plexSansSemiBold(11.5))
-                    .foregroundColor(node.status == .locked ? LognDark.textSecondary : LognDark.textPrimary)
+                    .foregroundColor((node.status == .locked || node.status == .paywallLocked) ? LognDark.textSecondary : LognDark.textPrimary)
                 // Quantos problemas do nó já renderam XP. No bloqueado, 0/5 é ruído.
-                if node.status != .locked && !node.problemsSolved.isEmpty {
+                if (node.status != .locked && node.status != .paywallLocked) && !node.problemsSolved.isEmpty {
                     HStack(spacing: 3) {
                         if allSolved {
                             Image(systemName: "checkmark")
@@ -411,6 +422,8 @@ struct SkillNodeView: View {
             state = node.problemsSolved.isEmpty
                 ? Str.Tree.node_active(node.name, Int(solvedCount), Int(node.problemsSolved.count))
                 : Str.Tree.node_active(node.name, Int(solvedCount), Int(node.problemsSolved.count))
+        case .paywallLocked:
+            state = Str.Tree.node_paywalled(node.name)
         case .locked:
             let missing = node.prerequisites.count
             state = missing >= 2 ? Str.Tree.node_locked_prereq(node.name, Int(missing)) : Str.Tree.node_locked(node.name)

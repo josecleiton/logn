@@ -278,6 +278,25 @@ pub enum StatusKey {
     PasswordTooShort,
     PasswordTooLong,
     EmailTaken,
+    /// A compra foi feita na loja e o servidor está confirmando.
+    PurchaseConfirming,
+    PurchaseConfirmed,
+    /// O servidor não confirmou agora (rede, erro dele). A loja entrega de novo na
+    /// próxima abertura, e o app tenta outra vez sozinho.
+    PurchaseFailed,
+    /// `purchase_owned_by_other_account`: a compra é de outra conta ativa.
+    PurchaseOwnedByOtherAccount,
+    /// `purchase_account_mismatch`: a compra foi feita logado em outra conta.
+    PurchaseAccountMismatch,
+    /// `purchase_revoked`: a compra foi reembolsada ou revogada.
+    PurchaseRevoked,
+    /// Comprar pede conta; o visitante não compra.
+    PurchaseNeedsAccount,
+    /// A licença de uma trilha baixada foi revogada: chave e pacote saíram do aparelho.
+    TrackRevoked,
+    /// A compra está na conta, mas a licença ou o pacote não chegaram agora. Baixa
+    /// sozinha na próxima abertura com rede.
+    TrackDownloadFailed,
 }
 
 /// Uma das verificações que a abertura roda antes de soltar o jogador no app.
@@ -364,6 +383,7 @@ pub enum NodeStatus {
     Locked,
     Active,
     Completed,
+    PaywallLocked,
 }
 
 /// Estado de uma célula do telão. Os quatro estados do DS, e só eles.
@@ -416,6 +436,203 @@ pub struct StandingRow {
     pub note: String,
 }
 
+/// A licença de uma trilha paga, como `GET /api/v1/tracks/{id}/license` devolve.
+///
+/// Vive no Keychain do aparelho (chave `track_key:`), nunca no retrato: ali ela ficava
+/// num `UserDefaults` que qualquer cópia de backup abre, e o prazo era editável.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct TrackLicense {
+    pub track_id: String,
+    /// Chave AES-256 de conteúdo da versão, em hexadecimal.
+    pub key_hex: String,
+    pub content_version: i32,
+    /// Quando o servidor emitiu. Relógio do aparelho antes disto é relógio atrasado de
+    /// propósito, e a trilha pede para conectar.
+    pub issued_at: i64,
+    pub valid_until: i64,
+}
+
+/// Uma trilha do catálogo, como `GET /api/v1/tracks` devolve: a principal e as pagas.
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct Track {
+    pub id: String,
+    pub slug: String,
+    /// `free` ou `paid`.
+    #[serde(default)]
+    pub kind: String,
+    #[serde(default)]
+    pub status: String,
+    #[serde(default)]
+    pub author: String,
+    #[serde(default)]
+    pub product_id: String,
+    #[serde(default)]
+    pub content_version: i32,
+    #[serde(default)]
+    pub color: String,
+    pub name: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub node_count: u32,
+    #[serde(default)]
+    pub problem_count: u32,
+    #[serde(default)]
+    pub languages: Vec<String>,
+    #[serde(default)]
+    pub owned: bool,
+    /// Motivo, quando o direito da conta foi revogado. Vazio no resto.
+    #[serde(default)]
+    pub revoked_reason: String,
+}
+
+/// Onde a licença offline de uma trilha comprada está na escada de dias sem contato
+/// (LogN Validade Offline). Com rede, cada abertura renova, e só `Silent` aparece.
+#[derive(Facet, Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum OfflineState {
+    /// Sem licença no aparelho: não comprada, ou não baixada.
+    #[default]
+    NoLicense,
+    /// Mais de 3 dias pela frente. Nada aparece além do "vale até" no detalhe.
+    Silent,
+    /// De 3 a 1 dia: selo no botão Trilhas, card âmbar, bloco no detalhe.
+    Soon,
+    /// Último dia.
+    Today,
+    /// Venceu, ou o relógio foi para antes da emissão. Só esta trilha fecha.
+    Expired,
+}
+
+/// A trilha como a tela a vê: catálogo, detalhe, compra e o que está no aparelho.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[facet(fg::namespace = "LogN")]
+pub struct TrackView {
+    pub id: String,
+    /// A trilha gratuita, a principal.
+    pub is_free: bool,
+    pub name: String,
+    pub description: String,
+    pub author: String,
+    /// A cor do balão da trilha, `#RRGGBB`.
+    pub color: String,
+    /// O produto da App Store. É daqui que o app compra, nunca de um id montado.
+    pub product_id: String,
+    pub node_count: u32,
+    pub problem_count: u32,
+    /// Línguas publicadas, na forma do banco (`pt-BR`, `en`, `es`).
+    pub languages: Vec<String>,
+    /// É a trilha que a árvore mostra agora.
+    pub selected: bool,
+    pub owned: bool,
+    /// A compra foi revogada; `revoked_reason` diz por quê.
+    pub revoked: bool,
+    pub revoked_reason: String,
+    pub discontinued: bool,
+    /// Nós conquistados nesta trilha.
+    pub nodes_done: u32,
+    /// Nós que só abrem com compra.
+    pub closed_node_count: u32,
+    /// Balões subidos na amostra, para a oferta do fim dela.
+    pub sample_balloons: u32,
+    /// Todos os problemas da amostra já renderam XP.
+    pub sample_done: bool,
+    /// XP ganho nesta trilha.
+    pub track_xp: i32,
+    /// O conteúdo fechado está no aparelho e abre.
+    pub downloaded: bool,
+    /// Tamanho do pacote no aparelho, em bytes. Zero quando não está baixado.
+    pub download_bytes: u64,
+    pub offline: OfflineState,
+    /// Dias inteiros até a licença offline vencer. Zero sem licença ou vencida.
+    pub offline_days_left: u32,
+    /// Dias desde o último contato com o servidor, pela emissão da licença.
+    pub days_since_contact: u32,
+    /// Até quando a licença vale, em segundos desde a época. Zero sem licença.
+    pub valid_until: i64,
+    /// Os nós da trilha, na ordem da árvore, para o detalhe (1d).
+    pub nodes: Vec<TrackNodeRow>,
+}
+
+/// Um nó na lista do detalhe da trilha.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[facet(fg::namespace = "LogN")]
+pub struct TrackNodeRow {
+    pub id: String,
+    pub name: String,
+    /// Abre sem compra: a amostra.
+    pub free: bool,
+    pub done: bool,
+    /// O próximo a jogar.
+    pub active: bool,
+}
+
+/// O selo do botão Trilhas: a trilha comprada que mais pede atenção.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[facet(fg::namespace = "LogN")]
+pub struct CatalogBadge {
+    /// `Soon`, `Today` ou `Expired`; qualquer outro é sem selo.
+    pub state: OfflineState,
+    pub days_left: u32,
+}
+
+/// Em que passo está a compra que o jogador acabou de fazer (LogN Trilhas, F3).
+#[derive(Facet, Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum PurchaseStage {
+    /// Nenhuma compra na tela.
+    #[default]
+    Idle,
+    /// A loja aprovou; o servidor está validando a transação.
+    Validating,
+    /// Transação válida; pedindo a licença.
+    Licensing,
+    /// Licença na mão; baixando o pacote.
+    Downloading,
+    /// Tudo no aparelho: a trilha abre sem rede.
+    Ready,
+    /// Parou; `failure` diz por quê.
+    Failed,
+}
+
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[facet(fg::namespace = "LogN")]
+pub struct PurchaseFlowView {
+    pub stage: PurchaseStage,
+    pub track_id: String,
+    pub failure: StatusKey,
+}
+
+/// O resultado de "Restaurar compras".
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[facet(fg::namespace = "LogN")]
+pub struct RestoreResultView {
+    /// Há uma restauração na tela, em andamento ou acabada.
+    pub active: bool,
+    pub finished: bool,
+    pub total: u32,
+    pub restored: u32,
+    /// Transações que são de outra conta ativa.
+    pub other_account: u32,
+    /// Nomes das trilhas que voltaram, na língua do catálogo.
+    pub restored_names: Vec<String>,
+}
+
+/// A oferta do fim da amostra, no relatório da partida (LogN Trilhas, 1f).
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[facet(fg::namespace = "LogN")]
+pub struct SampleOfferView {
+    pub active: bool,
+    pub track_id: String,
+    pub next_node_name: String,
+    /// Posição do próximo nó na trilha, a partir de 1.
+    pub next_node_index: u32,
+    pub remaining_nodes: u32,
+    pub remaining_problems: u32,
+}
+
 #[derive(Facet, Serialize, Deserialize, Clone, Debug)]
 #[facet(fg::namespace = "LogN")]
 pub struct SkillNode {
@@ -426,6 +643,12 @@ pub struct SkillNode {
     pub column: i32,
     pub required_xp: i32,
     pub prerequisites: Vec<String>,
+    #[serde(default)]
+    pub track_id: String,
+    /// Nó de trilha paga fora da amostra: só abre com licença. Quem decide é o
+    /// servidor; o Core não adivinha pela linha nem por um id de trilha fixo.
+    #[serde(default)]
+    pub requires_purchase: bool,
     /// Assunto do nó, neutro (`adhoc`, `graphs`): decide cor e ícone no cliente, que
     /// antes adivinhava pelo nome — e o nome agora muda com a língua. Vazio quando o
     /// servidor ou o retrato antigo não mandam.

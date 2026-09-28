@@ -1,5 +1,7 @@
+import CryptoKit
 import Foundation
 import Security
+import UIKit
 
 import LogNCoreFFI
 import App
@@ -19,6 +21,15 @@ public class CoreWrapper: ObservableObject {
     /// para que dois pedidos consecutivos cada um acione o onChange no ContentView.
     /// O Core envia via notify_shell — não há resolve; nunca chame coreFFI.resolve aqui.
     @Published public private(set) var reviewRequestCount = 0
+
+    /// A trilha vazia do primeiro quadro, antes de o Core responder.
+    private static let emptyTrack = TrackView(
+        id: "", isFree: true, name: "", description: "", author: "", color: "", productId: "",
+        nodeCount: 0, problemCount: 0, languages: [], selected: true, owned: false, revoked: false,
+        revokedReason: "", discontinued: false, nodesDone: 0, closedNodeCount: 0, sampleBalloons: 0, sampleDone: false,
+        trackXp: 0, downloaded: false, downloadBytes: 0, offline: .noLicense, offlineDaysLeft: 0,
+        daysSinceContact: 0, validUntil: 0, nodes: []
+    )
 
     public init() {
         self.viewModel = ViewModel(
@@ -85,7 +96,17 @@ public class CoreWrapper: ObservableObject {
             // tem sessão vê a splash por um quadro; quem tem não vê o login piscar
             // enquanto o refresh está no ar.
             boot: BootViewModel(inProgress: true, lines: [], progress: 0, awaitingOfflineChoice: false),
-            resumeEmail: ""
+            resumeEmail: "",
+            accountUserId: "",
+            tracks: [],
+            currentTrack: Self.emptyTrack,
+            catalogBadge: CatalogBadge(state: .noLicense, daysLeft: 0),
+            showOnboarding: false,
+            purchaseFlow: PurchaseFlowView(stage: .idle, trackId: "", failure: .silent),
+            restoreResult: RestoreResultView(active: false, finished: false, total: 0, restored: 0, otherAccount: 0, restoredNames: []),
+            sampleOffer: SampleOfferView(active: false, trackId: "", nextNodeName: "", nextNodeIndex: 0, remainingNodes: 0, remainingProblems: 0),
+            purchasesToFinish: [],
+            purchaseInFlight: false
         )
         updateViewModel()
         // A língua do app vai antes de qualquer pedido: é o `Accept-Language` de cada um
@@ -95,7 +116,16 @@ public class CoreWrapper: ObservableObject {
         // A escolha do interruptor "Análise de uso" antes do primeiro login: com ela
         // desligada, o Core não identifica nem manda evento de uso.
         dispatch(event: .restoreAnalyticsPreference)
+        // A trilha escolhida, o onboarding e o dia do selo; e o fuso, para o "hoje" do
+        // selo ser o do jogador.
+        dispatch(event: .setUtcOffset(seconds: Int32(TimeZone.current.secondsFromGMT())))
+        dispatch(event: .restorePreferences)
         prepareKeychain()
+        // O aparelho vai no `X-Device-ID` da licença da trilha paga: o servidor registra
+        // os aparelhos de cada compra. `identifierForVendor`, nunca o de publicidade.
+        if let deviceId = UIDevice.current.identifierForVendor?.uuidString {
+            dispatch(event: .setDeviceId(deviceId))
+        }
         // A trilha que viaja no bundle entra antes de tudo: instalação nova e sem rede
         // não tem retrato guardado nem resposta do servidor, e sem isto o app abria com
         // uma trilha de mock que não existe no banco. O Core só usa o que estiver vazio.
@@ -284,6 +314,31 @@ public class CoreWrapper: ObservableObject {
     /// e a fila e o retrato crescem além do que o Keychain foi feito para guardar.
     private static let keychainKeys: Set<String> = ["refresh_token"]
 
+    /// Licença de trilha paga, uma por conta e trilha (`track_key:<conta>:<trilha>`). A
+    /// chave de conteúdo é credencial: Keychain, só deste aparelho, fora do backup.
+    private static let keychainPrefix = "track_key:"
+
+    /// Pacote cifrado da trilha paga (`track_package:<conta>:<trilha>`). É binário e
+    /// grande, então vai para um arquivo no container, fora do `UserDefaults`. Pode ir
+    /// para o backup: sem a chave, que não vai, ele não abre.
+    private static let filePrefix = "track_package:"
+
+    private static func isKeychainKey(_ key: String) -> Bool {
+        keychainKeys.contains(key) || key.hasPrefix(keychainPrefix)
+    }
+
+    /// Onde fica o pacote de uma chave. O nome do arquivo é o hash da chave, e não a
+    /// chave: ela vem do Core, e nada que vem de fora vira caminho.
+    private static func packageURL(forKey key: String) -> URL? {
+        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            return nil
+        }
+        let dir = base.appendingPathComponent("TrackPackages", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let name = SHA256.hash(data: Data(key.utf8)).map { String(format: "%02x", $0) }.joined()
+        return dir.appendingPathComponent(name)
+    }
+
     /// Marca, em `UserDefaults`, que esta instalação já passou por `prepareKeychain`.
     private static let keychainPreparedKey = "keychain_prepared"
 
@@ -307,27 +362,40 @@ public class CoreWrapper: ObservableObject {
                 Keychain.remove(forKey: key)
             }
         }
+        // Licença que sobreviveu à desinstalação sem o pacote, que foi junto com o app.
+        Keychain.removeAll(withPrefix: Self.keychainPrefix)
         defaults.set(true, forKey: Self.keychainPreparedKey)
     }
 
     private func storedBytes(forKey key: String) -> [UInt8]? {
-        if Self.keychainKeys.contains(key) {
+        if Self.isKeychainKey(key) {
             return Keychain.read(forKey: key)
+        }
+        if key.hasPrefix(Self.filePrefix) {
+            return Self.packageURL(forKey: key).flatMap { try? Data(contentsOf: $0) }.map { [UInt8]($0) }
         }
         return UserDefaults.standard.string(forKey: key).map { Array($0.utf8) }
     }
 
     private func store(_ bytes: [UInt8], forKey key: String) {
-        if Self.keychainKeys.contains(key) {
+        if Self.isKeychainKey(key) {
             Keychain.write(bytes, forKey: key)
+        } else if key.hasPrefix(Self.filePrefix) {
+            if let url = Self.packageURL(forKey: key) {
+                try? Data(bytes).write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            }
         } else {
             UserDefaults.standard.set(String(bytes: bytes, encoding: .utf8) ?? "", forKey: key)
         }
     }
 
     private func removeStored(forKey key: String) {
-        if Self.keychainKeys.contains(key) {
+        if Self.isKeychainKey(key) {
             Keychain.remove(forKey: key)
+        } else if key.hasPrefix(Self.filePrefix) {
+            if let url = Self.packageURL(forKey: key) {
+                try? FileManager.default.removeItem(at: url)
+            }
         } else {
             UserDefaults.standard.removeObject(forKey: key)
         }
@@ -506,6 +574,25 @@ private enum Keychain {
         let status = SecItemDelete(query(forKey: key) as CFDictionary)
         if status != errSecSuccess && status != errSecItemNotFound {
             print("Keychain delete failed for \(key): \(status)")
+        }
+    }
+
+    /// Apaga todo item deste app cuja conta começa com o prefixo.
+    static func removeAll(withPrefix prefix: String) {
+        let search: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecReturnAttributes as String: true,
+            kSecMatchLimit as String: kSecMatchLimitAll,
+        ]
+        var items: CFTypeRef?
+        guard SecItemCopyMatching(search as CFDictionary, &items) == errSecSuccess,
+              let list = items as? [[String: Any]]
+        else { return }
+        for item in list {
+            if let account = item[kSecAttrAccount as String] as? String, account.hasPrefix(prefix) {
+                remove(forKey: account)
+            }
         }
     }
 }

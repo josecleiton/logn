@@ -10,19 +10,27 @@ struct LognButton: View {
     let variant: Variant
     let action: () -> Void
     var isDisabled: Bool = false
+    var isLoading: Bool = false
 
     enum Variant { case primary, secondary, ghost }
 
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.custom(fontName, size: 15))
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .foregroundColor(foregroundColor)
-                .background(backgroundColor)
-                .cornerRadius(Radius.sm)
-                .overlay(
+            Group {
+                if isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: foregroundColor))
+                } else {
+                    Text(title)
+                        .font(.custom(fontName, size: 15))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .foregroundColor(foregroundColor)
+            .background(backgroundColor)
+            .cornerRadius(Radius.sm)
+            .overlay(
                     variant == .secondary
                         ? RoundedRectangle(cornerRadius: Radius.sm)
                             .stroke(LognDark.lineStrong, lineWidth: 1)
@@ -30,7 +38,7 @@ struct LognButton: View {
                 )
         }
         .buttonStyle(PressSinkStyle())
-        .disabled(isDisabled)
+        .disabled(isDisabled || isLoading)
     }
 
     /// Primário é SemiBold; secundário e ghost são Medium.

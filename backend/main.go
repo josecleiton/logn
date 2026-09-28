@@ -15,6 +15,7 @@ import (
 	"github.com/josecleiton/logn/backend/internal/infrastructure/cloudauth"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/email"
 	"github.com/josecleiton/logn/backend/internal/locale"
+	"github.com/josecleiton/logn/backend/internal/storekit"
 	"github.com/josecleiton/logn/backend/schema"
 )
 
@@ -22,6 +23,7 @@ type Server struct {
 	repo           *domain.Repository
 	mailer         *email.Mailer
 	cloudValidator cloudauth.Validator
+	storekit       *storekit.Validator
 }
 
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -270,6 +272,8 @@ func main() {
 		return
 	}
 
+	domain.TrackKeySecret = trackKeySecretFromEnv()
+
 	repo := domain.NewRepository(pool)
 	mailer := email.NewMailer()
 	validator := cloudauth.NewGoogleValidator()
@@ -277,6 +281,7 @@ func main() {
 		repo:           repo,
 		mailer:         mailer,
 		cloudValidator: validator,
+		storekit:       storeKitValidatorFromEnv(),
 	}
 
 	if os.Getenv("PURGE_ONLY") == "true" {
@@ -310,6 +315,20 @@ func main() {
 	mux.HandleFunc("POST /api/v1/auth/register", auth(server.registerHandler))
 	mux.HandleFunc("POST /api/v1/auth/reset-password", auth(server.resetPasswordHandler))
 	mux.HandleFunc("POST /api/v1/users/me/delete", auth(server.deleteAccountHandler))
+	mux.HandleFunc("POST /api/v1/purchases", auth(server.purchaseHandler))
+	mux.HandleFunc("POST /api/v1/purchases/restore", auth(server.restorePurchaseHandler))
+	// Catálogo, licença e pacote têm balde próprio: cada abertura revalida as trilhas da
+	// conta, e dividir o balde do login deixava o jogador atrás de NAT sem conseguir entrar.
+	trackLimiter := newRateLimiter(60, time.Minute)
+	tracked := func(h http.HandlerFunc) http.HandlerFunc {
+		return trackLimiter.wrap(limitBody(authBodyLimit, h))
+	}
+	mux.HandleFunc("GET /api/v1/tracks", tracked(server.tracksHandler))
+	mux.HandleFunc("GET /api/v1/tracks/{id}/license", tracked(server.trackLicenseHandler))
+	mux.HandleFunc("GET /api/v1/tracks/{id}/package", tracked(server.trackPackageHandler))
+
+	mux.HandleFunc("POST /api/v1/appstore/notifications",
+		server.appStoreNotificationRoute(newRateLimiter(120, time.Minute)))
 
 	mux.HandleFunc("GET /api/v1/nodes", server.getNodesHandler)
 	mux.HandleFunc("GET /api/v1/progress", server.getUserProgressHandler)
@@ -327,9 +346,14 @@ func main() {
 
 	// Sondas do Cloud Run e a rota interna do Cloud Scheduler chegam direto do Google,
 	// nunca pelo proxy na frente — ficam fora da checagem de origem.
+	//
+	// A notificação da App Store também: é servidor chamando servidor, e o Bot Fight
+	// Mode da borda, que não aceita exceção, desafiaria a Apple com JS e o reembolso
+	// nunca chegaria. Ela é cadastrada na URL .run.app, como o Scheduler, e a defesa é a
+	// assinatura contra a raiz fixa (ADR 0012), com teto de corpo e de ritmo.
 	originExempt := func(r *http.Request) bool {
 		switch r.URL.Path {
-		case "/health", "/ready", "/ping":
+		case "/health", "/ready", "/ping", "/api/v1/appstore/notifications":
 			return true
 		}
 		return strings.HasPrefix(r.URL.Path, "/api/v1/internal/")

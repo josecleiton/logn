@@ -63,3 +63,12 @@ targets:
           - CFBundleURLSchemes:
               - logn
             CFBundleURLName: sh.logn.app
+
+schemes:
+  LogNiOS:
+    build:
+      targets:
+        LogNiOS: all
+    run:
+      config: Debug
+      storeKitConfiguration: LogNiOS/StoreKitConfig.storekit

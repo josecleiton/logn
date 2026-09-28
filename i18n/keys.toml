@@ -50,7 +50,16 @@ invalid_email = {}
 password_too_short = {}
 password_too_long = {}
 email_taken = {}
-wait_seconds = { placeholders = [{ name = "seconds", type = "int" }] }
+purchase_confirming = {}
+purchase_confirmed = {}
+purchase_failed = {}
+purchase_owned_by_other_account = {}
+purchase_account_mismatch = {}
+purchase_revoked = {}
+purchase_needs_account = {}
+track_revoked = {}
+track_download_failed = {}
+wait_seconds ={ placeholders = [{ name = "seconds", type = "int" }] }
 sample_standings = {}
 # Sair da partida. O Core decide se pergunta; a cópia mora aqui.
 
@@ -114,6 +123,7 @@ node_completed = { placeholders = [{ name = "name", type = "text" }, { name = "s
 node_active = { placeholders = [{ name = "name", type = "text" }, { name = "solved", type = "int" }, { name = "total", type = "int" }] }
 node_locked = { placeholders = [{ name = "name", type = "text" }] }
 node_locked_prereq = { placeholders = [{ name = "name", type = "text" }, { name = "missing", type = "int" }] }
+node_paywalled = { placeholders = [{ name = "name", type = "text" }] }
 
 [groups.arena.keys]
 drag_block = {}
@@ -219,6 +229,8 @@ create_account = {}
 challenges_completed = { plural = true, placeholders = [{ name = "count", type = "int" }] }
 analytics_title = {}
 analytics_desc = {}
+storage = {}
+restore_purchases = {}
 
 [groups.logout.keys]
 server_safe = { placeholders = [{ name = "xp", type = "int" }] }
@@ -349,6 +361,148 @@ without_saving = {}
 core_ready = {}
 loading = {}
 sign_in = {}
+
+# Trilha paga: o que a loja responde e o Core não sabe.
+[groups.paywall.keys]
+cancelled = {}
+pending = {}
+store_unavailable = {}
+product_missing = {}
+needs_account = {}
+
+# Catálogo de trilhas (LogN Trilhas, 1b) e o botão que o abre.
+[groups.catalog.keys]
+title = {}
+button = {}
+principal = {}
+progress = { placeholders = [{ name = "done", type = "int" }, { name = "total", type = "int" }, { name = "xp", type = "int" }] }
+nodes = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+owned = {}
+discontinued = {}
+no_access = {}
+see = {}
+days = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+today = {}
+connect = {}
+offline = {}
+open_accessibility = { placeholders = [{ name = "name", type = "text" }, { name = "state", type = "text" }] }
+
+# Detalhe da trilha (1d, V3) e os estados da comprada.
+[groups.track.keys]
+meta = { placeholders = [{ name = "nodes", type = "int" }, { name = "author", type = "text" }, { name = "languages", type = "text" }] }
+owned_meta = { placeholders = [{ name = "done", type = "int" }, { name = "total", type = "int" }] }
+free_tag = {}
+play_sample = {}
+buy = { placeholders = [{ name = "price", type = "text" }] }
+buy_no_price = {}
+buy_note = {}
+continue_node = { placeholders = [{ name = "index", type = "int" }] }
+continue_track = {}
+valid_until = { placeholders = [{ name = "date", type = "text" }] }
+offline_days_tag = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+offline_last_day_tag = {}
+offline_soon_body = { placeholders = [{ name = "day", type = "text" }, { name = "track", type = "text" }] }
+offline_today_body = { placeholders = [{ name = "track", type = "text" }] }
+offline_rule = {}
+revoked_refund = { placeholders = [{ name = "track", type = "text" }, { name = "xp", type = "int" }] }
+revoked_other = { placeholders = [{ name = "track", type = "text" }, { name = "xp", type = "int" }] }
+buy_again = { placeholders = [{ name = "price", type = "text" }] }
+buy_again_no_price = {}
+discontinued_note = {}
+
+# O nó bloqueado da trilha paga (1e).
+[groups.locked.keys]
+eyebrow = { placeholders = [{ name = "index", type = "int" }, { name = "name", type = "text" }] }
+title = {}
+sample_done = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+rest = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+unlock = { placeholders = [{ name = "track", type = "text" }, { name = "price", type = "text" }] }
+unlock_no_price = { placeholders = [{ name = "track", type = "text" }] }
+not_now = {}
+
+# A oferta do fim da amostra, no relatório da partida (1f).
+[groups.offer.keys]
+eyebrow = { placeholders = [{ name = "index", type = "int" }, { name = "total", type = "int" }] }
+nodes = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+problems = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+tail = {}
+continue_buy = { placeholders = [{ name = "track", type = "text" }, { name = "price", type = "text" }] }
+continue_buy_no_price = { placeholders = [{ name = "track", type = "text" }] }
+back = { placeholders = [{ name = "track", type = "text" }] }
+
+# O passo a passo da compra (F3).
+[groups.purchase.keys]
+validating_label = {}
+validating_title = {}
+validating_body = {}
+downloading_label = {}
+downloading_title = { placeholders = [{ name = "track", type = "text" }] }
+downloading_body = {}
+ready_label = {}
+ready_title = {}
+ready_body = {}
+failed_label = {}
+failed_title = {}
+log_store = {}
+log_store_ok = {}
+log_transaction = {}
+log_transaction_ok = {}
+log_license = {}
+log_license_ok = {}
+log_package = {}
+log_package_ok = {}
+wait = {}
+background = {}
+open_track = { placeholders = [{ name = "track", type = "text" }] }
+close = {}
+
+# Visitante que toca em comprar (F2).
+[groups.guest_purchase.keys]
+title = {}
+body = {}
+create = {}
+login = {}
+note = {}
+
+# Onboarding de uma tela, na primeira abertura (F1).
+[groups.onboarding.keys]
+title = {}
+body = {}
+free_body = {}
+know_title = {}
+know_body = {}
+start = {}
+
+# A trilha comprada cuja licença offline venceu (V4).
+[groups.expired.keys]
+eyebrow = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+title = { placeholders = [{ name = "track", type = "text" }] }
+body = {}
+progress = {}
+xp = {}
+retry = {}
+back = { placeholders = [{ name = "track", type = "text" }] }
+
+# O resultado de "Restaurar compras".
+[groups.restore.keys]
+title = {}
+running = {}
+count = { placeholders = [{ name = "restored", type = "int" }, { name = "total", type = "int" }] }
+names = { placeholders = [{ name = "names", type = "text" }] }
+nothing = {}
+other = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+ok = {}
+
+# Armazenamento: o que as trilhas pagas ocupam no aparelho.
+[groups.storage.keys]
+title = {}
+desc = {}
+empty = {}
+size = { placeholders = [{ name = "size", type = "text" }] }
+not_downloaded = {}
+download = {}
+delete_accessibility = { placeholders = [{ name = "name", type = "text" }] }
+close = {}
 
 
 

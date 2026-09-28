@@ -6,6 +6,7 @@ import PostHog
 @main
 struct LogNiOSApp: App {
     @StateObject private var core = CoreWrapper()
+    @StateObject private var storeKit = StoreKitManager.shared
     
     init() {
         // Com a escolha do interruptor "Análise de uso" guardada no aparelho.
@@ -39,6 +40,7 @@ struct LogNiOSApp: App {
                 } else if core.viewModel.hasSession || core.viewModel.isGuest {
                     ContentView()
                         .environmentObject(core)
+                        .environmentObject(storeKit)
                         .overlay(alignment: .bottom) {
                             // A exclusão pedida foi cancelada por este login.
                             if core.viewModel.accountRestoredNotice {
@@ -69,6 +71,9 @@ struct LogNiOSApp: App {
                 handleIncomingURL(url)
             }
             .onAppear {
+                // A escuta da loja começa com o app, não com a tela de compra: a
+                // transação que ficou sem confirmar volta na abertura (spec, seção 5).
+                storeKit.attach(core: core)
                 #if DEBUG
                 // Atalho de inspeção visual: `simctl launch … -LogNStartAsGuest 1` entra
                 // direto no app. Existe para conferir tela contra o design system sem

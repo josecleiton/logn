@@ -104,6 +104,12 @@ resource "google_cloud_run_v2_service" "logn" {
         name  = "RUN_MIGRATIONS"
         value = "true"
       }
+      # O bundle que as transações da App Store têm de trazer. Não é segredo; sem ele o
+      # servidor não sobe no Cloud Run (store_config.go).
+      env {
+        name  = "APPLE_BUNDLE_ID"
+        value = "sh.logn.app"
+      }
 
       env {
         name = "DATABASE_URL"
@@ -137,6 +143,15 @@ resource "google_cloud_run_v2_service" "logn" {
         value_source {
           secret_key_ref {
             secret  = google_secret_manager_secret.smtp_pass.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "TRACK_KEY_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.track_key_secret.secret_id
             version = "latest"
           }
         }

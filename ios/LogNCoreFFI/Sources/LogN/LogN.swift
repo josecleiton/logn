@@ -436,6 +436,48 @@ public struct BootViewModel: Hashable, Equatable {
     }
 }
 
+/// O selo do botão Trilhas: a trilha comprada que mais pede atenção.
+public struct CatalogBadge: Hashable, Equatable {
+    /// `Soon`, `Today` ou `Expired`; qualquer outro é sem selo.
+    public var state: OfflineState
+    public var daysLeft: UInt32
+
+    public init(state: OfflineState, daysLeft: UInt32) {
+        self.state = state
+        self.daysLeft = daysLeft
+    }
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        try self.state.serialize(serializer: serializer)
+        try serializer.serialize_u32(value: self.daysLeft)
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> CatalogBadge {
+        try deserializer.increase_container_depth()
+        let state = try LogN.OfflineState.deserialize(deserializer: deserializer)
+        let daysLeft = try deserializer.deserialize_u32()
+        try deserializer.decrease_container_depth()
+        return CatalogBadge(state: state, daysLeft: daysLeft)
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> CatalogBadge {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
 public struct Challenge: Hashable, Equatable {
     public var id: String
     public var nodeId: String
@@ -857,6 +899,56 @@ indirect public enum Event: Hashable, Equatable {
     case progressFetched(HttpResult)
     case nodesFetched(HttpResult)
     case challengesFetched(HttpResult)
+    /// O shell dá o `identifierForVendor` na abertura. Vai no `X-Device-ID` da licença.
+    case setDeviceId(String)
+    /// O catálogo de trilhas pagas.
+    case fetchTracks
+    case tracksFetched(HttpResult)
+    /// A loja entregou uma transação verificada. O Core manda ao servidor, e só depois
+    /// de ele confirmar o shell pode finalizar a transação na loja (spec, seção 5).
+    /// `restore` é o "Restaurar compras": a transação já foi finalizada antes.
+    /// `product_id` diz de que trilha é a compra, para a tela do passo a passo (F3).
+    case submitPurchase(jws: String, transactionId: String, productId: String, restore: Bool)
+    case purchaseSubmitted(jws: String, transactionId: String, productId: String, restore: Bool, result: HttpResult)
+    /// O shell finalizou a transação na loja.
+    case purchaseFinished(transactionId: String)
+    /// Fechou a tela do passo a passo da compra. Antes de pronta, a compra segue em
+    /// segundo plano.
+    case closePurchaseFlow
+    /// O jogador tocou em comprar este produto: a compra dele abre o passo a passo.
+    case purchaseIntent(productId: String)
+    /// "Restaurar compras" começou com `count` transações do Apple ID.
+    case restoreStarted(count: UInt32)
+    case dismissRestoreResult
+    /// A árvore passa a mostrar esta trilha.
+    case selectTrack(trackId: String)
+    /// "Agora não" na oferta do fim da amostra: ela não volta nesta sessão.
+    case dismissSampleOffer(trackId: String)
+    /// Abriu o catálogo: o selo de "N dias" do botão Trilhas some até amanhã.
+    case catalogOpened
+    /// Fuso do aparelho, em segundos. O "hoje" do selo é o do jogador, não o UTC.
+    case setUtcOffset(seconds: Int32)
+    /// Onboarding fechado ("Por onde começar?"). Não volta mais neste aparelho.
+    case completeOnboarding
+    /// Abertura: lê a trilha escolhida, o onboarding e o dia do selo.
+    case restorePreferences
+    case preferenceRestored(key: String, result: KeyValueResult)
+    /// Pede a licença da trilha: na compra, ao baixar e a cada abertura com rede.
+    case fetchLicense(trackId: String)
+    /// `user_id` é de quem pediu: a resposta que chega depois de trocar de conta não
+    /// entra na conta nova.
+    case licenseFetched(userId: String, trackId: String, result: HttpResult)
+    case fetchPackage(trackId: String)
+    case packageFetched(userId: String, trackId: String, result: HttpResult)
+    /// A maior hora que este aparelho já viu, guardada com as licenças.
+    case clockRead(userId: String, result: KeyValueResult)
+    /// Lê do aparelho as trilhas que a conta baixou, e revalida com o servidor.
+    case loadTrackDownloads
+    case trackIndexRead(userId: String, result: KeyValueResult)
+    case licenseRead(userId: String, trackId: String, result: KeyValueResult)
+    case packageRead(userId: String, trackId: String, result: KeyValueResult)
+    /// Apaga do aparelho a chave e o pacote da trilha. A compra continua na conta.
+    case deleteTrackDownload(trackId: String)
     case syncNow
     case syncAndLogout
     /// A fila guardada sob a chave de `owner`. Chega depois de `claim_queue` e é
@@ -1025,195 +1117,287 @@ indirect public enum Event: Hashable, Equatable {
         case .challengesFetched(let x):
             try serializer.serialize_variant_index(value: 20)
             try x.serialize(serializer: serializer)
-        case .syncNow:
+        case .setDeviceId(let x):
             try serializer.serialize_variant_index(value: 21)
-        case .syncAndLogout:
+            try serializer.serialize_str(value: x)
+        case .fetchTracks:
             try serializer.serialize_variant_index(value: 22)
-        case .offlineQueueRestored(let owner, let result):
+        case .tracksFetched(let x):
             try serializer.serialize_variant_index(value: 23)
+            try x.serialize(serializer: serializer)
+        case .submitPurchase(let jws, let transactionId, let productId, let restore):
+            try serializer.serialize_variant_index(value: 24)
+            try serializer.serialize_str(value: jws)
+            try serializer.serialize_str(value: transactionId)
+            try serializer.serialize_str(value: productId)
+            try serializer.serialize_bool(value: restore)
+        case .purchaseSubmitted(let jws, let transactionId, let productId, let restore, let result):
+            try serializer.serialize_variant_index(value: 25)
+            try serializer.serialize_str(value: jws)
+            try serializer.serialize_str(value: transactionId)
+            try serializer.serialize_str(value: productId)
+            try serializer.serialize_bool(value: restore)
+            try result.serialize(serializer: serializer)
+        case .purchaseFinished(let transactionId):
+            try serializer.serialize_variant_index(value: 26)
+            try serializer.serialize_str(value: transactionId)
+        case .closePurchaseFlow:
+            try serializer.serialize_variant_index(value: 27)
+        case .purchaseIntent(let productId):
+            try serializer.serialize_variant_index(value: 28)
+            try serializer.serialize_str(value: productId)
+        case .restoreStarted(let count):
+            try serializer.serialize_variant_index(value: 29)
+            try serializer.serialize_u32(value: count)
+        case .dismissRestoreResult:
+            try serializer.serialize_variant_index(value: 30)
+        case .selectTrack(let trackId):
+            try serializer.serialize_variant_index(value: 31)
+            try serializer.serialize_str(value: trackId)
+        case .dismissSampleOffer(let trackId):
+            try serializer.serialize_variant_index(value: 32)
+            try serializer.serialize_str(value: trackId)
+        case .catalogOpened:
+            try serializer.serialize_variant_index(value: 33)
+        case .setUtcOffset(let seconds):
+            try serializer.serialize_variant_index(value: 34)
+            try serializer.serialize_i32(value: seconds)
+        case .completeOnboarding:
+            try serializer.serialize_variant_index(value: 35)
+        case .restorePreferences:
+            try serializer.serialize_variant_index(value: 36)
+        case .preferenceRestored(let key, let result):
+            try serializer.serialize_variant_index(value: 37)
+            try serializer.serialize_str(value: key)
+            try result.serialize(serializer: serializer)
+        case .fetchLicense(let trackId):
+            try serializer.serialize_variant_index(value: 38)
+            try serializer.serialize_str(value: trackId)
+        case .licenseFetched(let userId, let trackId, let result):
+            try serializer.serialize_variant_index(value: 39)
+            try serializer.serialize_str(value: userId)
+            try serializer.serialize_str(value: trackId)
+            try result.serialize(serializer: serializer)
+        case .fetchPackage(let trackId):
+            try serializer.serialize_variant_index(value: 40)
+            try serializer.serialize_str(value: trackId)
+        case .packageFetched(let userId, let trackId, let result):
+            try serializer.serialize_variant_index(value: 41)
+            try serializer.serialize_str(value: userId)
+            try serializer.serialize_str(value: trackId)
+            try result.serialize(serializer: serializer)
+        case .clockRead(let userId, let result):
+            try serializer.serialize_variant_index(value: 42)
+            try serializer.serialize_str(value: userId)
+            try result.serialize(serializer: serializer)
+        case .loadTrackDownloads:
+            try serializer.serialize_variant_index(value: 43)
+        case .trackIndexRead(let userId, let result):
+            try serializer.serialize_variant_index(value: 44)
+            try serializer.serialize_str(value: userId)
+            try result.serialize(serializer: serializer)
+        case .licenseRead(let userId, let trackId, let result):
+            try serializer.serialize_variant_index(value: 45)
+            try serializer.serialize_str(value: userId)
+            try serializer.serialize_str(value: trackId)
+            try result.serialize(serializer: serializer)
+        case .packageRead(let userId, let trackId, let result):
+            try serializer.serialize_variant_index(value: 46)
+            try serializer.serialize_str(value: userId)
+            try serializer.serialize_str(value: trackId)
+            try result.serialize(serializer: serializer)
+        case .deleteTrackDownload(let trackId):
+            try serializer.serialize_variant_index(value: 47)
+            try serializer.serialize_str(value: trackId)
+        case .syncNow:
+            try serializer.serialize_variant_index(value: 48)
+        case .syncAndLogout:
+            try serializer.serialize_variant_index(value: 49)
+        case .offlineQueueRestored(let owner, let result):
+            try serializer.serialize_variant_index(value: 50)
             try serializer.serialize_str(value: owner)
             try result.serialize(serializer: serializer)
         case .bundledTrailLoaded(let json):
-            try serializer.serialize_variant_index(value: 24)
+            try serializer.serialize_variant_index(value: 51)
             try serializer.serialize_str(value: json)
         case .leaveMatch:
-            try serializer.serialize_variant_index(value: 25)
+            try serializer.serialize_variant_index(value: 52)
         case .confirmLeaveMatch:
-            try serializer.serialize_variant_index(value: 26)
+            try serializer.serialize_variant_index(value: 53)
         case .cancelLeaveMatch:
-            try serializer.serialize_variant_index(value: 27)
+            try serializer.serialize_variant_index(value: 54)
         case .openOriginSheet:
-            try serializer.serialize_variant_index(value: 28)
+            try serializer.serialize_variant_index(value: 55)
         case .closeOriginSheet:
-            try serializer.serialize_variant_index(value: 29)
+            try serializer.serialize_variant_index(value: 56)
         case .originsSeenRestored(let x):
-            try serializer.serialize_variant_index(value: 30)
+            try serializer.serialize_variant_index(value: 57)
             try x.serialize(serializer: serializer)
         case .originsSeenStored(let x):
-            try serializer.serialize_variant_index(value: 31)
+            try serializer.serialize_variant_index(value: 58)
             try x.serialize(serializer: serializer)
         case .dismissPasswordReset:
-            try serializer.serialize_variant_index(value: 32)
+            try serializer.serialize_variant_index(value: 59)
         case .tick(let now):
-            try serializer.serialize_variant_index(value: 33)
+            try serializer.serialize_variant_index(value: 60)
             try serializer.serialize_i64(value: now)
         case .cooldownClock(let now):
-            try serializer.serialize_variant_index(value: 34)
+            try serializer.serialize_variant_index(value: 61)
             try serializer.serialize_i64(value: now)
         case .cooldownElapsed:
-            try serializer.serialize_variant_index(value: 35)
+            try serializer.serialize_variant_index(value: 62)
         case .sessionExpiryStored(let x):
-            try serializer.serialize_variant_index(value: 36)
+            try serializer.serialize_variant_index(value: 63)
             try x.serialize(serializer: serializer)
         case .offlineSessionChecked(let x):
-            try serializer.serialize_variant_index(value: 37)
+            try serializer.serialize_variant_index(value: 64)
             try x.serialize(serializer: serializer)
         case .snapshotSaved(let x):
-            try serializer.serialize_variant_index(value: 38)
+            try serializer.serialize_variant_index(value: 65)
             try x.serialize(serializer: serializer)
         case .snapshotRestored(let x):
-            try serializer.serialize_variant_index(value: 39)
+            try serializer.serialize_variant_index(value: 66)
             try x.serialize(serializer: serializer)
         case .rotatedTokenStored(let x):
-            try serializer.serialize_variant_index(value: 40)
+            try serializer.serialize_variant_index(value: 67)
             try x.serialize(serializer: serializer)
         case .attemptRefreshDone:
-            try serializer.serialize_variant_index(value: 41)
+            try serializer.serialize_variant_index(value: 68)
         case .syncCompleted(let x):
-            try serializer.serialize_variant_index(value: 42)
+            try serializer.serialize_variant_index(value: 69)
             try x.serialize(serializer: serializer)
         case .requestOtp(let email, let purpose):
-            try serializer.serialize_variant_index(value: 43)
+            try serializer.serialize_variant_index(value: 70)
             try serializer.serialize_str(value: email)
             try serializer.serialize_str(value: purpose)
         case .otpRequested(let x):
-            try serializer.serialize_variant_index(value: 44)
+            try serializer.serialize_variant_index(value: 71)
             try x.serialize(serializer: serializer)
         case .verifyOtp(let email, let code, let purpose):
-            try serializer.serialize_variant_index(value: 45)
+            try serializer.serialize_variant_index(value: 72)
             try serializer.serialize_str(value: email)
             try serializer.serialize_str(value: code)
             try serializer.serialize_str(value: purpose)
         case .otpVerified(let x):
-            try serializer.serialize_variant_index(value: 46)
+            try serializer.serialize_variant_index(value: 73)
             try x.serialize(serializer: serializer)
         case .register(let email, let password, let otp, let ageConfirmed, let legalAccepted):
-            try serializer.serialize_variant_index(value: 47)
+            try serializer.serialize_variant_index(value: 74)
             try serializer.serialize_str(value: email)
             try serializer.serialize_str(value: password)
             try serializer.serialize_str(value: otp)
             try serializer.serialize_bool(value: ageConfirmed)
             try serializer.serialize_bool(value: legalAccepted)
         case .registerCompleted(let x):
-            try serializer.serialize_variant_index(value: 48)
+            try serializer.serialize_variant_index(value: 75)
             try x.serialize(serializer: serializer)
         case .resetPassword(let email, let newPassword, let otp):
-            try serializer.serialize_variant_index(value: 49)
+            try serializer.serialize_variant_index(value: 76)
             try serializer.serialize_str(value: email)
             try serializer.serialize_str(value: newPassword)
             try serializer.serialize_str(value: otp)
         case .resetPasswordCompleted(let x):
-            try serializer.serialize_variant_index(value: 50)
+            try serializer.serialize_variant_index(value: 77)
             try x.serialize(serializer: serializer)
         case .queueSavedForSync(let x):
-            try serializer.serialize_variant_index(value: 51)
+            try serializer.serialize_variant_index(value: 78)
             try x.serialize(serializer: serializer)
         case .startMatch(let nodeId):
-            try serializer.serialize_variant_index(value: 52)
+            try serializer.serialize_variant_index(value: 79)
             try serializer.serialize_str(value: nodeId)
         case .matchSelectLine(let line):
-            try serializer.serialize_variant_index(value: 53)
+            try serializer.serialize_variant_index(value: 80)
             try serializer.serialize_i32(value: line)
         case .matchSetAnswer(let answer):
-            try serializer.serialize_variant_index(value: 54)
+            try serializer.serialize_variant_index(value: 81)
             try serializer.serialize_str(value: answer)
         case .matchSetDropTime(let value):
-            try serializer.serialize_variant_index(value: 55)
+            try serializer.serialize_variant_index(value: 82)
             try serializer.serialize_str(value: value)
         case .matchSetDropSpace(let value):
-            try serializer.serialize_variant_index(value: 56)
+            try serializer.serialize_variant_index(value: 83)
             try serializer.serialize_str(value: value)
         case .matchToggleTag(let tag):
-            try serializer.serialize_variant_index(value: 57)
+            try serializer.serialize_variant_index(value: 84)
             try serializer.serialize_str(value: tag)
         case .matchSetOutput(let value):
-            try serializer.serialize_variant_index(value: 58)
+            try serializer.serialize_variant_index(value: 85)
             try serializer.serialize_str(value: value)
         case .matchSubmit(let timestamp):
-            try serializer.serialize_variant_index(value: 59)
+            try serializer.serialize_variant_index(value: 86)
             try serializer.serialize_i64(value: timestamp)
         case .matchDismissTrap:
-            try serializer.serialize_variant_index(value: 60)
+            try serializer.serialize_variant_index(value: 87)
         case .matchTimerTick:
-            try serializer.serialize_variant_index(value: 61)
+            try serializer.serialize_variant_index(value: 88)
         case .undoLogout:
-            try serializer.serialize_variant_index(value: 62)
+            try serializer.serialize_variant_index(value: 89)
         case .dismissLogoutNotice:
-            try serializer.serialize_variant_index(value: 63)
+            try serializer.serialize_variant_index(value: 90)
         case .logoutUndone(let x):
-            try serializer.serialize_variant_index(value: 64)
+            try serializer.serialize_variant_index(value: 91)
             try x.serialize(serializer: serializer)
         case .matchAbandonedAt(let solved, let now):
-            try serializer.serialize_variant_index(value: 65)
+            try serializer.serialize_variant_index(value: 92)
             try serializer.serialize_i32(value: solved)
             try serializer.serialize_i64(value: now)
         case .matchReportClosed:
-            try serializer.serialize_variant_index(value: 66)
+            try serializer.serialize_variant_index(value: 93)
         case .reviewMilestonesFired(let x):
-            try serializer.serialize_variant_index(value: 67)
+            try serializer.serialize_variant_index(value: 94)
             try x.serialize(serializer: serializer)
         case .reviewMilestonesRestored(let x):
-            try serializer.serialize_variant_index(value: 68)
+            try serializer.serialize_variant_index(value: 95)
             try x.serialize(serializer: serializer)
         case .fetchLegalVersions(let country):
-            try serializer.serialize_variant_index(value: 69)
+            try serializer.serialize_variant_index(value: 96)
             try serializer.serialize_str(value: country)
         case .legalVersionsFetched(let x):
-            try serializer.serialize_variant_index(value: 70)
+            try serializer.serialize_variant_index(value: 97)
             try x.serialize(serializer: serializer)
         case .deleteAccount(let passwordHash):
-            try serializer.serialize_variant_index(value: 71)
+            try serializer.serialize_variant_index(value: 98)
             try serializer.serialize_str(value: passwordHash)
         case .accountDeleted(let x):
-            try serializer.serialize_variant_index(value: 72)
+            try serializer.serialize_variant_index(value: 99)
             try x.serialize(serializer: serializer)
         case .dismissDeletionNotice:
-            try serializer.serialize_variant_index(value: 73)
+            try serializer.serialize_variant_index(value: 100)
         case .dismissAccountRestoredNotice:
-            try serializer.serialize_variant_index(value: 74)
+            try serializer.serialize_variant_index(value: 101)
         case .setAnalyticsEnabled(let x):
-            try serializer.serialize_variant_index(value: 75)
+            try serializer.serialize_variant_index(value: 102)
             try serializer.serialize_bool(value: x)
         case .restoreAnalyticsPreference:
-            try serializer.serialize_variant_index(value: 76)
+            try serializer.serialize_variant_index(value: 103)
         case .analyticsPreferenceRestored(let x):
-            try serializer.serialize_variant_index(value: 77)
+            try serializer.serialize_variant_index(value: 104)
             try x.serialize(serializer: serializer)
         case .startBoot:
-            try serializer.serialize_variant_index(value: 78)
+            try serializer.serialize_variant_index(value: 105)
         case .bootWatchdogElapsed(let check, let attempt):
-            try serializer.serialize_variant_index(value: 79)
+            try serializer.serialize_variant_index(value: 106)
             try check.serialize(serializer: serializer)
             try serializer.serialize_u32(value: attempt)
         case .retryBoot:
-            try serializer.serialize_variant_index(value: 80)
+            try serializer.serialize_variant_index(value: 107)
         case .continueOffline:
-            try serializer.serialize_variant_index(value: 81)
+            try serializer.serialize_variant_index(value: 108)
         case .resumeEmailRead(let x):
-            try serializer.serialize_variant_index(value: 82)
+            try serializer.serialize_variant_index(value: 109)
             try x.serialize(serializer: serializer)
         case .queueOwnerRead(let x):
-            try serializer.serialize_variant_index(value: 83)
+            try serializer.serialize_variant_index(value: 110)
             try x.serialize(serializer: serializer)
         case .queueToAdoptRead(let from, let result):
-            try serializer.serialize_variant_index(value: 84)
+            try serializer.serialize_variant_index(value: 111)
             try serializer.serialize_str(value: from)
             try result.serialize(serializer: serializer)
         case .queueAdopted(let from):
-            try serializer.serialize_variant_index(value: 85)
+            try serializer.serialize_variant_index(value: 112)
             try serializer.serialize_str(value: from)
         case .syncedQueueRead(let owner, let sent, let result):
-            try serializer.serialize_variant_index(value: 86)
+            try serializer.serialize_variant_index(value: 113)
             try serializer.serialize_str(value: owner)
             try serializeArray(value: sent, serializer: serializer) { item, serializer in
                 try serializer.serialize_str(value: item)
@@ -1310,104 +1494,223 @@ indirect public enum Event: Hashable, Equatable {
             try deserializer.decrease_container_depth()
             return .challengesFetched(x)
         case 21:
+            let x = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
-            return .syncNow
+            return .setDeviceId(x)
         case 22:
             try deserializer.decrease_container_depth()
-            return .syncAndLogout
+            return .fetchTracks
         case 23:
+            let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .tracksFetched(x)
+        case 24:
+            let jws = try deserializer.deserialize_str()
+            let transactionId = try deserializer.deserialize_str()
+            let productId = try deserializer.deserialize_str()
+            let restore = try deserializer.deserialize_bool()
+            try deserializer.decrease_container_depth()
+            return .submitPurchase(jws: jws, transactionId: transactionId, productId: productId, restore: restore)
+        case 25:
+            let jws = try deserializer.deserialize_str()
+            let transactionId = try deserializer.deserialize_str()
+            let productId = try deserializer.deserialize_str()
+            let restore = try deserializer.deserialize_bool()
+            let result = try LogN.HttpResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .purchaseSubmitted(jws: jws, transactionId: transactionId, productId: productId, restore: restore, result: result)
+        case 26:
+            let transactionId = try deserializer.deserialize_str()
+            try deserializer.decrease_container_depth()
+            return .purchaseFinished(transactionId: transactionId)
+        case 27:
+            try deserializer.decrease_container_depth()
+            return .closePurchaseFlow
+        case 28:
+            let productId = try deserializer.deserialize_str()
+            try deserializer.decrease_container_depth()
+            return .purchaseIntent(productId: productId)
+        case 29:
+            let count = try deserializer.deserialize_u32()
+            try deserializer.decrease_container_depth()
+            return .restoreStarted(count: count)
+        case 30:
+            try deserializer.decrease_container_depth()
+            return .dismissRestoreResult
+        case 31:
+            let trackId = try deserializer.deserialize_str()
+            try deserializer.decrease_container_depth()
+            return .selectTrack(trackId: trackId)
+        case 32:
+            let trackId = try deserializer.deserialize_str()
+            try deserializer.decrease_container_depth()
+            return .dismissSampleOffer(trackId: trackId)
+        case 33:
+            try deserializer.decrease_container_depth()
+            return .catalogOpened
+        case 34:
+            let seconds = try deserializer.deserialize_i32()
+            try deserializer.decrease_container_depth()
+            return .setUtcOffset(seconds: seconds)
+        case 35:
+            try deserializer.decrease_container_depth()
+            return .completeOnboarding
+        case 36:
+            try deserializer.decrease_container_depth()
+            return .restorePreferences
+        case 37:
+            let key = try deserializer.deserialize_str()
+            let result = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .preferenceRestored(key: key, result: result)
+        case 38:
+            let trackId = try deserializer.deserialize_str()
+            try deserializer.decrease_container_depth()
+            return .fetchLicense(trackId: trackId)
+        case 39:
+            let userId = try deserializer.deserialize_str()
+            let trackId = try deserializer.deserialize_str()
+            let result = try LogN.HttpResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .licenseFetched(userId: userId, trackId: trackId, result: result)
+        case 40:
+            let trackId = try deserializer.deserialize_str()
+            try deserializer.decrease_container_depth()
+            return .fetchPackage(trackId: trackId)
+        case 41:
+            let userId = try deserializer.deserialize_str()
+            let trackId = try deserializer.deserialize_str()
+            let result = try LogN.HttpResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .packageFetched(userId: userId, trackId: trackId, result: result)
+        case 42:
+            let userId = try deserializer.deserialize_str()
+            let result = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .clockRead(userId: userId, result: result)
+        case 43:
+            try deserializer.decrease_container_depth()
+            return .loadTrackDownloads
+        case 44:
+            let userId = try deserializer.deserialize_str()
+            let result = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .trackIndexRead(userId: userId, result: result)
+        case 45:
+            let userId = try deserializer.deserialize_str()
+            let trackId = try deserializer.deserialize_str()
+            let result = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .licenseRead(userId: userId, trackId: trackId, result: result)
+        case 46:
+            let userId = try deserializer.deserialize_str()
+            let trackId = try deserializer.deserialize_str()
+            let result = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .packageRead(userId: userId, trackId: trackId, result: result)
+        case 47:
+            let trackId = try deserializer.deserialize_str()
+            try deserializer.decrease_container_depth()
+            return .deleteTrackDownload(trackId: trackId)
+        case 48:
+            try deserializer.decrease_container_depth()
+            return .syncNow
+        case 49:
+            try deserializer.decrease_container_depth()
+            return .syncAndLogout
+        case 50:
             let owner = try deserializer.deserialize_str()
             let result = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .offlineQueueRestored(owner: owner, result: result)
-        case 24:
+        case 51:
             let json = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .bundledTrailLoaded(json: json)
-        case 25:
+        case 52:
             try deserializer.decrease_container_depth()
             return .leaveMatch
-        case 26:
+        case 53:
             try deserializer.decrease_container_depth()
             return .confirmLeaveMatch
-        case 27:
+        case 54:
             try deserializer.decrease_container_depth()
             return .cancelLeaveMatch
-        case 28:
+        case 55:
             try deserializer.decrease_container_depth()
             return .openOriginSheet
-        case 29:
+        case 56:
             try deserializer.decrease_container_depth()
             return .closeOriginSheet
-        case 30:
+        case 57:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .originsSeenRestored(x)
-        case 31:
+        case 58:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .originsSeenStored(x)
-        case 32:
+        case 59:
             try deserializer.decrease_container_depth()
             return .dismissPasswordReset
-        case 33:
+        case 60:
             let now = try deserializer.deserialize_i64()
             try deserializer.decrease_container_depth()
             return .tick(now: now)
-        case 34:
+        case 61:
             let now = try deserializer.deserialize_i64()
             try deserializer.decrease_container_depth()
             return .cooldownClock(now: now)
-        case 35:
+        case 62:
             try deserializer.decrease_container_depth()
             return .cooldownElapsed
-        case 36:
+        case 63:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .sessionExpiryStored(x)
-        case 37:
+        case 64:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .offlineSessionChecked(x)
-        case 38:
+        case 65:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .snapshotSaved(x)
-        case 39:
+        case 66:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .snapshotRestored(x)
-        case 40:
+        case 67:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .rotatedTokenStored(x)
-        case 41:
+        case 68:
             try deserializer.decrease_container_depth()
             return .attemptRefreshDone
-        case 42:
+        case 69:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .syncCompleted(x)
-        case 43:
+        case 70:
             let email = try deserializer.deserialize_str()
             let purpose = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .requestOtp(email: email, purpose: purpose)
-        case 44:
+        case 71:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .otpRequested(x)
-        case 45:
+        case 72:
             let email = try deserializer.deserialize_str()
             let code = try deserializer.deserialize_str()
             let purpose = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .verifyOtp(email: email, code: code, purpose: purpose)
-        case 46:
+        case 73:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .otpVerified(x)
-        case 47:
+        case 74:
             let email = try deserializer.deserialize_str()
             let password = try deserializer.deserialize_str()
             let otp = try deserializer.deserialize_str()
@@ -1415,153 +1718,153 @@ indirect public enum Event: Hashable, Equatable {
             let legalAccepted = try deserializer.deserialize_bool()
             try deserializer.decrease_container_depth()
             return .register(email: email, password: password, otp: otp, ageConfirmed: ageConfirmed, legalAccepted: legalAccepted)
-        case 48:
+        case 75:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .registerCompleted(x)
-        case 49:
+        case 76:
             let email = try deserializer.deserialize_str()
             let newPassword = try deserializer.deserialize_str()
             let otp = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .resetPassword(email: email, newPassword: newPassword, otp: otp)
-        case 50:
+        case 77:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .resetPasswordCompleted(x)
-        case 51:
+        case 78:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .queueSavedForSync(x)
-        case 52:
+        case 79:
             let nodeId = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .startMatch(nodeId: nodeId)
-        case 53:
+        case 80:
             let line = try deserializer.deserialize_i32()
             try deserializer.decrease_container_depth()
             return .matchSelectLine(line: line)
-        case 54:
+        case 81:
             let answer = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .matchSetAnswer(answer: answer)
-        case 55:
+        case 82:
             let value = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .matchSetDropTime(value: value)
-        case 56:
+        case 83:
             let value = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .matchSetDropSpace(value: value)
-        case 57:
+        case 84:
             let tag = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .matchToggleTag(tag: tag)
-        case 58:
+        case 85:
             let value = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .matchSetOutput(value: value)
-        case 59:
+        case 86:
             let timestamp = try deserializer.deserialize_i64()
             try deserializer.decrease_container_depth()
             return .matchSubmit(timestamp: timestamp)
-        case 60:
+        case 87:
             try deserializer.decrease_container_depth()
             return .matchDismissTrap
-        case 61:
+        case 88:
             try deserializer.decrease_container_depth()
             return .matchTimerTick
-        case 62:
+        case 89:
             try deserializer.decrease_container_depth()
             return .undoLogout
-        case 63:
+        case 90:
             try deserializer.decrease_container_depth()
             return .dismissLogoutNotice
-        case 64:
+        case 91:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .logoutUndone(x)
-        case 65:
+        case 92:
             let solved = try deserializer.deserialize_i32()
             let now = try deserializer.deserialize_i64()
             try deserializer.decrease_container_depth()
             return .matchAbandonedAt(solved: solved, now: now)
-        case 66:
+        case 93:
             try deserializer.decrease_container_depth()
             return .matchReportClosed
-        case 67:
+        case 94:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .reviewMilestonesFired(x)
-        case 68:
+        case 95:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .reviewMilestonesRestored(x)
-        case 69:
+        case 96:
             let country = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .fetchLegalVersions(country: country)
-        case 70:
+        case 97:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .legalVersionsFetched(x)
-        case 71:
+        case 98:
             let passwordHash = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .deleteAccount(passwordHash: passwordHash)
-        case 72:
+        case 99:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .accountDeleted(x)
-        case 73:
+        case 100:
             try deserializer.decrease_container_depth()
             return .dismissDeletionNotice
-        case 74:
+        case 101:
             try deserializer.decrease_container_depth()
             return .dismissAccountRestoredNotice
-        case 75:
+        case 102:
             let x = try deserializer.deserialize_bool()
             try deserializer.decrease_container_depth()
             return .setAnalyticsEnabled(x)
-        case 76:
+        case 103:
             try deserializer.decrease_container_depth()
             return .restoreAnalyticsPreference
-        case 77:
+        case 104:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .analyticsPreferenceRestored(x)
-        case 78:
+        case 105:
             try deserializer.decrease_container_depth()
             return .startBoot
-        case 79:
+        case 106:
             let check = try LogN.BootCheck.deserialize(deserializer: deserializer)
             let attempt = try deserializer.deserialize_u32()
             try deserializer.decrease_container_depth()
             return .bootWatchdogElapsed(check: check, attempt: attempt)
-        case 80:
+        case 107:
             try deserializer.decrease_container_depth()
             return .retryBoot
-        case 81:
+        case 108:
             try deserializer.decrease_container_depth()
             return .continueOffline
-        case 82:
+        case 109:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .resumeEmailRead(x)
-        case 83:
+        case 110:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .queueOwnerRead(x)
-        case 84:
+        case 111:
             let from = try deserializer.deserialize_str()
             let result = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .queueToAdoptRead(from: from, result: result)
-        case 85:
+        case 112:
             let from = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .queueAdopted(from: from)
-        case 86:
+        case 113:
             let owner = try deserializer.deserialize_str()
             let sent = try deserializeArray(deserializer: deserializer) { deserializer in
                 try deserializer.deserialize_str()
@@ -2603,6 +2906,7 @@ indirect public enum NodeStatus: Hashable, Equatable {
     case locked
     case active
     case completed
+    case paywallLocked
 
     public func serialize<S: Serializer>(serializer: S) throws {
         try serializer.increase_container_depth()
@@ -2613,6 +2917,8 @@ indirect public enum NodeStatus: Hashable, Equatable {
             try serializer.serialize_variant_index(value: 1)
         case .completed:
             try serializer.serialize_variant_index(value: 2)
+        case .paywallLocked:
+            try serializer.serialize_variant_index(value: 3)
         }
         try serializer.decrease_container_depth()
     }
@@ -2636,11 +2942,84 @@ indirect public enum NodeStatus: Hashable, Equatable {
         case 2:
             try deserializer.decrease_container_depth()
             return .completed
+        case 3:
+            try deserializer.decrease_container_depth()
+            return .paywallLocked
         default: throw DeserializationError.invalidInput(issue: "Unknown variant index for NodeStatus: \(index)")
         }
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> NodeStatus {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+/// Onde a licença offline de uma trilha comprada está na escada de dias sem contato
+/// (LogN Validade Offline). Com rede, cada abertura renova, e só `Silent` aparece.
+indirect public enum OfflineState: Hashable, Equatable {
+    /// Sem licença no aparelho: não comprada, ou não baixada.
+    case noLicense
+    /// Mais de 3 dias pela frente. Nada aparece além do "vale até" no detalhe.
+    case silent
+    /// De 3 a 1 dia: selo no botão Trilhas, card âmbar, bloco no detalhe.
+    case soon
+    /// Último dia.
+    case today
+    /// Venceu, ou o relógio foi para antes da emissão. Só esta trilha fecha.
+    case expired
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        switch self {
+        case .noLicense:
+            try serializer.serialize_variant_index(value: 0)
+        case .silent:
+            try serializer.serialize_variant_index(value: 1)
+        case .soon:
+            try serializer.serialize_variant_index(value: 2)
+        case .today:
+            try serializer.serialize_variant_index(value: 3)
+        case .expired:
+            try serializer.serialize_variant_index(value: 4)
+        }
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> OfflineState {
+        let index = try deserializer.deserialize_variant_index()
+        try deserializer.increase_container_depth()
+        switch index {
+        case 0:
+            try deserializer.decrease_container_depth()
+            return .noLicense
+        case 1:
+            try deserializer.decrease_container_depth()
+            return .silent
+        case 2:
+            try deserializer.decrease_container_depth()
+            return .soon
+        case 3:
+            try deserializer.decrease_container_depth()
+            return .today
+        case 4:
+            try deserializer.decrease_container_depth()
+            return .expired
+        default: throw DeserializationError.invalidInput(issue: "Unknown variant index for OfflineState: \(index)")
+        }
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> OfflineState {
         let deserializer = BincodeDeserializer.init(input: input);
         let obj = try deserialize(deserializer: deserializer)
         if deserializer.get_buffer_offset() < input.count {
@@ -2701,6 +3080,126 @@ public struct OriginCard: Hashable, Equatable {
     }
 }
 
+public struct PurchaseFlowView: Hashable, Equatable {
+    public var stage: PurchaseStage
+    public var trackId: String
+    public var failure: StatusKey
+
+    public init(stage: PurchaseStage, trackId: String, failure: StatusKey) {
+        self.stage = stage
+        self.trackId = trackId
+        self.failure = failure
+    }
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        try self.stage.serialize(serializer: serializer)
+        try serializer.serialize_str(value: self.trackId)
+        try self.failure.serialize(serializer: serializer)
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> PurchaseFlowView {
+        try deserializer.increase_container_depth()
+        let stage = try LogN.PurchaseStage.deserialize(deserializer: deserializer)
+        let trackId = try deserializer.deserialize_str()
+        let failure = try LogN.StatusKey.deserialize(deserializer: deserializer)
+        try deserializer.decrease_container_depth()
+        return PurchaseFlowView(stage: stage, trackId: trackId, failure: failure)
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> PurchaseFlowView {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+/// Em que passo está a compra que o jogador acabou de fazer (LogN Trilhas, F3).
+indirect public enum PurchaseStage: Hashable, Equatable {
+    /// Nenhuma compra na tela.
+    case idle
+    /// A loja aprovou; o servidor está validando a transação.
+    case validating
+    /// Transação válida; pedindo a licença.
+    case licensing
+    /// Licença na mão; baixando o pacote.
+    case downloading
+    /// Tudo no aparelho: a trilha abre sem rede.
+    case ready
+    /// Parou; `failure` diz por quê.
+    case failed
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        switch self {
+        case .idle:
+            try serializer.serialize_variant_index(value: 0)
+        case .validating:
+            try serializer.serialize_variant_index(value: 1)
+        case .licensing:
+            try serializer.serialize_variant_index(value: 2)
+        case .downloading:
+            try serializer.serialize_variant_index(value: 3)
+        case .ready:
+            try serializer.serialize_variant_index(value: 4)
+        case .failed:
+            try serializer.serialize_variant_index(value: 5)
+        }
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> PurchaseStage {
+        let index = try deserializer.deserialize_variant_index()
+        try deserializer.increase_container_depth()
+        switch index {
+        case 0:
+            try deserializer.decrease_container_depth()
+            return .idle
+        case 1:
+            try deserializer.decrease_container_depth()
+            return .validating
+        case 2:
+            try deserializer.decrease_container_depth()
+            return .licensing
+        case 3:
+            try deserializer.decrease_container_depth()
+            return .downloading
+        case 4:
+            try deserializer.decrease_container_depth()
+            return .ready
+        case 5:
+            try deserializer.decrease_container_depth()
+            return .failed
+        default: throw DeserializationError.invalidInput(issue: "Unknown variant index for PurchaseStage: \(index)")
+        }
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> PurchaseStage {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
 /// The single operation `Render` implements.
 public struct RenderOperation: Hashable, Equatable {
     public init() {
@@ -2724,6 +3223,128 @@ public struct RenderOperation: Hashable, Equatable {
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> RenderOperation {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+/// O resultado de "Restaurar compras".
+public struct RestoreResultView: Hashable, Equatable {
+    /// Há uma restauração na tela, em andamento ou acabada.
+    public var active: Bool
+    public var finished: Bool
+    public var total: UInt32
+    public var restored: UInt32
+    /// Transações que são de outra conta ativa.
+    public var otherAccount: UInt32
+    /// Nomes das trilhas que voltaram, na língua do catálogo.
+    public var restoredNames: [String]
+
+    public init(active: Bool, finished: Bool, total: UInt32, restored: UInt32, otherAccount: UInt32, restoredNames: [String]) {
+        self.active = active
+        self.finished = finished
+        self.total = total
+        self.restored = restored
+        self.otherAccount = otherAccount
+        self.restoredNames = restoredNames
+    }
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        try serializer.serialize_bool(value: self.active)
+        try serializer.serialize_bool(value: self.finished)
+        try serializer.serialize_u32(value: self.total)
+        try serializer.serialize_u32(value: self.restored)
+        try serializer.serialize_u32(value: self.otherAccount)
+        try serializeArray(value: self.restoredNames, serializer: serializer) { item, serializer in
+            try serializer.serialize_str(value: item)
+        }
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> RestoreResultView {
+        try deserializer.increase_container_depth()
+        let active = try deserializer.deserialize_bool()
+        let finished = try deserializer.deserialize_bool()
+        let total = try deserializer.deserialize_u32()
+        let restored = try deserializer.deserialize_u32()
+        let otherAccount = try deserializer.deserialize_u32()
+        let restoredNames = try deserializeArray(deserializer: deserializer) { deserializer in
+            try deserializer.deserialize_str()
+        }
+        try deserializer.decrease_container_depth()
+        return RestoreResultView(active: active, finished: finished, total: total, restored: restored, otherAccount: otherAccount, restoredNames: restoredNames)
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> RestoreResultView {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+/// A oferta do fim da amostra, no relatório da partida (LogN Trilhas, 1f).
+public struct SampleOfferView: Hashable, Equatable {
+    public var active: Bool
+    public var trackId: String
+    public var nextNodeName: String
+    /// Posição do próximo nó na trilha, a partir de 1.
+    public var nextNodeIndex: UInt32
+    public var remainingNodes: UInt32
+    public var remainingProblems: UInt32
+
+    public init(active: Bool, trackId: String, nextNodeName: String, nextNodeIndex: UInt32, remainingNodes: UInt32, remainingProblems: UInt32) {
+        self.active = active
+        self.trackId = trackId
+        self.nextNodeName = nextNodeName
+        self.nextNodeIndex = nextNodeIndex
+        self.remainingNodes = remainingNodes
+        self.remainingProblems = remainingProblems
+    }
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        try serializer.serialize_bool(value: self.active)
+        try serializer.serialize_str(value: self.trackId)
+        try serializer.serialize_str(value: self.nextNodeName)
+        try serializer.serialize_u32(value: self.nextNodeIndex)
+        try serializer.serialize_u32(value: self.remainingNodes)
+        try serializer.serialize_u32(value: self.remainingProblems)
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> SampleOfferView {
+        try deserializer.increase_container_depth()
+        let active = try deserializer.deserialize_bool()
+        let trackId = try deserializer.deserialize_str()
+        let nextNodeName = try deserializer.deserialize_str()
+        let nextNodeIndex = try deserializer.deserialize_u32()
+        let remainingNodes = try deserializer.deserialize_u32()
+        let remainingProblems = try deserializer.deserialize_u32()
+        try deserializer.decrease_container_depth()
+        return SampleOfferView(active: active, trackId: trackId, nextNodeName: nextNodeName, nextNodeIndex: nextNodeIndex, remainingNodes: remainingNodes, remainingProblems: remainingProblems)
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> SampleOfferView {
         let deserializer = BincodeDeserializer.init(input: input);
         let obj = try deserialize(deserializer: deserializer)
         if deserializer.get_buffer_offset() < input.count {
@@ -2912,6 +3533,10 @@ public struct SkillNode: Hashable, Equatable {
     public var column: Int32
     public var requiredXp: Int32
     public var prerequisites: [String]
+    public var trackId: String
+    /// Nó de trilha paga fora da amostra: só abre com licença. Quem decide é o
+    /// servidor; o Core não adivinha pela linha nem por um id de trilha fixo.
+    public var requiresPurchase: Bool
     /// Assunto do nó, neutro (`adhoc`, `graphs`): decide cor e ícone no cliente, que
     /// antes adivinhava pelo nome — e o nome agora muda com a língua. Vazio quando o
     /// servidor ou o retrato antigo não mandam.
@@ -2925,7 +3550,7 @@ public struct SkillNode: Hashable, Equatable {
     /// sheet desenha balão a balão.
     public var problemsSolved: [Bool]
 
-    public init(id: String, name: String, description: String, row: Int32, column: Int32, requiredXp: Int32, prerequisites: [String], topic: String, status: NodeStatus, problemsSolved: [Bool]) {
+    public init(id: String, name: String, description: String, row: Int32, column: Int32, requiredXp: Int32, prerequisites: [String], trackId: String, requiresPurchase: Bool, topic: String, status: NodeStatus, problemsSolved: [Bool]) {
         self.id = id
         self.name = name
         self.description = description
@@ -2933,6 +3558,8 @@ public struct SkillNode: Hashable, Equatable {
         self.column = column
         self.requiredXp = requiredXp
         self.prerequisites = prerequisites
+        self.trackId = trackId
+        self.requiresPurchase = requiresPurchase
         self.topic = topic
         self.status = status
         self.problemsSolved = problemsSolved
@@ -2949,6 +3576,8 @@ public struct SkillNode: Hashable, Equatable {
         try serializeArray(value: self.prerequisites, serializer: serializer) { item, serializer in
             try serializer.serialize_str(value: item)
         }
+        try serializer.serialize_str(value: self.trackId)
+        try serializer.serialize_bool(value: self.requiresPurchase)
         try serializer.serialize_str(value: self.topic)
         try self.status.serialize(serializer: serializer)
         try serializeArray(value: self.problemsSolved, serializer: serializer) { item, serializer in
@@ -2974,13 +3603,15 @@ public struct SkillNode: Hashable, Equatable {
         let prerequisites = try deserializeArray(deserializer: deserializer) { deserializer in
             try deserializer.deserialize_str()
         }
+        let trackId = try deserializer.deserialize_str()
+        let requiresPurchase = try deserializer.deserialize_bool()
         let topic = try deserializer.deserialize_str()
         let status = try LogN.NodeStatus.deserialize(deserializer: deserializer)
         let problemsSolved = try deserializeArray(deserializer: deserializer) { deserializer in
             try deserializer.deserialize_bool()
         }
         try deserializer.decrease_container_depth()
-        return SkillNode(id: id, name: name, description: description, row: row, column: column, requiredXp: requiredXp, prerequisites: prerequisites, topic: topic, status: status, problemsSolved: problemsSolved)
+        return SkillNode(id: id, name: name, description: description, row: row, column: column, requiredXp: requiredXp, prerequisites: prerequisites, trackId: trackId, requiresPurchase: requiresPurchase, topic: topic, status: status, problemsSolved: problemsSolved)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> SkillNode {
@@ -3096,6 +3727,25 @@ indirect public enum StatusKey: Hashable, Equatable {
     case passwordTooShort
     case passwordTooLong
     case emailTaken
+    /// A compra foi feita na loja e o servidor está confirmando.
+    case purchaseConfirming
+    case purchaseConfirmed
+    /// O servidor não confirmou agora (rede, erro dele). A loja entrega de novo na
+    /// próxima abertura, e o app tenta outra vez sozinho.
+    case purchaseFailed
+    /// `purchase_owned_by_other_account`: a compra é de outra conta ativa.
+    case purchaseOwnedByOtherAccount
+    /// `purchase_account_mismatch`: a compra foi feita logado em outra conta.
+    case purchaseAccountMismatch
+    /// `purchase_revoked`: a compra foi reembolsada ou revogada.
+    case purchaseRevoked
+    /// Comprar pede conta; o visitante não compra.
+    case purchaseNeedsAccount
+    /// A licença de uma trilha baixada foi revogada: chave e pacote saíram do aparelho.
+    case trackRevoked
+    /// A compra está na conta, mas a licença ou o pacote não chegaram agora. Baixa
+    /// sozinha na próxima abertura com rede.
+    case trackDownloadFailed
 
     public func serialize<S: Serializer>(serializer: S) throws {
         try serializer.increase_container_depth()
@@ -3156,6 +3806,24 @@ indirect public enum StatusKey: Hashable, Equatable {
             try serializer.serialize_variant_index(value: 26)
         case .emailTaken:
             try serializer.serialize_variant_index(value: 27)
+        case .purchaseConfirming:
+            try serializer.serialize_variant_index(value: 28)
+        case .purchaseConfirmed:
+            try serializer.serialize_variant_index(value: 29)
+        case .purchaseFailed:
+            try serializer.serialize_variant_index(value: 30)
+        case .purchaseOwnedByOtherAccount:
+            try serializer.serialize_variant_index(value: 31)
+        case .purchaseAccountMismatch:
+            try serializer.serialize_variant_index(value: 32)
+        case .purchaseRevoked:
+            try serializer.serialize_variant_index(value: 33)
+        case .purchaseNeedsAccount:
+            try serializer.serialize_variant_index(value: 34)
+        case .trackRevoked:
+            try serializer.serialize_variant_index(value: 35)
+        case .trackDownloadFailed:
+            try serializer.serialize_variant_index(value: 36)
         }
         try serializer.decrease_container_depth()
     }
@@ -3254,6 +3922,33 @@ indirect public enum StatusKey: Hashable, Equatable {
         case 27:
             try deserializer.decrease_container_depth()
             return .emailTaken
+        case 28:
+            try deserializer.decrease_container_depth()
+            return .purchaseConfirming
+        case 29:
+            try deserializer.decrease_container_depth()
+            return .purchaseConfirmed
+        case 30:
+            try deserializer.decrease_container_depth()
+            return .purchaseFailed
+        case 31:
+            try deserializer.decrease_container_depth()
+            return .purchaseOwnedByOtherAccount
+        case 32:
+            try deserializer.decrease_container_depth()
+            return .purchaseAccountMismatch
+        case 33:
+            try deserializer.decrease_container_depth()
+            return .purchaseRevoked
+        case 34:
+            try deserializer.decrease_container_depth()
+            return .purchaseNeedsAccount
+        case 35:
+            try deserializer.decrease_container_depth()
+            return .trackRevoked
+        case 36:
+            try deserializer.decrease_container_depth()
+            return .trackDownloadFailed
         default: throw DeserializationError.invalidInput(issue: "Unknown variant index for StatusKey: \(index)")
         }
     }
@@ -3488,6 +4183,227 @@ public struct TimerId: Hashable, Equatable {
     }
 }
 
+/// Um nó na lista do detalhe da trilha.
+public struct TrackNodeRow: Hashable, Equatable {
+    public var id: String
+    public var name: String
+    /// Abre sem compra: a amostra.
+    public var free: Bool
+    public var done: Bool
+    /// O próximo a jogar.
+    public var active: Bool
+
+    public init(id: String, name: String, free: Bool, done: Bool, active: Bool) {
+        self.id = id
+        self.name = name
+        self.free = free
+        self.done = done
+        self.active = active
+    }
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        try serializer.serialize_str(value: self.id)
+        try serializer.serialize_str(value: self.name)
+        try serializer.serialize_bool(value: self.free)
+        try serializer.serialize_bool(value: self.done)
+        try serializer.serialize_bool(value: self.active)
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> TrackNodeRow {
+        try deserializer.increase_container_depth()
+        let id = try deserializer.deserialize_str()
+        let name = try deserializer.deserialize_str()
+        let free = try deserializer.deserialize_bool()
+        let done = try deserializer.deserialize_bool()
+        let active = try deserializer.deserialize_bool()
+        try deserializer.decrease_container_depth()
+        return TrackNodeRow(id: id, name: name, free: free, done: done, active: active)
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> TrackNodeRow {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+/// A trilha como a tela a vê: catálogo, detalhe, compra e o que está no aparelho.
+public struct TrackView: Hashable, Equatable {
+    public var id: String
+    /// A trilha gratuita, a principal.
+    public var isFree: Bool
+    public var name: String
+    public var description: String
+    public var author: String
+    /// A cor do balão da trilha, `#RRGGBB`.
+    public var color: String
+    /// O produto da App Store. É daqui que o app compra, nunca de um id montado.
+    public var productId: String
+    public var nodeCount: UInt32
+    public var problemCount: UInt32
+    /// Línguas publicadas, na forma do banco (`pt-BR`, `en`, `es`).
+    public var languages: [String]
+    /// É a trilha que a árvore mostra agora.
+    public var selected: Bool
+    public var owned: Bool
+    /// A compra foi revogada; `revoked_reason` diz por quê.
+    public var revoked: Bool
+    public var revokedReason: String
+    public var discontinued: Bool
+    /// Nós conquistados nesta trilha.
+    public var nodesDone: UInt32
+    /// Nós que só abrem com compra.
+    public var closedNodeCount: UInt32
+    /// Balões subidos na amostra, para a oferta do fim dela.
+    public var sampleBalloons: UInt32
+    /// Todos os problemas da amostra já renderam XP.
+    public var sampleDone: Bool
+    /// XP ganho nesta trilha.
+    public var trackXp: Int32
+    /// O conteúdo fechado está no aparelho e abre.
+    public var downloaded: Bool
+    /// Tamanho do pacote no aparelho, em bytes. Zero quando não está baixado.
+    public var downloadBytes: UInt64
+    public var offline: OfflineState
+    /// Dias inteiros até a licença offline vencer. Zero sem licença ou vencida.
+    public var offlineDaysLeft: UInt32
+    /// Dias desde o último contato com o servidor, pela emissão da licença.
+    public var daysSinceContact: UInt32
+    /// Até quando a licença vale, em segundos desde a época. Zero sem licença.
+    public var validUntil: Int64
+    /// Os nós da trilha, na ordem da árvore, para o detalhe (1d).
+    public var nodes: [TrackNodeRow]
+
+    public init(id: String, isFree: Bool, name: String, description: String, author: String, color: String, productId: String, nodeCount: UInt32, problemCount: UInt32, languages: [String], selected: Bool, owned: Bool, revoked: Bool, revokedReason: String, discontinued: Bool, nodesDone: UInt32, closedNodeCount: UInt32, sampleBalloons: UInt32, sampleDone: Bool, trackXp: Int32, downloaded: Bool, downloadBytes: UInt64, offline: OfflineState, offlineDaysLeft: UInt32, daysSinceContact: UInt32, validUntil: Int64, nodes: [TrackNodeRow]) {
+        self.id = id
+        self.isFree = isFree
+        self.name = name
+        self.description = description
+        self.author = author
+        self.color = color
+        self.productId = productId
+        self.nodeCount = nodeCount
+        self.problemCount = problemCount
+        self.languages = languages
+        self.selected = selected
+        self.owned = owned
+        self.revoked = revoked
+        self.revokedReason = revokedReason
+        self.discontinued = discontinued
+        self.nodesDone = nodesDone
+        self.closedNodeCount = closedNodeCount
+        self.sampleBalloons = sampleBalloons
+        self.sampleDone = sampleDone
+        self.trackXp = trackXp
+        self.downloaded = downloaded
+        self.downloadBytes = downloadBytes
+        self.offline = offline
+        self.offlineDaysLeft = offlineDaysLeft
+        self.daysSinceContact = daysSinceContact
+        self.validUntil = validUntil
+        self.nodes = nodes
+    }
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        try serializer.serialize_str(value: self.id)
+        try serializer.serialize_bool(value: self.isFree)
+        try serializer.serialize_str(value: self.name)
+        try serializer.serialize_str(value: self.description)
+        try serializer.serialize_str(value: self.author)
+        try serializer.serialize_str(value: self.color)
+        try serializer.serialize_str(value: self.productId)
+        try serializer.serialize_u32(value: self.nodeCount)
+        try serializer.serialize_u32(value: self.problemCount)
+        try serializeArray(value: self.languages, serializer: serializer) { item, serializer in
+            try serializer.serialize_str(value: item)
+        }
+        try serializer.serialize_bool(value: self.selected)
+        try serializer.serialize_bool(value: self.owned)
+        try serializer.serialize_bool(value: self.revoked)
+        try serializer.serialize_str(value: self.revokedReason)
+        try serializer.serialize_bool(value: self.discontinued)
+        try serializer.serialize_u32(value: self.nodesDone)
+        try serializer.serialize_u32(value: self.closedNodeCount)
+        try serializer.serialize_u32(value: self.sampleBalloons)
+        try serializer.serialize_bool(value: self.sampleDone)
+        try serializer.serialize_i32(value: self.trackXp)
+        try serializer.serialize_bool(value: self.downloaded)
+        try serializer.serialize_u64(value: self.downloadBytes)
+        try self.offline.serialize(serializer: serializer)
+        try serializer.serialize_u32(value: self.offlineDaysLeft)
+        try serializer.serialize_u32(value: self.daysSinceContact)
+        try serializer.serialize_i64(value: self.validUntil)
+        try serializeArray(value: self.nodes, serializer: serializer) { item, serializer in
+            try item.serialize(serializer: serializer)
+        }
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> TrackView {
+        try deserializer.increase_container_depth()
+        let id = try deserializer.deserialize_str()
+        let isFree = try deserializer.deserialize_bool()
+        let name = try deserializer.deserialize_str()
+        let description = try deserializer.deserialize_str()
+        let author = try deserializer.deserialize_str()
+        let color = try deserializer.deserialize_str()
+        let productId = try deserializer.deserialize_str()
+        let nodeCount = try deserializer.deserialize_u32()
+        let problemCount = try deserializer.deserialize_u32()
+        let languages = try deserializeArray(deserializer: deserializer) { deserializer in
+            try deserializer.deserialize_str()
+        }
+        let selected = try deserializer.deserialize_bool()
+        let owned = try deserializer.deserialize_bool()
+        let revoked = try deserializer.deserialize_bool()
+        let revokedReason = try deserializer.deserialize_str()
+        let discontinued = try deserializer.deserialize_bool()
+        let nodesDone = try deserializer.deserialize_u32()
+        let closedNodeCount = try deserializer.deserialize_u32()
+        let sampleBalloons = try deserializer.deserialize_u32()
+        let sampleDone = try deserializer.deserialize_bool()
+        let trackXp = try deserializer.deserialize_i32()
+        let downloaded = try deserializer.deserialize_bool()
+        let downloadBytes = try deserializer.deserialize_u64()
+        let offline = try LogN.OfflineState.deserialize(deserializer: deserializer)
+        let offlineDaysLeft = try deserializer.deserialize_u32()
+        let daysSinceContact = try deserializer.deserialize_u32()
+        let validUntil = try deserializer.deserialize_i64()
+        let nodes = try deserializeArray(deserializer: deserializer) { deserializer in
+            try LogN.TrackNodeRow.deserialize(deserializer: deserializer)
+        }
+        try deserializer.decrease_container_depth()
+        return TrackView(id: id, isFree: isFree, name: name, description: description, author: author, color: color, productId: productId, nodeCount: nodeCount, problemCount: problemCount, languages: languages, selected: selected, owned: owned, revoked: revoked, revokedReason: revokedReason, discontinued: discontinued, nodesDone: nodesDone, closedNodeCount: closedNodeCount, sampleBalloons: sampleBalloons, sampleDone: sampleDone, trackXp: trackXp, downloaded: downloaded, downloadBytes: downloadBytes, offline: offline, offlineDaysLeft: offlineDaysLeft, daysSinceContact: daysSinceContact, validUntil: validUntil, nodes: nodes)
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> TrackView {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
 /// Por que o cartão de armadilha abriu. O texto do cartão sai do catálogo do cliente:
 /// o Core escrevia "TRAP CLÁSSICA" e "O relógio da questão zerou" em português.
 indirect public enum TrapKind: Hashable, Equatable {
@@ -3673,8 +4589,27 @@ public struct ViewModel: Hashable, Equatable {
     /// E-mail para o login já vir preenchido depois de uma sessão que acabou. Vazio
     /// quando não há.
     public var resumeEmail: String
+    /// Id da conta em sessão. O shell põe no `appAccountToken` da compra, e o servidor
+    /// confere que quem manda a transação é quem comprou. Vazio no visitante.
+    public var accountUserId: String
+    /// O catálogo: a principal primeiro, depois as pagas, com compra e o que está baixado.
+    public var tracks: [TrackView]
+    /// A trilha que a árvore mostra. `nodes` já vem filtrado por ela.
+    public var currentTrack: TrackView
+    /// O selo do botão Trilhas.
+    public var catalogBadge: CatalogBadge
+    /// Mostrar "Por onde começar?" (uma vez por aparelho).
+    public var showOnboarding: Bool
+    public var purchaseFlow: PurchaseFlowView
+    public var restoreResult: RestoreResultView
+    /// A oferta do fim da amostra, quando a partida que acabou foi a amostra.
+    public var sampleOffer: SampleOfferView
+    /// Transações confirmadas pelo servidor que o shell tem de finalizar na loja e
+    /// devolver com `PurchaseFinished`.
+    public var purchasesToFinish: [String]
+    public var purchaseInFlight: Bool
 
-    public init(status: StatusKey, pendingSyncCount: UInt32, isSyncing: Bool, isFetching: Bool, isAuthenticating: Bool, hasAccessToken: Bool, hasSession: Bool, isOfflineSession: Bool, trailFromBundle: Bool, trailGeneratedAt: String, matchLeft: Bool, isGuest: Bool, locale: String, challenges: [Challenge], nodes: [SkillNode], otpEmail: String, accountEmail: String, otpVerified: Bool, globalXp: Int32, bugsFound: Int32, dryRunsCompleted: Int32, level: Int32, xpIntoLevel: Int32, xpForLevel: Int32, xpToNextLevel: Int32, challengesCompleted: Int32, balloonsUp: Int32, justLoggedOut: Bool, passwordResetDone: Bool, displayName: String, matchView: MatchViewModel, contestName: String, standingsGlobal: [StandingRow], standingsHome: [StandingRow], userStanding: StandingRow, scoreboard: [ScoreboardRow], standingsAreSample: Bool, authCooldownSeconds: UInt32, resendCooldownSeconds: UInt32, legalVersionsReady: Bool, minAge: UInt32, deletionPurgeAfter: Int64, accountRestoredNotice: Bool, analyticsEnabled: Bool, boot: BootViewModel, resumeEmail: String) {
+    public init(status: StatusKey, pendingSyncCount: UInt32, isSyncing: Bool, isFetching: Bool, isAuthenticating: Bool, hasAccessToken: Bool, hasSession: Bool, isOfflineSession: Bool, trailFromBundle: Bool, trailGeneratedAt: String, matchLeft: Bool, isGuest: Bool, locale: String, challenges: [Challenge], nodes: [SkillNode], otpEmail: String, accountEmail: String, otpVerified: Bool, globalXp: Int32, bugsFound: Int32, dryRunsCompleted: Int32, level: Int32, xpIntoLevel: Int32, xpForLevel: Int32, xpToNextLevel: Int32, challengesCompleted: Int32, balloonsUp: Int32, justLoggedOut: Bool, passwordResetDone: Bool, displayName: String, matchView: MatchViewModel, contestName: String, standingsGlobal: [StandingRow], standingsHome: [StandingRow], userStanding: StandingRow, scoreboard: [ScoreboardRow], standingsAreSample: Bool, authCooldownSeconds: UInt32, resendCooldownSeconds: UInt32, legalVersionsReady: Bool, minAge: UInt32, deletionPurgeAfter: Int64, accountRestoredNotice: Bool, analyticsEnabled: Bool, boot: BootViewModel, resumeEmail: String, accountUserId: String, tracks: [TrackView], currentTrack: TrackView, catalogBadge: CatalogBadge, showOnboarding: Bool, purchaseFlow: PurchaseFlowView, restoreResult: RestoreResultView, sampleOffer: SampleOfferView, purchasesToFinish: [String], purchaseInFlight: Bool) {
         self.status = status
         self.pendingSyncCount = pendingSyncCount
         self.isSyncing = isSyncing
@@ -3721,6 +4656,16 @@ public struct ViewModel: Hashable, Equatable {
         self.analyticsEnabled = analyticsEnabled
         self.boot = boot
         self.resumeEmail = resumeEmail
+        self.accountUserId = accountUserId
+        self.tracks = tracks
+        self.currentTrack = currentTrack
+        self.catalogBadge = catalogBadge
+        self.showOnboarding = showOnboarding
+        self.purchaseFlow = purchaseFlow
+        self.restoreResult = restoreResult
+        self.sampleOffer = sampleOffer
+        self.purchasesToFinish = purchasesToFinish
+        self.purchaseInFlight = purchaseInFlight
     }
 
     public func serialize<S: Serializer>(serializer: S) throws {
@@ -3781,6 +4726,20 @@ public struct ViewModel: Hashable, Equatable {
         try serializer.serialize_bool(value: self.analyticsEnabled)
         try self.boot.serialize(serializer: serializer)
         try serializer.serialize_str(value: self.resumeEmail)
+        try serializer.serialize_str(value: self.accountUserId)
+        try serializeArray(value: self.tracks, serializer: serializer) { item, serializer in
+            try item.serialize(serializer: serializer)
+        }
+        try self.currentTrack.serialize(serializer: serializer)
+        try self.catalogBadge.serialize(serializer: serializer)
+        try serializer.serialize_bool(value: self.showOnboarding)
+        try self.purchaseFlow.serialize(serializer: serializer)
+        try self.restoreResult.serialize(serializer: serializer)
+        try self.sampleOffer.serialize(serializer: serializer)
+        try serializeArray(value: self.purchasesToFinish, serializer: serializer) { item, serializer in
+            try serializer.serialize_str(value: item)
+        }
+        try serializer.serialize_bool(value: self.purchaseInFlight)
         try serializer.decrease_container_depth()
     }
 
@@ -3848,8 +4807,22 @@ public struct ViewModel: Hashable, Equatable {
         let analyticsEnabled = try deserializer.deserialize_bool()
         let boot = try LogN.BootViewModel.deserialize(deserializer: deserializer)
         let resumeEmail = try deserializer.deserialize_str()
+        let accountUserId = try deserializer.deserialize_str()
+        let tracks = try deserializeArray(deserializer: deserializer) { deserializer in
+            try LogN.TrackView.deserialize(deserializer: deserializer)
+        }
+        let currentTrack = try LogN.TrackView.deserialize(deserializer: deserializer)
+        let catalogBadge = try LogN.CatalogBadge.deserialize(deserializer: deserializer)
+        let showOnboarding = try deserializer.deserialize_bool()
+        let purchaseFlow = try LogN.PurchaseFlowView.deserialize(deserializer: deserializer)
+        let restoreResult = try LogN.RestoreResultView.deserialize(deserializer: deserializer)
+        let sampleOffer = try LogN.SampleOfferView.deserialize(deserializer: deserializer)
+        let purchasesToFinish = try deserializeArray(deserializer: deserializer) { deserializer in
+            try deserializer.deserialize_str()
+        }
+        let purchaseInFlight = try deserializer.deserialize_bool()
         try deserializer.decrease_container_depth()
-        return ViewModel(status: status, pendingSyncCount: pendingSyncCount, isSyncing: isSyncing, isFetching: isFetching, isAuthenticating: isAuthenticating, hasAccessToken: hasAccessToken, hasSession: hasSession, isOfflineSession: isOfflineSession, trailFromBundle: trailFromBundle, trailGeneratedAt: trailGeneratedAt, matchLeft: matchLeft, isGuest: isGuest, locale: locale, challenges: challenges, nodes: nodes, otpEmail: otpEmail, accountEmail: accountEmail, otpVerified: otpVerified, globalXp: globalXp, bugsFound: bugsFound, dryRunsCompleted: dryRunsCompleted, level: level, xpIntoLevel: xpIntoLevel, xpForLevel: xpForLevel, xpToNextLevel: xpToNextLevel, challengesCompleted: challengesCompleted, balloonsUp: balloonsUp, justLoggedOut: justLoggedOut, passwordResetDone: passwordResetDone, displayName: displayName, matchView: matchView, contestName: contestName, standingsGlobal: standingsGlobal, standingsHome: standingsHome, userStanding: userStanding, scoreboard: scoreboard, standingsAreSample: standingsAreSample, authCooldownSeconds: authCooldownSeconds, resendCooldownSeconds: resendCooldownSeconds, legalVersionsReady: legalVersionsReady, minAge: minAge, deletionPurgeAfter: deletionPurgeAfter, accountRestoredNotice: accountRestoredNotice, analyticsEnabled: analyticsEnabled, boot: boot, resumeEmail: resumeEmail)
+        return ViewModel(status: status, pendingSyncCount: pendingSyncCount, isSyncing: isSyncing, isFetching: isFetching, isAuthenticating: isAuthenticating, hasAccessToken: hasAccessToken, hasSession: hasSession, isOfflineSession: isOfflineSession, trailFromBundle: trailFromBundle, trailGeneratedAt: trailGeneratedAt, matchLeft: matchLeft, isGuest: isGuest, locale: locale, challenges: challenges, nodes: nodes, otpEmail: otpEmail, accountEmail: accountEmail, otpVerified: otpVerified, globalXp: globalXp, bugsFound: bugsFound, dryRunsCompleted: dryRunsCompleted, level: level, xpIntoLevel: xpIntoLevel, xpForLevel: xpForLevel, xpToNextLevel: xpToNextLevel, challengesCompleted: challengesCompleted, balloonsUp: balloonsUp, justLoggedOut: justLoggedOut, passwordResetDone: passwordResetDone, displayName: displayName, matchView: matchView, contestName: contestName, standingsGlobal: standingsGlobal, standingsHome: standingsHome, userStanding: userStanding, scoreboard: scoreboard, standingsAreSample: standingsAreSample, authCooldownSeconds: authCooldownSeconds, resendCooldownSeconds: resendCooldownSeconds, legalVersionsReady: legalVersionsReady, minAge: minAge, deletionPurgeAfter: deletionPurgeAfter, accountRestoredNotice: accountRestoredNotice, analyticsEnabled: analyticsEnabled, boot: boot, resumeEmail: resumeEmail, accountUserId: accountUserId, tracks: tracks, currentTrack: currentTrack, catalogBadge: catalogBadge, showOnboarding: showOnboarding, purchaseFlow: purchaseFlow, restoreResult: restoreResult, sampleOffer: sampleOffer, purchasesToFinish: purchasesToFinish, purchaseInFlight: purchaseInFlight)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> ViewModel {
