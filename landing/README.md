@@ -21,12 +21,11 @@ landing/
     ├── 404.html        "Wrong Answer." — um por língua, o Cloudflare serve o mais próximo
     ├── _headers        CSP e demais cabeçalhos dos assets
     ├── worker.js       proxy de /legal/terms e /legal/privacy para o backend
-    └── assets/         site.css, site.js
+    └── assets/         site.css, site.js, icons/ (favicon SVG, PNG 32, apple-touch-icon)
 ```
 
-`dist/` não entra no git. As fontes IBM Plex e o símbolo do balão são copiados de onde o
-app já os tem (`ios/…/Resources/Fonts`, `docs/design_system/brand`), para não versionar
-o mesmo binário duas vezes.
+`dist/` não entra no git. As fontes IBM Plex são copiadas de onde o app já as tem
+(`ios/…/Resources/Fonts`), para não versionar o mesmo binário duas vezes.
 
 ## Uso
 
