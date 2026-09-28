@@ -8,8 +8,9 @@ Ordem é por risco para quem joga, não por esforço.
 ## Os portões não obrigam caminho nenhum
 
 A trilha tem teto e os portões estão calibrados no repositório de conteúdo. A `view()`
-do Core destrava nó **só por XP global**; os pré-requisitos entram apenas para marcar o
-pai como conquistado — hoje eles não travam de verdade.
+do Core destrava nó **só por XP**, o da trilha do nó (o da gratuita é o global menos o das
+pagas); os pré-requisitos entram apenas para marcar o pai como conquistado — hoje eles
+não travam de verdade.
 
 Ou os pré-requisitos passam a travar de verdade, ou os números dos portões mudam. Entra
 junto com a calibração do relógio: as duas coisas pedem jogar a trilha inteira.
@@ -69,28 +70,53 @@ O que saiu em setembro de 2026 e deixou uma ponta aberta:
   aceite no cadastro e exclusão de conta de verdade. O PRD pede revisão jurídica do texto
   final; confirmar se ela aconteceu antes de publicar.
 - **Build de loja:** `just release-ios` empacota a trilha e os documentos a partir da
-  produção e gera o `.ipa`, sem enviar.
+  produção e gera o `.ipa`, sem enviar. Antes dele, `just seed-bundle --release`: os nós
+  ganharam `track_id` e `requires_purchase`, e uma semente de antes disso não serve.
 
-## Seleção de trilha, e trilhas pagas
+## Trilhas pagas: o que falta depois do PR #2
 
-É o próximo item grande. O que ele pedia antes de começar já existe: o conteúdo sai por
-língua, e os termos, onde mora a licença, estão publicados. Fica deste ciclo a folha de
-aceite pendente, que avisa o jogador quando uma versão nova dos termos entra em vigor
-(ADR 0008): o servidor já tem `pending` e `accept`, e a página já marca as seções novas.
+O PR #2 entrega o ciclo inteiro: catálogo em grade, uma trilha por árvore, amostra grátis,
+paywall em três pontos, compra validada pelo servidor contra a raiz fixa da Apple,
+restauração, notificações de reembolso, licença offline de 30 dias com a escada de avisos,
+pacote cifrado e armazenamento. Desenho e ameaças na ADR 0012; telas nos designs `LogN
+Trilhas` e `LogN Validade Offline`. PRD:
+[`specs/logn_trilhas_pagas_spec.md`](specs/logn_trilhas_pagas_spec.md).
 
-Hoje o app tem uma trilha só, a de problem solving: sete nós com portões de XP. Ela vira a
-**trilha principal**, gratuita, para todo mundo, com e sem rede — como já funciona hoje,
-com a semente no bundle e o retrato offline. As outras trilhas entram por uma tela de
-seleção, e algumas são pagas: só abrem para quem comprou, a compra fica atribuída à conta, e
-a trilha pode ser baixada e guardada no aparelho, criptografada.
+Antes de vender a primeira trilha:
 
-O que é pago é uma **licença de uso**, revogável só em hipóteses fechadas: reembolso ou
-estorno, fraude, redistribuição do conteúdo e compartilhamento de conta. Compra avulsa por
-trilha, só iOS no lançamento, pelo StoreKit, com o servidor validando a compra. O primeiro
-nó é amostra grátis, a trilha abre 30 dias sem rede, e quem comprou uma trilha
-descontinuada continua com ela.
+- **Termos e política novos.** A spec pede, como pré-requisito, uma versão dos termos
+  marcada como relevante, com as hipóteses de revogação da seção 7, e uma versão nova da
+  política de privacidade, que passa a coletar o registro de aparelhos
+  (`identifierForVendor`) e as compras. Nenhuma das duas foi escrita. Junto vem a folha de
+  aceite pendente, que avisa o jogador quando uma versão nova entra em vigor (ADR 0008): o
+  servidor já tem `pending` e `accept`, e a página já marca as seções novas.
+- **Deploy.** O token do Cloudflare precisa de Zone · WAF · Edit para o `terraform apply`
+  criar o rate limit da borda; o valor de `logn-track-key-secret` sobe pelo `gcloud` antes
+  do deploy, senão a revisão nova não sobe; a URL das notificações da App Store é a
+  `.run.app`, não o domínio atrás do Cloudflare.
+- **App Store Connect.** Acordo de apps pagos, dados bancários e fiscais, e o produto não
+  consumível de cada trilha, sem Compartilhamento Familiar.
+- **Compra de ponta a ponta.** A compra pela loja só roda pelo Xcode, com o certificado do
+  StoreKit Testing em `APPLE_XCODE_ROOT_CERT`, e ainda não foi exercitada inteira. A
+  escada de validade offline também não foi vista na tela: o servidor emite a licença com a
+  hora de agora, e só os testes do Core cobrem os 27 dias.
 
-PRD: [`specs/logn_trilhas_pagas_spec.md`](specs/logn_trilhas_pagas_spec.md).
+Decidido e em aberto, cada um esperando o seu momento:
+
+- **Nivelador (nó zero).** Está no design e fica para um PR próprio, com PRD: é sistema de
+  conteúdo novo, com vídeo, texto, figura, referências e o lembrete depois de dois erros.
+- **Conciliação de reembolso.** O reembolso cuja notificação esgota as tentativas da Apple
+  nunca chega. Falta conciliar pela App Store Server API.
+- **Sandbox em produção.** Quem testa pelo TestFlight ganha a trilha de verdade. Se virar
+  problema, a saída é tratar direito de Sandbox como temporário.
+- **Cadeia verificada na hora de agora.** Restaurar um JWS cuja folha venceu falha fechado;
+  a Apple verifica no `signedDate`.
+- **Uma chave por versão da trilha.** A chave de um comprador abre o pacote daquela versão
+  para qualquer um. É a ameaça que a spec deixa fora; o remédio é subir `content_version`.
+- **Limite de aparelhos.** Hoje só registra. Um limite, se vier, vem depois de medir
+  quantos aparelhos uma conta legítima usa.
+- **Seletor no cabeçalho.** O app abre o catálogo pelo nome da trilha com chevron; o
+  design tem um botão "Trilhas" à parte. O arquivo de design precisa refletir a escolha.
 
 ## Instituição de ensino no perfil
 
@@ -116,4 +142,7 @@ PRD: [`specs/logn_instituicao_spec.md`](specs/logn_instituicao_spec.md).
 ## O repositório ainda é privado
 
 Ele está preparado para ser público — Apache 2.0, `TRADEMARKS.md`, `NOTICE`, conteúdo
-separado, gitleaks limpo. Falta só a decisão de virar a chave.
+separado, gitleaks limpo. Antes de virar a chave, uma limpeza pela regra 8 do AGENTS.md:
+testes ainda usam nomes reais de nó da trilha — em `backend/internal/content/validate_test.go`
+e nos testes de `shared_core/src/app.rs` — e precisam trocar por nós de manual inventados.
+Como já estão no histórico, sair da árvore não basta: é `git filter-repo`.
