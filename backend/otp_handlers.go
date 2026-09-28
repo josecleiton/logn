@@ -5,9 +5,9 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/josecleiton/logn/backend/internal/domain"
+	"github.com/josecleiton/logn/backend/internal/locale"
 )
 
 type RequestOTPPayload struct {
@@ -44,7 +44,7 @@ func (s *Server) requestOTPHandler(w http.ResponseWriter, r *http.Request) {
 
 	code := domain.GenerateOTP()
 
-	if err := s.repo.SaveOTP(r.Context(), email, code, payload.Purpose, 15*time.Minute); err != nil {
+	if err := s.repo.SaveOTP(r.Context(), email, code, payload.Purpose, domain.OTPValidity); err != nil {
 		if errors.Is(err, domain.ErrOTPCooldown) {
 			w.Header().Set("Retry-After", "60")
 			// Código distinto do limite por IP: este trava só o reenvio, e quem já
@@ -57,12 +57,16 @@ func (s *Server) requestOTPHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// O e-mail sai na língua do app, que vem no Accept-Language. A negociação acontece
+	// aqui, e não dentro da goroutine: o pedido já terá acabado quando ela rodar.
+	lang := locale.Negotiate(r)
+
 	// Send Email asynchronously
-	go func(email, purpose, otp string) {
-		if err := s.mailer.SendOTP(email, purpose, otp); err != nil {
+	go func(email, purpose, otp, lang string) {
+		if err := s.mailer.SendOTP(email, purpose, otp, lang); err != nil {
 			log.Printf("otp não enviado: purpose=%s erro=%v", purpose, err)
 		}
-	}(email, payload.Purpose, code)
+	}(email, payload.Purpose, code, lang)
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "otp_sent"})

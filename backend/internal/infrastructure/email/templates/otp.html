@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="pt-BR" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<html lang="{{.Lang}}"xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">
-<title>Seu código de verificação — LogN</title>
+<title>{{.T.Subject}}</title>
 <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 <style>
   @media only screen and (max-width:620px){
@@ -19,7 +19,7 @@
 </style>
 </head>
 <body style="margin:0; padding:0; background-color:#0B0C0D; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;">
-<span style="display:none !important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px;">Código {{.CodeSpaced}}. Vale por 10 minutos. Não compartilhe com ninguém.</span>
+<span style="display:none !important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px;">{{.T.Preheader}}</span>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%; border-collapse:collapse; background-color:#0B0C0D;">
   <tr>
     <td align="center" style="padding:32px 12px 48px;">
@@ -43,13 +43,13 @@
           <td bgcolor="#111316" style="background-color:#111316; border:1px solid #24282D; border-radius:4px;">
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%; border-collapse:collapse;">
               <tr><td class="pad" style="padding:0 32px; padding-top:40px;">
-                  <span style="font-family:'Courier New', Courier, monospace; font-size:11px; line-height:16px; mso-line-height-rule:exactly; letter-spacing:1.5px; color:#7E858D; text-transform:uppercase;">VERIFICAÇÃO DE CONTA</span>
+                  <span style="font-family:'Courier New', Courier, monospace; font-size:11px; line-height:16px; mso-line-height-rule:exactly; letter-spacing:1.5px; color:#7E858D; text-transform:uppercase;">{{.T.Eyebrow}}</span>
                 </td></tr>
               <tr><td class="pad" class="h1" style="padding:0 32px; padding-top:10px; font-family:Arial, Helvetica, sans-serif; font-size:30px; line-height:35px; mso-line-height-rule:exactly; font-weight:bold; letter-spacing:-0.8px; color:#EDEEEF;">
-                  Confirme seu e-mail
+                  {{.T.Heading}}
                 </td></tr>
               <tr><td class="pad" style="padding:0 32px; padding-top:14px; font-family:Arial, Helvetica, sans-serif; font-size:16px; line-height:25px; mso-line-height-rule:exactly; color:#99A0A7;">
-                  Digite este código no app para liberar sua conta. Ele vale por 10 minutos.
+                  {{.T.Lead}}
                 </td></tr>
 
               <tr><td class="pad" align="center" class="otp" style="padding:0 32px; padding-top:30px;">
@@ -70,14 +70,14 @@
 
               <tr><td class="pad" align="center" style="padding:0 32px; padding-top:16px;">
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="border-collapse:collapse;"><tr>
-                    <td bgcolor="#221C0C" style="background-color:#221C0C; border:1px solid #F5C451; border-radius:2px; padding:7px 12px; font-family:'Courier New', Courier, monospace; font-size:11px; line-height:16px; mso-line-height-rule:exactly; letter-spacing:1.4px; color:#F5C451;">EXPIRA EM 10:0{{.D2}}</td>
+                    <td bgcolor="#221C0C" style="background-color:#221C0C; border:1px solid #F5C451; border-radius:2px; padding:7px 12px; font-family:'Courier New', Courier, monospace; font-size:11px; line-height:16px; mso-line-height-rule:exactly; letter-spacing:1.4px; color:#F5C451;">{{.T.Expires}}</td>
                   </tr></table>
                 </td></tr>
 
               <tr><td class="pad" style="padding:0 32px; padding-top:32px;">
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%; border-collapse:collapse;"><tr>
                     <td align="center" bgcolor="#FF7A45" style="background-color:#FF7A45; border-radius:4px;">
-                      <a href="logn://verify?code={{.Code}}&purpose={{.Purpose}}&email={{.Email}}" style="display:block; padding:16px 24px; font-family:Arial, Helvetica, sans-serif; font-size:16px; line-height:20px; mso-line-height-rule:exactly; font-weight:bold; color:#160B05; text-decoration:none; border-radius:4px;">Abrir o LogN e colar o código</a>
+                      <a href="logn://verify?code={{.Code}}&purpose={{.Purpose}}&email={{.Email}}" style="display:block; padding:16px 24px; font-family:Arial, Helvetica, sans-serif; font-size:16px; line-height:20px; mso-line-height-rule:exactly; font-weight:bold; color:#160B05; text-decoration:none; border-radius:4px;">{{.T.Button}}</a>
                     </td>
                   </tr></table>
                 </td></tr>
@@ -85,12 +85,12 @@
               <tr><td class="pad" style="padding:0 32px; padding-top:32px;">
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%; border-collapse:collapse; border-top:1px solid #24282D;">
                     <tr><td style="padding:20px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:22px; mso-line-height-rule:exactly; color:#99A0A7;">
-                      Não foi você que pediu? Ignore esta mensagem &mdash; sem o código, nada acontece na conta.
+                      {{.T.NotYou}}
                     </td></tr>
                   </table>
                 </td></tr>
               <tr><td class="pad" style="padding:0 32px; padding-top:8px; padding-bottom:40px; font-family:'Courier New', Courier, monospace; font-size:12px; line-height:19px; mso-line-height-rule:exactly; color:#7E858D;">
-                  solicitado em {{.RequestMeta}}
+                  {{.T.RequestedAt}}
                 </td></tr>
             </table>
           </td>
@@ -98,7 +98,7 @@
 
         <tr>
           <td class="pad" style="padding:28px 32px 0; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:19px; mso-line-height-rule:exactly; color:#7E858D;">
-            E-mail automático de segurança do LogN. Nunca pedimos seu código por telefone, chat ou resposta a esta mensagem.
+            {{.T.Footer}}
           </td>
         </tr>
 
