@@ -33,6 +33,8 @@
 	<string>1</string>
 	<key>LogNApiBaseURL</key>
 	<string>${API_BASE_URL}</string>
+	<key>LogNGoogleClientID</key>
+	<string>${GOOGLE_IOS_CLIENT_ID}</string>
 	<key>LogNPostHogHost</key>
 	<string>${POSTHOG_HOST}</string>
 	<key>LogNTelemetryKey</key>

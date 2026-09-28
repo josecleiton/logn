@@ -36,6 +36,9 @@ type AuthResponse struct {
 	// A conta tinha pedido exclusão, e este login ou esta troca de senha a cancelou.
 	// O app avisa uma vez. Some do JSON quando falso: app antigo ignora o campo.
 	AccountRestored bool `json:"account_restored,omitempty"`
+	// O e-mail da conta. No login pelo provedor o app não digitou nenhum, e é por ele
+	// que a sessão sabe de quem é.
+	Email string `json:"email,omitempty"`
 }
 
 func hashRefreshToken(token string) string {
@@ -48,7 +51,7 @@ func hashRefreshToken(token string) string {
 // Login, registro e troca de senha repetiam os mesmos passos à mão, e o da troca de
 // senha descartava os erros: sem token gravado, o app recebia uma sessão que morria no
 // primeiro refresh.
-func (s *Server) issueSession(ctx context.Context, w http.ResponseWriter, userID string, restored bool) {
+func (s *Server) issueSession(ctx context.Context, w http.ResponseWriter, userID, email string, restored bool) {
 	accessToken, err := domain.GenerateAccessToken(userID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, codeInternal)
@@ -75,6 +78,7 @@ func (s *Server) issueSession(ctx context.Context, w http.ResponseWriter, userID
 		UserID:           userID,
 		RefreshExpiresAt: expiresAt.Unix(),
 		AccountRestored:  restored,
+		Email:            email,
 	})
 }
 
@@ -141,7 +145,7 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("exclusão cancelada pelo login: user=%s", user.ID)
 	}
 
-	s.issueSession(ctx, w, user.ID, restored)
+	s.issueSession(ctx, w, user.ID, user.Email, restored)
 }
 
 type RefreshRequest struct {
@@ -313,7 +317,7 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}(email, lang)
 
-	s.issueSession(ctx, w, userID, false)
+	s.issueSession(ctx, w, userID, email, false)
 }
 
 type ResetPasswordRequest struct {
@@ -377,11 +381,19 @@ func (s *Server) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("exclusão cancelada pela troca de senha: user=%s", userID)
 	}
 
-	s.issueSession(ctx, w, userID, restored)
+	s.issueSession(ctx, w, userID, email, restored)
 }
+
+// deleteReauthMaxAge é quanto o login no provedor pode ter para servir de prova na
+// exclusão de conta.
+const deleteReauthMaxAge = 5 * time.Minute
 
 type DeleteAccountRequest struct {
 	Password string `json:"password"`
+	// Conta sem senha prova que é dona com um login novo no provedor (ADR 0016).
+	Provider string `json:"provider,omitempty"`
+	IDToken  string `json:"id_token,omitempty"`
+	Nonce    string `json:"nonce,omitempty"`
 }
 
 func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
@@ -409,10 +421,35 @@ func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	match, compareErr := domain.ComparePasswordAndHash(req.Password, user.PasswordHash)
-	if err != nil || user.PasswordHash == "" || compareErr != nil || !match {
-		writeError(w, http.StatusUnauthorized, codeInvalidCredentials)
-		return
+	if req.IDToken != "" {
+		// A identidade do token tem de ser desta conta: um login válido de outra conta
+		// no mesmo provedor não apaga nada aqui.
+		id, ok := s.verifySocial(ctx, w, req.Provider, req.IDToken, req.Nonce)
+		if !ok {
+			return
+		}
+		// Login de agora, não um token que sobrou de outro: o ID token vale uma hora,
+		// e excluir conta pede a pessoa na frente da tela.
+		if time.Since(id.IssuedAt) > deleteReauthMaxAge {
+			writeError(w, http.StatusUnauthorized, codeSocialTokenInvalid)
+			return
+		}
+		owns, err := s.repo.HasIdentity(ctx, userID, req.Provider, id.Subject)
+		if err != nil {
+			log.Printf("identidade não conferida na exclusão: user=%s erro=%v", userID, err)
+			writeError(w, http.StatusInternalServerError, codeInternal)
+			return
+		}
+		if !owns {
+			writeError(w, http.StatusUnauthorized, codeInvalidCredentials)
+			return
+		}
+	} else {
+		match, compareErr := domain.ComparePasswordAndHash(req.Password, user.PasswordHash)
+		if user.PasswordHash == "" || compareErr != nil || !match {
+			writeError(w, http.StatusUnauthorized, codeInvalidCredentials)
+			return
+		}
 	}
 
 	purgeAfter, err := s.repo.MarkAccountForDeletion(ctx, userID)

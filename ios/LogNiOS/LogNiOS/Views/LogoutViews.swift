@@ -184,9 +184,15 @@ struct ManageAccountView: View {
         }
         .navigationBarHidden(true)
         .sheet(isPresented: $showingDeleteConfirm) {
-            DeleteAccountSheet(onDelete: { password in
-                core.dispatch(event: .deleteAccount(passwordHash: password))
-            })
+            DeleteAccountSheet(
+                onDelete: { password in
+                    core.dispatch(event: .deleteAccount(passwordHash: password))
+                },
+                onDeleteWithGoogle: { credential in
+                    core.dispatch(event: .deleteAccountWithProvider(
+                        provider: "google", idToken: credential.idToken, nonce: credential.nonce))
+                }
+            )
             .environmentObject(core)
         }
     }
@@ -285,11 +291,15 @@ struct ManageAccountView: View {
 
 struct DeleteAccountSheet: View {
     let onDelete: (String) -> Void
+    /// Conta criada pelo Google não tem senha: prova que é dona entrando no Google de
+    /// novo, na hora. O servidor só aceita login de poucos minutos atrás.
+    let onDeleteWithGoogle: (GoogleAuth.Credential) -> Void
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var core: CoreWrapper
 
     @State private var password = ""
     @State private var confirmation = ""
+    @State private var googleBusy = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -337,13 +347,42 @@ struct DeleteAccountSheet: View {
                     .cornerRadius(Radius.sm)
             }
             .disabled(!canDelete)
+
+            if GoogleAuth.shared.isConfigured {
+                Button(action: deleteWithGoogle) {
+                    Text(Str.Logout.delete_with_google)
+                        .font(.plexSans(14))
+                        .foregroundColor(confirmed ? LognDark.textSecondary : LognDark.textDim)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .disabled(!confirmed || googleBusy)
+            }
         }
         .padding(20)
         .background(LognDark.surfaceRaised)
         .preferredColorScheme(.dark)
     }
 
+    private var confirmed: Bool { confirmation == "EXCLUIR" }
+
     private var canDelete: Bool {
-        return !password.isEmpty && confirmation == "EXCLUIR"
+        return !password.isEmpty && confirmed
+    }
+
+    private func deleteWithGoogle() {
+        googleBusy = true
+        Task {
+            defer { googleBusy = false }
+            do {
+                let credential = try await GoogleAuth.shared.signIn()
+                onDeleteWithGoogle(credential)
+                dismiss()
+            } catch GoogleAuth.Failure.cancelled {
+                // Desistiu na janela do Google: a conta fica.
+            } catch {
+                core.dispatch(event: .socialLoginFailed)
+            }
+        }
     }
 }

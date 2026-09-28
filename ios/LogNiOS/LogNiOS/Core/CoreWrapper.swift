@@ -92,6 +92,7 @@ public class CoreWrapper: ObservableObject {
             minAge: 13,
             deletionPurgeAfter: 0,
             accountRestoredNotice: false,
+            socialSignupRequired: false,
             analyticsEnabled: Telemetry.analyticsEnabled,
             // Nasce em andamento: o primeiro quadro é a splash, não o login. Quem não
             // tem sessão vê a splash por um quadro; quem tem não vê o login piscar

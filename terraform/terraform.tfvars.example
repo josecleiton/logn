@@ -17,6 +17,9 @@ smtp_port = "465" # 465 = TLS implícito; 587 = STARTTLS (o gomail escolhe pela 
 # A senha SMTP não passa pelo Terraform: vai direto para o secret logn-smtp-pass, com
 #   printf '%s' "a-senha" | gcloud secrets versions add logn-smtp-pass --data-file=-
 
+# Client ID iOS do login com Google (ADR 0016). Vazio desliga o login com Google.
+google_ios_client_id = "000000000000-seuclientid.apps.googleusercontent.com"
+
 # Imagem já publicada no Artifact Registry (ver README para como gerar).
 container_image = "us-east1-docker.pkg.dev/seu-projeto-gcp/cloud-run-source-deploy/logn@sha256:..."
 

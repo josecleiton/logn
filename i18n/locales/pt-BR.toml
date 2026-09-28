@@ -52,6 +52,9 @@ purchase_revoked = "Esta compra foi reembolsada ou cancelada e não libera mais 
 purchase_needs_account = "Para comprar uma trilha, crie uma conta ou entre."
 track_revoked = "O acesso a uma trilha paga foi revogado. O XP que você ganhou continua."
 track_download_failed = "A compra está na sua conta, mas não consegui baixar a trilha agora. Ela baixa sozinha na próxima abertura com internet."
+social_sign_in_failed = "Não consegui entrar com o Google. Tente de novo."
+social_email_unverified = "O Google ainda não confirmou o e-mail desta conta. Confirme por lá e tente de novo."
+social_provider_disabled = "O login com o Google está fora do ar agora. Entre com e-mail e senha."
 wait_seconds = "Aguarde %{seconds} s"
 sample_standings = "Dados de exemplo. O ranking ainda não está no ar: times, posições e números são fictícios."
 
@@ -249,6 +252,7 @@ deleted_body = "Ela será apagada de vez em %{date}. Se mudar de ideia, entre na
 restored_title = "Exclusão cancelada"
 restored_body = "Sua conta voltou com todo o progresso e não será mais apagada."
 notice_ok = "Entendi"
+delete_with_google = "Confirmar com o Google no lugar da senha"
 
 [account]
 manage = "Gerenciar conta"
@@ -288,6 +292,10 @@ core_ready = "CORE PRONTO"
 loading = "Carregando..."
 sign_in = "Entrar"
 email_first = "Digite seu e-mail primeiro."
+google_signup_title = "Falta pouco"
+google_signup_reason = "Para criar sua conta com o Google, confirme a idade e aceite os termos."
+google_signup_continue = "Criar conta"
+google_signup_cancel = "Agora não"
 
 [register]
 age_confirmation = "Tenho %{age} anos ou mais."

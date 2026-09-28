@@ -110,6 +110,12 @@ resource "google_cloud_run_v2_service" "logn" {
         name  = "APPLE_BUNDLE_ID"
         value = "sh.logn.app"
       }
+      # A audiência do ID token do Google. Vazia, o login com Google fica desligado
+      # (social_handlers.go); o resto do serviço não depende dela.
+      env {
+        name  = "GOOGLE_IOS_CLIENT_ID"
+        value = var.google_ios_client_id
+      }
 
       env {
         name = "DATABASE_URL"

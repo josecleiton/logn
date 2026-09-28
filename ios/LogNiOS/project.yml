@@ -59,6 +59,8 @@ targets:
         LogNApiBaseURL: ${API_BASE_URL}
         LogNTelemetryKey: ${TELEMETRY_KEY}
         LogNPostHogHost: ${POSTHOG_HOST}
+        # Client ID iOS do login com Google (ADR 0016). Vazio, o botão não aparece.
+        LogNGoogleClientID: ${GOOGLE_IOS_CLIENT_ID}
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - logn

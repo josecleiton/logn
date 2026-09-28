@@ -66,6 +66,17 @@ variable "smtp_port" {
   default     = "587"
 }
 
+variable "google_ios_client_id" {
+  description = <<-EOT
+    Client ID do app iOS no Google Auth Platform (termina em .apps.googleusercontent.com).
+    É a audiência que o backend exige no ID token do login com Google (ADR 0016). Não é
+    segredo, mas identifica o projeto e fica fora do git como o resto. Vazio desliga o
+    login com Google no servidor, que sobe do mesmo jeito.
+  EOT
+  type        = string
+  default     = ""
+}
+
 variable "container_image" {
   description = <<-EOT
     Imagem já publicada no Artifact Registry que o Cloud Run deve rodar (digest ou

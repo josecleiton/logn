@@ -52,6 +52,9 @@ purchase_revoked = "This purchase was refunded or cancelled and no longer unlock
 purchase_needs_account = "To buy a track, create an account or sign in."
 track_revoked = "Access to a paid track was revoked. The XP you earned stays."
 track_download_failed = "The purchase is on your account, but the track couldn't download right now. It downloads on its own the next time you open the app online."
+social_sign_in_failed = "Couldn't sign in with Google. Try again."
+social_email_unverified = "Google hasn't confirmed this account's email yet. Confirm it there and try again."
+social_provider_disabled = "Sign in with Google is down right now. Use your email and password."
 wait_seconds = "Wait %{seconds} s"
 sample_standings = "Sample data. The ranking isn't live yet: teams, positions and numbers are made up."
 
@@ -249,6 +252,7 @@ deleted_body = "It will be permanently erased on %{date}. If you change your min
 restored_title = "Deletion cancelled"
 restored_body = "Your account is back with all your progress and will no longer be erased."
 notice_ok = "Got it"
+delete_with_google = "Confirm with Google instead of a password"
 
 [account]
 manage = "Manage account"
@@ -288,6 +292,10 @@ core_ready = "CORE READY"
 loading = "Loading..."
 sign_in = "Sign in"
 email_first = "Enter your email first."
+google_signup_title = "Almost there"
+google_signup_reason = "To create your account with Google, confirm your age and accept the terms."
+google_signup_continue = "Create account"
+google_signup_cancel = "Not now"
 
 [register]
 age_confirmation = "I am %{age} years old or older."

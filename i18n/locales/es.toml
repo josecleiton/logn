@@ -50,6 +50,9 @@ purchase_revoked = "Esta compra fue reembolsada o cancelada y ya no desbloquea l
 purchase_needs_account = "Para comprar una pista, crea una cuenta o inicia sesión."
 track_revoked = "Se revocó el acceso a una pista de pago. El XP que ganaste se queda."
 track_download_failed = "La compra está en tu cuenta, pero la pista no se pudo descargar ahora. Se descarga sola la próxima vez que abras la app con internet."
+social_sign_in_failed = "No se pudo iniciar sesión con Google. Inténtalo de nuevo."
+social_email_unverified = "Google todavía no confirmó el correo de esta cuenta. Confírmalo allí e inténtalo de nuevo."
+social_provider_disabled = "El inicio de sesión con Google no está disponible ahora. Entra con correo y contraseña."
 wait_seconds = "Espera %{seconds} s"
 sample_standings = "Datos de ejemplo. La tabla de posiciones aún no está activa: equipos, puestos y números son ficticios."
 
@@ -247,6 +250,7 @@ deleted_body = "Se eliminará del todo el %{date}. Si cambias de opinión, inici
 restored_title = "Eliminación cancelada"
 restored_body = "Tu cuenta volvió con todo tu progreso y ya no se eliminará."
 notice_ok = "Entendido"
+delete_with_google = "Confirmar con Google en lugar de la contraseña"
 
 [account]
 manage = "Administrar cuenta"
@@ -286,6 +290,10 @@ core_ready = "CORE LISTO"
 loading = "Cargando..."
 sign_in = "Iniciar sesión"
 email_first = "Escribe tu correo primero."
+google_signup_title = "Ya casi"
+google_signup_reason = "Para crear tu cuenta con Google, confirma tu edad y acepta los términos."
+google_signup_continue = "Crear cuenta"
+google_signup_cancel = "Ahora no"
 
 [register]
 age_confirmation = "Tengo %{age} años o más."

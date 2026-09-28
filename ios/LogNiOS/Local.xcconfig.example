@@ -10,5 +10,8 @@ API_BASE_URL = http:$(SLASH)$(SLASH)localhost:8080
 // Chave do PostHog (vazia por padrão em dev)
 TELEMETRY_KEY = phc_SuaChaveAqui
 
+// Client ID iOS do login com Google (Google Auth Platform > Clients). Vazio esconde o botão.
+GOOGLE_IOS_CLIENT_ID = 000000000000-seuclientid.apps.googleusercontent.com
+
 // Team ID da Apple usado para assinar o build (Apple Developer > Membership)
 DEVELOPMENT_TEAM = SEU_TEAM_ID

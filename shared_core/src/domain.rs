@@ -297,6 +297,13 @@ pub enum StatusKey {
     /// A compra está na conta, mas a licença ou o pacote não chegaram agora. Baixa
     /// sozinha na próxima abertura com rede.
     TrackDownloadFailed,
+    /// O servidor recusou o token do provedor (`social_token_invalid`), ou o login
+    /// nele não chegou ao fim.
+    SocialSignInFailed,
+    /// `social_email_unverified`: o provedor não confirmou o e-mail da conta.
+    SocialEmailUnverified,
+    /// `provider_disabled`: o servidor está com o login por esse provedor desligado.
+    SocialProviderDisabled,
 }
 
 /// Uma das verificações que a abertura roda antes de soltar o jogador no app.
