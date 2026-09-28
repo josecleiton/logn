@@ -17,13 +17,9 @@ import (
 // presente e inválido é 401, para o app renovar a sessão em vez de achar que não
 // comprou nada.
 func (s *Server) tracksHandler(w http.ResponseWriter, r *http.Request) {
-	userID := ""
-	if r.Header.Get("Authorization") != "" {
-		id, ok := s.authenticate(w, r)
-		if !ok {
-			return
-		}
-		userID = id
+	userID, ok := s.optionalAccount(w, r)
+	if !ok {
+		return
 	}
 
 	lang := locale.Negotiate(r)
@@ -33,17 +29,8 @@ func (s *Server) tracksHandler(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
-	if userID == "" {
-		writeContentJSON(w, lang, tracks)
-		return
-	}
-	// Com conta, a resposta diz o que ela comprou e o que foi revogado: não é conteúdo
-	// que um cache no caminho possa servir a outra pessoa.
-	h := w.Header()
-	h.Set("Content-Type", "application/json")
-	h.Set("Content-Language", lang)
-	h.Set("Cache-Control", "private, no-store")
-	json.NewEncoder(w).Encode(tracks)
+	// Com conta, a resposta diz o que ela comprou e o que foi revogado.
+	writeAccountContentJSON(w, lang, userID, tracks)
 }
 
 // trackLicenseHandler devolve a chave e o prazo offline, e registra o aparelho.

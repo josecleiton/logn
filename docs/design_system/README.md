@@ -483,7 +483,7 @@ Bottom nav 3 itens (TRILHAS / ARENA / PLACAR) em label; ativo em accent com bord
 ---
 
 ## Templates de questão
-Quatro `template_type` no mesmo casco: **header fixo → corpo rolável → CTA ancorado**.
+Todo `template_type` usa o mesmo casco: **header fixo → corpo rolável → CTA ancorado**.
 Nenhum abre teclado nativo.
 
 Header de todos: balão colorido 14×16dp + `PROBLEM <letra>` em label, à direita ContestClock ou LifeBar.
@@ -501,6 +501,17 @@ CTA nomeia a escolha: "Confirmar linha 3".
 ### COMPLEXITY_MATCH
 Enunciado 19sp/600 · duas linhas rotuladas `TEMPO` / `ESPAÇO` (label 11sp, coluna fixa 60dp)
 com DropZone 46dp · divisor 1dp · banco de 4 chips mono 13sp.
+
+### TRADEOFF_MATCH
+Design: canvas `LogN Trade-off Match`, proposta A. Enunciado 19sp/600 · CodeBlock opcional ·
+duas casas rotuladas `BENEFÍCIO` / `DESVANTAGEM` (label 11sp, acima do texto), largura total,
+min 56dp · divisor 1dp · opções como linhas de largura total (min 56dp, letra mono 12sp de
+prefixo, texto 15sp que quebra linha).
+As opções são frases, não `O(n)`, e por isso não usam o chip mono do COMPLEXITY_MATCH.
+Toque, não arraste: a opção vai para a próxima casa vazia, benefício antes de desvantagem, e a
+casa da vez tem o rótulo em `accentInk` e o tracejado em `accent`. Opção já usada fica
+esmaecida (`textDim`, borda `line`) e não responde. Tocar na casa preenchida a esvazia.
+CTA "Confirmar trade-off", desabilitado até as duas casas.
 
 ### TAG_THE_PATTERN
 Cartão de enunciado no formato da folha impressa: borda `line`, fundo `surface`, raio 2dp;

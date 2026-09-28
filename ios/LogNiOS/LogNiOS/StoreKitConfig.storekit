@@ -12,10 +12,45 @@
           "description" : "Trilha Completa Offline",
           "displayName" : "DevOps Pro",
           "locale" : "pt_BR"
+        },
+        {
+          "description" : "Full Offline Track",
+          "displayName" : "DevOps Pro",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "Ruta Completa Sin Conexión",
+          "displayName" : "DevOps Pro",
+          "locale" : "es_ES"
         }
       ],
-      "productID" : "com.logn.app.track.11111111-1111-1111-1111-111111111111",
+      "productID" : "sh.logn.app.track.devops",
       "referenceName" : "DevOps Pro Track",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "22222222",
+      "localizations" : [
+        {
+          "description" : "Trilha Completa Offline",
+          "displayName" : "Engenharia de Software com IA",
+          "locale" : "pt_BR"
+        },
+        {
+          "description" : "Full Offline Track",
+          "displayName" : "Software Engineering with AI",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "Ruta Completa Sin Conexión",
+          "displayName" : "Ingeniería de Software con IA",
+          "locale" : "es_ES"
+        }
+      ],
+      "productID" : "sh.logn.app.track.ia",
+      "referenceName" : "AI Track",
       "type" : "NonConsumable"
     }
   ],

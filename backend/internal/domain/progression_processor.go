@@ -38,14 +38,15 @@ func (r *Repository) ProcessEventXP(ctx context.Context, tx pgx.Tx, userID strin
 
 		// O nó e a trilha saem do banco, não do evento. Desafio que o banco não conhece
 		// não paga: `user_paid_challenges` não tem chave estrangeira, e um id inventado
-		// virava XP. Trilha paga fora da amostra só paga com direito ativo; o evento
-		// segue na cadeia de qualquer jeito (spec, seção 8).
+		// virava XP. Trilha paga fora da amostra só paga com direito ativo, e a amostra
+		// de trilha indisponível só a quem a vê (ADR 0014); o evento segue na cadeia de
+		// qualquer jeito (spec, seção 8).
 		var nodeID string
 		var open, entitled bool
 		err := tx.QueryRow(ctx, `
-			SELECT n.id, `+openNode+`,
+			SELECT n.id, `+openNode+` AND `+visibleTrack("$2")+`,
 			       EXISTS (SELECT 1 FROM entitlements e
-			               WHERE e.user_id = $2 AND e.track_id = n.track_id AND e.status = 'active')
+			               WHERE e.user_id = $2::uuid AND e.track_id = n.track_id AND e.status = 'active')
 			FROM challenges c
 			JOIN skill_nodes n ON n.id = c.node_id
 			JOIN tracks t ON t.id = n.track_id

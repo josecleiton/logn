@@ -44,6 +44,10 @@ fn describe_answer(template: &str, selection: &MatchSelection) -> String {
             _ => String::new(),
         },
         "TAG_THE_PATTERN" => selection.selected_tags.join(", "),
+        "TRADEOFF_MATCH" => match (&selection.tradeoff_benefit, &selection.tradeoff_drawback) {
+            (Some(b), Some(d)) => format!("{} / {}", b, d),
+            _ => String::new(),
+        },
         _ => String::new(),
     }
 }
@@ -97,8 +101,9 @@ pub fn seconds_for_template(template_type: &str) -> i32 {
         "DRY_RUN" => 150,
         // Ler o código inteiro procurando a linha, com o código na tela.
         "SPOT_THE_BUG" => 90,
-        // Dois eixos e um raciocínio de custo em cada.
-        "COMPLEXITY_MATCH" => 75,
+        // Dois eixos e um raciocínio de custo em cada. O trade-off também tem duas casas,
+        // e as opções são frases, não O(n).
+        "COMPLEXITY_MATCH" | "TRADEOFF_MATCH" => 75,
         // Reconhecimento: ou se sabe, ou mais tempo não ajuda.
         _ => 60,
     }
@@ -119,7 +124,7 @@ pub struct MatchProblem {
     pub expected_string: Option<String>,
     /// Explicação própria do desafio para o erro. Vazia cai no texto genérico.
     pub explanation: String,
-    pub options: Vec<String>,       // Para COMPLEXITY_MATCH e TAG_THE_PATTERN
+    pub options: Vec<String>,       // Para COMPLEXITY_MATCH, TAG_THE_PATTERN e TRADEOFF_MATCH
     pub correct_options: Vec<String>, // Respostas corretas
     pub max_selections: i32,        // Para TAG_THE_PATTERN
     /// De onde o desafio veio. Vazio para o que nasceu aqui; a tela mostra um selo
@@ -186,6 +191,24 @@ pub struct MatchSelection {
     pub drop_space: Option<String>,         // COMPLEXITY_MATCH
     pub selected_tags: Vec<String>,         // TAG_THE_PATTERN
     pub predicted_output: Option<String>,   // DRY_RUN
+    pub tradeoff_benefit: Option<String>,   // TRADEOFF_MATCH
+    pub tradeoff_drawback: Option<String>,  // TRADEOFF_MATCH
+}
+
+impl MatchSelection {
+    /// O toque numa opção do TRADEOFF_MATCH: vai para a primeira casa vazia, benefício
+    /// antes de desvantagem. Opção que já está numa casa, ou as duas casas cheias, não
+    /// muda nada — tirar é tocar na casa.
+    pub fn pick_tradeoff(&mut self, value: String) {
+        if self.tradeoff_benefit.as_ref() == Some(&value) || self.tradeoff_drawback.as_ref() == Some(&value) {
+            return;
+        }
+        if self.tradeoff_benefit.is_none() {
+            self.tradeoff_benefit = Some(value);
+        } else if self.tradeoff_drawback.is_none() {
+            self.tradeoff_drawback = Some(value);
+        }
+    }
 }
 
 /// Normaliza a saída prevista do DRY_RUN: espaço em branco é ignorado, o resto não.
@@ -235,6 +258,8 @@ pub struct MatchViewModel {
     pub answer_string: String,
     pub drop_time: String,
     pub drop_space: String,
+    pub tradeoff_benefit: String,         // TRADEOFF_MATCH, vazio = casa vazia
+    pub tradeoff_drawback: String,        // TRADEOFF_MATCH
     pub selected_tags: Vec<String>,
     pub predicted_output: String,         // DRY_RUN
     pub watch_variables: Vec<crate::domain::WatchVariable>, // DRY_RUN
@@ -359,6 +384,12 @@ impl MatchState {
                 } else {
                     false
                 }
+            }
+            // `correct_options` é [benefício, desvantagem], posição a posição.
+            "TRADEOFF_MATCH" => {
+                problem.correct_options.len() == 2
+                    && self.selection.tradeoff_benefit.as_deref() == Some(&problem.correct_options[0])
+                    && self.selection.tradeoff_drawback.as_deref() == Some(&problem.correct_options[1])
             }
             "TAG_THE_PATTERN" => {
                 let mut selected = self.selection.selected_tags.clone();
@@ -545,6 +576,8 @@ impl MatchState {
             answer_string: self.selection.answer_string.clone().unwrap_or_default(),
             drop_time: self.selection.drop_time.clone().unwrap_or_default(),
             drop_space: self.selection.drop_space.clone().unwrap_or_default(),
+            tradeoff_benefit: self.selection.tradeoff_benefit.clone().unwrap_or_default(),
+            tradeoff_drawback: self.selection.tradeoff_drawback.clone().unwrap_or_default(),
             selected_tags: self.selection.selected_tags.clone(),
             predicted_output: self.selection.predicted_output.clone().unwrap_or_default(),
             watch_variables: problem.map(|p| p.watch_variables.clone()).unwrap_or_default(),

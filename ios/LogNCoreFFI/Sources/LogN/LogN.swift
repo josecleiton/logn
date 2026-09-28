@@ -1003,6 +1003,10 @@ indirect public enum Event: Hashable, Equatable {
     case matchSetDropSpace(value: String)
     case matchToggleTag(tag: String)
     case matchSetOutput(value: String)
+    /// TRADEOFF_MATCH: a opção tocada vai para a primeira casa vazia.
+    case matchPickTradeoff(value: String)
+    case matchClearBenefit
+    case matchClearDrawback
     case matchSubmit(timestamp: Int64)
     case matchDismissTrap
     case matchTimerTick
@@ -1323,81 +1327,88 @@ indirect public enum Event: Hashable, Equatable {
         case .matchSetOutput(let value):
             try serializer.serialize_variant_index(value: 85)
             try serializer.serialize_str(value: value)
-        case .matchSubmit(let timestamp):
+        case .matchPickTradeoff(let value):
             try serializer.serialize_variant_index(value: 86)
+            try serializer.serialize_str(value: value)
+        case .matchClearBenefit:
+            try serializer.serialize_variant_index(value: 87)
+        case .matchClearDrawback:
+            try serializer.serialize_variant_index(value: 88)
+        case .matchSubmit(let timestamp):
+            try serializer.serialize_variant_index(value: 89)
             try serializer.serialize_i64(value: timestamp)
         case .matchDismissTrap:
-            try serializer.serialize_variant_index(value: 87)
-        case .matchTimerTick:
-            try serializer.serialize_variant_index(value: 88)
-        case .undoLogout:
-            try serializer.serialize_variant_index(value: 89)
-        case .dismissLogoutNotice:
             try serializer.serialize_variant_index(value: 90)
-        case .logoutUndone(let x):
+        case .matchTimerTick:
             try serializer.serialize_variant_index(value: 91)
+        case .undoLogout:
+            try serializer.serialize_variant_index(value: 92)
+        case .dismissLogoutNotice:
+            try serializer.serialize_variant_index(value: 93)
+        case .logoutUndone(let x):
+            try serializer.serialize_variant_index(value: 94)
             try x.serialize(serializer: serializer)
         case .matchAbandonedAt(let solved, let now):
-            try serializer.serialize_variant_index(value: 92)
+            try serializer.serialize_variant_index(value: 95)
             try serializer.serialize_i32(value: solved)
             try serializer.serialize_i64(value: now)
         case .matchReportClosed:
-            try serializer.serialize_variant_index(value: 93)
-        case .reviewMilestonesFired(let x):
-            try serializer.serialize_variant_index(value: 94)
-            try x.serialize(serializer: serializer)
-        case .reviewMilestonesRestored(let x):
-            try serializer.serialize_variant_index(value: 95)
-            try x.serialize(serializer: serializer)
-        case .fetchLegalVersions(let country):
             try serializer.serialize_variant_index(value: 96)
-            try serializer.serialize_str(value: country)
-        case .legalVersionsFetched(let x):
+        case .reviewMilestonesFired(let x):
             try serializer.serialize_variant_index(value: 97)
             try x.serialize(serializer: serializer)
-        case .deleteAccount(let passwordHash):
+        case .reviewMilestonesRestored(let x):
             try serializer.serialize_variant_index(value: 98)
+            try x.serialize(serializer: serializer)
+        case .fetchLegalVersions(let country):
+            try serializer.serialize_variant_index(value: 99)
+            try serializer.serialize_str(value: country)
+        case .legalVersionsFetched(let x):
+            try serializer.serialize_variant_index(value: 100)
+            try x.serialize(serializer: serializer)
+        case .deleteAccount(let passwordHash):
+            try serializer.serialize_variant_index(value: 101)
             try serializer.serialize_str(value: passwordHash)
         case .accountDeleted(let x):
-            try serializer.serialize_variant_index(value: 99)
+            try serializer.serialize_variant_index(value: 102)
             try x.serialize(serializer: serializer)
         case .dismissDeletionNotice:
-            try serializer.serialize_variant_index(value: 100)
+            try serializer.serialize_variant_index(value: 103)
         case .dismissAccountRestoredNotice:
-            try serializer.serialize_variant_index(value: 101)
+            try serializer.serialize_variant_index(value: 104)
         case .setAnalyticsEnabled(let x):
-            try serializer.serialize_variant_index(value: 102)
+            try serializer.serialize_variant_index(value: 105)
             try serializer.serialize_bool(value: x)
         case .restoreAnalyticsPreference:
-            try serializer.serialize_variant_index(value: 103)
+            try serializer.serialize_variant_index(value: 106)
         case .analyticsPreferenceRestored(let x):
-            try serializer.serialize_variant_index(value: 104)
+            try serializer.serialize_variant_index(value: 107)
             try x.serialize(serializer: serializer)
         case .startBoot:
-            try serializer.serialize_variant_index(value: 105)
+            try serializer.serialize_variant_index(value: 108)
         case .bootWatchdogElapsed(let check, let attempt):
-            try serializer.serialize_variant_index(value: 106)
+            try serializer.serialize_variant_index(value: 109)
             try check.serialize(serializer: serializer)
             try serializer.serialize_u32(value: attempt)
         case .retryBoot:
-            try serializer.serialize_variant_index(value: 107)
+            try serializer.serialize_variant_index(value: 110)
         case .continueOffline:
-            try serializer.serialize_variant_index(value: 108)
+            try serializer.serialize_variant_index(value: 111)
         case .resumeEmailRead(let x):
-            try serializer.serialize_variant_index(value: 109)
+            try serializer.serialize_variant_index(value: 112)
             try x.serialize(serializer: serializer)
         case .queueOwnerRead(let x):
-            try serializer.serialize_variant_index(value: 110)
+            try serializer.serialize_variant_index(value: 113)
             try x.serialize(serializer: serializer)
         case .queueToAdoptRead(let from, let result):
-            try serializer.serialize_variant_index(value: 111)
+            try serializer.serialize_variant_index(value: 114)
             try serializer.serialize_str(value: from)
             try result.serialize(serializer: serializer)
         case .queueAdopted(let from):
-            try serializer.serialize_variant_index(value: 112)
+            try serializer.serialize_variant_index(value: 115)
             try serializer.serialize_str(value: from)
         case .syncedQueueRead(let owner, let sent, let result):
-            try serializer.serialize_variant_index(value: 113)
+            try serializer.serialize_variant_index(value: 116)
             try serializer.serialize_str(value: owner)
             try serializeArray(value: sent, serializer: serializer) { item, serializer in
                 try serializer.serialize_str(value: item)
@@ -1765,106 +1776,116 @@ indirect public enum Event: Hashable, Equatable {
             try deserializer.decrease_container_depth()
             return .matchSetOutput(value: value)
         case 86:
+            let value = try deserializer.deserialize_str()
+            try deserializer.decrease_container_depth()
+            return .matchPickTradeoff(value: value)
+        case 87:
+            try deserializer.decrease_container_depth()
+            return .matchClearBenefit
+        case 88:
+            try deserializer.decrease_container_depth()
+            return .matchClearDrawback
+        case 89:
             let timestamp = try deserializer.deserialize_i64()
             try deserializer.decrease_container_depth()
             return .matchSubmit(timestamp: timestamp)
-        case 87:
-            try deserializer.decrease_container_depth()
-            return .matchDismissTrap
-        case 88:
-            try deserializer.decrease_container_depth()
-            return .matchTimerTick
-        case 89:
-            try deserializer.decrease_container_depth()
-            return .undoLogout
         case 90:
             try deserializer.decrease_container_depth()
-            return .dismissLogoutNotice
+            return .matchDismissTrap
         case 91:
+            try deserializer.decrease_container_depth()
+            return .matchTimerTick
+        case 92:
+            try deserializer.decrease_container_depth()
+            return .undoLogout
+        case 93:
+            try deserializer.decrease_container_depth()
+            return .dismissLogoutNotice
+        case 94:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .logoutUndone(x)
-        case 92:
+        case 95:
             let solved = try deserializer.deserialize_i32()
             let now = try deserializer.deserialize_i64()
             try deserializer.decrease_container_depth()
             return .matchAbandonedAt(solved: solved, now: now)
-        case 93:
+        case 96:
             try deserializer.decrease_container_depth()
             return .matchReportClosed
-        case 94:
+        case 97:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .reviewMilestonesFired(x)
-        case 95:
+        case 98:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .reviewMilestonesRestored(x)
-        case 96:
+        case 99:
             let country = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .fetchLegalVersions(country: country)
-        case 97:
+        case 100:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .legalVersionsFetched(x)
-        case 98:
+        case 101:
             let passwordHash = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .deleteAccount(passwordHash: passwordHash)
-        case 99:
+        case 102:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .accountDeleted(x)
-        case 100:
+        case 103:
             try deserializer.decrease_container_depth()
             return .dismissDeletionNotice
-        case 101:
+        case 104:
             try deserializer.decrease_container_depth()
             return .dismissAccountRestoredNotice
-        case 102:
+        case 105:
             let x = try deserializer.deserialize_bool()
             try deserializer.decrease_container_depth()
             return .setAnalyticsEnabled(x)
-        case 103:
+        case 106:
             try deserializer.decrease_container_depth()
             return .restoreAnalyticsPreference
-        case 104:
+        case 107:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .analyticsPreferenceRestored(x)
-        case 105:
+        case 108:
             try deserializer.decrease_container_depth()
             return .startBoot
-        case 106:
+        case 109:
             let check = try LogN.BootCheck.deserialize(deserializer: deserializer)
             let attempt = try deserializer.deserialize_u32()
             try deserializer.decrease_container_depth()
             return .bootWatchdogElapsed(check: check, attempt: attempt)
-        case 107:
+        case 110:
             try deserializer.decrease_container_depth()
             return .retryBoot
-        case 108:
+        case 111:
             try deserializer.decrease_container_depth()
             return .continueOffline
-        case 109:
+        case 112:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .resumeEmailRead(x)
-        case 110:
+        case 113:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .queueOwnerRead(x)
-        case 111:
+        case 114:
             let from = try deserializer.deserialize_str()
             let result = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .queueToAdoptRead(from: from, result: result)
-        case 112:
+        case 115:
             let from = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .queueAdopted(from: from)
-        case 113:
+        case 116:
             let owner = try deserializer.deserialize_str()
             let sent = try deserializeArray(deserializer: deserializer) { deserializer in
                 try deserializer.deserialize_str()
@@ -2663,6 +2684,8 @@ public struct MatchViewModel: Hashable, Equatable {
     public var answerString: String
     public var dropTime: String
     public var dropSpace: String
+    public var tradeoffBenefit: String
+    public var tradeoffDrawback: String
     public var selectedTags: [String]
     public var predictedOutput: String
     public var watchVariables: [WatchVariable]
@@ -2674,7 +2697,7 @@ public struct MatchViewModel: Hashable, Equatable {
     public var trapTitle: String
     public var trapExplanation: String
 
-    public init(isActive: Bool, currentLetter: String, currentTitle: String, currentDescription: String, currentTemplateType: String, currentCodeLines: [String], currentOptions: [String], maxSelections: Int32, currentOrigin: String, originSheet: OriginCard?, originSheetPaused: Bool, leavePending: Bool, solvedSoFar: Int32, lives: Int32, maxLives: Int32, penaltyMinutes: Int32, contestSeconds: Int32, questionSeconds: Int32, isFrozen: Bool, totalProblems: Int32, solvedCount: Int32, balloonStates: [BalloonState], xpEarned: Int32, selectedLine: Int32, answerString: String, dropTime: String, dropSpace: String, selectedTags: [String], predictedOutput: String, watchVariables: [WatchVariable], watchNote: String, lastVerdict: String, errors: [MatchError], hasTrap: Bool, trapKind: TrapKind, trapTitle: String, trapExplanation: String) {
+    public init(isActive: Bool, currentLetter: String, currentTitle: String, currentDescription: String, currentTemplateType: String, currentCodeLines: [String], currentOptions: [String], maxSelections: Int32, currentOrigin: String, originSheet: OriginCard?, originSheetPaused: Bool, leavePending: Bool, solvedSoFar: Int32, lives: Int32, maxLives: Int32, penaltyMinutes: Int32, contestSeconds: Int32, questionSeconds: Int32, isFrozen: Bool, totalProblems: Int32, solvedCount: Int32, balloonStates: [BalloonState], xpEarned: Int32, selectedLine: Int32, answerString: String, dropTime: String, dropSpace: String, tradeoffBenefit: String, tradeoffDrawback: String, selectedTags: [String], predictedOutput: String, watchVariables: [WatchVariable], watchNote: String, lastVerdict: String, errors: [MatchError], hasTrap: Bool, trapKind: TrapKind, trapTitle: String, trapExplanation: String) {
         self.isActive = isActive
         self.currentLetter = currentLetter
         self.currentTitle = currentTitle
@@ -2702,6 +2725,8 @@ public struct MatchViewModel: Hashable, Equatable {
         self.answerString = answerString
         self.dropTime = dropTime
         self.dropSpace = dropSpace
+        self.tradeoffBenefit = tradeoffBenefit
+        self.tradeoffDrawback = tradeoffDrawback
         self.selectedTags = selectedTags
         self.predictedOutput = predictedOutput
         self.watchVariables = watchVariables
@@ -2751,6 +2776,8 @@ public struct MatchViewModel: Hashable, Equatable {
         try serializer.serialize_str(value: self.answerString)
         try serializer.serialize_str(value: self.dropTime)
         try serializer.serialize_str(value: self.dropSpace)
+        try serializer.serialize_str(value: self.tradeoffBenefit)
+        try serializer.serialize_str(value: self.tradeoffDrawback)
         try serializeArray(value: self.selectedTags, serializer: serializer) { item, serializer in
             try serializer.serialize_str(value: item)
         }
@@ -2813,6 +2840,8 @@ public struct MatchViewModel: Hashable, Equatable {
         let answerString = try deserializer.deserialize_str()
         let dropTime = try deserializer.deserialize_str()
         let dropSpace = try deserializer.deserialize_str()
+        let tradeoffBenefit = try deserializer.deserialize_str()
+        let tradeoffDrawback = try deserializer.deserialize_str()
         let selectedTags = try deserializeArray(deserializer: deserializer) { deserializer in
             try deserializer.deserialize_str()
         }
@@ -2830,7 +2859,7 @@ public struct MatchViewModel: Hashable, Equatable {
         let trapTitle = try deserializer.deserialize_str()
         let trapExplanation = try deserializer.deserialize_str()
         try deserializer.decrease_container_depth()
-        return MatchViewModel(isActive: isActive, currentLetter: currentLetter, currentTitle: currentTitle, currentDescription: currentDescription, currentTemplateType: currentTemplateType, currentCodeLines: currentCodeLines, currentOptions: currentOptions, maxSelections: maxSelections, currentOrigin: currentOrigin, originSheet: originSheet, originSheetPaused: originSheetPaused, leavePending: leavePending, solvedSoFar: solvedSoFar, lives: lives, maxLives: maxLives, penaltyMinutes: penaltyMinutes, contestSeconds: contestSeconds, questionSeconds: questionSeconds, isFrozen: isFrozen, totalProblems: totalProblems, solvedCount: solvedCount, balloonStates: balloonStates, xpEarned: xpEarned, selectedLine: selectedLine, answerString: answerString, dropTime: dropTime, dropSpace: dropSpace, selectedTags: selectedTags, predictedOutput: predictedOutput, watchVariables: watchVariables, watchNote: watchNote, lastVerdict: lastVerdict, errors: errors, hasTrap: hasTrap, trapKind: trapKind, trapTitle: trapTitle, trapExplanation: trapExplanation)
+        return MatchViewModel(isActive: isActive, currentLetter: currentLetter, currentTitle: currentTitle, currentDescription: currentDescription, currentTemplateType: currentTemplateType, currentCodeLines: currentCodeLines, currentOptions: currentOptions, maxSelections: maxSelections, currentOrigin: currentOrigin, originSheet: originSheet, originSheetPaused: originSheetPaused, leavePending: leavePending, solvedSoFar: solvedSoFar, lives: lives, maxLives: maxLives, penaltyMinutes: penaltyMinutes, contestSeconds: contestSeconds, questionSeconds: questionSeconds, isFrozen: isFrozen, totalProblems: totalProblems, solvedCount: solvedCount, balloonStates: balloonStates, xpEarned: xpEarned, selectedLine: selectedLine, answerString: answerString, dropTime: dropTime, dropSpace: dropSpace, tradeoffBenefit: tradeoffBenefit, tradeoffDrawback: tradeoffDrawback, selectedTags: selectedTags, predictedOutput: predictedOutput, watchVariables: watchVariables, watchNote: watchNote, lastVerdict: lastVerdict, errors: errors, hasTrap: hasTrap, trapKind: trapKind, trapTitle: trapTitle, trapExplanation: trapExplanation)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> MatchViewModel {

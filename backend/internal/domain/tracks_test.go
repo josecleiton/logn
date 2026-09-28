@@ -118,7 +118,7 @@ func TestPaidContentStaysOutOfTheOpenRoutes(t *testing.T) {
 	p := seedPaidTrack(t, conn)
 	ctx := context.Background()
 
-	open, err := repo.GetChallenges(ctx, "pt-BR")
+	open, err := repo.GetChallenges(ctx, "pt-BR", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func TestPaidContentStaysOutOfTheOpenRoutes(t *testing.T) {
 		t.Error("desafio fechado da trilha paga saiu na rota aberta")
 	}
 
-	nodes, err := repo.GetSkillNodes(ctx, "pt-BR")
+	nodes, err := repo.GetSkillNodes(ctx, "pt-BR", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -528,5 +528,107 @@ func TestTheLicenseOpensThePackage(t *testing.T) {
 	TrackKeySecret = []byte("another-secret-that-is-32-bytes!")
 	if _, err := repo.IssueLicense(ctx, a, p.id, testUUID(t), now); err == nil {
 		t.Fatal("chave guardada abriu com outro segredo")
+	}
+}
+
+// visibleTo diz o que a conta enxerga da trilha paga: no catálogo, nos nós e na amostra.
+func visibleTo(t *testing.T, repo *Repository, p paidTrack, userID string) (catalog, nodes, sample bool) {
+	t.Helper()
+	ctx := context.Background()
+	tracks, err := repo.GetTracks(ctx, "pt-BR", userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tr := range tracks {
+		catalog = catalog || tr.ID == p.id
+	}
+	ns, err := repo.GetSkillNodes(ctx, "pt-BR", userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range ns {
+		nodes = nodes || n.ID == p.sampleNode || n.ID == p.closed
+	}
+	chs, err := repo.GetChallenges(ctx, "pt-BR", userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range chs {
+		sample = sample || c.ID == p.sampleCh
+	}
+	return catalog, nodes, sample
+}
+
+// Trilha indisponível (ADR 0014): some para o visitante, para quem não comprou e para
+// quem testa outra trilha; aparece para quem testa esta e para quem comprou. A amostra
+// dela só paga XP a quem a vê.
+func TestAnUnavailableTrackShowsOnlyToPreviewersAndBuyers(t *testing.T) {
+	conn := setupTestDB(t)
+	t.Cleanup(conn.Close)
+	repo := NewRepository(conn)
+	ctx := context.Background()
+	p := seedPaidTrack(t, conn)
+	other := seedPaidTrack(t, conn)
+	stranger, previewer, otherPreviewer, buyer := seedUser(t, conn), seedUser(t, conn), seedUser(t, conn), seedUser(t, conn)
+
+	if c, n, s := visibleTo(t, repo, p, ""); !c || !n || !s {
+		t.Fatalf("disponível, o visitante vê tudo: catálogo=%v nós=%v amostra=%v", c, n, s)
+	}
+
+	if _, err := conn.Exec(ctx, `UPDATE tracks SET available = false WHERE id = $1`, p.id); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []struct {
+		track, user string
+	}{{p.id, previewer}, {other.id, otherPreviewer}} {
+		if _, err := conn.Exec(ctx, `INSERT INTO track_previewers (track_id, user_id) VALUES ($1, $2)`, q.track, q.user); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := repo.GrantEntitlement(ctx, grant(p, buyer, buyer, "test-"+testUUID(t)[:12], false)); err != nil {
+		t.Fatal(err)
+	}
+
+	for name, user := range map[string]string{"visitante": "", "estranho": stranger, "quem testa outra": otherPreviewer} {
+		if c, n, s := visibleTo(t, repo, p, user); c || n || s {
+			t.Errorf("%s vê a indisponível: catálogo=%v nós=%v amostra=%v", name, c, n, s)
+		}
+	}
+	for name, user := range map[string]string{"quem testa": previewer, "quem comprou": buyer} {
+		if c, n, s := visibleTo(t, repo, p, user); !c || !n || !s {
+			t.Errorf("%s não vê a indisponível: catálogo=%v nós=%v amostra=%v", name, c, n, s)
+		}
+	}
+	// A outra trilha segue disponível: a flag é de uma trilha só.
+	if c, _, _ := visibleTo(t, repo, other, stranger); !c {
+		t.Error("a flag de uma trilha escondeu a outra")
+	}
+
+	processAnswer(t, repo, conn, stranger, answer(t, p.sampleCh, p.sampleNode))
+	if xp := xpOf(t, conn, stranger); xp != 0 {
+		t.Fatalf("amostra de trilha indisponível pagou %d a quem não a vê", xp)
+	}
+	processAnswer(t, repo, conn, previewer, answer(t, p.sampleCh, p.sampleNode))
+	if xp := xpOf(t, conn, previewer); xp != XPPerAcceptedAnswer {
+		t.Fatalf("amostra pagou %d a quem testa", xp)
+	}
+	// Testar não é comprar: o fechado continua pedindo direito.
+	processAnswer(t, repo, conn, previewer, answer(t, p.closedCh, p.closed))
+	if xp := xpOf(t, conn, previewer); xp != XPPerAcceptedAnswer {
+		t.Fatalf("fechado pagou a quem só testa: %d", xp)
+	}
+	if _, _, err := repo.BuildTrackPackage(ctx, previewer, p.id); !errors.Is(err, ErrEntitlementRequired) {
+		t.Fatalf("pacote saiu para quem só testa: %v", err)
+	}
+}
+
+// A principal não sai da vitrine: sem ela o app abre sem trilha nenhuma.
+func TestTheFreeTrackCannotBeUnavailable(t *testing.T) {
+	conn := setupTestDB(t)
+	t.Cleanup(conn.Close)
+	_, err := conn.Exec(context.Background(), `UPDATE tracks SET available = false WHERE kind = 'free'`)
+	if err == nil {
+		conn.Exec(context.Background(), `UPDATE tracks SET available = true WHERE kind = 'free'`)
+		t.Fatal("a gratuita saiu da vitrine")
 	}
 }

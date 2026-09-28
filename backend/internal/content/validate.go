@@ -1,9 +1,10 @@
-// Package content confere os arquivos da trilha antes de virarem migração.
+// Package content confere os arquivos das trilhas antes de virarem migração.
 //
-// A fonte do conteúdo é a pasta trilha/ do repositório de conteúdo (ver
-// exporta_trilha.py e gen_conteudo.py lá): um arquivo de estrutura por nó e por
-// desafio, e um de texto por língua. O banco confere a forma do payload com CHECKs, mas
-// só na hora da migração, em produção; aqui o erro aparece antes, com o nome do arquivo.
+// A fonte do conteúdo é a pasta trilhas/ do repositório de conteúdo (ver
+// exporta_trilha.py e gen_conteudo.py lá): `tracks.json` com as trilhas, e uma pasta
+// por trilha, com um arquivo de estrutura por nó e por desafio e um de texto por língua.
+// O banco confere a forma do payload com CHECKs, mas só na hora da migração, em
+// produção; aqui o erro aparece antes, com o nome do arquivo.
 package content
 
 import (
@@ -29,6 +30,25 @@ type Finding struct {
 }
 
 func (f Finding) String() string { return f.Where + ": " + f.Msg }
+
+// track é uma linha de `trilhas/tracks.json`. O slug é o nome da pasta da trilha.
+type track struct {
+	ID                string  `json:"id"`
+	Slug              string  `json:"slug"`
+	Kind              string  `json:"kind"`
+	Status            string  `json:"status"`
+	Author            string  `json:"author"`
+	AppStoreProductID *string `json:"app_store_product_id"`
+	// Só vale na criação da trilha: depois, quem abre e fecha a vitrine é o banco
+	// (ADR 0014). Ausente é disponível.
+	Available *bool  `json:"available"`
+	Color     string `json:"color"`
+}
+
+type trackText struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
 
 type node struct {
 	ID            string   `json:"id"`
@@ -79,6 +99,9 @@ type challengeText struct {
 	Description string `json:"description"`
 	Explanation string `json:"explanation"`
 	WatchNote   string `json:"watch_note"`
+	// O texto de cada opção do TRADEOFF_MATCH nesta língua, pelo identificador do
+	// payload. Os outros templates não têm: TAG tira o rótulo do glossário.
+	OptionLabels map[string]string `json:"option_labels"`
 }
 
 // originCard é o texto do cartão de origem numa língua: quem escreveu o desafio,
@@ -98,6 +121,8 @@ type originEntry struct {
 var (
 	topicRe = regexp.MustCompile(`^[a-z][a-z_]*$`)
 	slugRe  = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+	uuidRe  = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	colorRe = regexp.MustCompile(`^#[0-9A-F]{6}$`)
 	identRe = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*`)
 	// Texto que o app mostra cru: marcação vira caractere solto na tela. Colchete depois
 	// de identificador é índice citado do código (`v[i]`) e passa; solto é marcador de
@@ -107,7 +132,7 @@ var (
 
 var templates = map[string]bool{
 	"SPOT_THE_BUG": true, "DRY_RUN": true, "FILL_IN_THE_BLANK": true,
-	"COMPLEXITY_MATCH": true, "TAG_THE_PATTERN": true,
+	"COMPLEXITY_MATCH": true, "TAG_THE_PATTERN": true, "TRADEOFF_MATCH": true,
 }
 
 // Palavras em português tiradas dos identificadores do código da trilha antes da
@@ -134,6 +159,13 @@ const watchPlaceholder = "—"
 type checker struct {
 	release  bool
 	findings []Finding
+	// Ids de nó e de desafio já vistos, com a trilha de cada um. O gerador faz upsert
+	// por id: um id repetido entre trilhas sobrescreve o conteúdo da outra no banco.
+	nodeOwner      map[string]string
+	challengeOwner map[string]string
+	// O cartão de origem não é de uma trilha: `challenge_origins` é uma tabela só, e os
+	// arquivos dela moram na pasta da gratuita.
+	originsDir string
 }
 
 func (c *checker) fail(where, format string, args ...any) {
@@ -154,19 +186,29 @@ func readJSON(path string, v any) error {
 	return dec.Decode(v)
 }
 
-// Validate confere a trilha em root (a pasta com trilha/ e glossario/). Devolve todos
+// Validate confere as trilhas em root (a pasta com trilhas/ e glossario/). Devolve todos
 // os achados; quem chama decide o que é erro pelo campo Pending e pelo modo.
+//
+// Sem `trilhas/tracks.json`, confere só `trilhas/free`, a gratuita.
 func Validate(root string) []Finding {
-	c := &checker{}
-	trilha := filepath.Join(root, "trilhas", "free")
-
-	var nodes []node
-	if err := readJSON(filepath.Join(trilha, "nos.json"), &nodes); err != nil {
-		c.fail("trilha/nos.json", "%v", err)
-		return c.findings
+	trilhas := filepath.Join(root, "trilhas")
+	c := &checker{
+		nodeOwner:      map[string]string{},
+		challengeOwner: map[string]string{},
+		originsDir:     filepath.Join(trilhas, "free"),
 	}
-	nodeIDs := c.checkNodes(nodes)
-	c.checkNodeTexts(trilha, nodeIDs)
+
+	slugs := []string{"free"}
+	var tracks []track
+	err := readJSON(filepath.Join(trilhas, "tracks.json"), &tracks)
+	switch {
+	case os.IsNotExist(err):
+	case err != nil:
+		c.fail("trilhas/tracks.json", "%v", err)
+		return c.findings
+	default:
+		slugs = c.checkTracks(trilhas, tracks)
+	}
 
 	glossary := map[string]map[string]string{}
 	if err := readJSON(filepath.Join(root, "glossario", "tags.json"), &glossary); err != nil && !os.IsNotExist(err) {
@@ -174,19 +216,126 @@ func Validate(root string) []Finding {
 	}
 	c.checkGlossary(glossary)
 
-	c.checkChallenges(trilha, nodeIDs, glossary)
+	for _, slug := range slugs {
+		dir := filepath.Join(trilhas, slug)
+		label := "trilhas/" + slug
+		var nodes []node
+		if err := readJSON(filepath.Join(dir, "nos.json"), &nodes); err != nil {
+			c.fail(label+"/nos.json", "%v", err)
+			continue
+		}
+		nodeIDs := c.checkNodes(label, nodes)
+		c.checkNodeTexts(dir, label, nodeIDs)
+		c.checkChallenges(dir, label, nodeIDs, glossary)
+	}
 	return c.findings
 }
 
-func (c *checker) checkNodes(nodes []node) map[string]bool {
+// checkTracks confere `tracks.json` e o nome de cada trilha nas línguas, e devolve as
+// pastas a conferir. Há uma gratuita só, e é ela que o app abre: não sai da vitrine.
+func (c *checker) checkTracks(trilhas string, tracks []track) []string {
+	var slugs []string
+	ids := map[string]bool{}
+	seenSlug := map[string]bool{}
+	free := 0
+	for _, t := range tracks {
+		where := "trilhas/tracks.json " + t.Slug
+		switch {
+		case !slugRe.MatchString(t.Slug):
+			c.fail(where, "slug fora de ^[a-z][a-z0-9_]*$")
+			continue
+		case seenSlug[t.Slug]:
+			c.fail(where, "slug repetido")
+			continue
+		}
+		seenSlug[t.Slug] = true
+		if !uuidRe.MatchString(t.ID) {
+			c.fail(where, "id %q não é uuid", t.ID)
+		} else if ids[t.ID] {
+			c.fail(where, "id %s repetido", t.ID)
+		}
+		ids[t.ID] = true
+		if t.Status != "active" && t.Status != "discontinued" {
+			c.fail(where, "status %q fora de active e discontinued", t.Status)
+		}
+		if strings.TrimSpace(t.Author) == "" {
+			c.fail(where, "sem author")
+		}
+		if t.Color != "" && !colorRe.MatchString(t.Color) {
+			c.fail(where, "color %q fora de ^#[0-9A-F]{6}$", t.Color)
+		}
+		hasProduct := t.AppStoreProductID != nil && strings.TrimSpace(*t.AppStoreProductID) != ""
+		switch t.Kind {
+		case "free":
+			free++
+			if hasProduct {
+				c.fail(where, "a gratuita não tem app_store_product_id")
+			}
+			if t.Available != nil && !*t.Available {
+				c.fail(where, "a gratuita não sai da vitrine")
+			}
+		case "paid":
+			if !hasProduct {
+				c.fail(where, "trilha paga sem app_store_product_id")
+			}
+		default:
+			c.fail(where, "kind %q fora de free e paid", t.Kind)
+		}
+		if info, err := os.Stat(filepath.Join(trilhas, t.Slug)); err != nil || !info.IsDir() {
+			c.fail(where, "sem a pasta trilhas/%s", t.Slug)
+			continue
+		}
+		slugs = append(slugs, t.Slug)
+	}
+	if free != 1 {
+		c.fail("trilhas/tracks.json", "precisa de exatamente uma trilha free, tem %d", free)
+	}
+
+	for _, l := range locale.Supported {
+		name := "tracks." + l + ".json"
+		texts := map[string]trackText{}
+		err := readJSON(filepath.Join(trilhas, name), &texts)
+		if os.IsNotExist(err) {
+			c.missingLocale("trilhas/"+name, l, "os nomes das trilhas")
+			continue
+		}
+		if err != nil {
+			c.fail("trilhas/"+name, "%v", err)
+			continue
+		}
+		for _, t := range tracks {
+			tx, ok := texts[t.ID]
+			switch {
+			case !ok:
+				c.missingLocale("trilhas/"+name+" "+t.Slug, l, "a trilha")
+			case strings.TrimSpace(tx.Name) == "":
+				c.fail("trilhas/"+name+" "+t.Slug, "nome vazio")
+			default:
+				c.checkText("trilhas/"+name+" "+t.Slug, tx.Name, tx.Description)
+			}
+		}
+		for id := range texts {
+			if !ids[id] {
+				c.fail("trilhas/"+name, "texto para a trilha %s, que não existe em tracks.json", id)
+			}
+		}
+	}
+	return slugs
+}
+
+func (c *checker) checkNodes(label string, nodes []node) map[string]bool {
 	ids := map[string]bool{}
 	cells := map[[2]int]string{}
 	for _, n := range nodes {
-		where := "trilha/nos.json " + n.ID
+		where := label + "/nos.json " + n.ID
 		if ids[n.ID] {
 			c.fail(where, "id repetido")
 		}
 		ids[n.ID] = true
+		if other, ok := c.nodeOwner[n.ID]; ok && other != label {
+			c.fail(where, "id repete o de um nó de %s", other)
+		}
+		c.nodeOwner[n.ID] = label
 		if other, ok := cells[[2]int{n.Row, n.Col}]; ok {
 			c.fail(where, "mesma posição (row %d, col %d) que %s", n.Row, n.Col, other)
 		}
@@ -201,40 +350,40 @@ func (c *checker) checkNodes(nodes []node) map[string]bool {
 	for _, n := range nodes {
 		for _, p := range n.Prerequisites {
 			if !ids[p] {
-				c.fail("trilha/nos.json "+n.ID, "pré-requisito %s não existe", p)
+				c.fail(label+"/nos.json "+n.ID, "pré-requisito %s não existe", p)
 			}
 		}
 	}
 	return ids
 }
 
-func (c *checker) checkNodeTexts(trilha string, nodeIDs map[string]bool) {
+func (c *checker) checkNodeTexts(dir, label string, nodeIDs map[string]bool) {
 	for _, l := range locale.Supported {
 		name := "nos." + l + ".json"
 		texts := map[string]nodeText{}
-		err := readJSON(filepath.Join(trilha, name), &texts)
+		err := readJSON(filepath.Join(dir, name), &texts)
 		if os.IsNotExist(err) {
-			c.missingLocale("trilha/"+name, l, "os nomes dos nós")
+			c.missingLocale(label+"/"+name, l, "os nomes dos nós")
 			continue
 		}
 		if err != nil {
-			c.fail("trilha/"+name, "%v", err)
+			c.fail(label+"/"+name, "%v", err)
 			continue
 		}
 		for id := range nodeIDs {
 			t, ok := texts[id]
 			switch {
 			case !ok:
-				c.missingLocale("trilha/"+name+" "+id, l, "o nó")
+				c.missingLocale(label+"/"+name+" "+id, l, "o nó")
 			case strings.TrimSpace(t.Name) == "":
-				c.fail("trilha/"+name+" "+id, "nome vazio")
+				c.fail(label+"/"+name+" "+id, "nome vazio")
 			default:
-				c.checkText("trilha/"+name+" "+id, t.Name, t.Description)
+				c.checkText(label+"/"+name+" "+id, t.Name, t.Description)
 			}
 		}
 		for id := range texts {
 			if !nodeIDs[id] {
-				c.fail("trilha/"+name, "texto para o nó %s, que não existe em nos.json", id)
+				c.fail(label+"/"+name, "texto para o nó %s, que não existe em nos.json", id)
 			}
 		}
 	}
@@ -264,11 +413,12 @@ func (c *checker) checkGlossary(glossary map[string]map[string]string) {
 	}
 }
 
-func (c *checker) checkChallenges(trilha string, nodeIDs map[string]bool, glossary map[string]map[string]string) {
+func (c *checker) checkChallenges(trilha, label string, nodeIDs map[string]bool, glossary map[string]map[string]string) {
 	dir := filepath.Join(trilha, "desafios")
+	label += "/desafios/"
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		c.fail("trilha/desafios", "%v", err)
+		c.fail(label, "%v", err)
 		return
 	}
 
@@ -287,7 +437,7 @@ func (c *checker) checkChallenges(trilha string, nodeIDs map[string]bool, glossa
 			texts = append(texts, base)
 			continue
 		}
-		where := "trilha/desafios/" + e.Name()
+		where := label + e.Name()
 		var ch challenge
 		if err := readJSON(filepath.Join(dir, e.Name()), &ch); err != nil {
 			c.fail(where, "%v", err)
@@ -297,6 +447,10 @@ func (c *checker) checkChallenges(trilha string, nodeIDs map[string]bool, glossa
 			c.fail(where, "o id dentro (%q) não bate com o nome do arquivo", ch.ID)
 		}
 		ids[base] = true
+		if other, ok := c.challengeOwner[base]; ok {
+			c.fail(where, "id repete o de um desafio de %s", other)
+		}
+		c.challengeOwner[base] = strings.TrimSuffix(label, "/desafios/")
 		if !nodeIDs[ch.NodeID] {
 			c.fail(where, "nó %s não existe em nos.json", ch.NodeID)
 		}
@@ -316,28 +470,28 @@ func (c *checker) checkChallenges(trilha string, nodeIDs map[string]bool, glossa
 		p := c.checkPayload(where, ch, glossary)
 
 		for _, l := range locale.Supported {
-			c.checkChallengeText(dir, base, l, p)
+			c.checkChallengeText(dir, label, base, l, ch.TemplateType, p)
 		}
 	}
 
 	for _, t := range texts {
 		id, l, _ := strings.Cut(t, ".")
 		if !ids[id] {
-			c.fail("trilha/desafios/"+t+".json", "texto de um desafio que não existe")
+			c.fail(label+t+".json", "texto de um desafio que não existe")
 		}
 		if !locale.IsSupported(l) {
-			c.fail("trilha/desafios/"+t+".json", "língua %q não é servida", l)
+			c.fail(label+t+".json", "língua %q não é servida", l)
 		}
 	}
 
-	c.checkOrigins(trilha, originsUsed)
+	c.checkOrigins(label, originsUsed)
 }
 
 // checkOrigins confere que toda origem usada por um desafio tem cartão nas três
 // línguas. `origens.json` traz o pt-BR e é onde o id nasce; `origens.<locale>.json`
 // traz as outras, no mesmo formato de `nos.<locale>.json`. O erro nomeia o desafio, não
 // só a origem, porque é o desafio que a pessoa está editando quando lê o achado.
-func (c *checker) checkOrigins(trilha string, originsUsed map[string]string) {
+func (c *checker) checkOrigins(label string, originsUsed map[string]string) {
 	if len(originsUsed) == 0 {
 		return
 	}
@@ -345,8 +499,8 @@ func (c *checker) checkOrigins(trilha string, originsUsed map[string]string) {
 	cardsByLocale := map[string]map[string]originCard{}
 
 	var base []originEntry
-	if err := readJSON(filepath.Join(trilha, "origens.json"), &base); err != nil {
-		c.fail("trilha/origens.json", "%v", err)
+	if err := readJSON(filepath.Join(c.originsDir, "origens.json"), &base); err != nil {
+		c.fail("trilhas/free/origens.json", "%v", err)
 		return
 	}
 	baseCards := map[string]originCard{}
@@ -361,13 +515,13 @@ func (c *checker) checkOrigins(trilha string, originsUsed map[string]string) {
 		}
 		name := "origens." + l + ".json"
 		texts := map[string]originCard{}
-		err := readJSON(filepath.Join(trilha, name), &texts)
+		err := readJSON(filepath.Join(c.originsDir, name), &texts)
 		if os.IsNotExist(err) {
 			cardsByLocale[l] = map[string]originCard{}
 			continue
 		}
 		if err != nil {
-			c.fail("trilha/"+name, "%v", err)
+			c.fail("trilhas/free/"+name, "%v", err)
 			continue
 		}
 		cardsByLocale[l] = texts
@@ -375,7 +529,7 @@ func (c *checker) checkOrigins(trilha string, originsUsed map[string]string) {
 
 	for _, challengeID := range sortedKeys(originsUsed) {
 		origin := originsUsed[challengeID]
-		where := "trilha/desafios/" + challengeID + ".json"
+		where := label + challengeID + ".json"
 		for _, l := range locale.Supported {
 			card, ok := cardsByLocale[l][origin]
 			switch {
@@ -481,6 +635,30 @@ func (c *checker) checkPayload(where string, ch challenge, glossary map[string]m
 				}
 			}
 		}
+	case "TRADEOFF_MATCH":
+		// Mesma régua da CHECK da 0053. As opções são identificadores: o texto vai no
+		// arquivo de cada língua, em option_labels.
+		seen := map[string]bool{}
+		for _, o := range ct.Options {
+			if !slugRe.MatchString(o) {
+				c.fail(where, "opção %q fora de ^[a-z][a-z0-9_]*$: é identificador, o texto vai em option_labels", o)
+			}
+			if seen[o] {
+				c.fail(where, "opção %q repetida", o)
+			}
+			seen[o] = true
+		}
+		if len(ct.Options) < 3 {
+			c.fail(where, "TRADEOFF_MATCH precisa de ao menos três opções: duas respostas e uma que não é")
+		}
+		if len(ct.CorrectOptions) != 2 || ct.CorrectOptions[0] == ct.CorrectOptions[1] {
+			c.fail(where, "TRADEOFF_MATCH tem par benefício e desvantagem, diferentes")
+		}
+		for _, o := range ct.CorrectOptions {
+			if !seen[o] {
+				c.fail(where, "resposta certa %q fora das opções", o)
+			}
+		}
 	}
 
 	for i, line := range ct.CodeLines {
@@ -494,9 +672,9 @@ func (c *checker) checkPayload(where string, ch challenge, glossary map[string]m
 	return &p
 }
 
-func (c *checker) checkChallengeText(dir, id, l string, p *payload) {
+func (c *checker) checkChallengeText(dir, label, id, l, template string, p *payload) {
 	name := id + "." + l + ".json"
-	where := "trilha/desafios/" + name
+	where := label + name
 	var t challengeText
 	err := readJSON(filepath.Join(dir, name), &t)
 	if os.IsNotExist(err) {
@@ -516,6 +694,42 @@ func (c *checker) checkChallengeText(dir, id, l string, p *payload) {
 		c.fail(where, "watch_note vazio num desafio com watch_variables")
 	}
 	c.checkText(where, t.Title, t.Description, t.Explanation, t.WatchNote)
+	c.checkOptionLabels(where, template, p, t.OptionLabels)
+}
+
+// checkOptionLabels confere o texto das opções do TRADEOFF_MATCH numa língua: toda opção
+// tem texto, nenhum sobra, e dois não se repetem — o Core julga comparando texto, e
+// duas opções com o mesmo rótulo seriam a mesma resposta.
+func (c *checker) checkOptionLabels(where, template string, p *payload, labels map[string]string) {
+	if template != "TRADEOFF_MATCH" {
+		if len(labels) > 0 {
+			c.fail(where, "option_labels só vale no TRADEOFF_MATCH")
+		}
+		return
+	}
+	if p == nil {
+		return
+	}
+	options := map[string]bool{}
+	byText := map[string]string{}
+	for _, o := range p.Content.Options {
+		options[o] = true
+		text := strings.TrimSpace(labels[o])
+		if text == "" {
+			c.fail(where, "falta o texto da opção %q em option_labels", o)
+			continue
+		}
+		if other, ok := byText[strings.ToLower(text)]; ok {
+			c.fail(where, "as opções %q e %q têm o mesmo texto", other, o)
+		}
+		byText[strings.ToLower(text)] = o
+		c.checkText(where, text)
+	}
+	for _, o := range sortedKeys(labels) {
+		if !options[o] {
+			c.fail(where, "option_labels tem %q, que não é opção do desafio", o)
+		}
+	}
 }
 
 func (c *checker) checkText(where string, texts ...string) {

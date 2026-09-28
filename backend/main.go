@@ -74,6 +74,16 @@ func (s *Server) authenticate(w http.ResponseWriter, r *http.Request) (string, b
 	return userID, true
 }
 
+// optionalAccount é o dono do token, quando há token; sem cabeçalho, é o visitante ("").
+// Token presente e inválido responde 401 e devolve `false`, para o app renovar a sessão
+// em vez de receber a resposta de quem não entrou.
+func (s *Server) optionalAccount(w http.ResponseWriter, r *http.Request) (string, bool) {
+	if r.Header.Get("Authorization") == "" {
+		return "", true
+	}
+	return s.authenticate(w, r)
+}
+
 func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -171,15 +181,19 @@ func writeRebaseRequired(w http.ResponseWriter, serverTop string) {
 
 // Método filtrado pela rota, como em getNodesHandler: HEAD tem de passar.
 func (s *Server) challengesHandler(w http.ResponseWriter, r *http.Request) {
+	userID, ok := s.optionalAccount(w, r)
+	if !ok {
+		return
+	}
 	lang := locale.Negotiate(r)
-	challenges, err := s.repo.GetChallenges(r.Context(), lang)
+	challenges, err := s.repo.GetChallenges(r.Context(), lang, userID)
 	if err != nil {
 		log.Printf("desafios não lidos: locale=%s erro=%v", lang, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 
-	writeContentJSON(w, lang, challenges)
+	writeAccountContentJSON(w, lang, userID, challenges)
 }
 
 // writeContentJSON responde conteúdo da trilha numa língua. `Content-Language` diz ao
@@ -191,6 +205,22 @@ func writeContentJSON(w http.ResponseWriter, lang string, body any) {
 	h.Set("Content-Language", lang)
 	h.Add("Vary", "Accept-Language")
 	h.Set("Cache-Control", "no-cache")
+	json.NewEncoder(w).Encode(body)
+}
+
+// writeAccountContentJSON responde conteúdo que depende da conta: o visitante recebe o
+// de todos, e a conta recebe também o que só ela vê — a trilha comprada, a indisponível
+// que ela testa (ADR 0014). Essa não pode ficar num cache no caminho para servir a outra
+// pessoa.
+func writeAccountContentJSON(w http.ResponseWriter, lang, userID string, body any) {
+	if userID == "" {
+		writeContentJSON(w, lang, body)
+		return
+	}
+	h := w.Header()
+	h.Set("Content-Type", "application/json")
+	h.Set("Content-Language", lang)
+	h.Set("Cache-Control", "private, no-store")
 	json.NewEncoder(w).Encode(body)
 }
 

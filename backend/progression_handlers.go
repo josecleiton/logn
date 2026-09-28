@@ -20,8 +20,12 @@ type nodesResponse struct {
 // O método já vem filtrado pela rota: `GET /api/v1/nodes` aceita também HEAD, que uma
 // guarda de GET aqui dentro recusava com 405.
 func (s *Server) getNodesHandler(w http.ResponseWriter, r *http.Request) {
+	userID, ok := s.optionalAccount(w, r)
+	if !ok {
+		return
+	}
 	lang := locale.Negotiate(r)
-	nodes, err := s.repo.GetSkillNodes(r.Context(), lang)
+	nodes, err := s.repo.GetSkillNodes(r.Context(), lang, userID)
 	if err != nil {
 		log.Printf("nós não lidos: locale=%s erro=%v", lang, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
@@ -34,7 +38,7 @@ func (s *Server) getNodesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeContentJSON(w, lang, nodesResponse{Nodes: nodes, Origins: origins})
+	writeAccountContentJSON(w, lang, userID, nodesResponse{Nodes: nodes, Origins: origins})
 }
 
 func (s *Server) getUserProgressHandler(w http.ResponseWriter, r *http.Request) {

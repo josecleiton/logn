@@ -142,6 +142,13 @@ gap_to_fill = {}
 drop_here = {}
 drop_here_accessibility = {}
 filled_accessibility = { placeholders = [{ name = "value", type = "text" }] }
+# TRADEOFF_MATCH: as duas casas, o que a casa vazia diz e o que o leitor de tela lê.
+benefit_slot = {}
+drawback_slot = {}
+tap_an_option = {}
+confirm_tradeoff = {}
+slot_empty_accessibility = { placeholders = [{ name = "slot", type = "text" }] }
+slot_filled_accessibility = { placeholders = [{ name = "slot", type = "text" }, { name = "value", type = "text" }] }
 
 [groups.match.keys]
 # O cartão de armadilha e a revisão: o Core manda o tipo e a explicação do desafio, e o
