@@ -538,7 +538,7 @@ se WA, shake 240ms, `lives--`, penalidade +20min, e abre trap sheet se houver tr
 - Balão nunca só por cor — a letra fica sob o balão e no `contentDescription`
 - Célula do placar lê "problema C, aceito, 2 tentativas, 88 minutos"
 - Contraste mínimo 4.5:1 em texto lido; 3:1 nas cores de balão (formas, não texto)
-- Font scale até 200% (Android) / Dynamic Type até AX2 (iOS) sem truncar enunciado
+- Font scale até 200% (Android) / Dynamic Type até AX3 (iOS) sem truncar enunciado
 - `reduceMotion`: shake vira flash de borda
 
 ## Voz e copy
@@ -556,7 +556,7 @@ Geometria, cor e copy são **idênticas**. Só isto segue convenção nativa:
 | Drag & drop | `detectDragGestures` + DragTarget | `.draggable` / `.dropDestination` |
 | Haptic | `HapticFeedbackType` | `.sensoryFeedback` |
 | Shake | `Animatable` + keyframes | `.phaseAnimator` / `KeyframeAnimator` |
-| Escala de texto | `sp` + fontScale 200% | Dynamic Type até AX2 |
+| Escala de texto | `sp` + fontScale 200% | Dynamic Type até AX3 |
 | Piso de toque | 48dp | 44pt |
 | Navegação raiz | `NavigationBar` 3 itens | `TabView` `.tabBar`, mesmos 3 |
 
