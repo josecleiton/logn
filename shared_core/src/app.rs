@@ -1621,8 +1621,12 @@ impl App for LogNApp {
                 model.status = "Modo Visitante".to_string();
                 // A sessão que caiu no meio do jogo deixou a fila dela na memória, e o
                 // visitante não pode gravar por cima.
+                // O render vai junto, como no `Login`: sem ele o shell só via o visitante
+                // quando a árvore chegava do servidor, e até lá o toque parecia morto. Com
+                // ele o app já troca de tela, e o mapa mostra que está atualizando.
                 self.claim_queue(model, GUEST_QUEUE_OWNER, &[""])
                     .and(self.update(Event::FetchNodes, model))
+                    .and(render::render())
             }
 
             Event::TokenStored(_) => {
@@ -7473,6 +7477,19 @@ mod tests {
         let (app, mut model) = paid_model();
         let _ = app.update(restored("onboarding_done", b"1"), &mut model);
         assert!(!app.view(&model).show_onboarding, "quem já passou não vê de novo");
+    }
+
+    #[test]
+    fn test_playing_as_guest_shows_the_game_right_away() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let mut cmd = app.update(Event::ContinueAsGuest, &mut model);
+        let effects: Vec<_> = cmd.effects().collect();
+        // A tela muda no toque, sem esperar a árvore chegar do servidor.
+        assert!(effects.iter().any(|e| matches!(e, Effect::Render(_))), "o toque tem de chegar à tela");
+        assert!(effects.iter().any(|e| matches!(e, Effect::Http(r) if r.operation.url == "/api/v1/nodes")));
+        let view = app.view(&model);
+        assert!(view.is_guest && view.is_fetching, "o mapa mostra que está atualizando");
     }
 
     #[test]
