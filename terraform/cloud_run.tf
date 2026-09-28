@@ -172,6 +172,13 @@ resource "google_cloud_run_v2_service" "logn" {
       template[0].labels,
       # Ignora a imagem para que o Terraform não desfaça o `just deploy-backend`
       template[0].containers[0].image,
+      # Carimbos que o `gcloud run deploy --source` grava a cada deploy (quem deployou,
+      # o build de origem, o scaling de serviço zerado). Nenhum é config deste
+      # arquivo; sem isto, todo plan depois de um deploy pede para apagá-los.
+      client,
+      client_version,
+      build_config,
+      scaling,
     ]
   }
 

@@ -114,6 +114,38 @@ resource "cloudflare_ruleset" "origin_header" {
   ]
 }
 
+# Rate limit na borda para as rotas de autenticação — a única regra que o plano free
+# dá, com o que ele permite: filtro só por path, contagem por IP, janela e bloqueio
+# de 10 s. É barreira de enxurrada, não o limite de verdade: o authLimiter do backend
+# (30/min por jogador) continua valendo, e este teto fica bem acima dele para nunca
+# ser o primeiro a recusar quem está só errando a senha.
+#
+# `contains` e não `starts_with` ou `matches`: função e regex em rate limit ficam
+# para planos pagos. cf.colo.id é obrigatório nas características, pela API.
+resource "cloudflare_ruleset" "auth_rate_limit" {
+  count = var.enable_cloudflare ? 1 : 0
+
+  zone_id = data.cloudflare_zone.logn[0].zone_id
+  name    = "logn-auth-rate-limit"
+  kind    = "zone"
+  phase   = "http_ratelimit"
+
+  rules = [
+    {
+      action      = "block"
+      description = "Enxurrada nas rotas de /api/v1/auth/"
+      enabled     = true
+      expression  = "(http.request.uri.path contains \"/api/v1/auth/\")"
+      ratelimit = {
+        characteristics     = ["cf.colo.id", "ip.src"]
+        period              = 10
+        requests_per_period = 20
+        mitigation_timeout  = 10
+      }
+    }
+  ]
+}
+
 # Bot Fight Mode — grátis no plano free, mitigação básica de bot antes de chegar na
 # aplicação. Não aceita exceção (WAF custom rule e Page Rule não o pulam), então o
 # Cloud Scheduler não passa por aqui: chama a URL .run.app direto (scheduler.tf).
