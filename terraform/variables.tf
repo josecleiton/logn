@@ -90,15 +90,16 @@ variable "enable_origin_verification" {
 # registrado e adicionado à conta Cloudflare.
 
 variable "enable_cloudflare" {
-  description = "Liga os recursos da Cloudflare (DNS, domain mapping, Transform Rule do segredo, Bot Fight Mode) na zona já existente."
+  description = "Liga os recursos da Cloudflare (DNS, domain mapping, Transform Rule do segredo, rate limit de auth, Bot Fight Mode) na zona já existente."
   type        = bool
   default     = false
 }
 
 variable "cloudflare_api_token" {
   description = <<-EOT
-    API Token da Cloudflare (não o Global API Key) com permissão de Zone/DNS/Ruleset
-    edit para o domínio. Nunca versionado. O default é um placeholder sem validade —
+    API Token da Cloudflare (não o Global API Key), restrito à zona do domínio, com:
+    Zone Read, DNS Edit, Transform Rules Edit, WAF Edit (rate limit) e Bot
+    Management Edit. Nunca versionado. O default é um placeholder sem validade —
     passa a checagem de formato do provider (só letras/números/hífen/underscore), mas
     não autentica; só importa de verdade quando enable_cloudflare=true.
   EOT
