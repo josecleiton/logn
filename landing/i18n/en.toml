@@ -1,0 +1,117 @@
+# Landing page copy in English. Same keys as `pt-BR.toml`; see the notes there.
+
+[meta]
+title = "LogN — Reduce the complexity of your solutions"
+description = "Algorithms, DevOps and AI engineering practice in three-minute sessions, with the grammar of a programming contest. Open source."
+lang_name = "English"
+lang_switch = "Language"
+skip = "Skip to content"
+
+[nav]
+session = "SESSION"
+tracks = "TRACKS"
+board = "SCOREBOARD"
+code = "CODE"
+home = "LogN, home"
+
+[cta]
+short_live = "Download"
+short_soon = "Coming soon"
+over_live = "Download on the"
+over_soon = "Coming soon to the"
+note_live = "IPHONE · FREE · ANDROID ON THE WAY"
+note_soon = "COMING TO THE APP STORE · ANDROID ON THE WAY"
+read_code = "read the code"
+
+[hero]
+kicker = "13 PROBLEMS · 5 HOURS · ONE SCOREBOARD — NOW IN 3 MINUTES"
+title = "Reduce the complexity of your solutions."
+lead = "Algorithms, DevOps and AI engineering practice with the grammar of a programming contest: problems by letter, a balloon per color, a scoreboard that freezes in the last hour."
+balloons_label = "Thirteen balloons, one per problem"
+
+[phone]
+label = "The app during a question"
+problem = "PROBLEM F"
+lives = "Two lives out of three"
+title = "F · SUM OF TWO NUMBERS"
+statement = "Return the sum of a and b. Complete the expression."
+fn = "sum"
+drag = "DRAG THE BLOCK"
+drop = "drop here"
+confirm = "Confirm answer"
+
+[session]
+kicker = "THE SESSION"
+title = "Three lives, clock running, four formats."
+lead = "No blank editor on a phone. Each question isolates one decision — the right line, the bug, the complexity — and fits in a bus queue."
+a_name = "Complete the line"
+a_desc = "The algorithm is done except for one line. Pick it from four nearly identical candidates."
+a_sample = "i < n  │  i <= n"
+b_name = "Find the bug"
+b_desc = "Six lines, one wrong. Tap the line that breaks on the edge case."
+b_sample = "for (i = 0; i <= n; i++)  ← here"
+c_name = "Match the complexity"
+c_desc = "Drag each snippet to the right notation. The clock is ticking."
+c_sample = "two nested loops → O(n²)"
+d_name = "Dry run"
+d_desc = "Run it in your head and say what comes out. No compiling, no print."
+d_sample = "output: [1, 3, 3, 7]"
+traps = "Fell for a classic trap — off-by-one, overflow in mid, visited marked too late — and the app explains why before the next question."
+
+[tracks]
+kicker = "TRACKS"
+title = "The curriculum is a graph. You see the edges."
+lead = "Each technique is a balloon; each prerequisite, a string. A technique only opens after the ones it builds on — and the map shows why."
+algo_name = "Algorithms and data structures"
+algo_topics = "search, graphs, DP, heaps"
+devops_name = "DevOps"
+devops_topics = "infrastructure, cloud, delivery pipelines"
+ai_name = "AI engineering"
+ai_topics = "systems built on LLMs"
+map_label = "Example technique map, with solved ones in color, the current one highlighted and the next one locked"
+node_adhoc = "Ad-hoc"
+node_arrays = "Arrays"
+node_strings = "Strings"
+node_two_pointers = "Two pointers"
+node_binary_search = "Binary search"
+node_sliding_window = "Sliding window"
+
+[board]
+kicker = "SCOREBOARD"
+title = "It freezes in the last hour. As it should."
+lead = "Penalty added up like in a real contest: every wrong attempt costs 20 minutes. In the last hour the scoreboard freezes, and the result only shows up at the reveal."
+label = "Example of a frozen scoreboard"
+site = "STANDINGS"
+frozen = "FROZEN"
+rank = "#"
+team = "TEAM"
+ac = "AC"
+pen = "PEN"
+you = "you"
+
+[code]
+kicker = "OPEN SOURCE"
+title = "The whole app is on GitHub. Only the questions stay in the drawer."
+lead = "Core, clients and backend are open to read, fork and send PRs. The only closed piece is the track content — publishing the answer key would spoil the contest."
+open = "OPEN"
+soon = "SOON"
+core_note = "Game rules, scoreboard and offline sync in a single core."
+ios_note = "Native client on top of the core."
+android_note = "Same core, same design system."
+backend_note = "Accounts, standings and synced events."
+github = "open on GitHub"
+
+[end]
+title = "Your first balloon is three minutes away."
+
+[footer]
+tagline = "Reduce the complexity of your solutions."
+privacy = "Privacy"
+terms = "Terms"
+trademarks = "Apple and App Store are trademarks of Apple Inc."
+
+[notfound]
+title = "Page not found — LogN"
+heading = "Wrong Answer."
+lead = "This page does not exist. Head back home and try again — no penalty."
+back = "back to home"
