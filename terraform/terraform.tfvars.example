@@ -8,6 +8,10 @@ service_audience_url   = "https://seu-servico-xxxxx.a.run.app"
 
 smtp_user = "seu-email-de-envio@example.com"
 smtp_from = "LogN App <seu-email-de-envio@example.com>"
+smtp_host = "smtp.example.com"
+smtp_port = "465" # 465 = TLS implícito; 587 = STARTTLS (o gomail escolhe pela porta)
+# A senha SMTP não passa pelo Terraform: vai direto para o secret logn-smtp-pass, com
+#   printf '%s' "a-senha" | gcloud secrets versions add logn-smtp-pass --data-file=-
 
 # Imagem já publicada no Artifact Registry (ver README para como gerar).
 container_image = "us-east1-docker.pkg.dev/seu-projeto-gcp/cloud-run-source-deploy/logn@sha256:..."
@@ -16,11 +20,9 @@ container_image = "us-east1-docker.pkg.dev/seu-projeto-gcp/cloud-run-source-depl
 enable_origin_verification = false
 origin_trusted_cidrs       = "" # só usado com enable_cloudflare=false (outro proxy)
 
-# Cloudflare — domínio já registrado e adicionado como zona na conta, com o account_id
-# em mãos (dashboard > lado direito, em qualquer zona). Ligue os dois junto com
-# enable_origin_verification acima.
-enable_cloudflare     = false
-cloudflare_api_token  = "seu-api-token-com-escopo-zone-dns-ruleset-edit"
-cloudflare_account_id = "0123456789abcdef0123456789abcdef"
-domain_name           = "seu-dominio.sh"
-api_subdomain         = "api"
+# Cloudflare — domínio já registrado e adicionado como zona na conta (o Terraform lê a
+# zona pelo nome, não cria). Ligue junto com enable_origin_verification acima.
+enable_cloudflare    = false
+cloudflare_api_token = "seu-api-token-com-escopo-zone-dns-ruleset-edit"
+domain_name          = "seu-dominio.sh"
+api_subdomain        = "api"

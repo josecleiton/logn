@@ -79,7 +79,7 @@ func (rl *rateLimiter) sweep() {
 
 func (rl *rateLimiter) wrap(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !rl.allow(clientIP(r)) {
+		if !rl.allow(requestIP(r)) {
 			w.Header().Set("Retry-After", "60")
 			writeError(w, http.StatusTooManyRequests, codeRateLimited)
 			return
@@ -88,7 +88,18 @@ func (rl *rateLimiter) wrap(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// clientIP devolve o IP de quem fez o pedido.
+// requestIP é a chave do rate limit. Atrás do proxy, o IP do jogador que a verificação
+// de origem confirmou; sem ela, clientIP, que atrás do proxy seria o nó da borda e
+// poria todo mundo daquele nó no mesmo balde.
+func requestIP(r *http.Request) string {
+	if ip, ok := r.Context().Value(verifiedClientIPKey{}).(string); ok {
+		return ip
+	}
+	return clientIP(r)
+}
+
+// clientIP devolve o IP da conexão que chegou ao Cloud Run — o jogador sem proxy, o
+// nó da borda com proxy.
 //
 // No Cloud Run o `RemoteAddr` é o front-end do Google, igual para todo mundo. O IP do
 // cliente vem no `X-Forwarded-For`, e só a entrada mais à direita é confiável: ela foi

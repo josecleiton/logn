@@ -7,11 +7,13 @@
 # application-default login` — sem isso, google_cloud_run_domain_mapping falha com
 # "domain not verified". É verificação de posse feita uma vez, não repete a cada apply.
 
-resource "cloudflare_zone" "logn" {
+# A zona é lida, não gerenciada: ela já existe na conta (a landing em landing/ sobe nela
+# por wrangler), e se fosse resource, desligar enable_cloudflare destruiria a zona e
+# derrubaria o site junto com a API.
+data "cloudflare_zone" "logn" {
   count = var.enable_cloudflare ? 1 : 0
 
-  account = { id = var.cloudflare_account_id }
-  name    = var.domain_name
+  filter = { name = var.domain_name }
 }
 
 # Liga o subdomínio (api.<domínio>) ao serviço já existente no Cloud Run. A raiz do
@@ -33,19 +35,20 @@ resource "google_cloud_run_domain_mapping" "api" {
   }
 }
 
-# O Google devolve o(s) registro(s) DNS que o mapeamento espera (normalmente um CNAME
-# para ghs.googlehosted.com) — replica cada um na Cloudflare, com proxy ligado
-# (proxied=true: é isso que coloca a Cloudflare no meio do caminho).
+# O registro que o mapeamento espera — para subdomínio o Google sempre pede um único
+# CNAME para ghs.googlehosted.com —, na Cloudflare com proxy ligado (proxied=true: é
+# isso que coloca a Cloudflare no meio do caminho).
+#
+# Fixo, não lido de domain_mapping.status.resource_records: esse status só existe
+# depois da apply, e tipo desconhecido no plan força destruir e recriar o registro. O
+# nome vai completo porque é assim que o provider guarda; "api" sozinho dá diff eterno.
 resource "cloudflare_dns_record" "api" {
-  for_each = var.enable_cloudflare ? {
-    for r in google_cloud_run_domain_mapping.api[0].status[0].resource_records :
-    r.name => r
-  } : {}
+  count = var.enable_cloudflare ? 1 : 0
 
-  zone_id = cloudflare_zone.logn[0].id
-  name    = var.api_subdomain
-  type    = each.value.type
-  content = each.value.rrdata
+  zone_id = data.cloudflare_zone.logn[0].zone_id
+  name    = "${var.api_subdomain}.${var.domain_name}"
+  type    = "CNAME"
+  content = "ghs.googlehosted.com"
   ttl     = 1 # "automático" na Cloudflare
   proxied = true
 }
@@ -88,7 +91,7 @@ resource "google_secret_manager_secret_version" "origin_shared_secret" {
 resource "cloudflare_ruleset" "origin_header" {
   count = var.enable_cloudflare ? 1 : 0
 
-  zone_id = cloudflare_zone.logn[0].id
+  zone_id = data.cloudflare_zone.logn[0].zone_id
   name    = "logn-origin-verify-header"
   kind    = "zone"
   phase   = "http_request_late_transform"
@@ -112,9 +115,10 @@ resource "cloudflare_ruleset" "origin_header" {
 }
 
 # Bot Fight Mode — grátis no plano free, mitigação básica de bot antes de chegar na
-# aplicação.
+# aplicação. Não aceita exceção (WAF custom rule e Page Rule não o pulam), então o
+# Cloud Scheduler não passa por aqui: chama a URL .run.app direto (scheduler.tf).
 resource "cloudflare_bot_management" "logn" {
   count      = var.enable_cloudflare ? 1 : 0
-  zone_id    = cloudflare_zone.logn[0].id
+  zone_id    = data.cloudflare_zone.logn[0].zone_id
   fight_mode = true
 }

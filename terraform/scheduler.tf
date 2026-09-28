@@ -11,14 +11,12 @@ resource "google_cloud_scheduler_job" "purge_deleted_accounts" {
     max_doublings        = 5
   }
 
-  # Com Cloudflare ligada, mira o domínio custom em vez da URL .run.app — assim o
-  # request passa pelo proxy (Scheduler -> Cloudflare -> Cloud Run) em vez de bater
-  # direto no serviço. O backend continua isentando /api/v1/internal/* da verificação
-  # de origem (main.go) — essa rota segue protegida só pelo OIDC, como hoje; passar
-  # pelo proxy é sobre não depender mais da URL crua, não sobre reforço extra aqui.
-  # Antes de ligar a Cloudflare, ou com outro proxy, mira a URL default mesmo
-  # (local.scheduler_audience cobre os dois casos — ver cloud_run.tf, que usa o mesmo
-  # valor no CLOUD_SCHEDULER_AUDIENCE do backend; os dois têm que bater ou o OIDC falha).
+  # Mira a URL .run.app, não o domínio custom, também com Cloudflare ligada: o Bot
+  # Fight Mode da zona desafiaria o Scheduler e não aceita exceção no plano free. O
+  # backend isenta /api/v1/internal/* da verificação de origem (main.go), e a rota
+  # segue protegida pelo OIDC. Por isso a URL crua não pode ser desligada
+  # (--no-default-url). local.scheduler_audience está em cloud_run.tf, que usa o mesmo
+  # valor no CLOUD_SCHEDULER_AUDIENCE do backend; os dois têm que bater ou o OIDC falha.
   http_target {
     http_method = "POST"
     uri         = "${local.scheduler_audience}/api/v1/internal/purge"

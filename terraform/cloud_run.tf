@@ -1,9 +1,10 @@
 locals {
-  # Alvo da rota interna de purga (Cloud Scheduler + a env que o backend valida). Com
-  # Cloudflare ligada, vira o domínio custom — o request passa pelo proxy e a rota
-  # interna deixa de precisar de exceção na verificação de origem. Scheduler.tf usa o
-  # mesmo valor; os dois têm que bater ou o OIDC falha.
-  scheduler_audience = var.enable_cloudflare ? "https://${var.api_subdomain}.${var.domain_name}" : var.service_audience_url
+  # Alvo da rota interna de purga (Cloud Scheduler + a env que o backend valida).
+  # Sempre a URL .run.app, mesmo com Cloudflare ligada: o Bot Fight Mode da zona não
+  # aceita exceção no plano free e desafiaria o Scheduler. Direto no Cloud Run, a rota
+  # fica isenta da verificação de origem (originExempt em main.go) e protegida só pelo
+  # OIDC. Scheduler.tf usa o mesmo valor; os dois têm que bater ou o OIDC falha.
+  scheduler_audience = var.service_audience_url
 
   # Com Cloudflare ligada, os CIDRs vêm do data source em cloudflare.tf (sempre
   # atualizados); senão, cai no que foi preenchido à mão em origin_trusted_cidrs — é o
@@ -173,6 +174,11 @@ resource "google_cloud_run_v2_service" "logn" {
       template[0].containers[0].image,
     ]
   }
+
+  # ORIGIN_SHARED_SECRET aponta para a versão "latest", e a referência acima é só ao
+  # container do secret. Sem isto, a apply que liga a Cloudflare pode subir a revisão
+  # antes de existir versão alguma, e a revisão não sobe.
+  depends_on = [google_secret_manager_secret_version.origin_shared_secret]
 }
 
 # `--allow-unauthenticated` no deploy original virou este binding: qualquer um pode

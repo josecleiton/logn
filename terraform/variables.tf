@@ -90,7 +90,7 @@ variable "enable_origin_verification" {
 # registrado e adicionado à conta Cloudflare.
 
 variable "enable_cloudflare" {
-  description = "Liga os recursos da Cloudflare (zona, DNS, domain mapping, Transform Rule do segredo, Bot Fight Mode)."
+  description = "Liga os recursos da Cloudflare (DNS, domain mapping, Transform Rule do segredo, Bot Fight Mode) na zona já existente."
   type        = bool
   default     = false
 }
@@ -105,12 +105,6 @@ variable "cloudflare_api_token" {
   type        = string
   default     = "unset0placeholder0not0a0real0token000000"
   sensitive   = true
-}
-
-variable "cloudflare_account_id" {
-  description = "ID da conta Cloudflare onde a zona do domínio é criada."
-  type        = string
-  default     = ""
 }
 
 variable "domain_name" {

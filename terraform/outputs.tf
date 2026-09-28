@@ -15,21 +15,20 @@ output "secret_ids" {
 
 output "cloudflare_nameservers" {
   description = "Nameservers que a Cloudflare atribuiu à zona — aponte o registrador do domínio pra eles."
-  value       = var.enable_cloudflare ? cloudflare_zone.logn[0].name_servers : null
+  value       = var.enable_cloudflare ? data.cloudflare_zone.logn[0].name_servers : null
 }
 
-# O Terraform não cobre tudo sozinho: a URL .run.app crua continua respondendo depois
-# do apply, porque o provider do Cloud Run (nesta versão) não expõe um jeito
-# declarativo de desativá-la — é `gcloud run services update --no-default-url`, feito
-# à mão, e só depois que o domain mapping estiver validado (senão você perde acesso ao
-# serviço antes da Cloudflare estar servindo).
+# O Terraform não cobre tudo sozinho. A URL .run.app crua fica ligada de propósito: é
+# por ela que o Cloud Scheduler chama a purga, fora do Bot Fight Mode (scheduler.tf).
+# Com a verificação de origem ligada, ela só responde às rotas de originExempt
+# (main.go) — health e a rota interna, que exige OIDC.
 output "post_cloudflare_manual_steps" {
   description = "Passos que ficam de fora do Terraform depois do apply com enable_cloudflare=true."
   value = var.enable_cloudflare ? join("\n", [
-    "1. Aponte o registrador de ${var.domain_name} para os nameservers do output cloudflare_nameservers.",
-    "2. Espere o domain mapping ficar pronto: gcloud run domain-mappings describe --domain=${var.api_subdomain}.${var.domain_name} --region=${var.region}",
+    "1. Confira que o registrador de ${var.domain_name} aponta para os nameservers do output cloudflare_nameservers.",
+    "2. Espere o domain mapping ficar pronto: gcloud beta run domain-mappings describe --domain=${var.api_subdomain}.${var.domain_name} --region=${var.region}",
     "3. Confirme que https://${var.api_subdomain}.${var.domain_name}/health responde 200 pelo domínio novo.",
-    "4. Só então desative a URL crua: gcloud run services update logn --region=${var.region} --no-default-url",
-    "5. Aponte o app iOS para https://${var.api_subdomain}.${var.domain_name} em vez da URL .run.app.",
+    "4. Aponte o app iOS para https://${var.api_subdomain}.${var.domain_name} em vez da URL .run.app.",
+    "5. Não rode --no-default-url: o Cloud Scheduler depende da URL .run.app.",
   ]) : null
 }
