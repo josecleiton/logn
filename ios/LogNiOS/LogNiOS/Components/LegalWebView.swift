@@ -115,11 +115,11 @@ struct LegalWebView: UIViewRepresentable {
         }
     }
 
-    /// O tamanho de texto do sistema aplicado à página, até AX2 — o teto do design
-    /// system para texto corrido.
+    /// O tamanho de texto do sistema aplicado à página, até AX3.
     private static var textZoom: CGFloat {
         let category = UIApplication.shared.preferredContentSizeCategory
-        let capped = min(category, .accessibilityExtraLarge)
+        // `>` concreto do UIKit, não `min`: o `Comparable` genérico só existe no iOS 17.
+        let capped = category > .accessibilityExtraLarge ? .accessibilityExtraLarge : category
         return UIFontMetrics(forTextStyle: .body)
             .scaledValue(for: 1, compatibleWith: UITraitCollection(preferredContentSizeCategory: capped))
     }

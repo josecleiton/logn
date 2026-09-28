@@ -21,12 +21,6 @@ struct SkillTreeView: View {
             let layout = SkillTreeLayout(nodes: nodes, canvasWidth: geo.size.width)
 
             ZStack(alignment: .top) {
-                NavigationLink(
-                    destination: MatchView(nodeId: matchNodeId).environmentObject(core),
-                    isActive: $navigateToMatch
-                ) { EmptyView() }
-                .hidden()
-
                 VStack(spacing: 0) {
                     ScrollView {
                         ZStack(alignment: .topLeading) {
@@ -62,6 +56,9 @@ struct SkillTreeView: View {
                         .padding(.bottom, 14)
                         .padding(.top, Space.sm)
                 }
+            }
+            .navigationDestination(isPresented: $navigateToMatch) {
+                MatchView(nodeId: matchNodeId).environmentObject(core)
             }
             // O nó fechado tocado na árvore (1e): o preço aparece quando a pessoa quer
             // seguir, sobre a própria árvore.
