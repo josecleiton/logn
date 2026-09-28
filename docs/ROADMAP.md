@@ -140,8 +140,16 @@ PRD: [`specs/logn_instituicao_spec.md`](specs/logn_instituicao_spec.md).
 
 ## O repositório ainda é privado
 
-Ele está preparado para ser público — Apache 2.0, `TRADEMARKS.md`, `NOTICE`, conteúdo
-separado, gitleaks limpo. Antes de virar a chave, uma limpeza pela regra 8 do AGENTS.md:
-testes ainda usam nomes reais de nó da trilha — em `backend/internal/content/validate_test.go`
-e nos testes de `shared_core/src/app.rs` — e precisam trocar por nós de manual inventados.
-Como já estão no histórico, sair da árvore não basta: é `git filter-repo`.
+Ele está pronto para ser público — Apache 2.0, `TRADEMARKS.md`, `NOTICE`, conteúdo
+separado, gitleaks limpo. Falta só virar a chave.
+
+A varredura pela regra 8 do AGENTS.md (setembro de 2026) passou pela árvore e por todo
+blob do histórico, inclusive os `refs/pull/*` do GitHub, contra as três trilhas. Nome
+real de nó não aparece em lugar nenhum; as trilhas pagas não têm vestígio. Sobrou, em
+commits antigos do Core, um fixture de teste com trechos parafraseados de dois desafios
+da trilha gratuita, que o servidor já entrega aberta a qualquer instalação. Não vale
+reescrever o histórico por isso.
+
+Se um dia valer: o GitHub guarda os `refs/pull/*`, que ninguém apaga, e eles seguram os
+commits antigos. Reescrever com `git filter-repo` só limpa de verdade publicado num
+repositório novo, não abrindo este.
