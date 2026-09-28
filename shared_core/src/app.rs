@@ -36,6 +36,56 @@ pub enum Event {
     ProgressFetched(HttpResult),
     NodesFetched(HttpResult),
     ChallengesFetched(HttpResult),
+    /// O shell dá o `identifierForVendor` na abertura. Vai no `X-Device-ID` da licença.
+    SetDeviceId(String),
+    /// O catálogo de trilhas pagas.
+    FetchTracks,
+    TracksFetched(HttpResult),
+    /// A loja entregou uma transação verificada. O Core manda ao servidor, e só depois
+    /// de ele confirmar o shell pode finalizar a transação na loja (spec, seção 5).
+    /// `restore` é o "Restaurar compras": a transação já foi finalizada antes.
+    /// `product_id` diz de que trilha é a compra, para a tela do passo a passo (F3).
+    SubmitPurchase { jws: String, transaction_id: String, product_id: String, restore: bool },
+    PurchaseSubmitted { jws: String, transaction_id: String, product_id: String, restore: bool, result: HttpResult },
+    /// O shell finalizou a transação na loja.
+    PurchaseFinished { transaction_id: String },
+    /// Fechou a tela do passo a passo da compra. Antes de pronta, a compra segue em
+    /// segundo plano.
+    ClosePurchaseFlow,
+    /// O jogador tocou em comprar este produto: a compra dele abre o passo a passo.
+    PurchaseIntent { product_id: String },
+    /// "Restaurar compras" começou com `count` transações do Apple ID.
+    RestoreStarted { count: u32 },
+    DismissRestoreResult,
+    /// A árvore passa a mostrar esta trilha.
+    SelectTrack { track_id: String },
+    /// "Agora não" na oferta do fim da amostra: ela não volta nesta sessão.
+    DismissSampleOffer { track_id: String },
+    /// Abriu o catálogo: o selo de "N dias" do botão Trilhas some até amanhã.
+    CatalogOpened,
+    /// Fuso do aparelho, em segundos. O "hoje" do selo é o do jogador, não o UTC.
+    SetUtcOffset { seconds: i32 },
+    /// Onboarding fechado ("Por onde começar?"). Não volta mais neste aparelho.
+    CompleteOnboarding,
+    /// Abertura: lê a trilha escolhida, o onboarding e o dia do selo.
+    RestorePreferences,
+    PreferenceRestored { key: String, result: KeyValueResult },
+    /// Pede a licença da trilha: na compra, ao baixar e a cada abertura com rede.
+    FetchLicense { track_id: String },
+    /// `user_id` é de quem pediu: a resposta que chega depois de trocar de conta não
+    /// entra na conta nova.
+    LicenseFetched { user_id: String, track_id: String, result: HttpResult },
+    FetchPackage { track_id: String },
+    PackageFetched { user_id: String, track_id: String, result: HttpResult },
+    /// A maior hora que este aparelho já viu, guardada com as licenças.
+    ClockRead { user_id: String, result: KeyValueResult },
+    /// Lê do aparelho as trilhas que a conta baixou, e revalida com o servidor.
+    LoadTrackDownloads,
+    TrackIndexRead { user_id: String, result: KeyValueResult },
+    LicenseRead { user_id: String, track_id: String, result: KeyValueResult },
+    PackageRead { user_id: String, track_id: String, result: KeyValueResult },
+    /// Apaga do aparelho a chave e o pacote da trilha. A compra continua na conta.
+    DeleteTrackDownload { track_id: String },
 
     SyncNow,
     SyncAndLogout,
@@ -272,6 +322,51 @@ pub struct Model {
     /// semente empacotada. `origins_seen` (abaixo) é quem já foi lido, por id; isto é
     /// o texto de cada id.
     pub origins: Vec<crate::domain::OriginCard>,
+    /// O catálogo de trilhas pagas, como o servidor disse. Vai no retrato: não é segredo.
+    pub tracks: Vec<crate::domain::Track>,
+    /// Licenças da conta neste aparelho, lidas do Keychain. Nunca vão ao retrato.
+    pub licenses: std::collections::HashMap<String, crate::domain::TrackLicense>,
+    /// Conteúdo fechado já aberto, por trilha: só na memória. O retrato guarda os
+    /// desafios em `UserDefaults`, e o que é fechado nunca vai para lá em claro.
+    pub track_content: std::collections::HashMap<String, TrackContent>,
+    /// Trilhas que a conta baixou neste aparelho.
+    pub track_index: Vec<String>,
+    /// De quem são as trilhas carregadas do aparelho. Evita reler a cada busca.
+    pub track_downloads_owner: String,
+    /// XP ganho em cada trilha paga. O portão de um nó conta só o da trilha dele; o da
+    /// gratuita é o global menos a soma destes (spec, seção 8).
+    pub paid_track_xp: std::collections::HashMap<String, i32>,
+    /// Transações que o servidor confirmou e que o shell ainda tem de finalizar na loja.
+    pub purchases_to_finish: Vec<String>,
+    pub purchase_in_flight: bool,
+    /// `identifierForVendor`, dado pelo shell.
+    pub device_id: String,
+    /// A maior hora já vista pela conta neste aparelho, pelo relógio ou pela emissão de
+    /// uma licença. A validade offline conta a partir dela: atrasar o relógio depois
+    /// que a licença venceu não a ressuscita.
+    pub clock_high_water: i64,
+    /// A trilha que a árvore mostra. Vazio é a principal.
+    pub selected_track: String,
+    pub onboarding_done: bool,
+    /// As preferências do aparelho já foram lidas: antes disso o onboarding não aparece.
+    pub prefs_loaded: bool,
+    /// Fuso do aparelho, em segundos.
+    pub utc_offset: i32,
+    /// Dia local (dias desde a época) em que o catálogo foi aberto por último.
+    pub catalog_seen_day: i64,
+    /// Trilhas cuja oferta do fim da amostra o jogador dispensou nesta sessão.
+    pub offer_dismissed: Vec<String>,
+    /// A compra em andamento na tela do passo a passo: trilha, passo e o porquê de
+    /// ter parado.
+    pub purchase_flow: Option<(String, crate::domain::PurchaseStage, StatusKey)>,
+    /// O produto que o jogador acabou de pedir na loja. Só a compra dele abre a tela do
+    /// passo a passo; a transação que a loja reentrega na abertura segue em silêncio.
+    pub purchase_intent: String,
+    /// Compras que bateram em 401 e esperam o refresh.
+    pub purchase_retries: Vec<Event>,
+    /// De quem é o índice de trilhas já lido do aparelho.
+    pub track_index_loaded_for: String,
+    pub restore: RestoreProgress,
     pub last_hash: String,
     pub user_id: String,
     pub access_token: Option<String>,
@@ -408,6 +503,25 @@ pub struct Model {
     /// sobrevive ao rebase, que só troca o elo.
     pub sync_sent_ids: Vec<String>,
     pub sync_owner: String,
+}
+
+/// "Restaurar compras" em andamento: quantas transações o shell mandou e como voltaram.
+#[derive(Clone, Debug, Default)]
+pub struct RestoreProgress {
+    /// Há restauração na tela, mesmo sem nenhuma transação ("nada para restaurar").
+    pub started: bool,
+    pub total: u32,
+    pub done: u32,
+    pub other_account: u32,
+    pub restored_tracks: Vec<String>,
+}
+
+/// O conteúdo fechado de uma trilha, aberto do pacote.
+#[derive(Clone, Debug)]
+pub struct TrackContent {
+    pub content_version: i32,
+    pub bytes: u64,
+    pub challenges: std::collections::HashMap<String, Vec<Challenge>>,
 }
 
 /// Um bloqueio por 429: quantos segundos o servidor pediu e até quando isso vai.
@@ -584,6 +698,25 @@ pub struct ViewModel {
     /// E-mail para o login já vir preenchido depois de uma sessão que acabou. Vazio
     /// quando não há.
     pub resume_email: String,
+    /// Id da conta em sessão. O shell põe no `appAccountToken` da compra, e o servidor
+    /// confere que quem manda a transação é quem comprou. Vazio no visitante.
+    pub account_user_id: String,
+    /// O catálogo: a principal primeiro, depois as pagas, com compra e o que está baixado.
+    pub tracks: Vec<crate::domain::TrackView>,
+    /// A trilha que a árvore mostra. `nodes` já vem filtrado por ela.
+    pub current_track: crate::domain::TrackView,
+    /// O selo do botão Trilhas.
+    pub catalog_badge: crate::domain::CatalogBadge,
+    /// Mostrar "Por onde começar?" (uma vez por aparelho).
+    pub show_onboarding: bool,
+    pub purchase_flow: crate::domain::PurchaseFlowView,
+    pub restore_result: crate::domain::RestoreResultView,
+    /// A oferta do fim da amostra, quando a partida que acabou foi a amostra.
+    pub sample_offer: crate::domain::SampleOfferView,
+    /// Transações confirmadas pelo servidor que o shell tem de finalizar na loja e
+    /// devolver com `PurchaseFinished`.
+    pub purchases_to_finish: Vec<String>,
+    pub purchase_in_flight: bool,
 }
 
 #[effect(facet_typegen)]
@@ -631,13 +764,18 @@ pub fn should_request_review(mastered_count: usize, fired: &[usize]) -> bool {
 
 /// Guarda o retrato local e renderiza.
 fn save_offline_snapshot(model: &Model) -> Command<Effect, Event> {
+    // O retrato vai para o `UserDefaults`, em claro: o conteúdo fechado da trilha paga
+    // fica de fora, e volta do pacote cifrado na abertura.
+    let closed = closed_node_ids(model);
     let snapshot = OfflineSnapshot {
         global_xp: model.global_xp,
         bugs_found: model.bugs_found,
         dry_runs_completed: model.dry_runs_completed,
         paid_challenge_ids: model.paid_challenges.clone(),
         nodes: model.nodes.clone(),
-        challenges: model.challenges.clone(),
+        challenges: model.challenges.iter().filter(|c| !closed.contains(&c.node_id)).cloned().collect(),
+        paid_track_xp: model.paid_track_xp.clone(),
+        tracks: model.tracks.clone(),
         locale: model.content_locale.clone(),
     };
     Command::request_from_shell(KeyValueOperation::Set {
@@ -655,7 +793,7 @@ fn save_offline_snapshot(model: &Model) -> Command<Effect, Event> {
 /// resolvido e o XP dele sumido, e como rejogar não paga mais, ele não voltava até o
 /// sync. Só conta o que não está na lista, então não paga duas vezes.
 fn credit_queued_answers(model: &mut Model) {
-    let queued: Vec<(String, String)> = model
+    let queued: Vec<(String, String, String)> = model
         .pending_events
         .iter()
         .filter(|e| e.event_type == "MATCH_ANSWER")
@@ -664,22 +802,348 @@ fn credit_queued_answers(model: &mut Model) {
         .filter_map(|p| {
             let id = p["challenge_id"].as_str()?.to_string();
             let template = p["template_type"].as_str().unwrap_or_default().to_string();
-            (!id.is_empty()).then_some((id, template))
+            let node_id = p["node_id"].as_str().unwrap_or_default().to_string();
+            (!id.is_empty()).then_some((id, template, node_id))
         })
         .collect();
 
-    for (id, template) in queued {
+    for (id, template, node_id) in queued {
         if model.paid_challenges.contains(&id) {
             continue;
         }
         model.paid_challenges.push(id);
         model.global_xp += match_engine::XP_PER_ACCEPTED;
+        credit_track_xp(&model.nodes, &mut model.paid_track_xp, &node_id);
         match template.as_str() {
             "SPOT_THE_BUG" => model.bugs_found += 1,
             "DRY_RUN" => model.dry_runs_completed += 1,
             _ => {}
         }
     }
+}
+
+/// Os nós que só abrem com licença, pelo que o servidor disse de cada um.
+fn closed_node_ids(model: &Model) -> std::collections::HashSet<String> {
+    model.nodes.iter().filter(|n| n.requires_purchase).map(|n| n.id.clone()).collect()
+}
+
+/// A trilha é paga: tem nó que pede compra. O Core não conhece o id da gratuita.
+fn is_paid_track(model: &Model, track_id: &str) -> bool {
+    !track_id.is_empty() && model.nodes.iter().any(|n| n.track_id == track_id && n.requires_purchase)
+}
+
+/// O XP que conta no portão da trilha. A gratuita fica com o global menos o das pagas:
+/// o XP de antes das trilhas, que nunca teve trilha, é todo dela.
+fn track_xp(model: &Model, track_id: &str) -> i32 {
+    if is_paid_track(model, track_id) {
+        return model.paid_track_xp.get(track_id).copied().unwrap_or(0);
+    }
+    (model.global_xp - model.paid_track_xp.values().sum::<i32>()).max(0)
+}
+
+/// Soma o XP de um aceito na trilha paga do nó, se for de uma. Recebe os campos, não o
+/// modelo: a partida em curso segura um empréstimo dele.
+fn credit_track_xp(
+    nodes: &[crate::domain::SkillNode],
+    paid_track_xp: &mut std::collections::HashMap<String, i32>,
+    node_id: &str,
+) {
+    let Some(track_id) = nodes.iter().find(|n| n.id == node_id).map(|n| n.track_id.clone()) else {
+        return;
+    };
+    if nodes.iter().any(|n| n.track_id == track_id && n.requires_purchase) {
+        *paid_track_xp.entry(track_id).or_insert(0) += match_engine::XP_PER_ACCEPTED;
+    }
+}
+
+/// A hora contra a qual a licença vale: a do relógio, nunca antes da maior já vista.
+fn license_now(model: &Model) -> i64 {
+    model.now.max(model.clock_high_water)
+}
+
+/// A licença da trilha abre agora, sem rede.
+fn track_open(model: &Model, track_id: &str) -> bool {
+    model
+        .licenses
+        .get(track_id)
+        .is_some_and(|l| crate::tracks::license_valid(l, license_now(model)))
+}
+
+/// Sobe a marca d'água do relógio e a guarda, quando a conta tem trilha no aparelho.
+fn raise_clock(model: &mut Model, at: i64) -> Command<Effect, Event> {
+    if at <= model.clock_high_water {
+        return Command::done();
+    }
+    model.clock_high_water = at;
+    if model.user_id.is_empty() || model.track_index.is_empty() {
+        return Command::done();
+    }
+    Command::request_from_shell(KeyValueOperation::Set {
+        key: crate::tracks::clock_key(&model.user_id),
+        value: at.to_string().into_bytes(),
+    })
+    .then_send(|_| Event::Ping)
+}
+
+/// O nó pode ser jogado: é aberto, ou a trilha dele tem licença válida.
+fn node_open(model: &Model, node: &crate::domain::SkillNode) -> bool {
+    !node.requires_purchase || track_open(model, &node.track_id)
+}
+
+/// Refaz a lista de desafios com o conteúdo fechado que a licença abre agora.
+///
+/// Os desafios fechados saem todos e voltam só os das trilhas com licença válida, na
+/// língua do app. É chamada depois de tudo que mexe na lista, na licença ou no pacote.
+fn merge_track_challenges(model: &mut Model) {
+    let closed = closed_node_ids(model);
+    model.challenges.retain(|c| !closed.contains(&c.node_id));
+
+    let lang = served_locale(&model.locale);
+    let mut open: Vec<&String> = model
+        .track_content
+        .keys()
+        .filter(|t| track_open(model, t))
+        .collect();
+    open.sort();
+    let mut extra = Vec::new();
+    for track_id in open {
+        let content = &model.track_content[track_id];
+        let list = content.challenges.get(lang).or_else(|| content.challenges.get("pt-BR"));
+        extra.extend(list.into_iter().flatten().cloned());
+    }
+    model.challenges.extend(extra);
+}
+
+/// Tira a trilha do aparelho: licença, pacote e a entrada no índice. Na memória e no
+/// disco.
+fn forget_track(model: &mut Model, track_id: &str) -> Command<Effect, Event> {
+    model.licenses.remove(track_id);
+    model.track_content.remove(track_id);
+    model.track_index.retain(|t| t != track_id);
+    merge_track_challenges(model);
+    let user = model.user_id.clone();
+    if user.is_empty() {
+        return Command::done();
+    }
+    let delete = |key: String| Command::request_from_shell(KeyValueOperation::Delete { key }).then_send(|_| Event::Ping);
+    delete(crate::tracks::license_key(&user, track_id))
+        .and(delete(crate::tracks::package_key(&user, track_id)))
+        .and(store_track_index(model))
+}
+
+fn store_track_index(model: &Model) -> Command<Effect, Event> {
+    Command::request_from_shell(KeyValueOperation::Set {
+        key: crate::tracks::index_key(&model.user_id),
+        value: serde_json::to_vec(&model.track_index).unwrap_or_default(),
+    })
+    .then_send(|_| Event::Ping)
+}
+
+/// A trilha que a árvore mostra: a escolhida, se o app a conhece; senão a principal.
+///
+/// Sem catálogo (primeira abertura sem rede), a principal é a trilha de um nó que não
+/// é de trilha paga — o Core não conhece o id dela de cor.
+fn effective_track(model: &Model) -> String {
+    let selected = &model.selected_track;
+    let known = !selected.is_empty()
+        && (model.tracks.iter().any(|t| &t.id == selected) || model.nodes.iter().any(|n| &n.track_id == selected));
+    if known {
+        return selected.clone();
+    }
+    if let Some(free) = model.tracks.iter().find(|t| t.kind == "free") {
+        return free.id.clone();
+    }
+    model
+        .nodes
+        .iter()
+        .find(|n| !is_paid_track(model, &n.track_id))
+        .map(|n| n.track_id.clone())
+        .unwrap_or_default()
+}
+
+/// O dia do jogador, em dias desde a época, pelo fuso que o shell deu.
+fn local_day(model: &Model) -> i64 {
+    (license_now(model) + model.utc_offset as i64).div_euclid(86_400)
+}
+
+/// Onde a licença da trilha está na escada de dias sem contato: estado, dias que
+/// faltam, dias desde o contato e até quando vale.
+fn offline_state(model: &Model, track_id: &str) -> (crate::domain::OfflineState, u32, u32, i64) {
+    use crate::domain::OfflineState;
+    let Some(license) = model.licenses.get(track_id) else {
+        return (OfflineState::NoLicense, 0, 0, 0);
+    };
+    let now = license_now(model);
+    let since = ((now - license.issued_at).max(0) / 86_400) as u32;
+    if !crate::tracks::license_valid(license, now) {
+        return (OfflineState::Expired, 0, since, license.valid_until);
+    }
+    let left = ((license.valid_until - now) / 86_400) as u32;
+    let state = match left {
+        0 => OfflineState::Today,
+        1..=3 => OfflineState::Soon,
+        _ => OfflineState::Silent,
+    };
+    (state, left, since, license.valid_until)
+}
+
+/// A trilha como a tela a vê. `nodes` são os nós com o estado já calculado.
+fn track_view(model: &Model, track: &crate::domain::Track, nodes: &[crate::domain::SkillNode]) -> crate::domain::TrackView {
+    let (offline, days_left, since, valid_until) = offline_state(model, &track.id);
+    let valid = matches!(
+        offline,
+        crate::domain::OfflineState::Silent | crate::domain::OfflineState::Soon | crate::domain::OfflineState::Today
+    );
+    let content = model.track_content.get(&track.id);
+    let in_track = |n: &&crate::domain::SkillNode| n.track_id == track.id;
+    let open_nodes: Vec<&String> = model.nodes.iter().filter(in_track).filter(|n| !n.requires_purchase).map(|n| &n.id).collect();
+    crate::domain::TrackView {
+        id: track.id.clone(),
+        is_free: track.kind == "free",
+        name: track.name.clone(),
+        description: track.description.clone(),
+        author: track.author.clone(),
+        color: track.color.clone(),
+        product_id: track.product_id.clone(),
+        node_count: track.node_count,
+        problem_count: track.problem_count,
+        languages: track.languages.clone(),
+        selected: effective_track(model) == track.id,
+        // O servidor diz no catálogo; uma licença no aparelho diz o mesmo sem rede.
+        owned: track.owned || offline != crate::domain::OfflineState::NoLicense,
+        revoked: !track.revoked_reason.is_empty(),
+        revoked_reason: track.revoked_reason.clone(),
+        discontinued: track.status == "discontinued",
+        nodes_done: nodes
+            .iter()
+            .filter(in_track)
+            .filter(|n| n.status == crate::domain::NodeStatus::Completed)
+            .count() as u32,
+        closed_node_count: model.nodes.iter().filter(in_track).filter(|n| n.requires_purchase).count() as u32,
+        sample_balloons: model
+            .challenges
+            .iter()
+            .filter(|c| open_nodes.contains(&&c.node_id) && model.paid_challenges.contains(&c.id))
+            .count() as u32,
+        sample_done: {
+            let sample: Vec<&Challenge> = model.challenges.iter().filter(|c| open_nodes.contains(&&c.node_id)).collect();
+            !sample.is_empty() && sample.iter().all(|c| model.paid_challenges.contains(&c.id))
+        },
+        track_xp: track_xp(model, &track.id),
+        downloaded: content.is_some() && valid,
+        download_bytes: content.map(|c| c.bytes).unwrap_or(0),
+        offline,
+        offline_days_left: days_left,
+        days_since_contact: since,
+        valid_until,
+        nodes: {
+            let mut rows: Vec<&crate::domain::SkillNode> = nodes.iter().filter(in_track).collect();
+            rows.sort_by_key(|n| (n.row, n.column));
+            rows.into_iter()
+                .map(|n| crate::domain::TrackNodeRow {
+                    id: n.id.clone(),
+                    name: n.name.clone(),
+                    free: !n.requires_purchase,
+                    done: n.status == crate::domain::NodeStatus::Completed,
+                    active: n.status == crate::domain::NodeStatus::Active,
+                })
+                .collect()
+        },
+    }
+}
+
+/// O selo do botão Trilhas: a comprada que mais pede atenção. O de "N dias" some no
+/// dia em que o catálogo foi aberto; "hoje" e "vencida" ficam (LogN Validade Offline).
+fn catalog_badge(model: &Model, views: &[crate::domain::TrackView]) -> crate::domain::CatalogBadge {
+    use crate::domain::OfflineState;
+    let rank = |s: OfflineState| match s {
+        OfflineState::Expired => 3,
+        OfflineState::Today => 2,
+        OfflineState::Soon => 1,
+        _ => 0,
+    };
+    let Some(worst) = views
+        .iter()
+        .filter(|v| rank(v.offline) > 0)
+        .max_by_key(|v| (rank(v.offline), std::cmp::Reverse(v.offline_days_left)))
+    else {
+        return crate::domain::CatalogBadge::default();
+    };
+    if worst.offline == OfflineState::Soon && model.catalog_seen_day == local_day(model) {
+        return crate::domain::CatalogBadge::default();
+    }
+    crate::domain::CatalogBadge { state: worst.offline, days_left: worst.offline_days_left }
+}
+
+/// A oferta do fim da amostra: a partida que acabou foi a amostra de uma trilha paga,
+/// dominada, que a conta não tem, e o jogador não dispensou nesta sessão.
+fn sample_offer(model: &Model) -> crate::domain::SampleOfferView {
+    let none = crate::domain::SampleOfferView::default();
+    let Some(ms) = model.match_state.as_ref() else { return none };
+    if ms.is_active {
+        return none;
+    }
+    let Some(node) = model.nodes.iter().find(|n| n.id == model.match_node_id) else { return none };
+    let track_id = node.track_id.clone();
+    let owned = model.tracks.iter().any(|t| t.id == track_id && t.owned) || model.licenses.contains_key(&track_id);
+    if node.requires_purchase
+        || !is_paid_track(model, &track_id)
+        || owned
+        || model.offer_dismissed.contains(&track_id)
+        || !node_mastered(&model.challenges, &model.paid_challenges, &node.id)
+    {
+        return none;
+    }
+
+    let mut track_nodes: Vec<&crate::domain::SkillNode> = model.nodes.iter().filter(|n| n.track_id == track_id).collect();
+    track_nodes.sort_by_key(|n| (n.row, n.column));
+    let next = track_nodes
+        .iter()
+        .find(|n| n.requires_purchase && n.prerequisites.contains(&node.id))
+        .or_else(|| track_nodes.iter().find(|n| n.requires_purchase));
+    let Some(next) = next else { return none };
+    let open: Vec<&String> = track_nodes.iter().filter(|n| !n.requires_purchase).map(|n| &n.id).collect();
+    let sample_problems = model.challenges.iter().filter(|c| open.contains(&&c.node_id)).count() as u32;
+    let problem_count = model.tracks.iter().find(|t| t.id == track_id).map(|t| t.problem_count).unwrap_or(0);
+    crate::domain::SampleOfferView {
+        active: true,
+        track_id,
+        next_node_name: next.name.clone(),
+        next_node_index: track_nodes.iter().position(|n| n.id == next.id).map(|i| i as u32 + 1).unwrap_or(0),
+        remaining_nodes: track_nodes.iter().filter(|n| n.requires_purchase).count() as u32,
+        remaining_problems: problem_count.saturating_sub(sample_problems),
+    }
+}
+
+/// Para a compra na tela com o motivo, se ela é desta trilha (vazio: qualquer uma) e
+/// ainda não terminou. Sem isto a tela ficava em "Aguarde" para sempre quando a rede
+/// caía depois da cobrança.
+fn fail_purchase(model: &mut Model, track_id: &str, reason: StatusKey) {
+    if let Some(flow) = model.purchase_flow.as_mut() {
+        if (track_id.is_empty() || flow.0 == track_id) && flow.1 != crate::domain::PurchaseStage::Ready {
+            flow.1 = crate::domain::PurchaseStage::Failed;
+            flow.2 = reason;
+        }
+    }
+}
+
+/// Muda o passo da compra na tela, se ela é desta trilha.
+fn advance_purchase(model: &mut Model, track_id: &str, stage: crate::domain::PurchaseStage) {
+    if let Some(flow) = model.purchase_flow.as_mut() {
+        if flow.0 == track_id {
+            flow.1 = stage;
+        }
+    }
+}
+
+/// A trilha do produto da loja, pelo catálogo.
+fn track_for_product(model: &Model, product_id: &str) -> String {
+    model
+        .tracks
+        .iter()
+        .find(|t| !product_id.is_empty() && t.product_id == product_id)
+        .map(|t| t.id.clone())
+        .unwrap_or_default()
 }
 
 /// O retrato local da conta: o que a tela precisa quando não há rede.
@@ -696,6 +1160,10 @@ struct OfflineSnapshot {
     paid_challenge_ids: Vec<String>,
     nodes: Vec<crate::domain::SkillNode>,
     challenges: Vec<Challenge>,
+    #[serde(default)]
+    paid_track_xp: std::collections::HashMap<String, i32>,
+    #[serde(default)]
+    tracks: Vec<crate::domain::Track>,
     /// Língua do conteúdo guardado. Vazio é o retrato de antes das línguas: pt-BR.
     #[serde(default)]
     locale: String,
@@ -779,6 +1247,11 @@ const DEFAULT_MIN_AGE: u32 = 13;
 /// Chave, no armazenamento do aparelho, da escolha "Análise de uso". O shell lê a
 /// mesma chave ao iniciar o PostHog, antes de o Core existir.
 const ANALYTICS_DISABLED_KEY: &str = "analytics_disabled";
+
+/// Preferências do aparelho que a abertura relê (`RestorePreferences`).
+const SELECTED_TRACK_KEY: &str = "selected_track";
+const CATALOG_SEEN_KEY: &str = "catalog_seen_day";
+const ONBOARDING_KEY: &str = "onboarding_done";
 
 /// Põe no modelo a trilha da semente na língua pedida, ou em português se ela faltar.
 fn apply_seed(model: &mut Model, locale: &str) {
@@ -992,7 +1465,27 @@ impl LogNApp {
     /// A sessão acabou (o servidor recusou, ou o prazo local venceu). A splash fecha na
     /// linha da sessão, o login vem com o e-mail dela, e a fila na memória passa a ser a
     /// do visitante — a da conta fica no disco, esperando ela voltar.
+    /// Pede a licença das trilhas que a conta comprou e que este aparelho não tem.
+    fn fetch_missing_licenses(&self, model: &mut Model) -> Command<Effect, Event> {
+        let missing: Vec<String> = model
+            .tracks
+            .iter()
+            .filter(|t| t.owned && !model.track_index.contains(&t.id))
+            .map(|t| t.id.clone())
+            .collect();
+        let mut cmd = Command::done();
+        for track_id in missing {
+            cmd = cmd.and(self.update(Event::FetchLicense { track_id }, model));
+        }
+        cmd
+    }
+
     fn session_ended(&self, model: &mut Model) -> Command<Effect, Event> {
+        // Sem sessão, a compra na tela não anda mais: ela para, e o que esperava o
+        // refresh não tem mais o que esperar. A transação fica aberta na loja e volta
+        // depois do login.
+        fail_purchase(model, "", StatusKey::SessionExpired);
+        model.purchase_retries.clear();
         let boot = if model.boot.active {
             model.boot.session = Some(boot_line(BootCheck::Session, BootVerdict::Fail, BootDetail::SessionEnded, 0));
             model.boot.sync = None;
@@ -1211,6 +1704,8 @@ impl App for LogNApp {
                     // no aparelho, espera a dona dela voltar.
                     .and(Command::request_from_shell(KeyValueOperation::Delete { key: queue_key(&model.queue_owner) }).then_send(|_| Event::Ping))
                     .and(Command::request_from_shell(KeyValueOperation::Delete { key: "offline_snapshot".into() }).then_send(|_| Event::Ping))
+                    // A trilha escolhida é de quem saiu.
+                    .and(Command::request_from_shell(KeyValueOperation::Delete { key: SELECTED_TRACK_KEY.into() }).then_send(|_| Event::Ping))
                     // Depois de sair, os eventos não seguem presos ao id da conta, e quem
                     // entrar em seguida neste aparelho começa limpo.
                     .and(Command::request_from_shell(TelemetryOperation::Reset).then_send(|_| Event::TelemetrySent))
@@ -1242,6 +1737,28 @@ impl App for LogNApp {
                 model.session_offline = false;
                 model.session_expires_at = 0;
                 model.review_prompt_pending = false;
+                // A trilha paga é da conta que saiu. O disco fica, sob o id dela; a
+                // memória não, senão quem entra depois neste aparelho abriria a trilha.
+                model.licenses.clear();
+                model.track_content.clear();
+                model.track_index.clear();
+                model.track_downloads_owner.clear();
+                model.paid_track_xp.clear();
+                model.clock_high_water = 0;
+                // O catálogo fica, porque é o mesmo para todos; o que ele dizia desta
+                // conta (comprada, revogada e por quê), não. Nem a trilha escolhida, a
+                // oferta dispensada, a compra na tela ou a restauração.
+                for track in model.tracks.iter_mut() {
+                    track.owned = false;
+                    track.revoked_reason.clear();
+                }
+                model.selected_track.clear();
+                model.offer_dismissed.clear();
+                model.purchase_flow = None;
+                model.purchase_intent.clear();
+                model.purchase_retries.clear();
+                model.restore = RestoreProgress::default();
+                model.track_index_loaded_for.clear();
                 // Quem conta que a saída deu certo é a tela de despedida. Deixar texto
                 // aqui fazia a tela de login abrir com "Logged out successfully" em
                 // vermelho, como se sair fosse um erro.
@@ -1294,9 +1811,14 @@ impl App for LogNApp {
                         .and(set("session_expires_at", model.session_expires_at.to_string().into_bytes()))
                         .and(save_offline_snapshot(model))
                 };
+                // Os desafios fechados voltaram com o instantâneo; a licença, não. Eles
+                // saem, e voltam quando as trilhas desta conta forem relidas do disco.
+                merge_track_challenges(model);
+                let downloads = self.update(Event::LoadTrackDownloads, model);
                 token
                     .and(account)
                     .and(Command::request_from_shell(store_queue(model)).then_send(|_| Event::Ping))
+                    .and(downloads)
                     .and(render::render())
             }
 
@@ -1304,7 +1826,8 @@ impl App for LogNApp {
 
             Event::Tick { now } => {
                 model.now = now;
-                Command::done()
+                // A validade da trilha paga pode ter mudado com a hora.
+                raise_clock(model, now).and(render::render())
             }
 
             Event::CooldownClock { now } => {
@@ -1345,6 +1868,8 @@ impl App for LogNApp {
                         model.bugs_found = snap.bugs_found;
                         model.dry_runs_completed = snap.dry_runs_completed;
                         model.paid_challenges = snap.paid_challenge_ids;
+                        model.paid_track_xp = snap.paid_track_xp;
+                        model.tracks = snap.tracks;
                         credit_queued_answers(model);
                         let snap_locale = if snap.locale.is_empty() { "pt-BR".to_string() } else { snap.locale };
                         // Retrato em outra língua (o app mudou de língua sem rede): o XP e
@@ -1353,6 +1878,7 @@ impl App for LogNApp {
                         if !snap.nodes.is_empty() && snap_locale == served_locale(&model.locale) {
                             model.nodes = snap.nodes;
                             model.challenges = snap.challenges;
+                            merge_track_challenges(model);
                             model.content_locale = snap_locale;
                             // O retrato é o que o servidor respondeu por esta conta, e
                             // é mais novo que a semente por definição.
@@ -1403,6 +1929,12 @@ impl App for LogNApp {
                             }],
                             body: serde_json::to_vec(&body).unwrap_or_default(),
                         };
+                        // Um refresh por vez. Dois com o mesmo token são reuso para o
+                        // servidor, e reuso derruba todas as sessões da conta; o que está
+                        // no ar repete o que ficou em espera quando voltar.
+                        if model.refresh_in_flight {
+                            return Command::done();
+                        }
                         model.refresh_in_flight = true;
                         return Command::request_from_shell(request).then_send(Event::RefreshCompleted);
                     }
@@ -1587,11 +2119,17 @@ impl App for LogNApp {
                     }
                 }
 
+                // As compras que bateram em 401 esperam numa fila própria: a restauração
+                // manda várias de uma vez, e `pending_retry_event` guarda uma só.
+                let mut retries = Command::done();
+                for event in std::mem::take(&mut model.purchase_retries) {
+                    retries = retries.and(self.update(event, model));
+                }
                 // O 401 que disparou o refresh deixou um evento em espera.
                 if let Some(pending) = model.pending_retry_event.take() {
-                    return self.update(pending, model);
+                    return retries.and(self.update(pending, model));
                 }
-                self.update(Event::FetchProgress, model)
+                retries.and(self.update(Event::FetchProgress, model))
             }
 
             // Traz de volta o que já está no servidor.
@@ -1626,6 +2164,8 @@ impl App for LogNApp {
                             dry_runs_completed: i32,
                             #[serde(default)]
                             paid_challenge_ids: Vec<String>,
+                            #[serde(default)]
+                            paid_track_xp: std::collections::HashMap<String, i32>,
                         }
 
                         if let Ok(stats) = serde_json::from_slice::<Stats>(&response.body) {
@@ -1633,6 +2173,7 @@ impl App for LogNApp {
                             model.bugs_found = stats.bugs_found;
                             model.dry_runs_completed = stats.dry_runs_completed;
                             model.paid_challenges = stats.paid_challenge_ids;
+                            model.paid_track_xp = stats.paid_track_xp;
                             credit_queued_answers(model);
                             return save_offline_snapshot(model);
                         }
@@ -1731,12 +2272,16 @@ Event::FetchChallenges => {
                         if response.status == 200 {
                             if let Ok(challenges) = serde_json::from_slice::<Vec<Challenge>>(&response.body) {
                                 model.challenges = challenges;
+                                merge_track_challenges(model);
                                 model.trail_from_bundle = false;
                                 model.content_locale = content_language(&response, &model.locale);
                                 model.status = "Challenges loaded".to_string();
                                 // Nós e desafios confirmados pelo servidor: é o momento
-                                // de guardar o retrato que vai servir sem rede.
-                                return save_offline_snapshot(model);
+                                // de guardar o retrato que vai servir sem rede — e de
+                                // trazer o catálogo e as trilhas baixadas desta conta.
+                                let snapshot = save_offline_snapshot(model);
+                                let tracks = self.update(Event::FetchTracks, model);
+                                return snapshot.and(tracks).and(self.update(Event::LoadTrackDownloads, model));
                             } else {
                                 model.status = "Failed to parse challenges".to_string();
                             }
@@ -1754,6 +2299,510 @@ Event::FetchChallenges => {
                 }
                 render::render()
             }
+
+            Event::SetDeviceId(device_id) => {
+                model.device_id = device_id;
+                Command::done()
+            }
+
+            Event::FetchTracks => {
+                let request = HttpRequest {
+                    method: "GET".to_string(),
+                    url: "/api/v1/tracks".to_string(),
+                    headers: auth_headers(&model.access_token, &model.locale),
+                    body: vec![],
+                };
+                Command::request_from_shell(request).then_send(Event::TracksFetched)
+            }
+
+            // Sem 401 com refresh aqui, nem na licença e no pacote: são buscas de fundo,
+            // e a próxima abertura tenta de novo. O refresh fica com quem o jogador vê.
+            Event::TracksFetched(result) => {
+                if let HttpResult::Ok(response) = result {
+                    if response.status == 200 {
+                        if let Ok(tracks) = serde_json::from_slice::<Vec<crate::domain::Track>>(&response.body) {
+                            model.tracks = tracks;
+                            // Comprada e ainda não neste aparelho: o login em outro aparelho
+                            // libera a trilha (spec, critério 2), sem esperar um toque. Só
+                            // com o índice do aparelho já lido; antes disso, é a leitura
+                            // dele que pede, e os dois juntos baixariam em dobro.
+                            let snapshot = save_offline_snapshot(model);
+                            if model.track_index_loaded_for != model.user_id || model.user_id.is_empty() {
+                                return snapshot;
+                            }
+                            return snapshot.and(self.fetch_missing_licenses(model));
+                        }
+                    }
+                }
+                render::render()
+            }
+
+            Event::SubmitPurchase { jws, transaction_id, product_id, restore } => {
+                if model.access_token.is_none() || model.is_guest {
+                    model.status_key = StatusKey::PurchaseNeedsAccount;
+                    return render::render();
+                }
+                model.purchase_in_flight = true;
+                model.status_key = StatusKey::PurchaseConfirming;
+                // A compra que o jogador acabou de pedir ganha a tela do passo a passo; a
+                // restauração conta no resumo dela; a que a loja reentrega na abertura
+                // segue em silêncio.
+                if !restore && !product_id.is_empty() && model.purchase_intent == product_id {
+                    model.purchase_intent.clear();
+                    let track_id = track_for_product(model, &product_id);
+                    model.purchase_flow = Some((track_id, crate::domain::PurchaseStage::Validating, StatusKey::Silent));
+                }
+                let request = HttpRequest {
+                    method: "POST".to_string(),
+                    url: if restore { "/api/v1/purchases/restore" } else { "/api/v1/purchases" }.to_string(),
+                    headers: auth_headers(&model.access_token, &model.locale),
+                    body: serde_json::to_vec(&serde_json::json!({ "jws": jws })).unwrap_or_default(),
+                };
+                Command::request_from_shell(request)
+                    .then_send(move |result| Event::PurchaseSubmitted { jws, transaction_id, product_id, restore, result })
+                    .and(render::render())
+            }
+
+            Event::PurchaseSubmitted { jws, transaction_id, product_id, restore, result } => {
+                model.purchase_in_flight = false;
+                if restore && !matches!(&result, HttpResult::Ok(r) if r.status == 401) {
+                    model.restore.done += 1;
+                }
+                match result {
+                    HttpResult::Ok(response) if response.status == 200 => {
+                        #[derive(Deserialize)]
+                        struct Granted {
+                            track_id: String,
+                        }
+                        model.status_key = StatusKey::PurchaseConfirmed;
+                        if !restore {
+                            model.purchases_to_finish.push(transaction_id);
+                        }
+                        if let Ok(granted) = serde_json::from_slice::<Granted>(&response.body) {
+                            if let Some(track) = model.tracks.iter_mut().find(|t| t.id == granted.track_id) {
+                                track.owned = true;
+                                track.revoked_reason.clear();
+                            }
+                            if restore && !model.restore.restored_tracks.contains(&granted.track_id) {
+                                model.restore.restored_tracks.push(granted.track_id.clone());
+                            }
+                            if let Some(flow) = model.purchase_flow.as_mut() {
+                                if !restore {
+                                    flow.0 = granted.track_id.clone();
+                                    flow.1 = crate::domain::PurchaseStage::Licensing;
+                                }
+                            }
+                            return self
+                                .update(Event::FetchLicense { track_id: granted.track_id }, model)
+                                .and(render::render());
+                        }
+                        // Confirmada sem dizer a trilha: não há o que baixar daqui. A
+                        // próxima abertura com rede revalida pelo catálogo.
+                        fail_purchase(model, "", StatusKey::TrackDownloadFailed);
+                    }
+                    HttpResult::Ok(response) if response.status == 401 => {
+                        model.purchase_retries.push(Event::SubmitPurchase { jws, transaction_id, product_id, restore });
+                        return self.update(Event::AttemptRefresh, model);
+                    }
+                    HttpResult::Ok(response) => {
+                        model.status_key = match api_code(&response.body).as_deref() {
+                            Some("purchase_owned_by_other_account") => StatusKey::PurchaseOwnedByOtherAccount,
+                            Some("purchase_account_mismatch") => StatusKey::PurchaseAccountMismatch,
+                            Some("purchase_revoked") => StatusKey::PurchaseRevoked,
+                            _ => StatusKey::PurchaseFailed,
+                        };
+                        if restore && response.status == 409 {
+                            model.restore.other_account += 1;
+                        }
+                        // Recusa definitiva (403, 409, e o 400 de produto desconhecido ou
+                        // transação inválida): o servidor já decidiu, e deixar a transação
+                        // aberta faria a loja entregá-la de novo a cada abertura, para
+                        // sempre. Não consumível volta por "Restaurar compras" se for o caso.
+                        // Erro do servidor fica aberto e tenta de novo.
+                        let permanent = matches!(response.status, 403 | 409)
+                            || (response.status == 400
+                                && matches!(api_code(&response.body).as_deref(), Some("unknown_product" | "purchase_invalid")));
+                        if !restore && permanent {
+                            model.purchases_to_finish.push(transaction_id);
+                        }
+                        if !restore {
+                            if let Some(flow) = model.purchase_flow.as_mut() {
+                                flow.1 = crate::domain::PurchaseStage::Failed;
+                                flow.2 = model.status_key.clone();
+                            }
+                        }
+                    }
+                    HttpResult::Err(_) => {
+                        model.status_key = StatusKey::PurchaseFailed;
+                        if !restore {
+                            if let Some(flow) = model.purchase_flow.as_mut() {
+                                flow.1 = crate::domain::PurchaseStage::Failed;
+                                flow.2 = StatusKey::PurchaseFailed;
+                            }
+                        }
+                    }
+                }
+                render::render()
+            }
+
+            Event::PurchaseFinished { transaction_id } => {
+                model.purchases_to_finish.retain(|t| t != &transaction_id);
+                render::render()
+            }
+
+            Event::ClosePurchaseFlow => {
+                // Fechar com a trilha pronta é "abrir a trilha": a árvore passa a ela.
+                // Antes disso, a compra segue em segundo plano: licença e pacote chegam
+                // sem a tela.
+                if let Some((track_id, crate::domain::PurchaseStage::Ready, _)) = model.purchase_flow.take() {
+                    return self.update(Event::SelectTrack { track_id }, model);
+                }
+                render::render()
+            }
+
+            Event::RestoreStarted { count } => {
+                model.restore = RestoreProgress { started: true, total: count, ..Default::default() };
+                render::render()
+            }
+
+            Event::PurchaseIntent { product_id } => {
+                model.purchase_intent = product_id;
+                Command::done()
+            }
+
+            Event::DismissRestoreResult => {
+                model.restore = RestoreProgress::default();
+                render::render()
+            }
+
+            Event::SelectTrack { track_id } => {
+                model.selected_track = track_id.clone();
+                Command::request_from_shell(KeyValueOperation::Set {
+                    key: SELECTED_TRACK_KEY.to_string(),
+                    value: track_id.into_bytes(),
+                })
+                .then_send(|_| Event::Ping)
+                .and(render::render())
+            }
+
+            Event::DismissSampleOffer { track_id } => {
+                if !model.offer_dismissed.contains(&track_id) {
+                    model.offer_dismissed.push(track_id);
+                }
+                render::render()
+            }
+
+            Event::CatalogOpened => {
+                let today = local_day(model);
+                if model.catalog_seen_day == today {
+                    return Command::done();
+                }
+                model.catalog_seen_day = today;
+                Command::request_from_shell(KeyValueOperation::Set {
+                    key: CATALOG_SEEN_KEY.to_string(),
+                    value: today.to_string().into_bytes(),
+                })
+                .then_send(|_| Event::Ping)
+                .and(render::render())
+            }
+
+            Event::SetUtcOffset { seconds } => {
+                model.utc_offset = seconds;
+                Command::done()
+            }
+
+            Event::CompleteOnboarding => {
+                model.onboarding_done = true;
+                Command::request_from_shell(KeyValueOperation::Set {
+                    key: ONBOARDING_KEY.to_string(),
+                    value: b"1".to_vec(),
+                })
+                .then_send(|_| Event::Ping)
+                .and(render::render())
+            }
+
+            Event::RestorePreferences => {
+                let read = |key: &'static str| {
+                    Command::request_from_shell(KeyValueOperation::Get { key: key.to_string() })
+                        .then_send(move |result| Event::PreferenceRestored { key: key.to_string(), result })
+                };
+                read(SELECTED_TRACK_KEY).and(read(CATALOG_SEEN_KEY)).and(read(ONBOARDING_KEY))
+            }
+
+            Event::PreferenceRestored { key, result } => {
+                let value = match result {
+                    KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } => {
+                        String::from_utf8(bytes).unwrap_or_default()
+                    }
+                    _ => String::new(),
+                };
+                match key.as_str() {
+                    SELECTED_TRACK_KEY => {
+                        // Uma escolha feita nesta abertura, antes da leitura, vale mais.
+                        if model.selected_track.is_empty() {
+                            model.selected_track = value;
+                        }
+                    }
+                    CATALOG_SEEN_KEY => model.catalog_seen_day = value.parse().unwrap_or(0),
+                    ONBOARDING_KEY => {
+                        model.onboarding_done = model.onboarding_done || value == "1";
+                        // O onboarding é a última leitura pedida: com ela, dá para decidir.
+                        model.prefs_loaded = true;
+                    }
+                    _ => {}
+                }
+                render::render()
+            }
+
+            Event::FetchLicense { track_id } => {
+                // O id vira caminho da URL: só a forma de um UUID passa.
+                if model.access_token.is_none()
+                    || model.device_id.is_empty()
+                    || !track_id.chars().all(|c| c.is_ascii_hexdigit() || c == '-')
+                {
+                    fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
+                    return render::render();
+                }
+                let mut headers = auth_headers(&model.access_token, &model.locale);
+                headers.push(crux_http::protocol::HttpHeader {
+                    name: "X-Device-ID".to_string(),
+                    value: model.device_id.clone(),
+                });
+                let request = HttpRequest {
+                    method: "GET".to_string(),
+                    url: format!("/api/v1/tracks/{track_id}/license"),
+                    headers,
+                    body: vec![],
+                };
+                let user_id = model.user_id.clone();
+                Command::request_from_shell(request)
+                    .then_send(move |result| Event::LicenseFetched { user_id, track_id, result })
+            }
+
+            Event::LicenseFetched { user_id, track_id, result } => {
+                // Resposta de um pedido de outra conta, que saiu no meio do caminho.
+                if user_id != model.user_id {
+                    return Command::done();
+                }
+                let HttpResult::Ok(response) = result else {
+                    // Sem rede: a licença guardada segue valendo até o prazo dela.
+                    fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
+                    return render::render();
+                };
+                match response.status {
+                    200 => {
+                        let Ok(license) = serde_json::from_slice::<crate::domain::TrackLicense>(&response.body) else {
+                            fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
+                            return render::render();
+                        };
+                        if license.track_id != track_id || model.user_id.is_empty() {
+                            fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
+                            return render::render();
+                        }
+                        let needs_package = model
+                            .track_content
+                            .get(&track_id)
+                            .is_none_or(|c| c.content_version != license.content_version);
+                        let stored = Command::request_from_shell(KeyValueOperation::Set {
+                            key: crate::tracks::license_key(&model.user_id, &track_id),
+                            value: serde_json::to_vec(&license).unwrap_or_default(),
+                        })
+                        .then_send(|_| Event::Ping);
+                        let issued_at = license.issued_at;
+                        model.licenses.insert(track_id.clone(), license);
+                        if !model.track_index.contains(&track_id) {
+                            model.track_index.push(track_id.clone());
+                        }
+                        if let Some(track) = model.tracks.iter_mut().find(|t| t.id == track_id) {
+                            track.owned = true;
+                        }
+                        merge_track_challenges(model);
+                        advance_purchase(
+                            model,
+                            &track_id,
+                            if needs_package { crate::domain::PurchaseStage::Downloading } else { crate::domain::PurchaseStage::Ready },
+                        );
+                        // A hora da emissão é do servidor: é piso confiável para o relógio.
+                        let mut cmd = stored.and(store_track_index(model)).and(raise_clock(model, issued_at));
+                        if needs_package {
+                            cmd = cmd.and(self.update(Event::FetchPackage { track_id }, model));
+                        }
+                        cmd.and(render::render())
+                    }
+                    // Revogada: chave e pacote saem do aparelho, o XP fica (spec, seção 7).
+                    403 if api_code(&response.body).as_deref() == Some("entitlement_required") => {
+                        if model.track_index.contains(&track_id) || model.licenses.contains_key(&track_id) {
+                            model.status_key = StatusKey::TrackRevoked;
+                        }
+                        if let Some(track) = model.tracks.iter_mut().find(|t| t.id == track_id) {
+                            track.owned = false;
+                        }
+                        if let Some(flow) = model.purchase_flow.as_mut() {
+                            if flow.0 == track_id {
+                                flow.1 = crate::domain::PurchaseStage::Failed;
+                                flow.2 = StatusKey::TrackRevoked;
+                            }
+                        }
+                        forget_track(model, &track_id).and(render::render())
+                    }
+                    _ => {
+                        fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
+                        render::render()
+                    }
+                }
+            }
+
+            Event::FetchPackage { track_id } => {
+                let request = HttpRequest {
+                    method: "GET".to_string(),
+                    url: format!("/api/v1/tracks/{track_id}/package"),
+                    headers: auth_headers(&model.access_token, &model.locale),
+                    body: vec![],
+                };
+                let user_id = model.user_id.clone();
+                Command::request_from_shell(request)
+                    .then_send(move |result| Event::PackageFetched { user_id, track_id, result })
+            }
+
+            Event::PackageFetched { user_id, track_id, result } => {
+                if user_id != model.user_id {
+                    return Command::done();
+                }
+                let HttpResult::Ok(response) = result else {
+                    fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
+                    return render::render();
+                };
+                if response.status == 403 {
+                    fail_purchase(model, &track_id, StatusKey::TrackRevoked);
+                    return forget_track(model, &track_id).and(render::render());
+                }
+                if response.status != 200 || model.user_id.is_empty() {
+                    fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
+                    return render::render();
+                }
+                let Some(license) = model.licenses.get(&track_id) else {
+                    fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
+                    return render::render();
+                };
+                // Só guarda o que abre: pacote que não abre com a licença não serve para nada.
+                match crate::tracks::open_package(license, &response.body) {
+                    Ok(content) => {
+                        model.track_content.insert(
+                            track_id.clone(),
+                            TrackContent {
+                                content_version: content.content_version,
+                                bytes: response.body.len() as u64,
+                                challenges: content.challenges,
+                            },
+                        );
+                        merge_track_challenges(model);
+                        advance_purchase(model, &track_id, crate::domain::PurchaseStage::Ready);
+                        Command::request_from_shell(KeyValueOperation::Set {
+                            key: crate::tracks::package_key(&model.user_id, &track_id),
+                            value: response.body,
+                        })
+                        .then_send(|_| Event::Ping)
+                        .and(render::render())
+                    }
+                    Err(e) => {
+                        model.status = format!("Track package does not open: {e:?}");
+                        fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
+                        render::render()
+                    }
+                }
+            }
+
+            Event::LoadTrackDownloads => {
+                if model.user_id.is_empty() || model.is_guest || model.track_downloads_owner == model.user_id {
+                    return Command::done();
+                }
+                model.track_downloads_owner = model.user_id.clone();
+                let user_id = model.user_id.clone();
+                Command::request_from_shell(KeyValueOperation::Get { key: crate::tracks::index_key(&user_id) })
+                    .then_send(move |result| Event::TrackIndexRead { user_id, result })
+            }
+
+            Event::TrackIndexRead { user_id, result } => {
+                if user_id != model.user_id {
+                    return Command::done();
+                }
+                if let KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } = result {
+                    for id in serde_json::from_slice::<Vec<String>>(&bytes).unwrap_or_default() {
+                        if !model.track_index.contains(&id) {
+                            model.track_index.push(id);
+                        }
+                    }
+                }
+                let clock_user = user_id.clone();
+                let mut cmd = Command::request_from_shell(KeyValueOperation::Get { key: crate::tracks::clock_key(&user_id) })
+                    .then_send(move |result| Event::ClockRead { user_id: clock_user, result });
+                for track_id in model.track_index.clone() {
+                    let (user, track) = (user_id.clone(), track_id.clone());
+                    cmd = cmd.and(
+                        Command::request_from_shell(KeyValueOperation::Get { key: crate::tracks::license_key(&user_id, &track_id) })
+                            .then_send(move |result| Event::LicenseRead { user_id: user, track_id: track, result }),
+                    );
+                    // Com rede, cada abertura revalida (spec, seção 6).
+                    cmd = cmd.and(self.update(Event::FetchLicense { track_id }, model));
+                }
+                model.track_index_loaded_for = user_id;
+                cmd.and(self.fetch_missing_licenses(model))
+            }
+
+            Event::ClockRead { user_id, result } => {
+                if user_id != model.user_id {
+                    return Command::done();
+                }
+                if let KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } = result {
+                    if let Some(seen) = String::from_utf8(bytes).ok().and_then(|s| s.parse::<i64>().ok()) {
+                        model.clock_high_water = model.clock_high_water.max(seen);
+                    }
+                }
+                render::render()
+            }
+
+            Event::LicenseRead { user_id, track_id, result } => {
+                if user_id != model.user_id {
+                    return Command::done();
+                }
+                let KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } = result else {
+                    return Command::done();
+                };
+                let Ok(license) = serde_json::from_slice::<crate::domain::TrackLicense>(&bytes) else {
+                    return Command::done();
+                };
+                if license.track_id != track_id {
+                    return Command::done();
+                }
+                // A revalidação pode ter chegado antes do disco: fica a mais nova.
+                let newer = model.licenses.get(&track_id).is_none_or(|l| l.issued_at < license.issued_at);
+                if newer {
+                    model.licenses.insert(track_id.clone(), license);
+                }
+                Command::request_from_shell(KeyValueOperation::Get { key: crate::tracks::package_key(&user_id, &track_id) })
+                    .then_send(move |result| Event::PackageRead { user_id, track_id, result })
+            }
+
+            Event::PackageRead { user_id, track_id, result } => {
+                if user_id != model.user_id || model.track_content.contains_key(&track_id) {
+                    return render::render();
+                }
+                let KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } = result else {
+                    return render::render();
+                };
+                if let Some(license) = model.licenses.get(&track_id) {
+                    if let Ok(content) = crate::tracks::open_package(license, &bytes) {
+                        model.track_content.insert(
+                            track_id,
+                            TrackContent { content_version: content.content_version, bytes: bytes.len() as u64, challenges: content.challenges },
+                        );
+                        merge_track_challenges(model);
+                    }
+                }
+                render::render()
+            }
+
+            Event::DeleteTrackDownload { track_id } => forget_track(model, &track_id).and(render::render()),
 
             Event::RequestOTP { email, purpose } => {
                 if model.resend_cooldown.is_active() || model.auth_cooldown.is_active() {
@@ -2331,6 +3380,13 @@ Event::FetchChallenges => {
                 // nova nasce achando que já a abandonaram.
                 model.match_left = false;
                 model.review_prompt_pending = false;
+                // A tela só oferece o nó aberto, mas a trava é aqui: licença vencida com
+                // o desafio ainda na memória não abre partida.
+                if model.nodes.iter().any(|n| n.id == node_id && !node_open(model, n)) {
+                    model.match_state = None;
+                    model.status = "Node requires a valid license".to_string();
+                    return render::render();
+                }
                 let problems: Vec<match_engine::MatchProblem> = model.challenges.iter()
                     .filter(|c| c.node_id == node_id)
                     .enumerate()
@@ -2440,6 +3496,7 @@ Event::FetchChallenges => {
 
                         model.paid_challenges.push(challenge_id.clone());
                         model.global_xp += match_engine::XP_PER_ACCEPTED;
+                        credit_track_xp(&model.nodes, &mut model.paid_track_xp, &node_id);
                         match template.as_str() {
                             "SPOT_THE_BUG" => model.bugs_found += 1,
                             "DRY_RUN" => model.dry_runs_completed += 1,
@@ -2579,7 +3636,10 @@ Event::FetchChallenges => {
                 if model.user_id.is_empty() {
                     model.user_id = owner.clone();
                 }
-                self.claim_queue(model, &owner, &[""])
+                // Sem rede, é aqui que se sabe de quem é a sessão: as trilhas baixadas
+                // desta conta abrem pela licença guardada, até o prazo dela.
+                let downloads = self.update(Event::LoadTrackDownloads, model);
+                self.claim_queue(model, &owner, &[""]).and(downloads)
             }
 
             Event::ResumeEmailRead(result) => {
@@ -2922,30 +3982,29 @@ Event::FetchChallenges => {
         let mut computed_nodes = model.nodes.clone();
         
         // Calculate DAG status
-        for i in 0..computed_nodes.len() {
-            let req_xp = computed_nodes[i].required_xp;
-            let id = computed_nodes[i].id.clone();
-            
-            if model.global_xp < req_xp {
-                computed_nodes[i].status = crate::domain::NodeStatus::Locked;
+        // O paywall vem antes do portão: o nó pago que o jogador toca abre a compra, não o
+        // "faltam N XP". Comprar não pula o portão (spec, seção 8), que conta só o XP da
+        // trilha do nó.
+        for node in computed_nodes.iter_mut() {
+            node.status = if !node_open(model, node) {
+                crate::domain::NodeStatus::PaywallLocked
+            } else if track_xp(model, &node.track_id) < node.required_xp {
+                crate::domain::NodeStatus::Locked
             } else {
-                // It is at least Active. Is it Completed?
-                // A node is completed if ANY of its children (nodes that have it as prerequisite)
-                // are UNLOCKED (meaning user's global_xp >= child.required_xp).
-                let mut has_unlocked_child = false;
-                for child in &model.nodes {
-                    if child.prerequisites.contains(&id) && model.global_xp >= child.required_xp {
-                        has_unlocked_child = true;
-                        break;
-                    }
-                }
-                
+                // Conquistado quando algum filho já abriu pelo XP da trilha dele. Filho
+                // atrás do paywall não abriu: sem isto, a amostra aparecia conquistada
+                // sem nenhum problema resolvido, só porque o nó pago tem portão zero.
+                let has_unlocked_child = model.nodes.iter().any(|child| {
+                    child.prerequisites.contains(&node.id)
+                        && node_open(model, child)
+                        && track_xp(model, &child.track_id) >= child.required_xp
+                });
                 if has_unlocked_child {
-                    computed_nodes[i].status = crate::domain::NodeStatus::Completed;
+                    crate::domain::NodeStatus::Completed
                 } else {
-                    computed_nodes[i].status = crate::domain::NodeStatus::Active;
+                    crate::domain::NodeStatus::Active
                 }
-            }
+            };
         }
 
         // Problema a problema, na ordem das letras da partida — a mesma ordem em que
@@ -2957,11 +4016,61 @@ Event::FetchChallenges => {
                 .collect();
         }
 
+        // O catálogo sai dos nós já calculados: "4 de 7 nós" conta conquistados.
+        let tracks: Vec<crate::domain::TrackView> =
+            model.tracks.iter().map(|t| track_view(model, t, &computed_nodes)).collect();
+        let current = effective_track(model);
+        let current_track = tracks.iter().find(|t| t.id == current).cloned().unwrap_or_else(|| crate::domain::TrackView {
+            id: current.clone(),
+            is_free: true,
+            selected: true,
+            ..Default::default()
+        });
+
+        // A árvore mostra uma trilha por vez. Sem isto, a trilha paga desenhava por cima
+        // da principal: a posição na grade é única por trilha, não no mapa inteiro.
+        //
+        // Nenhum nó da trilha escolhida (semente de antes de `track_id`, com o catálogo
+        // já no retrato): fica o que não é de trilha paga, em vez de uma árvore vazia.
+        if computed_nodes.iter().any(|n| n.track_id == current) {
+            computed_nodes.retain(|n| n.track_id == current);
+        } else {
+            computed_nodes.retain(|n| !is_paid_track(model, &n.track_id));
+        }
+
         // "N balões no ar" conta nós conquistados, não problemas aceitos.
         let balloons_up = computed_nodes
             .iter()
             .filter(|n| n.status == crate::domain::NodeStatus::Completed)
             .count() as i32;
+
+        let purchase_flow = model
+            .purchase_flow
+            .as_ref()
+            .map(|(track_id, stage, failure)| crate::domain::PurchaseFlowView {
+                stage: *stage,
+                track_id: track_id.clone(),
+                failure: failure.clone(),
+            })
+            .unwrap_or_default();
+        let restore_result = crate::domain::RestoreResultView {
+            active: model.restore.started,
+            finished: model.restore.started && model.restore.done >= model.restore.total,
+            total: model.restore.total,
+            restored: model.restore.restored_tracks.len() as u32,
+            other_account: model.restore.other_account,
+            restored_names: model
+                .restore
+                .restored_tracks
+                .iter()
+                .filter_map(|id| model.tracks.iter().find(|t| &t.id == id).map(|t| t.name.clone()))
+                .collect(),
+        };
+        let catalog_badge = catalog_badge(model, &tracks);
+        let show_onboarding = model.prefs_loaded
+            && !model.onboarding_done
+            && (model.access_token.is_some() || model.session_offline || model.is_guest)
+            && !model.boot.active;
 
         ViewModel {
             status: model.status_key.clone(),
@@ -3020,6 +4129,16 @@ Event::FetchChallenges => {
             analytics_enabled: !model.analytics_disabled,
             boot: boot_view(&model.boot),
             resume_email: model.resume_email.clone(),
+            account_user_id: if model.is_guest { String::new() } else { model.user_id.clone() },
+            tracks,
+            current_track,
+            catalog_badge,
+            show_onboarding,
+            purchase_flow,
+            restore_result,
+            sample_offer: sample_offer(model),
+            purchases_to_finish: model.purchases_to_finish.clone(),
+            purchase_in_flight: model.purchase_in_flight,
         }
     }
 }
@@ -3139,6 +4258,8 @@ mod tests {
             column: 0,
             required_xp: 0,
             prerequisites: vec![],
+            track_id: String::new(),
+            requires_purchase: false,
             topic: String::new(),
             status: Default::default(),
             problems_solved: vec![],
@@ -3309,6 +4430,8 @@ mod tests {
             column: 0,
             required_xp: 0,
             prerequisites: vec![],
+            track_id: String::new(),
+            requires_purchase: false,
             topic: String::new(),
             status: Default::default(),
             problems_solved: vec![],
@@ -3494,6 +4617,8 @@ mod tests {
             column: 0,
             required_xp: 1100,
             prerequisites: vec![],
+            track_id: String::new(),
+            requires_purchase: false,
             topic: String::new(),
             status: Default::default(),
             problems_solved: vec![],
@@ -5720,5 +6845,769 @@ mod tests {
             "busca de novo, com o mesmo país");
         assert_eq!(model.status_key, StatusKey::AccountFailed);
         assert!(!model.is_authenticating);
+    }
+
+    // --- Trilha paga. "Trilha T" é inventada: a amostra "Nó A" e o fechado "Nó B". ---
+
+    const TRACK: &str = "aaaaaaaa-0000-4000-8000-000000000001";
+    const FREE_NODE: &str = "10000000-0000-0000-0000-000000000001";
+    const SAMPLE_NODE: &str = "aaaaaaaa-0000-4000-8000-0000000000a1";
+    const CLOSED_NODE: &str = "aaaaaaaa-0000-4000-8000-0000000000b1";
+    const DEVICE: &str = "dddddddd-0000-4000-8000-000000000001";
+    const NOW: i64 = 1_800_000_000;
+
+    fn tree_node(id: &str, track: &str, requires_purchase: bool, required_xp: i32) -> crate::domain::SkillNode {
+        crate::domain::SkillNode {
+            id: id.into(),
+            name: "Nó".into(),
+            description: String::new(),
+            row: 0,
+            column: 0,
+            required_xp,
+            prerequisites: vec![],
+            track_id: track.into(),
+            requires_purchase,
+            topic: String::new(),
+            status: Default::default(),
+            problems_solved: vec![],
+        }
+    }
+
+    fn on_node(id: &str, node: &str) -> Challenge {
+        let mut c = seeded_challenge(id, "SPOT_THE_BUG", vec![], vec![], "e");
+        c.node_id = node.into();
+        c
+    }
+
+    fn paid_model() -> (LogNApp, Model) {
+        let mut model = Model::default();
+        model.access_token = Some("tok".into());
+        model.user_id = USER_A.into();
+        model.device_id = DEVICE.into();
+        model.now = NOW;
+        model.locale = "pt-BR".into();
+        model.nodes = vec![
+            tree_node(FREE_NODE, "free", false, 0),
+            tree_node(SAMPLE_NODE, TRACK, false, 0),
+            tree_node(CLOSED_NODE, TRACK, true, 50),
+        ];
+        model.challenges = vec![on_node("ch_t01", FREE_NODE), on_node("ch_t02", SAMPLE_NODE)];
+        model.tracks = vec![crate::domain::Track {
+            id: TRACK.into(),
+            slug: "t".into(),
+            product_id: "com.example.logn.track.t".into(),
+            name: "Trilha T".into(),
+            content_version: 1,
+            ..Default::default()
+        }];
+        (LogNApp::default(), model)
+    }
+
+    fn test_license() -> crate::domain::TrackLicense {
+        crate::domain::TrackLicense {
+            track_id: TRACK.into(),
+            key_hex: "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff".into(),
+            content_version: 1,
+            issued_at: NOW - 10,
+            valid_until: NOW + 30 * 86_400,
+        }
+    }
+
+    fn test_package() -> Vec<u8> {
+        let content = serde_json::json!({
+            "track_id": TRACK,
+            "content_version": 1,
+            "challenges": { "pt-BR": [on_node("ch_t03", CLOSED_NODE)], "en": [], "es": [] },
+        });
+        crate::tracks::testing::seal_package(&test_license(), &content.to_string())
+    }
+
+    /// O estado do nó na árvore da trilha dele: a árvore mostra uma trilha por vez.
+    fn status_of(model: &Model, node: &str) -> crate::domain::NodeStatus {
+        let mut model = model.clone();
+        model.selected_track = model.nodes.iter().find(|n| n.id == node).unwrap().track_id.clone();
+        LogNApp::default().view(&model).nodes.into_iter().find(|n| n.id == node).unwrap().status
+    }
+
+    fn http_requests(cmd: &mut Command<Effect, Event>) -> Vec<HttpRequest> {
+        drain(cmd).1
+    }
+
+    /// Cofre e HTTP de uma vez: `effects()` esvazia o comando.
+    fn drain(cmd: &mut Command<Effect, Event>) -> (Vec<KeyValueOperation>, Vec<HttpRequest>) {
+        let (mut kv, mut http) = (vec![], vec![]);
+        for e in cmd.effects() {
+            match e {
+                Effect::SecureStore(r) => kv.push(r.operation.clone()),
+                Effect::Http(r) => http.push(r.operation.clone()),
+                _ => {}
+            }
+        }
+        (kv, http)
+    }
+
+    fn set_keys(ops: &[KeyValueOperation]) -> Vec<String> {
+        ops.iter()
+            .filter_map(|op| match op {
+                KeyValueOperation::Set { key, .. } => Some(key.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Licença e pacote já no modelo, como depois de comprar e baixar.
+    fn licensed(app: &LogNApp, model: &mut Model) {
+        let _ = app.update(
+            Event::LicenseFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: http(200, serde_json::to_value(test_license()).unwrap()) },
+            model,
+        );
+        let _ = app.update(
+            Event::PackageFetched {
+                user_id: USER_A.into(),
+                track_id: TRACK.into(),
+                result: HttpResult::Ok(crux_http::protocol::HttpResponse { status: 200, headers: vec![], body: test_package() }),
+            },
+            model,
+        );
+    }
+
+    #[test]
+    fn test_a_paid_node_opens_only_with_a_valid_license() {
+        use crate::domain::NodeStatus;
+        let (_, mut model) = paid_model();
+        // O fechado depende da amostra e tem portão zero, como na trilha de verdade.
+        model.nodes[2].prerequisites = vec![SAMPLE_NODE.into()];
+        model.nodes[2].required_xp = 0;
+        assert_eq!(status_of(&model, CLOSED_NODE), NodeStatus::PaywallLocked, "sem compra");
+        assert_eq!(status_of(&model, SAMPLE_NODE), NodeStatus::Active,
+            "a amostra abre para todos, e o filho no paywall não a conta como conquistada");
+        model.nodes[2].required_xp = 50;
+
+        model.licenses.insert(TRACK.into(), test_license());
+        assert_eq!(status_of(&model, CLOSED_NODE), NodeStatus::Locked, "comprar não pula o portão");
+        model.paid_track_xp.insert(TRACK.into(), 50);
+        assert_eq!(status_of(&model, CLOSED_NODE), NodeStatus::Active);
+
+        model.now = test_license().valid_until;
+        assert_eq!(status_of(&model, CLOSED_NODE), NodeStatus::PaywallLocked, "31º dia sem rede");
+        model.now = test_license().issued_at - crate::tracks::LICENSE_CLOCK_SKEW_SECS - 1;
+        assert_eq!(status_of(&model, CLOSED_NODE), NodeStatus::PaywallLocked, "relógio atrasado de propósito");
+    }
+
+    /// O XP de uma trilha paga não destrava nó da gratuita, e vice-versa (critério 7).
+    #[test]
+    fn test_the_gate_counts_only_the_xp_of_the_node_track() {
+        use crate::domain::NodeStatus;
+        let (_, mut model) = paid_model();
+        model.nodes.push(tree_node("10000000-0000-0000-0000-000000000002", "free", false, 100));
+        model.licenses.insert(TRACK.into(), test_license());
+        let free_gate = "10000000-0000-0000-0000-000000000002";
+
+        model.global_xp = 100;
+        assert_eq!(status_of(&model, free_gate), NodeStatus::Active);
+        assert_eq!(status_of(&model, CLOSED_NODE), NodeStatus::Locked, "XP da gratuita não abre a paga");
+
+        model.paid_track_xp.insert(TRACK.into(), 60);
+        assert_eq!(status_of(&model, CLOSED_NODE), NodeStatus::Active);
+        assert_eq!(status_of(&model, free_gate), NodeStatus::Locked, "XP da paga não abre a gratuita");
+        assert_eq!(LogNApp::default().view(&model).global_xp, 100, "o nível segue somando os dois");
+    }
+
+    #[test]
+    fn test_an_accepted_answer_credits_the_track_of_its_node() {
+        let (_, mut model) = paid_model();
+        credit_track_xp(&model.nodes, &mut model.paid_track_xp, CLOSED_NODE);
+        credit_track_xp(&model.nodes, &mut model.paid_track_xp, SAMPLE_NODE);
+        credit_track_xp(&model.nodes, &mut model.paid_track_xp, FREE_NODE);
+        assert_eq!(model.paid_track_xp.get(TRACK), Some(&(2 * match_engine::XP_PER_ACCEPTED)));
+        assert_eq!(model.paid_track_xp.len(), 1, "a gratuita não entra no mapa");
+    }
+
+    #[test]
+    fn test_a_confirmed_purchase_is_finished_and_licensed() {
+        let (app, mut model) = paid_model();
+        let mut cmd = app.update(
+            Event::SubmitPurchase {
+                jws: "signed".into(),
+                transaction_id: "tx1".into(),
+                product_id: "com.example.logn.track.t".into(),
+                restore: false,
+            },
+            &mut model,
+        );
+        let sent = http_requests(&mut cmd);
+        assert_eq!(sent.len(), 1);
+        assert_eq!((sent[0].method.as_str(), sent[0].url.as_str()), ("POST", "/api/v1/purchases"));
+        assert_eq!(serde_json::from_slice::<serde_json::Value>(&sent[0].body).unwrap()["jws"], "signed");
+        assert!(model.purchase_in_flight);
+        assert!(model.purchases_to_finish.is_empty(), "a loja só finaliza depois do servidor");
+
+        let mut cmd = app.update(
+            Event::PurchaseSubmitted {
+                jws: "signed".into(),
+                transaction_id: "tx1".into(),
+                product_id: "com.example.logn.track.t".into(),
+                restore: false,
+                result: http(200, serde_json::json!({ "track_id": TRACK })),
+            },
+            &mut model,
+        );
+        assert_eq!(model.purchases_to_finish, vec!["tx1".to_string()]);
+        assert_eq!(model.status_key, StatusKey::PurchaseConfirmed);
+        let license = http_requests(&mut cmd);
+        assert_eq!(license[0].url, format!("/api/v1/tracks/{TRACK}/license"));
+        assert!(license[0].headers.iter().any(|h| h.name == "X-Device-ID" && h.value == DEVICE),
+            "todo pedido de licença leva o aparelho");
+
+        let _ = app.update(Event::PurchaseFinished { transaction_id: "tx1".into() }, &mut model);
+        assert!(model.purchases_to_finish.is_empty());
+    }
+
+    #[test]
+    fn test_a_refused_purchase_stops_coming_back_and_a_failed_one_retries() {
+        let (app, mut model) = paid_model();
+        let submitted = |tx: &str, restore: bool, result: HttpResult| Event::PurchaseSubmitted {
+            jws: "signed".into(), transaction_id: tx.into(), product_id: "com.example.logn.track.t".into(), restore, result,
+        };
+
+        let _ = app.update(submitted("tx1", false, http(409, serde_json::json!({ "code": "purchase_owned_by_other_account" }))), &mut model);
+        assert_eq!(model.status_key, StatusKey::PurchaseOwnedByOtherAccount);
+        assert_eq!(model.purchases_to_finish, vec!["tx1".to_string()], "recusa definitiva fecha a transação");
+
+        let _ = app.update(submitted("tx2", false, http(500, serde_json::json!({ "code": "internal" }))), &mut model);
+        assert_eq!(model.status_key, StatusKey::PurchaseFailed);
+        assert!(!model.purchases_to_finish.contains(&"tx2".to_string()), "erro do servidor tenta de novo");
+
+        let _ = app.update(submitted("tx3", true, http(200, serde_json::json!({ "track_id": TRACK }))), &mut model);
+        assert!(!model.purchases_to_finish.contains(&"tx3".to_string()), "restauração já foi finalizada");
+    }
+
+    /// Comprou em outro aparelho: o catálogo diz que é da conta, e a licença vem sozinha.
+    #[test]
+    fn test_a_track_bought_elsewhere_downloads_after_login() {
+        let (app, mut model) = paid_model();
+        let mut owned = serde_json::to_value(crate::domain::Track {
+            id: TRACK.into(), slug: "t".into(), product_id: "p".into(), name: "Trilha T".into(), ..Default::default()
+        }).unwrap();
+        owned["owned"] = serde_json::Value::Bool(true);
+        // Antes de o índice do aparelho ser lido, o catálogo não pede: a leitura pede.
+        let mut cmd = app.update(Event::TracksFetched(http(200, serde_json::json!([owned]))), &mut model);
+        assert!(http_requests(&mut cmd).is_empty(), "sem índice lido, não baixa em dobro");
+        let mut cmd = app.update(Event::TrackIndexRead { user_id: USER_A.into(), result: kv_empty() }, &mut model);
+        assert!(http_requests(&mut cmd).iter().any(|r| r.url == format!("/api/v1/tracks/{TRACK}/license")));
+
+        model.track_index.clear();
+        let mut cmd = app.update(Event::TracksFetched(http(200, serde_json::json!([owned]))), &mut model);
+        assert!(http_requests(&mut cmd).iter().any(|r| r.url == format!("/api/v1/tracks/{TRACK}/license")),
+            "com índice lido, o catálogo pede o que falta");
+
+        // Já baixada: a revalidação é da abertura, não do catálogo.
+        model.track_index.push(TRACK.into());
+        let mut cmd = app.update(Event::TracksFetched(http(200, serde_json::json!([owned]))), &mut model);
+        assert!(http_requests(&mut cmd).is_empty());
+    }
+
+    /// O catálogo do teste: a principal e a Trilha T.
+    fn with_catalog(model: &mut Model) {
+        model.tracks = vec![
+            crate::domain::Track { id: "free".into(), kind: "free".into(), name: "Problem Solving".into(), ..Default::default() },
+            crate::domain::Track {
+                id: TRACK.into(),
+                kind: "paid".into(),
+                product_id: "com.example.logn.track.t".into(),
+                name: "Trilha T".into(),
+                node_count: 2,
+                problem_count: 5,
+                ..Default::default()
+            },
+        ];
+    }
+
+    /// A árvore mostra uma trilha por vez: a principal até o jogador escolher outra.
+    #[test]
+    fn test_the_tree_shows_one_track_at_a_time() {
+        let (app, mut model) = paid_model();
+        with_catalog(&mut model);
+        let ids = |m: &Model| LogNApp::default().view(m).nodes.into_iter().map(|n| n.id).collect::<Vec<_>>();
+
+        assert_eq!(ids(&model), vec![FREE_NODE.to_string()]);
+        assert!(app.view(&model).current_track.is_free);
+
+        let mut cmd = app.update(Event::SelectTrack { track_id: TRACK.into() }, &mut model);
+        assert!(set_keys(&kv_ops(&mut cmd)).contains(&"selected_track".to_string()), "a escolha fica no aparelho");
+        assert_eq!(ids(&model), vec![SAMPLE_NODE.to_string(), CLOSED_NODE.to_string()]);
+        assert_eq!(app.view(&model).current_track.name, "Trilha T");
+
+        // Trilha que o app não conhece mais (saiu do catálogo e da árvore): volta à principal.
+        model.selected_track = "gone".into();
+        assert_eq!(ids(&model), vec![FREE_NODE.to_string()]);
+    }
+
+    #[test]
+    fn test_the_offline_ladder_counts_days_left() {
+        use crate::domain::OfflineState;
+        let (app, mut model) = paid_model();
+        with_catalog(&mut model);
+        let state = |m: &Model| {
+            let v = LogNApp::default().view(m);
+            let t = v.tracks.into_iter().find(|t| t.id == TRACK).unwrap();
+            (t.offline, t.offline_days_left, t.days_since_contact)
+        };
+        assert_eq!(state(&model).0, OfflineState::NoLicense);
+
+        let mut license = test_license();
+        license.issued_at = NOW - 26 * 86_400;
+        license.valid_until = NOW + 4 * 86_400;
+        model.licenses.insert(TRACK.into(), license.clone());
+        assert_eq!(state(&model), (OfflineState::Silent, 4, 26));
+
+        model.now = NOW + 86_400;
+        assert_eq!(state(&model), (OfflineState::Soon, 3, 27));
+        model.now = NOW + 3 * 86_400 + 60;
+        assert_eq!(state(&model).0, OfflineState::Today);
+        model.now = license.valid_until;
+        assert_eq!(state(&model).0, OfflineState::Expired);
+        let _ = app;
+    }
+
+    /// O selo de "N dias" some no dia em que o catálogo abriu; "hoje" não some.
+    #[test]
+    fn test_the_catalog_badge_quiets_down_for_the_day() {
+        use crate::domain::OfflineState;
+        let (app, mut model) = paid_model();
+        with_catalog(&mut model);
+        let mut license = test_license();
+        license.valid_until = NOW + 2 * 86_400 + 10;
+        model.licenses.insert(TRACK.into(), license);
+
+        assert_eq!(app.view(&model).catalog_badge.state, OfflineState::Soon);
+        assert_eq!(app.view(&model).catalog_badge.days_left, 2);
+        let _ = app.update(Event::CatalogOpened, &mut model);
+        assert_eq!(app.view(&model).catalog_badge.state, OfflineState::NoLicense, "visto hoje");
+
+        model.now = NOW + 2 * 86_400;
+        assert_eq!(app.view(&model).catalog_badge.state, OfflineState::Today, "último dia não some");
+    }
+
+    #[test]
+    fn test_the_sample_offer_follows_a_mastered_sample() {
+        let (app, mut model) = paid_model();
+        with_catalog(&mut model);
+        model.nodes[2].prerequisites = vec![SAMPLE_NODE.into()];
+        let _ = app.update(Event::StartMatch { node_id: SAMPLE_NODE.into() }, &mut model);
+        model.match_state.as_mut().unwrap().is_active = false;
+
+        assert!(!app.view(&model).sample_offer.active, "sem dominar a amostra, sem oferta");
+        model.paid_challenges.push("ch_t02".into());
+        let offer = app.view(&model).sample_offer;
+        assert!(offer.active);
+        assert_eq!((offer.next_node_index, offer.remaining_nodes, offer.remaining_problems), (2, 1, 4));
+
+        let _ = app.update(Event::DismissSampleOffer { track_id: TRACK.into() }, &mut model);
+        assert!(!app.view(&model).sample_offer.active, "\"Agora não\" vale pela sessão");
+
+        model.offer_dismissed.clear();
+        model.tracks[1].owned = true;
+        assert!(!app.view(&model).sample_offer.active, "quem comprou não vê oferta");
+    }
+
+    /// F3: a compra anda pelos passos até a trilha abrir sem rede.
+    #[test]
+    fn test_the_purchase_flow_walks_its_steps() {
+        use crate::domain::PurchaseStage;
+        let (app, mut model) = paid_model();
+        with_catalog(&mut model);
+        let stage = |m: &Model| LogNApp::default().view(m).purchase_flow.stage;
+
+        // Reentregue pela loja na abertura, sem o jogador pedir: segue em silêncio.
+        let _ = app.update(
+            Event::SubmitPurchase { jws: "j".into(), transaction_id: "tx0".into(), product_id: "com.example.logn.track.t".into(), restore: false },
+            &mut model,
+        );
+        assert_eq!(stage(&model), PurchaseStage::Idle);
+
+        let _ = app.update(Event::PurchaseIntent { product_id: "com.example.logn.track.t".into() }, &mut model);
+        let _ = app.update(
+            Event::SubmitPurchase { jws: "j".into(), transaction_id: "tx1".into(), product_id: "com.example.logn.track.t".into(), restore: false },
+            &mut model,
+        );
+        assert_eq!(stage(&model), PurchaseStage::Validating);
+        assert_eq!(app.view(&model).purchase_flow.track_id, TRACK);
+
+        let _ = app.update(
+            Event::PurchaseSubmitted {
+                jws: "j".into(), transaction_id: "tx1".into(), product_id: "com.example.logn.track.t".into(), restore: false,
+                result: http(200, serde_json::json!({ "track_id": TRACK })),
+            },
+            &mut model,
+        );
+        assert_eq!(stage(&model), PurchaseStage::Licensing);
+        let _ = app.update(
+            Event::LicenseFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: http(200, serde_json::to_value(test_license()).unwrap()) },
+            &mut model,
+        );
+        assert_eq!(stage(&model), PurchaseStage::Downloading);
+        let _ = app.update(
+            Event::PackageFetched {
+                user_id: USER_A.into(),
+                track_id: TRACK.into(),
+                result: HttpResult::Ok(crux_http::protocol::HttpResponse { status: 200, headers: vec![], body: test_package() }),
+            },
+            &mut model,
+        );
+        assert_eq!(stage(&model), PurchaseStage::Ready);
+
+        let _ = app.update(Event::ClosePurchaseFlow, &mut model);
+        assert_eq!(stage(&model), PurchaseStage::Idle);
+        assert_eq!(model.selected_track, TRACK, "\"Abrir\" leva à trilha comprada");
+
+        // Recusa: o passo a passo para, com o motivo.
+        let _ = app.update(Event::PurchaseIntent { product_id: "com.example.logn.track.t".into() }, &mut model);
+        let _ = app.update(
+            Event::SubmitPurchase { jws: "j".into(), transaction_id: "tx2".into(), product_id: "com.example.logn.track.t".into(), restore: false },
+            &mut model,
+        );
+        let _ = app.update(
+            Event::PurchaseSubmitted {
+                jws: "j".into(), transaction_id: "tx2".into(), product_id: "com.example.logn.track.t".into(), restore: false,
+                result: http(403, serde_json::json!({ "code": "purchase_revoked" })),
+            },
+            &mut model,
+        );
+        let flow = app.view(&model).purchase_flow;
+        assert_eq!((flow.stage, flow.failure), (PurchaseStage::Failed, StatusKey::PurchaseRevoked));
+    }
+
+    /// A rede cai depois da cobrança: a tela para com o motivo, em vez de "Aguarde" para
+    /// sempre, e a compra sem pedido na tela não trava nada.
+    #[test]
+    fn test_the_purchase_flow_stops_when_the_download_fails() {
+        use crate::domain::PurchaseStage;
+        let (app, mut model) = paid_model();
+        with_catalog(&mut model);
+        model.purchase_flow = Some((TRACK.into(), PurchaseStage::Licensing, StatusKey::Silent));
+        let _ = app.update(
+            Event::LicenseFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: HttpResult::Err(crux_http::HttpError::Io("offline".into())) },
+            &mut model,
+        );
+        let flow = app.view(&model).purchase_flow;
+        assert_eq!((flow.stage, flow.failure), (PurchaseStage::Failed, StatusKey::TrackDownloadFailed));
+
+        model.purchase_flow = Some((TRACK.into(), PurchaseStage::Downloading, StatusKey::Silent));
+        model.licenses.insert(TRACK.into(), test_license());
+        let _ = app.update(
+            Event::PackageFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: http(500, serde_json::json!({})) },
+            &mut model,
+        );
+        assert_eq!(app.view(&model).purchase_flow.stage, PurchaseStage::Failed);
+
+        // Fechar antes de pronta: some a tela, a compra segue em segundo plano.
+        model.purchase_flow = Some((TRACK.into(), PurchaseStage::Downloading, StatusKey::Silent));
+        let _ = app.update(Event::ClosePurchaseFlow, &mut model);
+        assert_eq!(app.view(&model).purchase_flow.stage, PurchaseStage::Idle);
+    }
+
+    /// A restauração manda várias compras de uma vez; com o token vencido, cada uma volta
+    /// com 401. Um refresh só — dois com o mesmo token derrubariam a conta — e todas
+    /// voltam a ser mandadas depois dele.
+    #[test]
+    fn test_concurrent_401s_refresh_once_and_retry_all() {
+        let (app, mut model) = paid_model();
+        let submitted = |tx: &str| Event::PurchaseSubmitted {
+            jws: "j".into(), transaction_id: tx.into(), product_id: String::new(), restore: true,
+            result: http(401, serde_json::json!({ "code": "unauthenticated" })),
+        };
+        let _ = app.update(submitted("tx1"), &mut model);
+        let _ = app.update(submitted("tx2"), &mut model);
+        assert_eq!(model.purchase_retries.len(), 2);
+
+        let token = kv_bytes(b"refresh".to_vec());
+        let mut first = app.update(Event::TokenRead(token.clone()), &mut model);
+        assert!(http_requests(&mut first).iter().any(|r| r.url == "/api/v1/auth/refresh"));
+        let mut second = app.update(Event::TokenRead(token), &mut model);
+        assert!(http_requests(&mut second).is_empty(), "um refresh por vez");
+
+        let mut cmd = app.update(Event::AccountEmailRead(kv_empty()), &mut model);
+        let resent = http_requests(&mut cmd).iter().filter(|r| r.url == "/api/v1/purchases/restore").count();
+        assert_eq!(resent, 2, "as duas compras voltam a ser mandadas");
+    }
+
+    #[test]
+    fn test_signing_out_forgets_what_the_catalog_said_about_the_account() {
+        let (app, mut model) = paid_model();
+        with_catalog(&mut model);
+        model.tracks[1].owned = true;
+        model.tracks[1].revoked_reason = "account_sharing".into();
+        model.selected_track = TRACK.into();
+        let _ = app.update(
+            Event::TokenCleared(KeyValueResult::Ok { response: KeyValueResponse::Delete { previous: crux_kv::Value::None } }),
+            &mut model,
+        );
+        assert!(!model.tracks[1].owned && model.tracks[1].revoked_reason.is_empty());
+        assert!(model.selected_track.is_empty());
+    }
+
+    #[test]
+    fn test_restoring_nothing_says_so() {
+        let (app, mut model) = paid_model();
+        let _ = app.update(Event::RestoreStarted { count: 0 }, &mut model);
+        let result = app.view(&model).restore_result;
+        assert!(result.active && result.finished && result.total == 0);
+    }
+
+    #[test]
+    fn test_restore_reports_what_came_back() {
+        let (app, mut model) = paid_model();
+        with_catalog(&mut model);
+        let _ = app.update(Event::RestoreStarted { count: 2 }, &mut model);
+        let submitted = |tx: &str, result: HttpResult| Event::PurchaseSubmitted {
+            jws: "j".into(), transaction_id: tx.into(), product_id: String::new(), restore: true, result,
+        };
+        let _ = app.update(submitted("tx1", http(200, serde_json::json!({ "track_id": TRACK }))), &mut model);
+        assert!(!app.view(&model).restore_result.finished);
+        let _ = app.update(submitted("tx2", http(409, serde_json::json!({ "code": "purchase_owned_by_other_account" }))), &mut model);
+
+        let result = app.view(&model).restore_result;
+        assert!(result.active && result.finished);
+        assert_eq!((result.total, result.restored, result.other_account), (2, 1, 1));
+        assert_eq!(result.restored_names, vec!["Trilha T".to_string()]);
+        assert!(model.purchases_to_finish.is_empty(), "restauração não finaliza nada na loja");
+
+        let _ = app.update(Event::DismissRestoreResult, &mut model);
+        assert!(!app.view(&model).restore_result.active);
+    }
+
+    #[test]
+    fn test_onboarding_shows_once_per_device() {
+        let (app, mut model) = paid_model();
+        assert!(!app.view(&model).show_onboarding, "antes de ler as preferências, não");
+
+        let restored = |key: &str, value: &[u8]| Event::PreferenceRestored { key: key.into(), result: kv_bytes(value.to_vec()) };
+        let _ = app.update(restored("selected_track", TRACK.as_bytes()), &mut model);
+        let _ = app.update(Event::PreferenceRestored { key: "onboarding_done".into(), result: kv_empty() }, &mut model);
+        assert_eq!(model.selected_track, TRACK, "a trilha escolhida volta");
+        assert!(app.view(&model).show_onboarding);
+
+        let mut cmd = app.update(Event::CompleteOnboarding, &mut model);
+        assert!(set_keys(&kv_ops(&mut cmd)).contains(&"onboarding_done".to_string()));
+        assert!(!app.view(&model).show_onboarding);
+
+        let (app, mut model) = paid_model();
+        let _ = app.update(restored("onboarding_done", b"1"), &mut model);
+        assert!(!app.view(&model).show_onboarding, "quem já passou não vê de novo");
+    }
+
+    #[test]
+    fn test_a_guest_does_not_buy() {
+        let (app, mut model) = paid_model();
+        model.access_token = None;
+        model.is_guest = true;
+        let mut cmd = app.update(
+            Event::SubmitPurchase { jws: "signed".into(), transaction_id: "tx1".into(), product_id: String::new(), restore: false },
+            &mut model,
+        );
+        assert!(http_requests(&mut cmd).is_empty());
+        assert_eq!(model.status_key, StatusKey::PurchaseNeedsAccount);
+    }
+
+    #[test]
+    fn test_the_license_goes_to_the_keychain_and_the_package_opens() {
+        let (app, mut model) = paid_model();
+        let mut cmd = app.update(
+            Event::LicenseFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: http(200, serde_json::to_value(test_license()).unwrap()) },
+            &mut model,
+        );
+        let (kv, sent) = drain(&mut cmd);
+        let keys = set_keys(&kv);
+        assert!(keys.contains(&format!("track_key:{USER_A}:{TRACK}")), "{keys:?}");
+        assert!(keys.contains(&format!("track_index:{USER_A}")));
+        assert!(sent.iter().any(|r| r.url == format!("/api/v1/tracks/{TRACK}/package")));
+
+        let mut cmd = app.update(
+            Event::PackageFetched {
+                user_id: USER_A.into(),
+                track_id: TRACK.into(),
+                result: HttpResult::Ok(crux_http::protocol::HttpResponse { status: 200, headers: vec![], body: test_package() }),
+            },
+            &mut model,
+        );
+        assert!(set_keys(&kv_ops(&mut cmd)).contains(&format!("track_package:{USER_A}:{TRACK}")));
+        assert!(model.challenges.iter().any(|c| c.id == "ch_t03"), "o fechado entra na trilha");
+        assert_ne!(status_of(&model, CLOSED_NODE), crate::domain::NodeStatus::PaywallLocked);
+
+        let view = app.view(&model);
+        let track = &view.tracks[0];
+        assert!(track.owned && track.downloaded);
+        assert_eq!(track.offline, crate::domain::OfflineState::Silent);
+        assert_eq!(track.offline_days_left, 30);
+
+        // O retrato em claro não leva o fechado nem a chave.
+        let mut snap = save_offline_snapshot(&model);
+        let Some(KeyValueOperation::Set { value, .. }) = kv_ops(&mut snap).into_iter().next() else {
+            panic!("o retrato é gravado");
+        };
+        let text = String::from_utf8(value).unwrap();
+        assert!(!text.contains("ch_t03") && !text.contains(&test_license().key_hex), "{text}");
+    }
+
+    #[test]
+    fn test_a_package_that_does_not_open_is_not_kept() {
+        let (app, mut model) = paid_model();
+        model.licenses.insert(TRACK.into(), test_license());
+        let mut tampered = test_package();
+        tampered[20] ^= 1;
+        let mut cmd = app.update(
+            Event::PackageFetched {
+                user_id: USER_A.into(),
+                track_id: TRACK.into(),
+                result: HttpResult::Ok(crux_http::protocol::HttpResponse { status: 200, headers: vec![], body: tampered }),
+            },
+            &mut model,
+        );
+        assert!(set_keys(&kv_ops(&mut cmd)).is_empty());
+        assert!(!model.challenges.iter().any(|c| c.id == "ch_t03"));
+    }
+
+    /// Reembolso na loja: na abertura seguinte com rede, chave e pacote saem (critério 5).
+    #[test]
+    fn test_a_revoked_license_wipes_the_track() {
+        let (app, mut model) = paid_model();
+        licensed(&app, &mut model);
+        model.global_xp = 150;
+
+        let mut cmd = app.update(
+            Event::LicenseFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: http(403, serde_json::json!({ "code": "entitlement_required" })) },
+            &mut model,
+        );
+        let deleted: Vec<String> = kv_ops(&mut cmd)
+            .into_iter()
+            .filter_map(|op| match op {
+                KeyValueOperation::Delete { key } => Some(key),
+                _ => None,
+            })
+            .collect();
+        assert!(deleted.contains(&format!("track_key:{USER_A}:{TRACK}")));
+        assert!(deleted.contains(&format!("track_package:{USER_A}:{TRACK}")));
+        assert!(!model.challenges.iter().any(|c| c.id == "ch_t03"));
+        assert_eq!(model.status_key, StatusKey::TrackRevoked);
+        assert_eq!(status_of(&model, CLOSED_NODE), crate::domain::NodeStatus::PaywallLocked);
+        assert_eq!(model.global_xp, 150, "o XP ganho fica");
+    }
+
+    #[test]
+    fn test_the_downloads_come_back_from_the_device_offline() {
+        let (app, mut model) = paid_model();
+        model.access_token = None;
+
+        let mut cmd = app.update(Event::LoadTrackDownloads, &mut model);
+        assert!(matches!(kv_ops(&mut cmd).as_slice(), [KeyValueOperation::Get { key }] if *key == format!("track_index:{USER_A}")));
+
+        let mut cmd = app.update(
+            Event::TrackIndexRead { user_id: USER_A.into(), result: kv_bytes(serde_json::to_vec(&[TRACK]).unwrap()) },
+            &mut model,
+        );
+        let (kv, sent) = drain(&mut cmd);
+        assert!(sent.is_empty(), "sem rede não revalida");
+        let read: Vec<String> = kv
+            .iter()
+            .filter_map(|op| match op {
+                KeyValueOperation::Get { key } => Some(key.clone()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(read, vec![crate::tracks::clock_key(USER_A), format!("track_key:{USER_A}:{TRACK}")]);
+
+        let _ = app.update(
+            Event::LicenseRead { user_id: USER_A.into(), track_id: TRACK.into(), result: kv_bytes(serde_json::to_vec(&test_license()).unwrap()) },
+            &mut model,
+        );
+        let _ = app.update(
+            Event::PackageRead { user_id: USER_A.into(), track_id: TRACK.into(), result: kv_bytes(test_package()) },
+            &mut model,
+        );
+        assert!(model.challenges.iter().any(|c| c.id == "ch_t03"));
+
+        // A leitura de outra conta, que chegou atrasada, não entra.
+        let (app, mut model) = paid_model();
+        let _ = app.update(
+            Event::LicenseRead { user_id: USER_B.into(), track_id: TRACK.into(), result: kv_bytes(serde_json::to_vec(&test_license()).unwrap()) },
+            &mut model,
+        );
+        assert!(model.licenses.is_empty());
+    }
+
+    /// A saiu com o pedido de licença no ar, B entrou: a resposta é de A e não entra em B.
+    #[test]
+    fn test_a_license_asked_by_another_account_is_dropped() {
+        let (app, mut model) = paid_model();
+        model.user_id = USER_B.into();
+        let mut cmd = app.update(
+            Event::LicenseFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: http(200, serde_json::to_value(test_license()).unwrap()) },
+            &mut model,
+        );
+        assert!(kv_ops(&mut cmd).is_empty(), "nada gravado sob a conta nova");
+        assert!(model.licenses.is_empty());
+
+        model.licenses.insert(TRACK.into(), test_license());
+        let _ = app.update(
+            Event::PackageFetched {
+                user_id: USER_A.into(),
+                track_id: TRACK.into(),
+                result: HttpResult::Ok(crux_http::protocol::HttpResponse { status: 200, headers: vec![], body: test_package() }),
+            },
+            &mut model,
+        );
+        assert!(model.track_content.is_empty());
+    }
+
+    /// Venceu com o app vendo a hora: atrasar o relógio depois não ressuscita a licença.
+    #[test]
+    fn test_turning_the_clock_back_does_not_revive_a_license() {
+        let (app, mut model) = paid_model();
+        licensed(&app, &mut model);
+        assert!(track_open(&model, TRACK));
+
+        let mut cmd = app.update(Event::Tick { now: test_license().valid_until + 1 }, &mut model);
+        assert!(set_keys(&kv_ops(&mut cmd)).contains(&crate::tracks::clock_key(USER_A)), "a marca vai para o Keychain");
+        assert!(!track_open(&model, TRACK));
+
+        let _ = app.update(Event::Tick { now: NOW }, &mut model);
+        assert!(!track_open(&model, TRACK), "relógio de volta para dentro do prazo");
+
+        // A marca guardada volta na abertura seguinte.
+        let (app, mut model) = paid_model();
+        model.licenses.insert(TRACK.into(), test_license());
+        let _ = app.update(
+            Event::ClockRead { user_id: USER_A.into(), result: kv_bytes((test_license().valid_until + 1).to_string().into_bytes()) },
+            &mut model,
+        );
+        assert!(!track_open(&model, TRACK));
+    }
+
+    #[test]
+    fn test_a_closed_node_does_not_start_without_a_license() {
+        let (app, mut model) = paid_model();
+        model.challenges.push(on_node("ch_t03", CLOSED_NODE));
+        let _ = app.update(Event::StartMatch { node_id: CLOSED_NODE.into() }, &mut model);
+        assert!(model.match_state.is_none());
+
+        licensed(&app, &mut model);
+        let _ = app.update(Event::StartMatch { node_id: CLOSED_NODE.into() }, &mut model);
+        assert!(model.match_state.is_some());
+    }
+
+    #[test]
+    fn test_signing_out_forgets_the_tracks() {
+        let (app, mut model) = paid_model();
+        licensed(&app, &mut model);
+        let _ = app.update(
+            Event::TokenCleared(KeyValueResult::Ok { response: KeyValueResponse::Delete { previous: crux_kv::Value::None } }),
+            &mut model,
+        );
+        assert!(model.licenses.is_empty() && model.track_content.is_empty() && model.track_index.is_empty());
+
+        // Desfazer a saída devolve a conta, e as trilhas voltam do disco, não da memória.
+        let _ = app.update(Event::UndoLogout, &mut model);
+        assert!(!model.challenges.iter().any(|c| c.id == "ch_t03"));
     }
 }
