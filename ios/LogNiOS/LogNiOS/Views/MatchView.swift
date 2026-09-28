@@ -677,11 +677,20 @@ struct MatchReportView: View {
         VStack(spacing: 0) {
             header
             ScrollView { review }
-            LognButton(title: Str.Match.got_it, variant: .primary, action: onDismiss)
-                .padding(.horizontal, Space.screenMargin)
-                .padding(.top, Space.md)
-                .padding(.bottom, Space.xl)
-                .background(LognDark.canvas)
+            // Fim da amostra de uma trilha paga: a oferta toma o lugar do "Entendi" (1f).
+            // Um primário por tela, e a amostra vira a vitrine.
+            Group {
+                if core.viewModel.sampleOffer.active {
+                    SampleOfferCard(offer: core.viewModel.sampleOffer, onDismiss: onDismiss)
+                        .environmentObject(StoreKitManager.shared)
+                } else {
+                    LognButton(title: Str.Match.got_it, variant: .primary, action: onDismiss)
+                }
+            }
+            .padding(.horizontal, Space.screenMargin)
+            .padding(.top, Space.md)
+            .padding(.bottom, Space.xl)
+            .background(LognDark.canvas)
         }
     }
 

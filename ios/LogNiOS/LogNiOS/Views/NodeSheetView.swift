@@ -102,7 +102,7 @@ struct NodeSheetView: View {
         switch node.status {
         case .completed: return .filled(topic.color)
         case .active:    return .active
-        case .locked:    return .locked
+        case .locked, .paywallLocked: return .locked
         }
     }
 
@@ -110,7 +110,7 @@ struct NodeSheetView: View {
         switch node.status {
         case .completed: return LognDark.onAccent
         case .active:    return LognDark.accentInk
-        case .locked:    return LognDark.textSecondary
+        case .locked, .paywallLocked: return LognDark.textSecondary
         }
     }
 
@@ -118,7 +118,7 @@ struct NodeSheetView: View {
         switch node.status {
         case .completed: return Str.Node.completed
         case .active:    return Str.Node.active(Int(node.requiredXp))
-        case .locked:    return Str.Node.locked
+        case .locked, .paywallLocked: return Str.Node.locked
         }
     }
 
@@ -128,7 +128,7 @@ struct NodeSheetView: View {
         switch node.status {
         case .completed: return LognDark.textSecondary
         case .active:    return LognDark.accentInk
-        case .locked:    return LognDark.textMuted
+        case .locked, .paywallLocked: return LognDark.textMuted
         }
     }
 

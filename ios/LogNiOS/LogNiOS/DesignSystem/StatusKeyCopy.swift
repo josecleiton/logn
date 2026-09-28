@@ -41,6 +41,15 @@ extension LogN.StatusKey {
         case .passwordTooShort:  return Str.Status.password_too_short
         case .passwordTooLong:   return Str.Status.password_too_long
         case .emailTaken:        return Str.Status.email_taken
+        case .purchaseConfirming:          return Str.Status.purchase_confirming
+        case .purchaseConfirmed:           return Str.Status.purchase_confirmed
+        case .purchaseFailed:              return Str.Status.purchase_failed
+        case .purchaseOwnedByOtherAccount: return Str.Status.purchase_owned_by_other_account
+        case .purchaseAccountMismatch:     return Str.Status.purchase_account_mismatch
+        case .purchaseRevoked:             return Str.Status.purchase_revoked
+        case .purchaseNeedsAccount:        return Str.Status.purchase_needs_account
+        case .trackRevoked:                return Str.Status.track_revoked
+        case .trackDownloadFailed:         return Str.Status.track_download_failed
         }
     }
 
@@ -48,7 +57,8 @@ extension LogN.StatusKey {
     var isInProgress: Bool {
         switch self {
         case .signingIn, .resumingSession, .sendingCode, .checkingCode,
-             .creatingAccount, .resettingPassword, .signingOut, .syncing:
+             .creatingAccount, .resettingPassword, .signingOut, .syncing,
+             .purchaseConfirming:
             return true
         default:
             return false

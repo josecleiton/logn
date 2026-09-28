@@ -6,8 +6,23 @@ import App
 
 struct ContentView: View {
     @EnvironmentObject var core: CoreWrapper
+    @EnvironmentObject var storeKit: StoreKitManager
     @State private var tab: LognTab = LognTab.launchOverride ?? .trilhas
+    @State private var catalogRequested = false
     @Environment(\.requestReview) private var requestReview
+
+    /// A tela do passo a passo da compra fica em cima de tudo enquanto houver compra.
+    /// Não disputa com o onboarding: duas capas de tela cheia não abrem juntas.
+    private var showsPurchase: Binding<Bool> {
+        Binding(
+            get: { core.viewModel.purchaseFlow.stage != .idle && !core.viewModel.showOnboarding },
+            set: { shown in if !shown { core.dispatch(event: .closePurchaseFlow) } }
+        )
+    }
+
+    private var showsOnboarding: Binding<Bool> {
+        Binding(get: { core.viewModel.showOnboarding }, set: { _ in })
+    }
 
     var body: some View {
         // A navegação mora dentro de cada tela raiz, não em volta delas: quando a
@@ -16,7 +31,11 @@ struct ContentView: View {
         Group {
             switch tab {
             case .trilhas:
-                NavigationStack { SkillTreeHostView(tab: $tab).environmentObject(core) }
+                NavigationStack {
+                    SkillTreeHostView(tab: $tab, catalogRequested: $catalogRequested)
+                        .environmentObject(core)
+                        .environmentObject(storeKit)
+                }
             case .arena:
                 NavigationStack { ArenaHostView(tab: $tab).environmentObject(core) }
             case .placar:
@@ -33,6 +52,22 @@ struct ContentView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                 requestReview()
             }
+        }
+        .fullScreenCover(isPresented: showsPurchase) {
+            PurchaseProgressView()
+                .environmentObject(core)
+        }
+        .fullScreenCover(isPresented: showsOnboarding) {
+            OnboardingView { wantsCatalog in
+                tab = .trilhas
+                catalogRequested = wantsCatalog
+            }
+            .environmentObject(core)
+        }
+        .sheet(item: $storeKit.guestPrompt) { prompt in
+            GuestPurchaseSheet(prompt: prompt)
+                .environmentObject(core)
+                .environmentObject(storeKit)
         }
     }
 }
@@ -163,13 +198,19 @@ struct LognBottomNav: View {
 
 struct SkillTreeHostView: View {
     @EnvironmentObject var core: CoreWrapper
+    @EnvironmentObject var storeKit: StoreKitManager
     @Binding var tab: LognTab
+    /// O onboarding pediu o catálogo ("Já sei o básico").
+    @Binding var catalogRequested: Bool
     @State private var showsProfile = LognTab.launchScreen == "perfil"
+    @State private var showsCatalog = LognTab.launchScreen == "catalogo"
 
     /// "N balões no ar" — o contador é de nós conquistados, não de problemas aceitos.
     private var balloonsUp: Int {
         core.viewModel.nodes.filter { $0.status == .completed }.count
     }
+
+    private var track: TrackView { core.viewModel.currentTrack }
 
     var body: some View {
         ZStack {
@@ -192,7 +233,12 @@ struct SkillTreeHostView: View {
                     bundledTrailNote
                 }
 
-                if core.viewModel.nodes.isEmpty {
+                // Só a trilha vencida fecha, numa tela própria; a grátis e as amostras
+                // seguem abertas (V4).
+                if track.isExpired && !track.isFree {
+                    ExpiredTrackView(track: track)
+                    Spacer(minLength: 0)
+                } else if core.viewModel.nodes.isEmpty {
                     emptyState
                 } else {
                     SkillTreeView(nodes: core.viewModel.nodes)
@@ -202,8 +248,21 @@ struct SkillTreeHostView: View {
             }
         }
         .navigationBarHidden(true)
+        .navigationDestination(isPresented: $showsCatalog) {
+            CatalogView(openTrack: openTrack)
+                .environmentObject(core)
+                .environmentObject(storeKit)
+        }
         .onAppear(perform: loadNodesIfNeeded)
         .onChange(of: core.viewModel.hasAccessToken) { _ in loadNodesIfNeeded() }
+        .onChange(of: catalogRequested) { requested in
+            if requested {
+                showsCatalog = true
+                catalogRequested = false
+            }
+        }
+        // Trocou de trilha (compra aberta, amostra, "Voltar para"): a árvore volta à frente.
+        .onChange(of: track.id) { _ in showsCatalog = false }
         .sheet(isPresented: $showsProfile) {
             // Detent, grabber e cantos são do próprio hub: ele se mede.
             ProfileHubView()
@@ -216,26 +275,36 @@ struct SkillTreeHostView: View {
     /// Nada disparava `fetchNodes` depois do login: entrar autenticado caía no estado
     /// vazio e só o "Tentar de novo" carregava o mapa. O visitante não entra aqui porque
     /// o Core já lhe entrega os nós locais.
+    ///
+    /// A árvore da semente também conta como "falta buscar": com ela na tela, a conta
+    /// logada nunca falava com o servidor, e o catálogo e as licenças da trilha paga,
+    /// que vêm atrás dos desafios, nunca chegavam.
     private func loadNodesIfNeeded() {
         guard core.viewModel.hasAccessToken,
-              core.viewModel.nodes.isEmpty,
+              core.viewModel.nodes.isEmpty || core.viewModel.trailFromBundle,
               !core.viewModel.isFetching else { return }
         core.dispatch(event: .fetchNodes)
     }
 
+    private func openTrack(_ id: String) {
+        core.dispatch(event: .selectTrack(trackId: id))
+        showsCatalog = false
+    }
+
+    /// A trilha na tela e o botão que abre o catálogo, com o selo de validade (V1).
+    /// Sem catálogo ainda (primeira abertura sem rede), fica o contador de balões.
     private var header: some View {
-        HStack(spacing: 12) {
-            Text(core.viewModel.isFetching ? Str.Dashboard.map_updating : Str.Dashboard.balloons_up(balloonsUp))
-                .font(.plexSansSemiBold(20, relativeTo: .title3))
-                .tracking(-0.02 * 20)
-                .foregroundColor(LognDark.textPrimary)
+        HStack(spacing: 10) {
+            if track.name.isEmpty {
+                Text(core.viewModel.isFetching ? Str.Dashboard.map_updating : Str.Dashboard.balloons_up(balloonsUp))
+                    .font(.plexSansSemiBold(20, relativeTo: .title3))
+                    .tracking(-0.02 * 20)
+                    .foregroundColor(LognDark.textPrimary)
+            } else {
+                trackSwitcher
+            }
 
             Spacer(minLength: 0)
-
-            Text(Str.Profile.xp(Int(core.viewModel.globalXp)))
-                .font(.plexMono(12))
-                .monospacedDigit()
-                .foregroundColor(LognDark.accentInk)
 
             // O perfil sobe como sheet sobre a árvore — ela fica visível atrás e o
             // jogador não perde o lugar.
@@ -260,6 +329,67 @@ struct SkillTreeHostView: View {
         .overlay(alignment: .bottom) {
             Rectangle().frame(height: 1).foregroundColor(LognDark.line)
         }
+    }
+
+    /// "4 de 7 nós · 620 XP", mais "SEM REDE" quando a sessão está sem servidor.
+    private var headerMeta: String {
+        let progress = Str.Catalog.progress(Int(track.nodesDone), Int(track.nodeCount), Int(track.trackXp))
+        return core.viewModel.isOfflineSession ? progress + " · " + Str.Catalog.offline : progress
+    }
+
+    /// O selo é pequeno e não explica: só o bastante para dar vontade de tocar (V1).
+    private var badgeText: String? {
+        let badge = core.viewModel.catalogBadge
+        switch badge.state {
+        case .soon: return Str.Catalog.days(Int(badge.daysLeft))
+        case .today: return Str.Catalog.today
+        case .expired: return Str.Catalog.connect
+        default: return nil
+        }
+    }
+
+    /// O nome da trilha é o próprio seletor: nome e chevron abrem o catálogo. O selo de
+    /// validade fica colado ao chevron, no mesmo lugar do olhar. Diverge do V1 de
+    /// propósito, que tinha um botão "Trilhas" à parte: o nome cortava em tela pequena.
+    private var trackSwitcher: some View {
+        let expired = core.viewModel.catalogBadge.state == .expired
+        let badge = badgeText
+        return Button { showsCatalog = true } label: {
+            HStack(spacing: 10) {
+                TrackBalloon(track: track, width: 16)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(track.name)
+                            .font(.plexSansSemiBold(17, relativeTo: .headline))
+                            .foregroundColor(LognDark.textPrimary)
+                            .lineLimit(1)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(LognDark.textSecondary)
+                        if let badge {
+                            Text(badge)
+                                .font(.plexMonoMedium(9.5))
+                                .tracking(0.06 * 9.5)
+                                .foregroundColor(LognDark.canvas)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(expired ? LognDark.wrong : LognDark.warn)
+                                .cornerRadius(Radius.xs)
+                                .fixedSize()
+                        }
+                    }
+                    Text(headerMeta)
+                        .font(.plexMono(10))
+                        .monospacedDigit()
+                        .foregroundColor(LognDark.textMuted)
+                        .lineLimit(1)
+                }
+            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel([Str.Catalog.button, track.name, badge].compactMap { $0 }.joined(separator: ", "))
     }
 
     private var guestWarning: some View {

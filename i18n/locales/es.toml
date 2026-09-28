@@ -41,6 +41,15 @@ invalid_email = "Ese correo no parece válido. Revisa la dirección."
 password_too_short = "La contraseña necesita al menos 8 caracteres."
 password_too_long = "La contraseña puede tener como máximo 128 caracteres."
 email_taken = "No se pudo crear la cuenta con este correo. Si ya es tuya, inicia sesión o restablece la contraseña."
+purchase_confirming = "Confirmando la compra…"
+purchase_confirmed = "Compra confirmada. La pista se está descargando."
+purchase_failed = "No se pudo confirmar la compra ahora. Queda guardada y la app lo intenta de nuevo sola."
+purchase_owned_by_other_account = "Esta compra ya está vinculada a otra cuenta de LogN."
+purchase_account_mismatch = "Esta compra se hizo con otra cuenta de LogN. Inicia sesión en ella para usar la pista."
+purchase_revoked = "Esta compra fue reembolsada o cancelada y ya no desbloquea la pista."
+purchase_needs_account = "Para comprar una pista, crea una cuenta o inicia sesión."
+track_revoked = "Se revocó el acceso a una pista de pago. El XP que ganaste se queda."
+track_download_failed = "La compra está en tu cuenta, pero la pista no se pudo descargar ahora. Se descarga sola la próxima vez que abras la app con internet."
 wait_seconds = "Espera %{seconds} s"
 sample_standings = "Datos de ejemplo. La tabla de posiciones aún no está activa: equipos, puestos y números son ficticios."
 
@@ -98,6 +107,7 @@ node_completed = "%{name}, conquistado, %{solved} de %{total} problemas resuelto
 node_active = "%{name}, en curso, %{solved} de %{total} problemas resueltos"
 node_locked = "%{name}, bloqueado"
 node_locked_prereq = "%{name}, bloqueado, %{missing} prerrequisitos"
+node_paywalled = "%{name}, pista de pago, toca para ver la compra"
 
 [arena]
 drag_block = "ARRASTRA EL BLOQUE"
@@ -200,6 +210,8 @@ create_account = "Crear cuenta · guardar progreso"
 challenges_completed = { one = "%{count} desafío completado", other = "%{count} desafíos completados" }
 analytics_title = "Análisis de uso"
 analytics_desc = "Envía cómo usas la app, para que mejoremos LogN. Los errores de la app se siguen enviando, sin vínculo con tu cuenta."
+storage = "Almacenamiento"
+restore_purchases = "Restaurar compras"
 
 [logout]
 server_safe = "Tus %{xp} XP están en el servidor. Iniciar sesión de nuevo recuperará todo."
@@ -326,4 +338,135 @@ full_screen = "VER PANTALLA COMPLETA"
 row_accessibility = "%{rank}º, %{handle}, %{university}, %{solved} aceptados, %{penalty} de penalidad"
 row_accessibility_user = "tu posición, %{rank}º, %{handle}, %{university}, %{solved} aceptados, %{penalty} de penalidad"
 you = "tú"
+
+[paywall]
+cancelled = "Compra cancelada."
+pending = "Compra pendiente de aprobación. La pista se desbloquea cuando la tienda confirme."
+store_unavailable = "No se pudo conectar con la App Store. Inténtalo de nuevo."
+product_missing = "Esta pista no está a la venta ahora."
+needs_account = "Para comprar, crea una cuenta o inicia sesión. La compra queda en la cuenta y vuelve en otro dispositivo."
+
+[storage]
+title = "Almacenamiento"
+desc = "Pistas de pago descargadas en este dispositivo. Borrar libera espacio; la compra sigue en tu cuenta."
+empty = "Ninguna pista de pago descargada."
+size = "%{size} en el dispositivo"
+not_downloaded = "No descargada"
+download = "Descargar"
+delete_accessibility = "Borrar %{name} de este dispositivo"
+close = "Cerrar"
+
+[catalog]
+title = "Pistas"
+button = "Pistas"
+principal = "PRINCIPAL · GRATIS"
+progress = "%{done} de %{total} nodos · %{xp} XP"
+nodes = { one = "%{count} nodo", other = "%{count} nodos" }
+owned = "COMPRADA"
+discontinued = "DESCONTINUADA"
+no_access = "SIN ACCESO"
+see = "VER"
+days = { one = "%{count} DÍA", other = "%{count} DÍAS" }
+today = "HOY"
+connect = "CONÉCTATE"
+offline = "SIN CONEXIÓN"
+open_accessibility = "%{name}, %{state}"
+
+[track]
+meta = "%{nodes} NODOS · POR %{author} · %{languages}"
+owned_meta = "COMPRADA · %{done}/%{total} NODOS"
+free_tag = "GRATIS"
+play_sample = "Jugar la muestra"
+buy = "Comprar %{price}"
+buy_no_price = "Comprar"
+buy_note = "compra única · actualizaciones sin costo · abre sin conexión"
+continue_node = "Continuar · Nodo %{index}"
+continue_track = "Continuar"
+valid_until = "VÁLIDA HASTA %{date}"
+offline_days_tag = { one = "SIN CONEXIÓN HACE %{count} DÍA", other = "SIN CONEXIÓN HACE %{count} DÍAS" }
+offline_last_day_tag = "SIN CONEXIÓN · ÚLTIMO DÍA"
+offline_soon_body = "Conéctate antes del %{day} para seguir jugando %{track} sin conexión."
+offline_today_body = "Conéctate hoy para seguir jugando %{track} sin conexión mañana."
+offline_rule = "Basta abrir LogN con internet una vez; el plazo vuelve a 30 días. Si vence, no se pierde nada."
+revoked_refund = "Apple reembolsó esta compra, así que %{track} se cerró. Tus %{xp} XP siguen en tu nivel, y el progreso vuelve si la compras de nuevo."
+revoked_other = "Se revocó el acceso a %{track}. Tus %{xp} XP siguen en tu nivel, y el progreso vuelve si la compras de nuevo."
+buy_again = "Comprar de nuevo · %{price}"
+buy_again_no_price = "Comprar de nuevo"
+discontinued_note = "Salió del catálogo, pero sigue siendo tuya, con y sin conexión."
+
+[locked]
+eyebrow = "NODO %{index} · %{name}"
+title = "De aquí en adelante, la pista es de pago"
+sample_done = { one = "Terminaste la muestra con %{count} globo.", other = "Terminaste la muestra con %{count} globos." }
+rest = { one = "Falta %{count} nodo, que viene con una compra única.", other = "Los otros %{count} nodos vienen con una compra única." }
+unlock = "Desbloquear %{track} · %{price}"
+unlock_no_price = "Desbloquear %{track}"
+not_now = "Ahora no"
+
+[offer]
+eyebrow = "SIGUIENTE · NODO %{index} DE %{total}"
+nodes = { one = "%{count} nodo más", other = "%{count} nodos más" }
+problems = { one = "%{count} problema", other = "%{count} problemas" }
+tail = "Compra única, queda en tu cuenta."
+continue_buy = "Continuar %{track} · %{price}"
+continue_buy_no_price = "Continuar %{track}"
+back = "Volver a %{track}"
+
+[purchase]
+validating_label = "COMPRANDO · ESPERANDO AL SERVIDOR"
+validating_title = "Confirmando la compra"
+validating_body = "La App Store la aprobó. Falta que el servidor de LogN valide la transacción — no cierres la app."
+downloading_label = "COMPRADA · DESCARGANDO"
+downloading_title = "%{track} es tuya"
+downloading_body = "Descargando la pista para que abra sin conexión."
+ready_label = "DESCARGADA · ABRE SIN CONEXIÓN"
+ready_title = "Lista para usar sin conexión"
+ready_body = "Todo en el dispositivo, cifrado. Abre sin conexión por 30 días; cualquier conexión renueva el plazo."
+failed_label = "LA COMPRA SE DETUVO"
+failed_title = "No se pudo desbloquear la pista"
+log_store = "App Store"
+log_store_ok = "aprobada"
+log_transaction = "transacción"
+log_transaction_ok = "válida"
+log_license = "licencia"
+log_license_ok = "30 días"
+log_package = "paquete"
+log_package_ok = "en el dispositivo"
+wait = "Espera…"
+background = "Continuar en segundo plano"
+open_track = "Abrir %{track}"
+close = "Cerrar"
+
+[guest_purchase]
+title = "La compra queda en tu cuenta"
+body = "Crea una cuenta para comprar. Tu progreso de invitado viene contigo, y la pista abre en cualquier iPhone donde inicies sesión."
+create = "Crear cuenta y continuar"
+login = "Ya tengo cuenta"
+note = "después del registro, la compra se abre sola"
+
+[onboarding]
+title = "¿Por dónde empezar?"
+body = "Puedes cambiar de pista cuando quieras. El nivel es uno solo."
+free_body = "Gratis, funciona sin conexión."
+know_title = "Ya sé lo básico"
+know_body = "Ver pistas por tema. El primer nodo de cada una es gratis."
+start = "Empezar"
+
+[expired]
+eyebrow = { one = "SIN CONTACTO HACE %{count} DÍA", other = "SIN CONTACTO HACE %{count} DÍAS" }
+title = "Conéctate para abrir %{track}"
+body = "La compra sigue siendo tuya. La app solo necesita confirmar la licencia una vez para liberar 30 días más sin conexión."
+progress = "PROGRESO"
+xp = "XP EN LA PISTA"
+retry = "Intentar conectar"
+back = "Jugar %{track}"
+
+[restore]
+title = "RESTAURAR COMPRAS"
+running = "Buscando las compras de tu Apple ID…"
+count = "%{restored} DE %{total}"
+names = "%{names} volvieron a esta cuenta."
+nothing = "No hay compras para restaurar en este Apple ID."
+other = { one = "%{count} compra pertenece a otra cuenta LogN activa. Inicia sesión en ella para jugar.", other = "%{count} compras pertenecen a otra cuenta LogN activa. Inicia sesión en ella para jugar." }
+ok = "OK"
 

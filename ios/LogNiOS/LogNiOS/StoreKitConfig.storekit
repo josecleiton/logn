@@ -1,0 +1,32 @@
+{
+  "identifier" : "E2C1B4A5",
+  "nonRenewingSubscriptions" : [
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "11111111",
+      "localizations" : [
+        {
+          "description" : "Trilha Completa Offline",
+          "displayName" : "DevOps Pro",
+          "locale" : "pt_BR"
+        }
+      ],
+      "productID" : "com.logn.app.track.11111111-1111-1111-1111-111111111111",
+      "referenceName" : "DevOps Pro Track",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

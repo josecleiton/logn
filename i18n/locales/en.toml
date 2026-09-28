@@ -43,6 +43,15 @@ invalid_email = "That e-mail doesn't look valid. Check the address."
 password_too_short = "The password needs at least 8 characters."
 password_too_long = "The password can have at most 128 characters."
 email_taken = "Couldn't create an account with this e-mail. If it's already yours, sign in or reset your password."
+purchase_confirming = "Confirming your purchase…"
+purchase_confirmed = "Purchase confirmed. The track is downloading."
+purchase_failed = "Couldn't confirm the purchase right now. It's kept, and the app will try again on its own."
+purchase_owned_by_other_account = "This purchase is already linked to another LogN account."
+purchase_account_mismatch = "This purchase was made with another LogN account. Sign in to it to use the track."
+purchase_revoked = "This purchase was refunded or cancelled and no longer unlocks the track."
+purchase_needs_account = "To buy a track, create an account or sign in."
+track_revoked = "Access to a paid track was revoked. The XP you earned stays."
+track_download_failed = "The purchase is on your account, but the track couldn't download right now. It downloads on its own the next time you open the app online."
 wait_seconds = "Wait %{seconds} s"
 sample_standings = "Sample data. The ranking isn't live yet: teams, positions and numbers are made up."
 
@@ -100,6 +109,7 @@ node_completed = "%{name}, completed, %{solved} of %{total} problems solved"
 node_active = "%{name}, in progress, %{solved} of %{total} problems solved"
 node_locked = "%{name}, locked"
 node_locked_prereq = "%{name}, locked, %{missing} prerequisites"
+node_paywalled = "%{name}, paid track, tap to see the purchase"
 
 [arena]
 drag_block = "DRAG THE BLOCK"
@@ -202,6 +212,8 @@ create_account = "Create account · save progress"
 challenges_completed = { one = "%{count} challenge completed", other = "%{count} challenges completed" }
 analytics_title = "Usage analytics"
 analytics_desc = "Sends how you use the app, so we can improve LogN. App errors are still sent, not linked to your account."
+storage = "Storage"
+restore_purchases = "Restore purchases"
 
 [logout]
 server_safe = "Your %{xp} XP are on the server. Signing in again brings everything back."
@@ -328,4 +340,135 @@ full_screen = "VIEW FULL SCREEN"
 row_accessibility = "%{rank}º, %{handle}, %{university}, %{solved} accepted, %{penalty} penalty"
 row_accessibility_user = "your position, %{rank}º, %{handle}, %{university}, %{solved} accepted, %{penalty} penalty"
 you = "you"
+
+[paywall]
+cancelled = "Purchase cancelled."
+pending = "Purchase awaiting approval. The track unlocks once the store confirms."
+store_unavailable = "Couldn't reach the App Store. Try again."
+product_missing = "This track isn't for sale right now."
+needs_account = "To buy, create an account or sign in. The purchase stays with the account and comes back on another device."
+
+[storage]
+title = "Storage"
+desc = "Paid tracks downloaded on this device. Deleting frees space; the purchase stays on your account."
+empty = "No paid track downloaded."
+size = "%{size} on this device"
+not_downloaded = "Not downloaded"
+download = "Download"
+delete_accessibility = "Delete %{name} from this device"
+close = "Close"
+
+[catalog]
+title = "Tracks"
+button = "Tracks"
+principal = "MAIN · FREE"
+progress = "%{done} of %{total} nodes · %{xp} XP"
+nodes = { one = "%{count} node", other = "%{count} nodes" }
+owned = "OWNED"
+discontinued = "DISCONTINUED"
+no_access = "NO ACCESS"
+see = "VIEW"
+days = { one = "%{count} DAY", other = "%{count} DAYS" }
+today = "TODAY"
+connect = "CONNECT"
+offline = "OFFLINE"
+open_accessibility = "%{name}, %{state}"
+
+[track]
+meta = "%{nodes} NODES · BY %{author} · %{languages}"
+owned_meta = "OWNED · %{done}/%{total} NODES"
+free_tag = "FREE"
+play_sample = "Play the sample"
+buy = "Buy %{price}"
+buy_no_price = "Buy"
+buy_note = "one-time purchase · free updates · opens offline"
+continue_node = "Continue · Node %{index}"
+continue_track = "Continue"
+valid_until = "VALID UNTIL %{date}"
+offline_days_tag = { one = "OFFLINE FOR %{count} DAY", other = "OFFLINE FOR %{count} DAYS" }
+offline_last_day_tag = "OFFLINE · LAST DAY"
+offline_soon_body = "Connect by %{day} to keep playing %{track} offline."
+offline_today_body = "Connect today to keep playing %{track} offline tomorrow."
+offline_rule = "Open LogN with internet once and the clock goes back to 30 days. If it runs out, nothing is lost."
+revoked_refund = "Apple refunded this purchase, so %{track} closed. Your %{xp} XP stays in your level, and your progress comes back if you buy it again."
+revoked_other = "Access to %{track} was revoked. Your %{xp} XP stays in your level, and your progress comes back if you buy it again."
+buy_again = "Buy again · %{price}"
+buy_again_no_price = "Buy again"
+discontinued_note = "Left the catalog, but it's still yours, online and offline."
+
+[locked]
+eyebrow = "NODE %{index} · %{name}"
+title = "From here on, the track is paid"
+sample_done = { one = "You finished the sample with %{count} balloon.", other = "You finished the sample with %{count} balloons." }
+rest = { one = "%{count} node left, with a one-time purchase.", other = "The other %{count} nodes come with a one-time purchase." }
+unlock = "Unlock %{track} · %{price}"
+unlock_no_price = "Unlock %{track}"
+not_now = "Not now"
+
+[offer]
+eyebrow = "NEXT · NODE %{index} OF %{total}"
+nodes = { one = "%{count} more node", other = "%{count} more nodes" }
+problems = { one = "%{count} problem", other = "%{count} problems" }
+tail = "One-time purchase, kept on your account."
+continue_buy = "Continue %{track} · %{price}"
+continue_buy_no_price = "Continue %{track}"
+back = "Back to %{track}"
+
+[purchase]
+validating_label = "BUYING · WAITING FOR THE SERVER"
+validating_title = "Confirming the purchase"
+validating_body = "The App Store approved it. LogN's server still has to validate the transaction — don't close the app."
+downloading_label = "OWNED · DOWNLOADING"
+downloading_title = "%{track} is yours"
+downloading_body = "Downloading the track so it opens offline."
+ready_label = "DOWNLOADED · OPENS OFFLINE"
+ready_title = "Ready for offline"
+ready_body = "Everything is on the device, encrypted. It opens offline for 30 days; any connection renews the clock."
+failed_label = "PURCHASE STOPPED"
+failed_title = "Couldn't unlock the track"
+log_store = "App Store"
+log_store_ok = "approved"
+log_transaction = "transaction"
+log_transaction_ok = "valid"
+log_license = "license"
+log_license_ok = "30 days"
+log_package = "package"
+log_package_ok = "on device"
+wait = "Please wait…"
+background = "Continue in the background"
+open_track = "Open %{track}"
+close = "Close"
+
+[guest_purchase]
+title = "The purchase stays on your account"
+body = "Create an account to buy. Your guest progress comes along, and the track opens on any iPhone you sign in to."
+create = "Create account and continue"
+login = "I already have an account"
+note = "after signing up, the purchase opens on its own"
+
+[onboarding]
+title = "Where do you want to start?"
+body = "You can switch tracks anytime. Your level is one and the same."
+free_body = "Free, works offline."
+know_title = "I know the basics"
+know_body = "See tracks by topic. The first node of each one is free."
+start = "Start"
+
+[expired]
+eyebrow = { one = "NO CONTACT FOR %{count} DAY", other = "NO CONTACT FOR %{count} DAYS" }
+title = "Connect to open %{track}"
+body = "The purchase is still yours. The app just needs to confirm the license once to unlock 30 more days offline."
+progress = "PROGRESS"
+xp = "TRACK XP"
+retry = "Try to connect"
+back = "Play %{track}"
+
+[restore]
+title = "RESTORE PURCHASES"
+running = "Looking up your Apple ID purchases…"
+count = "%{restored} OF %{total}"
+names = "%{names} came back to this account."
+nothing = "No purchases to restore on this Apple ID."
+other = { one = "%{count} purchase belongs to another active LogN account. Sign in to it to play.", other = "%{count} purchases belong to another active LogN account. Sign in to it to play." }
+ok = "OK"
 

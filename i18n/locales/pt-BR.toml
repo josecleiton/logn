@@ -43,6 +43,15 @@ invalid_email = "Esse e-mail não parece válido. Confira o endereço."
 password_too_short = "A senha precisa ter pelo menos 8 caracteres."
 password_too_long = "A senha pode ter no máximo 128 caracteres."
 email_taken = "Não deu para criar a conta com esse e-mail. Se ela já é sua, entre ou redefina a senha."
+purchase_confirming = "Confirmando a compra…"
+purchase_confirmed = "Compra confirmada. A trilha está baixando."
+purchase_failed = "Não consegui confirmar a compra agora. Ela fica guardada e eu tento de novo sozinho."
+purchase_owned_by_other_account = "Esta compra já está ligada a outra conta do LogN."
+purchase_account_mismatch = "Esta compra foi feita com outra conta do LogN. Entre nela para usar a trilha."
+purchase_revoked = "Esta compra foi reembolsada ou cancelada e não libera mais a trilha."
+purchase_needs_account = "Para comprar uma trilha, crie uma conta ou entre."
+track_revoked = "O acesso a uma trilha paga foi revogado. O XP que você ganhou continua."
+track_download_failed = "A compra está na sua conta, mas não consegui baixar a trilha agora. Ela baixa sozinha na próxima abertura com internet."
 wait_seconds = "Aguarde %{seconds} s"
 sample_standings = "Dados de exemplo. O ranking ainda não está no ar: times, posições e números são fictícios."
 
@@ -100,6 +109,7 @@ node_completed = "%{name}, conquistado, %{solved} de %{total} problemas resolvid
 node_active = "%{name}, em curso, %{solved} de %{total} problemas resolvidos"
 node_locked = "%{name}, bloqueado"
 node_locked_prereq = "%{name}, bloqueado, %{missing} pré-requisitos"
+node_paywalled = "%{name}, trilha paga, toque para ver a compra"
 
 [arena]
 drag_block = "ARRASTE O BLOCO"
@@ -202,6 +212,8 @@ create_account = "Criar conta · salvar progresso"
 challenges_completed = { one = "%{count} desafio concluído", other = "%{count} desafios concluídos" }
 analytics_title = "Análise de uso"
 analytics_desc = "Envia como você usa o app, para melhorarmos o LogN. Erros do app continuam sendo enviados, sem ligação com a sua conta."
+storage = "Armazenamento"
+restore_purchases = "Restaurar compras"
 
 [logout]
 server_safe = "Seus %{xp} XP estão no servidor. Entrar de novo traz tudo de volta."
@@ -328,4 +340,135 @@ full_screen = "VER O TELÃO COMPLETO"
 row_accessibility = "%{rank}º, %{handle}, %{university}, %{solved} aceitos, %{penalty} de penalidade"
 row_accessibility_user = "sua posição, %{rank}º, %{handle}, %{university}, %{solved} aceitos, %{penalty} de penalidade"
 you = "você"
+
+[paywall]
+cancelled = "Compra cancelada."
+pending = "Compra aguardando aprovação. A trilha libera quando a loja confirmar."
+store_unavailable = "Não consegui falar com a App Store. Tente de novo."
+product_missing = "Esta trilha não está à venda agora."
+needs_account = "Para comprar, crie uma conta ou entre. A compra fica na conta, e volta em outro aparelho."
+
+[storage]
+title = "Armazenamento"
+desc = "Trilhas pagas baixadas neste aparelho. Apagar libera espaço; a compra continua na sua conta."
+empty = "Nenhuma trilha paga baixada."
+size = "%{size} no aparelho"
+not_downloaded = "Não baixada"
+download = "Baixar"
+delete_accessibility = "Apagar %{name} deste aparelho"
+close = "Fechar"
+
+[catalog]
+title = "Trilhas"
+button = "Trilhas"
+principal = "PRINCIPAL · GRÁTIS"
+progress = "%{done} de %{total} nós · %{xp} XP"
+nodes = { one = "%{count} nó", other = "%{count} nós" }
+owned = "COMPRADA"
+discontinued = "DESCONTINUADA"
+no_access = "SEM ACESSO"
+see = "VER"
+days = { one = "%{count} DIA", other = "%{count} DIAS" }
+today = "HOJE"
+connect = "CONECTE"
+offline = "SEM REDE"
+open_accessibility = "%{name}, %{state}"
+
+[track]
+meta = "%{nodes} NÓS · POR %{author} · %{languages}"
+owned_meta = "COMPRADA · %{done}/%{total} NÓS"
+free_tag = "GRÁTIS"
+play_sample = "Jogar amostra"
+buy = "Comprar %{price}"
+buy_no_price = "Comprar"
+buy_note = "compra única · atualizações sem custo · abre sem rede"
+continue_node = "Continuar · Nó %{index}"
+continue_track = "Continuar"
+valid_until = "VALE ATÉ %{date}"
+offline_days_tag = { one = "SEM REDE HÁ %{count} DIA", other = "SEM REDE HÁ %{count} DIAS" }
+offline_last_day_tag = "SEM REDE · ÚLTIMO DIA"
+offline_soon_body = "Conecte até %{day} para seguir jogando %{track} sem rede."
+offline_today_body = "Conecte hoje para seguir jogando %{track} sem rede amanhã."
+offline_rule = "Basta abrir o LogN com internet uma vez; o prazo volta a 30 dias. Se passar, nada se perde."
+revoked_refund = "A Apple reembolsou esta compra, então %{track} fechou. Seus %{xp} XP continuam no nível, e o progresso volta se você comprar de novo."
+revoked_other = "O acesso a %{track} foi revogado. Seus %{xp} XP continuam no nível, e o progresso volta se você comprar de novo."
+buy_again = "Comprar de novo · %{price}"
+buy_again_no_price = "Comprar de novo"
+discontinued_note = "Saiu do catálogo, mas continua sua, com e sem rede."
+
+[locked]
+eyebrow = "NÓ %{index} · %{name}"
+title = "Daqui para frente, a trilha é paga"
+sample_done = { one = "Você terminou a amostra com %{count} balão.", other = "Você terminou a amostra com %{count} balões." }
+rest = { one = "Falta %{count} nó, que sai por uma compra única.", other = "Os outros %{count} nós saem por uma compra única." }
+unlock = "Liberar %{track} · %{price}"
+unlock_no_price = "Liberar %{track}"
+not_now = "Agora não"
+
+[offer]
+eyebrow = "PRÓXIMO · NÓ %{index} DE %{total}"
+nodes = { one = "Mais %{count} nó", other = "Mais %{count} nós" }
+problems = { one = "%{count} problema", other = "%{count} problemas" }
+tail = "Compra única, fica na sua conta."
+continue_buy = "Continuar %{track} · %{price}"
+continue_buy_no_price = "Continuar %{track}"
+back = "Voltar para %{track}"
+
+[purchase]
+validating_label = "COMPRANDO · ESPERA DO SERVIDOR"
+validating_title = "Confirmando a compra"
+validating_body = "A App Store aprovou. Falta o servidor do LogN validar a transação — não feche o app."
+downloading_label = "COMPRADA · BAIXANDO"
+downloading_title = "%{track} é sua"
+downloading_body = "Baixando a trilha para abrir sem rede."
+ready_label = "BAIXADA · ABRE SEM REDE"
+ready_title = "Pronta para offline"
+ready_body = "Tudo no aparelho, cifrado. Abre sem rede por 30 dias; qualquer conexão renova o prazo."
+failed_label = "COMPRA PAROU"
+failed_title = "Não deu para liberar a trilha"
+log_store = "App Store"
+log_store_ok = "aprovado"
+log_transaction = "transação"
+log_transaction_ok = "válida"
+log_license = "licença"
+log_license_ok = "30 dias"
+log_package = "pacote"
+log_package_ok = "no aparelho"
+wait = "Aguarde…"
+background = "Continuar em segundo plano"
+open_track = "Abrir %{track}"
+close = "Fechar"
+
+[guest_purchase]
+title = "A compra fica na sua conta"
+body = "Crie uma conta para comprar. Seu progresso de visitante vem junto, e a trilha abre em qualquer iPhone em que você entrar."
+create = "Criar conta e continuar"
+login = "Já tenho conta"
+note = "depois do cadastro, a compra abre sozinha"
+
+[onboarding]
+title = "Por onde começar?"
+body = "Dá para trocar de trilha quando quiser. O nível é um só."
+free_body = "Grátis, funciona sem rede."
+know_title = "Já sei o básico"
+know_body = "Ver trilhas por tema. O primeiro nó de cada uma é grátis."
+start = "Começar"
+
+[expired]
+eyebrow = { one = "SEM CONTATO HÁ %{count} DIA", other = "SEM CONTATO HÁ %{count} DIAS" }
+title = "Conecte para abrir %{track}"
+body = "A compra continua sua. O app só precisa confirmar a licença uma vez para liberar mais 30 dias sem rede."
+progress = "PROGRESSO"
+xp = "XP NA TRILHA"
+retry = "Tentar conectar"
+back = "Jogar %{track}"
+
+[restore]
+title = "RESTAURAR COMPRAS"
+running = "Procurando as compras do seu Apple ID…"
+count = "%{restored} DE %{total}"
+names = "%{names} voltaram para esta conta."
+nothing = "Nenhuma compra para restaurar neste Apple ID."
+other = { one = "%{count} compra pertence a outra conta LogN ativa. Entre nela para jogar.", other = "%{count} compras pertencem a outra conta LogN ativa. Entre nela para jogar." }
+ok = "OK"
 
