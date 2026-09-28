@@ -350,7 +350,7 @@ func main() {
 	// A notificação da App Store também: é servidor chamando servidor, e o Bot Fight
 	// Mode da borda, que não aceita exceção, desafiaria a Apple com JS e o reembolso
 	// nunca chegaria. Ela é cadastrada na URL .run.app, como o Scheduler, e a defesa é a
-	// assinatura contra a raiz fixa (ADR 0012), com teto de corpo e de ritmo.
+	// assinatura contra a raiz fixa (ADR 0013), com teto de corpo e de ritmo.
 	originExempt := func(r *http.Request) bool {
 		switch r.URL.Path {
 		case "/health", "/ready", "/ping", "/api/v1/appstore/notifications":

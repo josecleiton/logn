@@ -78,7 +78,7 @@ O que saiu em setembro de 2026 e deixou uma ponta aberta:
 O PR #2 entrega o ciclo inteiro: catálogo em grade, uma trilha por árvore, amostra grátis,
 paywall em três pontos, compra validada pelo servidor contra a raiz fixa da Apple,
 restauração, notificações de reembolso, licença offline de 30 dias com a escada de avisos,
-pacote cifrado e armazenamento. Desenho e ameaças na ADR 0012; telas nos designs `LogN
+pacote cifrado e armazenamento. Desenho e ameaças na ADR 0013; telas nos designs `LogN
 Trilhas` e `LogN Validade Offline`. PRD:
 [`specs/logn_trilhas_pagas_spec.md`](specs/logn_trilhas_pagas_spec.md).
 

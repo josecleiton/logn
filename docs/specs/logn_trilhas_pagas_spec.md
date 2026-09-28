@@ -144,7 +144,7 @@ cascata. A transação continua na Apple, e é por ela que a compra volta numa c
 - `GET /api/v1/tracks` é o catálogo das trilhas pagas, com o produto da App Store de
   cada uma e, com token, quais a conta comprou. O app compra pelo produto que vem dali.
 - Cada nó de `GET /api/v1/nodes` diz `requires_purchase`: o servidor decide o que é
-  amostra, e o app não adivinha. Detalhe técnico na ADR 0012.
+  amostra, e o app não adivinha. Detalhe técnico na ADR 0013.
 - **No aparelho:**
   - a chave vai para o Keychain, com acessibilidade *este aparelho só*, e não entra no
     backup;

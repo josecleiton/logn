@@ -28,7 +28,7 @@ crux_core = "0.20.0"
 crux_http = { version = "0.20.0", features = ["facet_typegen"] }
 crux_macros = "0.10.1"
 serde = { version = "1.0", features = ["derive"] }
-# Abre o pacote cifrado da trilha paga (ADR 0012). RustCrypto, Rust puro.
+# Abre o pacote cifrado da trilha paga (ADR 0013). RustCrypto, Rust puro.
 aes-gcm = "0.10"
 
 # Codegen ops

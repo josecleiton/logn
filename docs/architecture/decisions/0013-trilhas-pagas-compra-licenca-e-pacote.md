@@ -1,4 +1,4 @@
-# ADR 0012: Trilha paga — compra, licença e pacote cifrado
+# ADR 0013: Trilha paga — compra, licença e pacote cifrado
 
 ## 1. Visão Geral
 

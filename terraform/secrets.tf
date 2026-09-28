@@ -35,7 +35,7 @@ resource "google_secret_manager_secret" "smtp_pass" {
   }
 }
 
-# Cifra as chaves de conteúdo das trilhas pagas em `track_keys` (ADR 0012): 32 bytes em
+# Cifra as chaves de conteúdo das trilhas pagas em `track_keys` (ADR 0013): 32 bytes em
 # base64. O servidor não sobe no Cloud Run sem ele. Trocar o valor invalida as chaves
 # guardadas — é rotação com migração de dados, não troca de variável.
 #   openssl rand -base64 32 | tr -d '\n' | gcloud secrets versions add logn-track-key-secret --data-file=-

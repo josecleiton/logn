@@ -130,9 +130,9 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    (ADR 0002), e a corrida em `user_sync_state` continua guardada por `ErrStaleChain`.
    Gabarito não sai para o cliente além do que o formato exige para julgar localmente.
    Só paga desafio que existe no banco, e trilha paga fora da amostra só com direito
-   ativo (ADR 0012).
+   ativo (ADR 0013).
 
-   **Trilha paga (ADR 0012).** O JWS da App Store só vale verificado contra a raiz fixa
+   **Trilha paga (ADR 0013).** O JWS da App Store só vale verificado contra a raiz fixa
    embutida (`internal/storekit`), nunca pelo nome da raiz que vem no token; algoritmo
    ES256 fixo. Transação revogada fica em `revoked_transactions`, fora da conta, e não
    volta por compra nem restauração. Conteúdo fechado só sai no pacote cifrado, e a
