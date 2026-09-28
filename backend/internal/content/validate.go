@@ -158,7 +158,7 @@ func readJSON(path string, v any) error {
 // os achados; quem chama decide o que é erro pelo campo Pending e pelo modo.
 func Validate(root string) []Finding {
 	c := &checker{}
-	trilha := filepath.Join(root, "trilha")
+	trilha := filepath.Join(root, "trilhas", "free")
 
 	var nodes []node
 	if err := readJSON(filepath.Join(trilha, "nos.json"), &nodes); err != nil {
