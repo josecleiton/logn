@@ -21,6 +21,18 @@ pub enum Event {
     Pong,
     Login { email: String, password_hash: String },
     LoginCompleted(HttpResult),
+    /// O shell fez o login no provedor e entrega o ID token e o nonce cru que gerou
+    /// (ADR 0016). O pedido ao provedor levou o SHA-256 do nonce; o servidor confere.
+    SocialLogin { provider: String, id_token: String, nonce: String },
+    SocialLoginCompleted(HttpResult),
+    /// Na tela de idade e termos do primeiro login pelo provedor. Mesmo sentido de
+    /// `legal_accepted` do `Register`.
+    CompleteSocialSignup { age_confirmed: bool, legal_accepted: bool },
+    /// Fechou a tela de idade e termos sem aceitar: o login pelo provedor acaba.
+    CancelSocialSignup,
+    /// O login no provedor falhou no aparelho, antes de chegar ao servidor (rede, troca
+    /// do código). Cancelar pelo próprio jogador não manda isto.
+    SocialLoginFailed,
     ContinueAsGuest,
     TokenStored(KeyValueResult),
     AccountEmailStored(KeyValueResult),
@@ -169,6 +181,9 @@ pub enum Event {
     /// Pede a exclusão da conta, com a senha. O nome do campo segue o do `Login`: o que
     /// viaja é a senha em si, sobre TLS, e o servidor confere com Argon2.
     DeleteAccount { password_hash: String },
+    /// Pede a exclusão provando que é dono com um login novo no provedor: é o caminho
+    /// da conta que não tem senha.
+    DeleteAccountWithProvider { provider: String, id_token: String, nonce: String },
     AccountDeleted(HttpResult),
     /// Fechou a tela "conta desativada, apagada até DD/MM".
     DismissDeletionNotice,
@@ -464,6 +479,12 @@ pub struct Model {
     pub deletion_purge_after: i64,
     /// O último login ou troca de senha cancelou uma exclusão pedida. O app avisa uma vez.
     pub account_restored_notice: bool,
+    /// O login pelo provedor que espera idade e aceite para virar conta (ADR 0016). O
+    /// mesmo token volta ao servidor com eles; some quando o login acaba, dê certo ou
+    /// não. Só na memória: é credencial de uso único e vence em uma hora.
+    pub social_pending: Option<SocialCredential>,
+    /// O servidor respondeu `signup_required` e o app mostra a tela de idade e termos.
+    pub social_signup_required: bool,
     /// O jogador desligou "Análise de uso". Guardado ao contrário para o padrão do
     /// `Default` (falso) ser o padrão do produto: ligado.
     pub analytics_disabled: bool,
@@ -695,6 +716,9 @@ pub struct ViewModel {
     pub deletion_purge_after: i64,
     /// Mostrar, uma vez, que a exclusão foi cancelada e a conta voltou.
     pub account_restored_notice: bool,
+    /// O login pelo provedor ainda não tem conta: o shell mostra idade e termos e
+    /// responde com `CompleteSocialSignup` ou `CancelSocialSignup`.
+    pub social_signup_required: bool,
     /// Estado do interruptor "Análise de uso".
     pub analytics_enabled: bool,
     /// A splash da abertura.
@@ -1343,6 +1367,82 @@ fn account_restored(body: &[u8]) -> bool {
     serde_json::from_slice::<RestoredFlag>(body).map(|f| f.account_restored).unwrap_or(false)
 }
 
+/// O login pelo provedor esperando a tela de idade e termos (ADR 0016).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SocialCredential {
+    pub provider: String,
+    pub id_token: String,
+    pub nonce: String,
+}
+
+/// O corpo do `POST /api/v1/auth/social`. Sem idade e aceite, é a primeira tentativa;
+/// com eles, a criação da conta.
+fn social_login_body(model: &Model, cred: &SocialCredential, signup: Option<(bool, bool)>) -> Vec<u8> {
+    let mut body = serde_json::json!({
+        "provider": cred.provider, "id_token": cred.id_token, "nonce": cred.nonce,
+    });
+    if let Some((age_confirmed, legal_accepted)) = signup {
+        // Caixa desmarcada manda lista vazia, como no cadastro por e-mail: quem recusa
+        // é o servidor.
+        body["age_confirmed"] = serde_json::json!(age_confirmed);
+        body["country"] = serde_json::json!(model.legal_country);
+        body["legal_acceptances"] = if legal_accepted {
+            legal_acceptances(&model.legal_versions, &model.locale)
+        } else {
+            serde_json::json!([])
+        };
+    }
+    body.to_string().into_bytes()
+}
+
+/// Abre a sessão com a resposta de login do servidor e manda o refresh token para o
+/// cofre. `None` quando o corpo não é uma sessão.
+fn begin_session(model: &mut Model, body: &[u8]) -> Option<Command<Effect, Event>> {
+    #[derive(Deserialize)]
+    struct AuthResp {
+        access_token: String,
+        refresh_token: String,
+        #[serde(default)]
+        user_id: String,
+        #[serde(default)]
+        refresh_expires_at: i64,
+        #[serde(default)]
+        email: String,
+    }
+    let data = serde_json::from_slice::<AuthResp>(body).ok()?;
+    model.access_token = Some(data.access_token);
+    if !data.user_id.is_empty() {
+        model.user_id = data.user_id;
+    }
+    if data.refresh_expires_at > 0 {
+        model.session_expires_at = data.refresh_expires_at;
+    }
+    // No login pelo provedor o app não digitou e-mail: quem diz qual é a conta é o
+    // servidor.
+    if !data.email.is_empty() {
+        model.account_email = data.email;
+    }
+    model.session_offline = false;
+    model.is_guest = false;
+    model.status_key = StatusKey::Silent;
+    model.account_restored_notice = account_restored(body);
+    model.resume_email.clear();
+    Some(
+        Command::request_from_shell(KeyValueOperation::Set {
+            key: "refresh_token".to_string(),
+            value: data.refresh_token.into_bytes(),
+        })
+        .then_send(Event::TokenStored),
+    )
+}
+
+/// Acaba o login pelo provedor, com ou sem conta: o token não volta a ser usado.
+fn end_social_login(model: &mut Model) {
+    model.social_pending = None;
+    model.social_signup_required = false;
+    model.is_authenticating = false;
+}
+
 /// Já se conhece a versão vigente dos dois documentos.
 fn legal_versions_complete(versions: &[(String, u32)]) -> bool {
     LEGAL_KINDS.iter().all(|k| versions.iter().any(|(kind, _)| kind == k))
@@ -1608,6 +1708,127 @@ impl App for LogNApp {
                     HttpResult::Err(_) => {
                         model.status_key = StatusKey::NoConnection;
                         model.is_authenticating = false;
+                    }
+                }
+                render::render()
+            }
+
+            Event::SocialLogin { provider, id_token, nonce } => {
+                if model.auth_cooldown.is_active() {
+                    return still_rate_limited(model);
+                }
+                model.is_authenticating = true;
+                model.status = "Logging in with provider".to_string();
+                model.status_key = StatusKey::SigningIn;
+                model.social_signup_required = false;
+                let cred = SocialCredential { provider, id_token, nonce };
+                let request = HttpRequest {
+                    method: "POST".to_string(),
+                    url: "/api/v1/auth/social".to_string(),
+                    headers: base_headers(&model.locale),
+                    body: social_login_body(model, &cred, None),
+                };
+                model.social_pending = Some(cred);
+                Command::request_from_shell(request)
+                    .then_send(Event::SocialLoginCompleted)
+                    .and(render::render())
+            }
+
+            Event::CompleteSocialSignup { age_confirmed, legal_accepted } => {
+                let Some(cred) = model.social_pending.clone() else {
+                    return Command::done();
+                };
+                if model.auth_cooldown.is_active() {
+                    return still_rate_limited(model);
+                }
+                model.is_authenticating = true;
+                model.status_key = StatusKey::CreatingAccount;
+                let request = HttpRequest {
+                    method: "POST".to_string(),
+                    url: "/api/v1/auth/social".to_string(),
+                    headers: base_headers(&model.locale),
+                    body: social_login_body(model, &cred, Some((age_confirmed, legal_accepted))),
+                };
+                Command::request_from_shell(request)
+                    .then_send(Event::SocialLoginCompleted)
+                    .and(render::render())
+            }
+
+            Event::CancelSocialSignup => {
+                // A tela também fecha sozinha quando o login acaba, e o shell pode mandar
+                // isto depois. Sem nada pendente não há o que cancelar, e o erro que
+                // fechou a tela continua na linha de status.
+                if model.social_pending.is_none() && !model.social_signup_required {
+                    return Command::done();
+                }
+                end_social_login(model);
+                model.status_key = StatusKey::Silent;
+                render::render()
+            }
+
+            Event::SocialLoginFailed => {
+                end_social_login(model);
+                model.status_key = StatusKey::SocialSignInFailed;
+                render::render()
+            }
+
+            Event::SocialLoginCompleted(result) => {
+                model.is_authenticating = false;
+                // Na tela de idade e termos, o erro que a pessoa corrige ali (caixa,
+                // versão nova, rede) mantém o login de pé para o próximo toque. Fora
+                // dela, todo erro acaba o login.
+                let in_signup = model.social_signup_required;
+                match result {
+                    HttpResult::Ok(response) if response.status == 200 => {
+                        end_social_login(model);
+                        if let Some(cmd) = begin_session(model, &response.body) {
+                            return cmd;
+                        }
+                        model.status_key = StatusKey::ServerUnreadable;
+                    }
+                    HttpResult::Ok(response) if response.status == 429 => {
+                        if !in_signup {
+                            end_social_login(model);
+                        }
+                        return rate_limited(model, &response, false);
+                    }
+                    HttpResult::Ok(response) => match api_code(&response.body).as_deref() {
+                        // Resposta que chega depois de o login ter sido cancelado não abre
+                        // tela: sem token guardado, "Criar conta" não teria o que mandar.
+                        Some("signup_required") if model.social_pending.is_some() => {
+                            model.social_signup_required = true;
+                            model.status_key = StatusKey::Silent;
+                        }
+                        Some("legal_version_outdated") if in_signup => {
+                            model.status_key = StatusKey::AccountFailed;
+                            let country = model.legal_country.clone();
+                            return self.update(Event::FetchLegalVersions { country }, model).and(render::render());
+                        }
+                        Some("age_not_confirmed" | "legal_acceptance_required" | "invalid_country") if in_signup => {
+                            model.status_key = StatusKey::AccountFailed;
+                        }
+                        Some("social_email_unverified") => {
+                            end_social_login(model);
+                            model.status_key = StatusKey::SocialEmailUnverified;
+                        }
+                        Some("provider_disabled") => {
+                            end_social_login(model);
+                            model.status_key = StatusKey::SocialProviderDisabled;
+                        }
+                        Some("social_token_invalid") => {
+                            end_social_login(model);
+                            model.status_key = StatusKey::SocialSignInFailed;
+                        }
+                        _ => {
+                            end_social_login(model);
+                            model.status_key = StatusKey::SignInFailed;
+                        }
+                    },
+                    HttpResult::Err(_) => {
+                        if !in_signup {
+                            end_social_login(model);
+                        }
+                        model.status_key = StatusKey::NoConnection;
                     }
                 }
                 render::render()
@@ -2998,6 +3219,24 @@ Event::FetchChallenges => {
                     .then_send(Event::AccountDeleted)
                     .and(render::render())
             }
+            Event::DeleteAccountWithProvider { provider, id_token, nonce } => {
+                if model.access_token.is_none() {
+                    model.status_key = StatusKey::NoConnection;
+                    return render::render();
+                }
+                model.is_authenticating = true;
+                let request = HttpRequest {
+                    method: "POST".to_string(),
+                    url: "/api/v1/users/me/delete".to_string(),
+                    headers: auth_headers(&model.access_token, &model.locale),
+                    body: serde_json::json!({ "provider": provider, "id_token": id_token, "nonce": nonce })
+                        .to_string()
+                        .into_bytes(),
+                };
+                Command::request_from_shell(request)
+                    .then_send(Event::AccountDeleted)
+                    .and(render::render())
+            }
             Event::AccountDeleted(result) => {
                 model.is_authenticating = false;
                 match result {
@@ -4155,6 +4394,7 @@ Event::FetchChallenges => {
             min_age: if model.min_age == 0 { DEFAULT_MIN_AGE } else { model.min_age },
             deletion_purge_after: model.deletion_purge_after,
             account_restored_notice: model.account_restored_notice,
+            social_signup_required: model.social_signup_required,
             analytics_enabled: !model.analytics_disabled,
             boot: boot_view(&model.boot),
             resume_email: model.resume_email.clone(),
@@ -7704,5 +7944,205 @@ mod tests {
         // Desfazer a saída devolve a conta, e as trilhas voltam do disco, não da memória.
         let _ = app.update(Event::UndoLogout, &mut model);
         assert!(!model.challenges.iter().any(|c| c.id == "ch_t03"));
+    }
+
+    fn social_login(app: &LogNApp, model: &mut Model) -> Vec<HttpRequest> {
+        let mut cmd = app.update(
+            Event::SocialLogin { provider: "google".into(), id_token: "idtok".into(), nonce: "nonce-cru".into() },
+            model,
+        );
+        http_requests(&mut cmd)
+    }
+
+    fn body_of(req: &HttpRequest) -> serde_json::Value {
+        serde_json::from_slice(&req.body).unwrap()
+    }
+
+    #[test]
+    fn social_login_sends_the_token_and_opens_the_session() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+
+        let reqs = social_login(&app, &mut model);
+        assert_eq!(reqs.len(), 1);
+        assert_eq!(reqs[0].url, "/api/v1/auth/social");
+        let body = body_of(&reqs[0]);
+        assert_eq!(body["provider"], "google");
+        assert_eq!(body["id_token"], "idtok");
+        assert_eq!(body["nonce"], "nonce-cru");
+        // A primeira tentativa não aceita termo nenhum em nome de ninguém.
+        assert!(body.get("legal_acceptances").is_none() && body.get("age_confirmed").is_none());
+        assert!(model.is_authenticating);
+
+        let mut cmd = app.update(
+            Event::SocialLoginCompleted(http(200, serde_json::json!({
+                "access_token": "acc", "refresh_token": "ref", "user_id": USER_A,
+                "refresh_expires_at": 1_900_000_000, "email": "pessoa@example.com",
+            }))),
+            &mut model,
+        );
+        assert_eq!(model.access_token.as_deref(), Some("acc"));
+        assert_eq!(model.user_id, USER_A);
+        // O app não digitou e-mail: a sessão fica com o que o servidor disse.
+        assert_eq!(model.account_email, "pessoa@example.com");
+        assert!(model.social_pending.is_none(), "o token não fica na memória depois do login");
+        assert!(!model.is_authenticating);
+        assert!(matches!(kv_ops(&mut cmd).as_slice(),
+            [KeyValueOperation::Set { key, .. }] if key == "refresh_token"));
+    }
+
+    #[test]
+    fn social_signup_asks_for_age_and_terms_and_reuses_the_token() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.legal_versions = vec![("terms".into(), 3), ("privacy".into(), 2)];
+        model.legal_country = "BR".into();
+
+        social_login(&app, &mut model);
+        let _ = app.update(Event::SocialLoginCompleted(api_error(409, "signup_required")), &mut model);
+        assert!(app.view(&model).social_signup_required);
+        assert_eq!(model.status_key, StatusKey::Silent, "pedir termos não é erro");
+        assert!(model.social_pending.is_some());
+
+        // Caixa errada na tela: o erro fica na tela e o login continua de pé.
+        let _ = app.update(Event::CompleteSocialSignup { age_confirmed: true, legal_accepted: false }, &mut model);
+        let _ = app.update(Event::SocialLoginCompleted(api_error(400, "legal_acceptance_required")), &mut model);
+        assert!(model.social_signup_required && model.social_pending.is_some());
+        assert_eq!(model.status_key, StatusKey::AccountFailed);
+
+        let mut cmd = app.update(Event::CompleteSocialSignup { age_confirmed: true, legal_accepted: true }, &mut model);
+        let reqs = http_requests(&mut cmd);
+        let body = body_of(&reqs[0]);
+        assert_eq!(body["id_token"], "idtok", "o mesmo token volta com os aceites");
+        assert_eq!(body["age_confirmed"], true);
+        assert_eq!(body["country"], "BR");
+        assert_eq!(body["legal_acceptances"].as_array().unwrap().len(), 2);
+        assert_eq!(body["legal_acceptances"][0]["version"], 3);
+
+        let _ = app.update(
+            Event::SocialLoginCompleted(http(200, serde_json::json!({
+                "access_token": "acc", "refresh_token": "ref", "user_id": USER_A, "email": "nova@example.com",
+            }))),
+            &mut model,
+        );
+        assert!(!app.view(&model).social_signup_required && model.social_pending.is_none());
+    }
+
+    #[test]
+    fn cancelling_the_social_signup_drops_the_token() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        social_login(&app, &mut model);
+        let _ = app.update(Event::SocialLoginCompleted(api_error(409, "signup_required")), &mut model);
+        let _ = app.update(Event::CancelSocialSignup, &mut model);
+        assert!(model.social_pending.is_none() && !model.social_signup_required);
+
+        // Sem login pendente, completar não manda nada.
+        let mut cmd = app.update(Event::CompleteSocialSignup { age_confirmed: true, legal_accepted: true }, &mut model);
+        assert!(http_requests(&mut cmd).is_empty());
+    }
+
+    #[test]
+    fn social_login_errors_end_the_login_with_their_own_key() {
+        let app = LogNApp::default();
+        for (status, code, key) in [
+            (401, "social_token_invalid", StatusKey::SocialSignInFailed),
+            (403, "social_email_unverified", StatusKey::SocialEmailUnverified),
+            (503, "provider_disabled", StatusKey::SocialProviderDisabled),
+            (500, "internal", StatusKey::SignInFailed),
+        ] {
+            let mut model = Model::default();
+            social_login(&app, &mut model);
+            let _ = app.update(Event::SocialLoginCompleted(api_error(status, code)), &mut model);
+            assert_eq!(model.status_key, key, "{code}");
+            assert!(model.social_pending.is_none() && !model.is_authenticating, "{code}");
+            assert!(model.access_token.is_none(), "{code}");
+        }
+    }
+
+    #[test]
+    fn social_signup_survives_what_the_person_can_retry() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.legal_versions = vec![("terms".into(), 1), ("privacy".into(), 1)];
+        social_login(&app, &mut model);
+        let _ = app.update(Event::SocialLoginCompleted(api_error(409, "signup_required")), &mut model);
+
+        // Sem rede no "Criar conta": o toque seguinte manda de novo o mesmo token.
+        let _ = app.update(Event::CompleteSocialSignup { age_confirmed: true, legal_accepted: true }, &mut model);
+        let _ = app.update(Event::SocialLoginCompleted(HttpResult::Err(crux_http::HttpError::Io("offline".into()))), &mut model);
+        assert!(model.social_signup_required && model.social_pending.is_some());
+        assert_eq!(model.status_key, StatusKey::NoConnection);
+
+        // Versão nova dos termos no meio: busca a vigente e a tela continua.
+        let _ = app.update(Event::CompleteSocialSignup { age_confirmed: true, legal_accepted: true }, &mut model);
+        let mut cmd = app.update(Event::SocialLoginCompleted(api_error(409, "legal_version_outdated")), &mut model);
+        assert!(http_requests(&mut cmd).iter().any(|r| r.url.starts_with("/api/v1/legal/current")));
+        assert!(model.social_signup_required && model.social_pending.is_some());
+
+        // 429 na tela: a contagem trava o botão, e o login continua de pé.
+        let _ = app.update(Event::CompleteSocialSignup { age_confirmed: true, legal_accepted: true }, &mut model);
+        let _ = app.update(Event::SocialLoginCompleted(api_error(429, "rate_limited")), &mut model);
+        assert!(model.social_pending.is_some());
+    }
+
+    #[test]
+    fn a_429_outside_the_signup_ends_the_social_login() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        social_login(&app, &mut model);
+        let _ = app.update(Event::SocialLoginCompleted(api_error(429, "rate_limited")), &mut model);
+        assert!(model.social_pending.is_none(), "fora da tela de termos, o 429 acaba o login");
+        assert_eq!(model.status_key, StatusKey::RateLimited);
+    }
+
+    #[test]
+    fn a_late_cancel_keeps_the_error_on_screen() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        social_login(&app, &mut model);
+        let _ = app.update(Event::SocialLoginCompleted(api_error(409, "signup_required")), &mut model);
+        let _ = app.update(Event::CompleteSocialSignup { age_confirmed: true, legal_accepted: true }, &mut model);
+        let _ = app.update(Event::SocialLoginCompleted(api_error(401, "social_token_invalid")), &mut model);
+        assert!(!model.social_signup_required);
+
+        // A tela fechou por causa do erro, e o shell avisa o fechamento depois.
+        let _ = app.update(Event::CancelSocialSignup, &mut model);
+        assert_eq!(model.status_key, StatusKey::SocialSignInFailed);
+    }
+
+    #[test]
+    fn signup_required_after_a_cancel_opens_nothing() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        social_login(&app, &mut model);
+        model.social_pending = None;
+        let _ = app.update(Event::SocialLoginCompleted(api_error(409, "signup_required")), &mut model);
+        assert!(!app.view(&model).social_signup_required);
+    }
+
+    #[test]
+    fn a_failure_on_the_device_says_so() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let _ = app.update(Event::SocialLoginFailed, &mut model);
+        assert_eq!(model.status_key, StatusKey::SocialSignInFailed);
+        assert!(!model.is_authenticating);
+    }
+
+    #[test]
+    fn delete_account_with_provider_sends_the_fresh_token() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("acc".into());
+        let mut cmd = app.update(
+            Event::DeleteAccountWithProvider { provider: "google".into(), id_token: "novo".into(), nonce: "n".into() },
+            &mut model,
+        );
+        let reqs = http_requests(&mut cmd);
+        assert_eq!(reqs[0].url, "/api/v1/users/me/delete");
+        let body = body_of(&reqs[0]);
+        assert_eq!(body["id_token"], "novo");
+        assert!(body.get("password").is_none());
     }
 }

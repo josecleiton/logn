@@ -11,6 +11,7 @@ struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var ssoEnabled = false
+    @State private var googleEnabled = false
     @State private var legalSheet: LegalKind? = LegalKind.launchOverride
     /// Só em DEBUG: `-LogNStartScreen cadastro` abre o cadastro direto. O toque
     /// sintético no link depende da janela do Simulator estar acessível, e nem sempre está.
@@ -53,7 +54,7 @@ struct LoginView: View {
                 // Content
                 VStack(spacing: Space.sm) {
                     if ssoEnabled {
-                    // SSO (Apple, Google, GitHub)
+                    // Apple e GitHub ainda não entram: ficam atrás da flag geral.
                         Button(action: {}) {
                             HStack(spacing: 12) {
                                 Image(systemName: "applelogo")
@@ -69,25 +70,14 @@ struct LoginView: View {
                             .cornerRadius(Radius.sm)
                             .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(Color.clear, lineWidth: 1))
                         }
-                        
-                        Button(action: {}) {
-                            HStack(spacing: 12) {
-                                Image("GoogleIcon")
-                                    .renderingMode(.original)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 20, height: 20)
-                                Text(Str.Login.sign_in_google)
-                                    .font(.plexSansMedium(15))
-                                    .foregroundColor(LognDark.textPrimary)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 52)
-                            .background(LognDark.surface)
-                            .cornerRadius(Radius.sm)
-                            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
-                        }
-                        
+                    }
+
+                    if googleEnabled {
+                        GoogleSignInButton(action: signInWithGoogle)
+                            .disabled(core.viewModel.isAuthenticating || signInLocked)
+                    }
+
+                    if ssoEnabled {
                         Button(action: {}) {
                             HStack(spacing: 12) {
                                 Image("GitHubIcon")
@@ -105,7 +95,9 @@ struct LoginView: View {
                             .cornerRadius(Radius.sm)
                             .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
                         }
-                        
+                    }
+
+                    if ssoEnabled || googleEnabled {
                         // Divider
                         HStack(spacing: 12) {
                             Rectangle().fill(LognDark.line).frame(height: 1)
@@ -232,8 +224,19 @@ struct LoginView: View {
         }
         .navigationBarHidden(true)
         .onAppear {
-            self.ssoEnabled = PostHogSDK.shared.isFeatureEnabled("sso_enabled")
+            readFlags()
             prefillResumeEmail(core.viewModel.resumeEmail)
+        }
+        // Na primeira abertura, e depois de sair (o `reset` troca o id), as flags chegam
+        // depois de a tela aparecer: lidas só no `onAppear`, o botão nunca aparecia.
+        .onReceive(NotificationCenter.default.publisher(for: PostHogSDK.didReceiveFeatureFlags)) { _ in
+            readFlags()
+        }
+        .sheet(isPresented: socialSignupBinding) {
+            SocialSignupSheet()
+                .environmentObject(core)
+                // Puxar para baixo com o pedido no ar descartava o login no meio.
+                .interactiveDismissDisabled(core.viewModel.isAuthenticating)
         }
         // A sessão acabou: o login vem com o e-mail dela. Ele pode chegar depois de a
         // tela aparecer, porque o Core o lê do aparelho.
@@ -277,6 +280,42 @@ struct LoginView: View {
     }
 
     private var canSignIn: Bool { !email.isEmpty && !password.isEmpty && !signInLocked }
+
+    private func readFlags() {
+        ssoEnabled = PostHogSDK.shared.isFeatureEnabled("sso_enabled")
+        // A chave para desligar o Google sem versão nova: se o login quebrar do lado
+        // dele, a flag some com o botão e quem entra por e-mail segue entrando.
+        googleEnabled = GoogleAuth.shared.isConfigured
+            && PostHogSDK.shared.isFeatureEnabled("sso_google_enabled")
+    }
+
+    private func signInWithGoogle() {
+        Task {
+            do {
+                let credential = try await GoogleAuth.shared.signIn()
+                core.dispatch(event: .socialLogin(provider: "google", idToken: credential.idToken, nonce: credential.nonce))
+            } catch GoogleAuth.Failure.cancelled {
+                // Fechou a janela do Google: nada a dizer.
+            } catch {
+                core.dispatch(event: .socialLoginFailed)
+            }
+        }
+    }
+
+    /// A tela de idade e termos abre quando o Core diz que a conta ainda não existe.
+    /// Fechar puxando para baixo é o mesmo que "Agora não".
+    private var socialSignupBinding: Binding<Bool> {
+        Binding(
+            get: { core.viewModel.socialSignupRequired },
+            // Só fechar pela pessoa cancela. Quando o próprio Core fecha a tela (login
+            // pronto ou erro), não há o que cancelar.
+            set: { shown in
+                if !shown && core.viewModel.socialSignupRequired {
+                    core.dispatch(event: .cancelSocialSignup)
+                }
+            }
+        )
+    }
 
     private var signInLabel: String {
         if signInLocked { return Str.Status.wait_seconds(Int(core.viewModel.authCooldownSeconds)) }

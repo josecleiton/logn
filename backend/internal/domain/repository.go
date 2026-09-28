@@ -537,31 +537,37 @@ func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string,
 	}
 	defer tx.Rollback(ctx)
 
+	id, err := createUserTx(ctx, tx, email, passwordHash, ageConfirmed, country, acceptances)
+	if err != nil {
+		return "", err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
+// createUserTx insere a conta e os aceites dentro da transação de quem chama. Hash
+// vazio grava NULL: é a conta que só entra por provedor externo.
+func createUserTx(ctx context.Context, tx pgx.Tx, email, passwordHash string, ageConfirmed bool, country string, acceptances []LegalAcceptance) (string, error) {
 	var id string
 	query := `
 		INSERT INTO users (email, password_hash, age_confirmed_at, country)
-		VALUES ($1, $2, CASE WHEN $3::boolean THEN CURRENT_TIMESTAMP ELSE NULL END, NULLIF($4, ''))
+		VALUES ($1, NULLIF($2, ''), CASE WHEN $3::boolean THEN CURRENT_TIMESTAMP ELSE NULL END, NULLIF($4, ''))
 		RETURNING id
 	`
-	err = tx.QueryRow(ctx, query, email, passwordHash, ageConfirmed, country).Scan(&id)
-	if err != nil {
+	if err := tx.QueryRow(ctx, query, email, passwordHash, ageConfirmed, country).Scan(&id); err != nil {
 		return "", err
 	}
 
 	for _, acc := range acceptances {
-		_, err = tx.Exec(ctx, `
+		if _, err := tx.Exec(ctx, `
 			INSERT INTO legal_acceptances (user_id, kind, version, locale)
 			VALUES ($1, $2, $3, $4)
-		`, id, acc.Kind, acc.Version, acc.Locale)
-		if err != nil {
+		`, id, acc.Kind, acc.Version, acc.Locale); err != nil {
 			return "", err
 		}
 	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return "", err
-	}
-
 	return id, nil
 }
 
@@ -622,9 +628,14 @@ func (r *Repository) GetUserByID(ctx context.Context, userID string) (*User, err
 	`
 	row := r.db.QueryRow(ctx, query, userID)
 	var user User
-	err := row.Scan(&user.ID, &user.Email, &user.PasswordHash)
-	if err != nil {
+	// A conta que só entra por provedor externo não tem senha. Lida direto numa
+	// string, o NULL derrubava o Scan, e a exclusão respondia como sessão sem dono.
+	var pwHash *string
+	if err := row.Scan(&user.ID, &user.Email, &pwHash); err != nil {
 		return nil, err
+	}
+	if pwHash != nil {
+		user.PasswordHash = *pwHash
 	}
 	return &user, nil
 }
@@ -728,7 +739,7 @@ func (r *Repository) PurgeDeletedAccounts(ctx context.Context) (int, error) {
 //
 // A linha de `users` sai primeiro, conferindo de novo a carência: quem entrou na conta
 // entre a seleção e este passo não perde nada. Em cascata vão `refresh_tokens`,
-// `user_progress`, `user_paid_challenges` e `legal_acceptances`. `game_events` e
+// `user_progress`, `user_paid_challenges`, `legal_acceptances` e `user_identities`. `game_events` e
 // `user_sync_state` não têm chave estrangeira para `users`, e `otps` é por e-mail:
 // esses saem à mão.
 func (r *Repository) purgeAccount(ctx context.Context, userID string) (bool, error) {

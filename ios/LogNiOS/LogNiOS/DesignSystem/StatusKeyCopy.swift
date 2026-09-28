@@ -50,6 +50,9 @@ extension LogN.StatusKey {
         case .purchaseNeedsAccount:        return Str.Status.purchase_needs_account
         case .trackRevoked:                return Str.Status.track_revoked
         case .trackDownloadFailed:         return Str.Status.track_download_failed
+        case .socialSignInFailed:          return Str.Status.social_sign_in_failed
+        case .socialEmailUnverified:       return Str.Status.social_email_unverified
+        case .socialProviderDisabled:      return Str.Status.social_provider_disabled
         }
     }
 

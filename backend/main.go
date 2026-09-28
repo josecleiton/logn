@@ -14,6 +14,7 @@ import (
 	"github.com/josecleiton/logn/backend/internal/domain"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/cloudauth"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/email"
+	"github.com/josecleiton/logn/backend/internal/infrastructure/socialauth"
 	"github.com/josecleiton/logn/backend/internal/locale"
 	"github.com/josecleiton/logn/backend/internal/storekit"
 	"github.com/josecleiton/logn/backend/schema"
@@ -24,6 +25,8 @@ type Server struct {
 	mailer         *email.Mailer
 	cloudValidator cloudauth.Validator
 	storekit       *storekit.Validator
+	// Um verificador por provedor de login ligado. Provedor fora do mapa está desligado.
+	social map[string]socialauth.Verifier
 }
 
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -312,6 +315,7 @@ func main() {
 		mailer:         mailer,
 		cloudValidator: validator,
 		storekit:       storeKitValidatorFromEnv(),
+		social:         socialVerifiersFromEnv(),
 	}
 
 	if os.Getenv("PURGE_ONLY") == "true" {
@@ -339,6 +343,7 @@ func main() {
 	mux.HandleFunc("POST /api/v1/sync", limitBody(syncBodyLimit, server.syncHandler))
 	mux.HandleFunc("GET /api/v1/challenges", server.challengesHandler)
 	mux.HandleFunc("POST /api/v1/auth/login", auth(server.loginHandler))
+	mux.HandleFunc("POST /api/v1/auth/social", auth(server.socialLoginHandler))
 	mux.HandleFunc("POST /api/v1/auth/refresh", auth(server.refreshHandler))
 	mux.HandleFunc("POST /api/v1/auth/request-otp", auth(server.requestOTPHandler))
 	mux.HandleFunc("POST /api/v1/auth/verify-otp", auth(server.verifyOTPHandler))

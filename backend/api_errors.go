@@ -32,6 +32,13 @@ const (
 	codeOriginNotVerified       = "origin_not_verified"
 	codeInternal                = "internal"
 
+	// Login por provedor externo (ADR 0016).
+	codeProviderDisabled      = "provider_disabled"
+	codeSocialTokenInvalid    = "social_token_invalid"
+	codeSocialEmailUnverified = "social_email_unverified"
+	// A identidade não tem conta: o app pede idade e aceite e manda o pedido de novo.
+	codeSignupRequired = "signup_required"
+
 	// Trilhas pagas.
 	codePurchaseInvalid             = "purchase_invalid"
 	codePurchaseAccountMismatch     = "purchase_account_mismatch"

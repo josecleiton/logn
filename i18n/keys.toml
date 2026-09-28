@@ -59,6 +59,9 @@ purchase_revoked = {}
 purchase_needs_account = {}
 track_revoked = {}
 track_download_failed = {}
+social_sign_in_failed = {}
+social_email_unverified = {}
+social_provider_disabled = {}
 wait_seconds ={ placeholders = [{ name = "seconds", type = "int" }] }
 sample_standings = {}
 # Sair da partida. O Core decide se pergunta; a cópia mora aqui.
@@ -267,6 +270,7 @@ deleted_body = { placeholders = [{ name = "date", type = "text" }] }
 restored_title = {}
 restored_body = {}
 notice_ok = {}
+delete_with_google = {}
 
 [groups.account.keys]
 manage = {}
@@ -378,6 +382,11 @@ core_ready = {}
 loading = {}
 sign_in = {}
 email_first = {}
+# Primeiro login com o Google: a conta ainda não existe e pede idade e termos.
+google_signup_title = {}
+google_signup_reason = {}
+google_signup_continue = {}
+google_signup_cancel = {}
 
 # Trilha paga: o que a loja responde e o Core não sabe.
 [groups.paywall.keys]
