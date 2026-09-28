@@ -32,7 +32,8 @@ const FONTS = [
   "IBMPlexSans-Regular.ttf", "IBMPlexSans-Medium.ttf", "IBMPlexSans-SemiBold.ttf",
   "IBMPlexMono-Regular.ttf", "IBMPlexMono-Medium.ttf",
 ];
-const FAVICON = join(REPO, "docs/design_system/brand/logn-symbol-accent.svg");
+// Favicon do design system: o balão no quadrado escuro, em SVG, PNG 32 e 180 (iOS).
+const ICONS = ["favicon.svg", "favicon-32.png", "apple-touch-icon.png"];
 
 // Selo oficial da Apple, Black lockup, como veio do pacote de Apple Marketing Resources:
 // PTBR, US-UK e ESMX (o espanhol da página é o latino). Arte de terceiro, não se edita;
@@ -214,7 +215,10 @@ for (const { locale, strings } of catalogs) {
 copyFileSync(join(ROOT, "src/_headers"), join(DIST, "_headers"));
 writeFileSync(join(DIST, css.path), css.body);
 writeFileSync(join(DIST, js.path), js.body);
-copyFileSync(FAVICON, join(DIST, "assets/logn-symbol-accent.svg"));
+mkdirSync(join(DIST, "assets/icons"), { recursive: true });
+for (const icon of ICONS) {
+  copyFileSync(join(ROOT, "src/assets/icons", icon), join(DIST, "assets/icons", icon));
+}
 mkdirSync(join(DIST, "assets/badges"), { recursive: true });
 for (const { tag } of LOCALES) {
   copyFileSync(join(ROOT, "src", badgePath(tag)), join(DIST, badgePath(tag)));
