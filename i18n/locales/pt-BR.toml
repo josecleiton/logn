@@ -287,6 +287,7 @@ without_saving = "sem salvar"
 core_ready = "CORE PRONTO"
 loading = "Carregando..."
 sign_in = "Entrar"
+email_first = "Digite seu e-mail primeiro."
 
 [register]
 age_confirmation = "Tenho %{age} anos ou mais."
@@ -327,6 +328,11 @@ digit_accessibility = "dígito %{index} de 6"
 paste_code = "Colar o código"
 verify = "Verificar"
 resend_code = "Reenviar código"
+
+[toast]
+attention = "Atenção"
+error = "Erro"
+success = "Pronto"
 
 [scoreboard]
 close = "Fechar"

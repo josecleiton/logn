@@ -313,6 +313,13 @@ paste_code = {}
 verify = {}
 resend_code = {}
 
+# O toast diz a variante pela cor e pelo ícone, que não chegam ao VoiceOver: o
+# anúncio sai com esta palavra na frente ("Atenção. Digite seu e-mail primeiro.").
+[groups.toast.keys]
+attention = {}
+error = {}
+success = {}
+
 [groups.scoreboard.keys]
 close = {}
 frozen = {}
@@ -370,6 +377,7 @@ without_saving = {}
 core_ready = {}
 loading = {}
 sign_in = {}
+email_first = {}
 
 # Trilha paga: o que a loja responde e o Core não sabe.
 [groups.paywall.keys]

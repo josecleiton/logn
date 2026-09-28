@@ -11,6 +11,7 @@
 		03E8A94FF11F486216CC13B1 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42D4982DBEFBD646B4F5FD62 /* ContentView.swift */; };
 		076F9AE7C7903FF70A671E08 /* IBMPlexSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 752CBF98CC2C51F2EDC3EF62 /* IBMPlexSans-Regular.ttf */; };
 		0ACF6DDB39EBC84AD6AABC71 /* StatusLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F017FABEBC4E5B128A074D0 /* StatusLine.swift */; };
+		7A3C1E5B9D2F4A6B8C0E1D2F /* Toast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3C1E5B9D2F4A6B8C0E1D30 /* Toast.swift */; };
 		0B24F964C6C184D6E7B671B8 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3479CDAF7B4103E414DAC3 /* LoginView.swift */; };
 		0BA15413191DFB1CF6920419 /* TrackComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1857122AF9002132BAE2DE89 /* TrackComponents.swift */; };
 		0C9F55E7BACAABCA07412936 /* TrackStateViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13D8C0ED1C6EDA25301ECB25 /* TrackStateViews.swift */; };
@@ -85,6 +86,7 @@
 		2A37D7575A08B4C92B940D53 /* IBMPlexMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Regular.ttf"; sourceTree = "<group>"; };
 		2CEDA9E40AF59358F4F00143 /* SkillTreeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillTreeView.swift; sourceTree = "<group>"; };
 		2F017FABEBC4E5B128A074D0 /* StatusLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusLine.swift; sourceTree = "<group>"; };
+		7A3C1E5B9D2F4A6B8C0E1D30 /* Toast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toast.swift; sourceTree = "<group>"; };
 		36CC53FEE4EF414C2FFE69AB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		39639030FF1ABF8B56AB4F26 /* LogNCoreFFI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LogNCoreFFI; path = ../LogNCoreFFI; sourceTree = SOURCE_ROOT; };
 		3C234F5143F4791D66EF36E0 /* LognComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LognComponents.swift; sourceTree = "<group>"; };
@@ -246,6 +248,7 @@
 				3C234F5143F4791D66EF36E0 /* LognComponents.swift */,
 				C54D531EF24FAD3B3299DBF0 /* SampleDataNotice.swift */,
 				2F017FABEBC4E5B128A074D0 /* StatusLine.swift */,
+				7A3C1E5B9D2F4A6B8C0E1D30 /* Toast.swift */,
 				EB03B22842CF2E79E83561F8 /* SVGPath.swift */,
 				799B328B5FC2E3F615F7DB41 /* TopicIcon.swift */,
 				8DA78EDFD4661B922FE1E389 /* ViewExtensions.swift */,
@@ -452,6 +455,7 @@
 				1B3F7CCE389E70B29D4DC659 /* StandingsView.swift in Sources */,
 				847B9C5F21C81347B4C1204A /* StatusKeyCopy.swift in Sources */,
 				0ACF6DDB39EBC84AD6AABC71 /* StatusLine.swift in Sources */,
+				7A3C1E5B9D2F4A6B8C0E1D2F /* Toast.swift in Sources */,
 				E84D92E210C5BE71770C66C9 /* StorageManagementView.swift in Sources */,
 				43FC7454A267913395905D70 /* StoreKitManager.swift in Sources */,
 				2F7173374C70B98EECB2E04A /* Strings.swift in Sources */,

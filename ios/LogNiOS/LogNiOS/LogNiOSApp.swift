@@ -67,6 +67,8 @@ struct LogNiOSApp: App {
             // A splash sai em fade: sem duração mínima, uma abertura rápida sem ele vira
             // um piscar.
             .animation(.easeOut(duration: 0.25), value: core.viewModel.boot.inProgress)
+            // Por cima de qualquer tela, e não de cada uma: um toast por vez no app.
+            .overlay(alignment: .top) { ToastHost() }
             .onOpenURL { url in
                 handleIncomingURL(url)
             }
