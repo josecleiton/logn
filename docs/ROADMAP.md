@@ -90,10 +90,9 @@ Antes de vender a primeira trilha:
   (`identifierForVendor`) e as compras. Nenhuma das duas foi escrita. Junto vem a folha de
   aceite pendente, que avisa o jogador quando uma versão nova entra em vigor (ADR 0008): o
   servidor já tem `pending` e `accept`, e a página já marca as seções novas.
-- **Deploy.** O token do Cloudflare precisa de Zone · WAF · Edit para o `terraform apply`
-  criar o rate limit da borda; o valor de `logn-track-key-secret` sobe pelo `gcloud` antes
-  do deploy, senão a revisão nova não sobe; a URL das notificações da App Store é a
-  `.run.app`, não o domínio atrás do Cloudflare.
+- **Notificações da App Store.** O backend está no ar com as trilhas; falta cadastrar no
+  App Store Connect a URL das notificações, que é a `.run.app`, não o domínio atrás do
+  Cloudflare.
 - **App Store Connect.** Acordo de apps pagos, dados bancários e fiscais, e o produto não
   consumível de cada trilha, sem Compartilhamento Familiar.
 - **Compra de ponta a ponta.** A compra pela loja só roda pelo Xcode, com o certificado do
