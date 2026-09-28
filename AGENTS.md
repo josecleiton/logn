@@ -30,7 +30,7 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    no `SET` de todo `UPDATE`. Coluna que nasce com a linha e nunca mais anda mente pior
    que coluna nenhuma.
 
-   **Estado atual, para quem for mexer:** a regra está cumprida desde a `0013_carimbos_de_tempo.sql`. Toda tabela tem `created_at` (agora com `NOT NULL` aplicado pela 0034). `users`, `skill_nodes`, `refresh_tokens`, `otps`, `user_progress`, `challenges`, `user_sync_state`, `skill_node_translations`, `challenge_translations` (0043), `challenge_origins` e `challenge_origin_translations` (0046) têm `updated_at` mantido pelo trigger `trg_<tabela>_updated_at`, que chama `set_updated_at()` — a função já existe, tabela nova só cria o trigger dela. Ficam só com `created_at` as que nunca sofrem `UPDATE`: `game_events` (append-only por desenho, ADR 0002) e `user_paid_challenges` (0032). `schema_migrations` resolve com `applied_at`. Em `otps` o `updated_at` anda a cada tentativa errada; por isso o intervalo entre envios usa `sent_at` (0031), não ele.
+   **Estado atual, para quem for mexer:** a regra está cumprida desde a `0013_carimbos_de_tempo.sql`. Toda tabela tem `created_at` (agora com `NOT NULL` aplicado pela 0034). `users`, `skill_nodes`, `refresh_tokens`, `otps`, `user_progress`, `challenges`, `user_sync_state`, `skill_node_translations`, `challenge_translations` (0043), `challenge_origins` e `challenge_origin_translations` (0046), `tracks`, `track_translations`, `entitlements` e `entitlement_devices` (0049) têm `updated_at` mantido pelo trigger `trg_<tabela>_updated_at`, que chama `set_updated_at()` — a função já existe, tabela nova só cria o trigger dela. Ficam só com `created_at` as que nunca sofrem `UPDATE`: `game_events` (append-only por desenho, ADR 0002), `user_paid_challenges` (0032), `track_keys` (a chave de uma versão não muda), `store_transactions` e `revoked_transactions` (0050; a revogação sai por `DELETE`, nunca por `UPDATE`). `schema_migrations` resolve com `applied_at`. Em `otps` o `updated_at` anda a cada tentativa errada; por isso o intervalo entre envios usa `sent_at` (0031), não ele.
 
 6. **Todo texto que o jogador lê ou ouve sai do catálogo de i18n, nunca de literal no código.**
    Vale para rótulo, botão, legenda, veredito e `accessibilityLabel`, em qualquer cliente.
@@ -98,7 +98,8 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    em código, teste, doc, fixture, `.xcconfig` versionado ou mensagem de commit; o
    lugar é variável de ambiente (`.env`, ignorado) e Secret Manager. Fallback fixo só
    em desenvolvimento, e o servidor **aborta** em produção (`K_SERVICE` setado) se
-   `JWT_SECRET` faltar; não crie outro fallback nem enfraqueça esse. Chave de
+   `JWT_SECRET`, `TRACK_KEY_SECRET` ou `APPLE_BUNDLE_ID` faltarem, ou se
+   `APPLE_XCODE_ROOT_CERT` estiver setado; não crie outro fallback nem enfraqueça esse. Chave de
    telemetria e URL da API chegam ao iOS por `Local.xcconfig` (ignorado) e
    `Info.plist`, nunca em literal Swift. Placeholder em exemplo é visivelmente falso
    (`phc_SuaChaveAqui`). Não logue token, senha, OTP, e-mail completo nem corpo de
@@ -112,8 +113,8 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    `OTPMaxAttempts`, `OTPResendCooldown` e consumo atômico; refresh token guardado como
    SHA-256, rotacionado a cada uso, e reuso de token já rotacionado derruba todas as
    sessões da conta. JWT com `exp` verificado e algoritmo fixo; nunca aceite `none`
-   nem leia o `alg` do token. No iOS, credencial vai ao Keychain (`keychainKeys` em
-   `CoreWrapper.swift`), nunca a `UserDefaults`.
+   nem leia o `alg` do token. No iOS, credencial vai ao Keychain (`keychainKeys` e o
+   prefixo `track_key:` em `CoreWrapper.swift`), nunca a `UserDefaults`.
 
    **Autorização.** Toda rota autenticada tira o `user_id` do token, nunca do corpo:
    `/sync` sobrescreve `payload.UserID`, e é assim que toda rota nova se comporta.
@@ -128,6 +129,15 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    cadeia de hash do `/sync` é validada, nunca recalculada para "consertar" histórico
    (ADR 0002), e a corrida em `user_sync_state` continua guardada por `ErrStaleChain`.
    Gabarito não sai para o cliente além do que o formato exige para julgar localmente.
+   Só paga desafio que existe no banco, e trilha paga fora da amostra só com direito
+   ativo (ADR 0012).
+
+   **Trilha paga (ADR 0012).** O JWS da App Store só vale verificado contra a raiz fixa
+   embutida (`internal/storekit`), nunca pelo nome da raiz que vem no token; algoritmo
+   ES256 fixo. Transação revogada fica em `revoked_transactions`, fora da conta, e não
+   volta por compra nem restauração. Conteúdo fechado só sai no pacote cifrado, e a
+   regra do que é aberto mora em `openNode` (`repository.go`), num lugar só. A compra
+   é do `appAccountToken` de quem comprou.
 
    **Entrada e transporte.** Query só com parâmetros posicionais do `pgx` (`$1`), sem
    concatenar string em SQL, inclusive em JSONB e traduções. Corpo limitado por rota
@@ -154,8 +164,22 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    reutilizado, corpo acima do limite, audiência errada). Um PR que remove ou
    relaxa um desses testes é recusado até vir com a ADR que justifica.
 
+10. **Revisão cega por um segundo agente.** Ao terminar lógica complexa — validação de
+    segurança, regra financeira no backend, mudança de banco, máquina de estados do Core
+    —, não siga para o próximo passo nem comite. Mande o código e a spec a um subagente
+    isolado, no papel de revisor ou de especialista em segurança, para uma análise
+    independente de segurança, desempenho e aderência. Só avance depois de incorporar o
+    que ele achar de crítico.
+
+11. **Timeout do type-checker do SwiftUI.** "Unable to type-check this expression in
+    reasonable time" derruba a compilação do iOS quando um `body` tem lógica densa ou usa
+    token de design que não existe (`Radius.max` no lugar de `.cornerRadius`). Nunca
+    encadeie `.filter{}.map{}` dentro da árvore de views: resolva num laço `for` ou numa
+    variável computada antes. Sub-árvore complexa vira `@ViewBuilder` separado.
+
 
 ## 🔄 Fluxo de Trabalho do Agente
 1. Ao iniciar, revise sempre se as dependências do `Crux` e o pacote `boltffi` exigem recompilação (`cargo build --features codegen`).
 2. Atualize o `codegen` e rode-o se você tocar nas definições de tipagem (`shared_core/src/bin/codegen.rs`).
 3. Gere e atualize ADRs em `docs/architecture/decisions/` ao introduzir novas bibliotecas centrais (ex: Lib de Auth) ou mudar arquitetura.
+
