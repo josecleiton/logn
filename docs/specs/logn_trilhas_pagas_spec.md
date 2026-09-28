@@ -4,8 +4,10 @@ Terceiro de três PRDs em sequência, depois de `logn_i18n_conteudo_spec.md` e
 `logn_legal_spec.md`. Depende dos dois: a trilha paga sai nas três línguas, e a licença mora
 nos termos de uso.
 
-O design das telas fica para depois, no design system do LogN (`docs/design_system/`). A
-seção 9 lista os estados que o design precisa cobrir.
+O design das telas está no projeto de design do LogN, nos arquivos `LogN Trilhas.dc.html`
+(catálogo, paywall, fluxo de compra, estados da comprada) e `LogN Validade Offline.dc.html`
+(a escada de dias sem contato). A seção 9 lista os estados; o design é a fonte de como
+eles ficam.
 
 ## 1. Conceito
 
@@ -121,7 +123,7 @@ cascata. A transação continua na Apple, e é por ela que a compra volta numa c
 2. O app manda a transação para `POST /api/v1/purchases`. O servidor verifica a assinatura
    com a cadeia de certificados da Apple, confere produto, bundle e ambiente, e grava o
    direito de acesso. **O app nunca decide sozinho que comprou.**
-3. O app finaliza a transação no StoreKit só depois de o servidor confirmar.
+3. O app finaliza a transação no StoreKit só depois de o servidor confirmar. **Se a rede cair após a cobrança**, o listener `Transaction.updates` do StoreKit 2 re-entregará a transação pendente na próxima vez que o app abrir, e o app tentará o `POST` novamente sem exigir ação do usuário.
 4. **Restaurar compras:** o app lê as transações do Apple ID e manda cada uma para
    `POST /api/v1/purchases/restore`.
    - Transação sem dono, ou de uma conta excluída: liga-se à conta que pediu.
@@ -137,7 +139,12 @@ cascata. A transação continua na Apple, e é por ela que a compra volta numa c
   trilha, nas três línguas, cifrado com AES-256-GCM pela chave de conteúdo daquela versão.
 - `GET /api/v1/tracks/{id}/license` devolve a chave de conteúdo e o prazo offline
   (`valid_until`, 30 dias a partir de agora), e registra o aparelho em
-  `entitlement_devices`.
+  `entitlement_devices`. Todo pedido traz `X-Device-ID` (o `identifierForVendor`);
+  sem ele, 400 `device_id_required`. O registro não bloqueia.
+- `GET /api/v1/tracks` é o catálogo das trilhas pagas, com o produto da App Store de
+  cada uma e, com token, quais a conta comprou. O app compra pelo produto que vem dali.
+- Cada nó de `GET /api/v1/nodes` diz `requires_purchase`: o servidor decide o que é
+  amostra, e o app não adivinha. Detalhe técnico na ADR 0012.
 - **No aparelho:**
   - a chave vai para o Keychain, com acessibilidade *este aparelho só*, e não entra no
     backup;
@@ -149,7 +156,7 @@ cascata. A transação continua na Apple, e é por ela que a compra volta numa c
 - **Com rede, cada abertura revalida.**
   - Licença ativa: renova o prazo.
   - Licença revogada: apaga a chave e o pacote.
-  - Versão de conteúdo nova: baixa o pacote novo. O progresso, que aponta para ids de
+  - Versão de conteúdo nova: baixa o pacote novo **em background, de forma invisível**. O progresso, que aponta para ids de
     desafio, continua valendo.
 - **Amostra:** o primeiro nó da trilha paga vem aberto, sem cifra, nas rotas normais de
   conteúdo, e pode ir na semente do bundle.
@@ -166,7 +173,7 @@ Hipóteses fechadas, escritas nos termos:
 | Reembolso ou estorno | Notificação `REFUND` ou `REVOKE` da App Store, automática |
 | Fraude na compra | Transação que não passa na verificação, ou marcada pela Apple |
 | Redistribuição do conteúdo | Denúncia ou evidência de enunciados e gabaritos publicados fora do app |
-| Compartilhamento de conta | Evidência no registro de aparelhos, como dezenas de aparelhos numa conta |
+| Compartilhamento de conta | Evidência no registro de aparelhos, considerando **apenas aparelhos ativos simultaneamente** (ex: janela de 7 dias), para não punir reinstalações ou troca de celular |
 
 As duas últimas são revogação manual, com a evidência guardada e o motivo em
 `revoked_reason`. Na primeira versão não há tela de administração: a revogação manual é um
@@ -183,6 +190,7 @@ junto.
 ## 8. XP, portões e sync
 
 - **O nível é um só.** O XP de qualquer trilha soma no `global_xp`.
+- **A ordem pedagógica continua obrigatória.** Comprar uma trilha destrava o paywall (o direito de jogar o Nó 2 em diante), mas **não pula os portões de XP**. O usuário ainda precisa acumular XP na trilha comprada para abrir os nós finais. O texto de venda precisa deixar claro que pagar não exime de resolver os problemas.
 - **O portão de cada nó conta só o XP ganho na trilha do nó.** Hoje o Core compara
   `model.global_xp` com o `required_xp` do nó (`app.rs`, no `view`), e não guarda XP por nó
   nem por trilha. O `Model` passa a guardar XP por trilha, reconstruído a partir do
@@ -205,10 +213,30 @@ junto.
 - **Validade offline perto do fim:** aviso a partir de 3 dias antes.
 - **Validade offline vencida:** a trilha pede para conectar.
 - **Revogada:** a trilha some da lista de compradas, com o motivo em linguagem simples.
+- **Gerenciamento de armazenamento:** aba no menu para o usuário ver o peso do que está baixado e poder apagar as trilhas do aparelho.
 - **Descontinuada e comprada:** continua na lista de quem comprou, com o selo de
   descontinuada.
 - **Restaurar compras:** em Ajustes, com o resultado da restauração.
 - **Compra de outra conta:** a transação pertence a outra conta ativa.
+
+Como o design resolve os estados, e o que ficou decidido fora dele:
+
+- **Seleção de trilha é o catálogo em grade**, um balão por trilha na cor dela, aberto pelo
+  nome da trilha com chevron no cabeçalho da árvore. Aqui o app diverge do design, que tinha
+  um botão "Trilhas" à parte: o nome cortava em tela pequena. O selo de validade fica colado
+  ao chevron. A árvore mostra uma trilha por vez.
+- **Paywall em três lugares**, mesmo produto e mesmo preço: o detalhe da trilha, o nó
+  fechado tocado na árvore e o relatório do fim da amostra. "Agora não" na oferta do fim
+  da amostra vale pela sessão.
+- **Validade offline:** silêncio até 26 dias sem contato; de 27 a 30, selo junto do chevron
+  (o de "N dias" some no dia em que o catálogo é aberto), card âmbar e bloco no detalhe;
+  a partir de 31, só essa trilha fecha, numa tela própria.
+- **Comprada e baixando:** a trilha abre quando o pacote termina de baixar; não há jogar
+  durante o download, porque o pacote é um só.
+- **Compra de outra conta:** a mensagem é genérica. O servidor não revela nada da outra
+  conta, nem o e-mail mascarado.
+- **Onboarding:** uma tela só, "Por onde começar?", na primeira abertura, sem preço.
+- **Nivelador (nó zero):** está no design e fica para um PR próprio, com PRD.
 
 ## 10. Fora do escopo
 
