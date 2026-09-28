@@ -12,7 +12,15 @@ smtp_from = "LogN App <seu-email-de-envio@example.com>"
 # Imagem já publicada no Artifact Registry (ver README para como gerar).
 container_image = "us-east1-docker.pkg.dev/seu-projeto-gcp/cloud-run-source-deploy/logn@sha256:..."
 
-# Verificação de origem (Cloudflare na frente do Cloud Run) — deixe como está até o
-# domínio custom e a Cloudflare estarem configurados.
+# Verificação de origem — deixe desligada até o domínio estar registrado.
 enable_origin_verification = false
-origin_trusted_cidrs       = ""
+origin_trusted_cidrs       = "" # só usado com enable_cloudflare=false (outro proxy)
+
+# Cloudflare — domínio já registrado e adicionado como zona na conta, com o account_id
+# em mãos (dashboard > lado direito, em qualquer zona). Ligue os dois junto com
+# enable_origin_verification acima.
+enable_cloudflare     = false
+cloudflare_api_token  = "seu-api-token-com-escopo-zone-dns-ruleset-edit"
+cloudflare_account_id = "0123456789abcdef0123456789abcdef"
+domain_name           = "seu-dominio.sh"
+api_subdomain         = "api"
