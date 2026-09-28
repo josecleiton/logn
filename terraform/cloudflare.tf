@@ -121,4 +121,7 @@ resource "cloudflare_bot_management" "logn" {
   count      = var.enable_cloudflare ? 1 : 0
   zone_id    = data.cloudflare_zone.logn[0].zone_id
   fight_mode = true
+  # A API recusa fight_mode sem JS detections ("cannot enable Fight_Mode while
+  # EnableJS is disabled").
+  enable_js = true
 }
