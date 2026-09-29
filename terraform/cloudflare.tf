@@ -157,3 +157,15 @@ resource "cloudflare_bot_management" "logn" {
   # EnableJS is disabled").
   enable_js = true
 }
+
+# Email Obfuscation desligado. Ligado por padrão, ele troca todo e-mail do HTML por
+# "[email protected]" e injeta um script que decodifica no navegador. As páginas de
+# /legal e a landing não rodam script (a CSP só libera o que tem hash, e o app abre os
+# documentos sem JavaScript), então o contato dos termos e da política sumia. O que
+# ele protege, o endereço de contato público, é para ser lido.
+resource "cloudflare_zone_setting" "email_obfuscation" {
+  count      = var.enable_cloudflare ? 1 : 0
+  zone_id    = data.cloudflare_zone.logn[0].zone_id
+  setting_id = "email_obfuscation"
+  value      = "off"
+}

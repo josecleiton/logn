@@ -148,8 +148,8 @@ variable "enable_cloudflare" {
 variable "cloudflare_api_token" {
   description = <<-EOT
     API Token da Cloudflare (não o Global API Key), restrito à zona do domínio, com:
-    Zone Read, DNS Edit, Transform Rules Edit, WAF Edit (rate limit) e Bot
-    Management Edit. Nunca versionado. O default é um placeholder sem validade —
+    Zone Read, DNS Edit, Transform Rules Edit, WAF Edit (rate limit), Bot
+    Management Edit e Zone Settings Edit (Email Obfuscation desligado). Nunca versionado. O default é um placeholder sem validade —
     passa a checagem de formato do provider (só letras/números/hífen/underscore), mas
     não autentica; só importa de verdade quando enable_cloudflare=true.
   EOT
