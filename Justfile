@@ -95,6 +95,34 @@ deploy-scheduler:
     	--oidc-token-audience="$URL" \
     	--location=us-east1
 
+# --- Terraform: estado e variáveis no bucket `<projeto>-tfstate` ---
+# O bucket é privado, versionado e em us-east1 (Always Free). O nome sai do projeto
+# ativo no gcloud; nada identificável fica no repositório.
+
+# Liga o Terraform ao estado do bucket. Rode uma vez por máquina, antes do plan.
+tf-init:
+    terraform -chdir=terraform init -backend-config="bucket=$(gcloud config get project)-tfstate"
+
+# Baixa o terraform.tfvars do bucket. Recusa sobrescrever um local diferente, que pode
+# ter edição ainda não enviada; FORCE=1 sobrescreve.
+tfvars-pull:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    remote="gs://$(gcloud config get project)-tfstate/terraform/terraform.tfvars"
+    tmp=$(mktemp)
+    trap 'rm -f "$tmp"' EXIT
+    gcloud storage cp "$remote" "$tmp" --quiet
+    if [ -f terraform/terraform.tfvars ] && ! cmp -s "$tmp" terraform/terraform.tfvars && [ "${FORCE:-}" != "1" ]; then
+    	echo "terraform/terraform.tfvars local é diferente do bucket. Suba com 'just tfvars-push' ou rode com FORCE=1." >&2
+    	exit 1
+    fi
+    install -m 600 "$tmp" terraform/terraform.tfvars
+    echo "terraform.tfvars atualizado do bucket."
+
+# Sobe o terraform.tfvars local como versão nova. As 20 anteriores continuam no bucket.
+tfvars-push:
+    gcloud storage cp terraform/terraform.tfvars "gs://$(gcloud config get project)-tfstate/terraform/terraform.tfvars"
+
 # --- Landing page (Cloudflare Worker) ---
 
 # Gera landing/dist nas três línguas. Com LOGN_APP_STORE_URL no ambiente, os botões

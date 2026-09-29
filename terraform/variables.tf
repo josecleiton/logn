@@ -1,7 +1,8 @@
 # Nada aqui tem default de produção. Todo valor identificável (projeto, contas de
-# serviço, domínio, e-mail, URL do serviço) vem de terraform.tfvars, que é local e
-# nunca entra no git — mesma regra do .env. O terraform.tfvars.example mostra a forma,
-# com placeholder, e esse sim é publicável.
+# serviço, domínio, e-mail, URL do serviço) vem de terraform.tfvars, que nunca entra no
+# git — mesma regra do .env. A cópia de verdade fica no bucket do state (`just
+# tfvars-pull` / `just tfvars-push`). O terraform.tfvars.example mostra a forma, com
+# placeholder, e esse sim é publicável.
 
 variable "project_id" {
   description = "ID do projeto no Google Cloud."

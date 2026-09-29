@@ -16,11 +16,14 @@ terraform {
     }
   }
 
-  # Estado local, de propósito: MVP solo, sem time nem CI aplicando em paralelo. O
-  # arquivo de estado (terraform.tfstate) não entra no git — reflete o projeto real,
-  # e ninguém de fora do dono precisa dele. Se isso crescer (mais gente aplicando,
-  # ou CI/CD), o primeiro passo é migrar pra um backend remoto (GCS bucket), não
-  # antes.
+  # Estado num bucket do GCS, versionado e privado, em us-east1: dentro do Always Free.
+  # Local, ele vivia só numa máquina, e perder o arquivo era o Terraform achar que nada
+  # existe. O bucket (`<projeto>-tfstate`) não é gerenciado aqui, porque guarda o
+  # próprio estado; foi criado à mão, e o nome entra no init: `just tf-init`. O
+  # terraform.tfvars mora no mesmo bucket (`just tfvars-pull` / `tfvars-push`).
+  backend "gcs" {
+    prefix = "terraform/state"
+  }
 }
 
 provider "google" {
