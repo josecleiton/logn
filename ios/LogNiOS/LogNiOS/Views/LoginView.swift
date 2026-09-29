@@ -337,7 +337,9 @@ struct LoginView: View {
 
     private var signInLabel: String {
         if signInLocked { return Str.Status.wait_seconds(Int(core.viewModel.authCooldownSeconds)) }
-        return core.viewModel.isAuthenticating ? Str.Login.loading : Str.Login.sign_in
+        // Com a sessão aberta esta tela está saindo, e ainda aparece por um quadro: sem
+        // isto o botão voltava a "Entrar" no caminho para o app.
+        return core.viewModel.isAuthenticating || core.viewModel.hasSession ? Str.Login.loading : Str.Login.sign_in
     }
 }
 

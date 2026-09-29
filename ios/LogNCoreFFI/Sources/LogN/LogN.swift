@@ -1070,6 +1070,9 @@ indirect public enum Event: Hashable, Equatable {
     /// `attempt` é a tentativa que pôs o relógio para correr: o de uma tentativa
     /// anterior não corta a de agora.
     case bootWatchdogElapsed(check: BootCheck, attempt: UInt32)
+    /// Passou o tempo que a entrada pelo login espera pela trilha. `attempt` como no da
+    /// abertura.
+    case enterWatchdogElapsed(attempt: UInt32)
     /// Sem rede na abertura: tentar de novo.
     case retryBoot
     /// Sem rede na abertura: entrar com o que está no aparelho.
@@ -1436,25 +1439,28 @@ indirect public enum Event: Hashable, Equatable {
             try serializer.serialize_variant_index(value: 115)
             try check.serialize(serializer: serializer)
             try serializer.serialize_u32(value: attempt)
-        case .retryBoot:
+        case .enterWatchdogElapsed(let attempt):
             try serializer.serialize_variant_index(value: 116)
-        case .continueOffline:
+            try serializer.serialize_u32(value: attempt)
+        case .retryBoot:
             try serializer.serialize_variant_index(value: 117)
-        case .resumeEmailRead(let x):
+        case .continueOffline:
             try serializer.serialize_variant_index(value: 118)
-            try x.serialize(serializer: serializer)
-        case .queueOwnerRead(let x):
+        case .resumeEmailRead(let x):
             try serializer.serialize_variant_index(value: 119)
             try x.serialize(serializer: serializer)
-        case .queueToAdoptRead(let from, let result):
+        case .queueOwnerRead(let x):
             try serializer.serialize_variant_index(value: 120)
+            try x.serialize(serializer: serializer)
+        case .queueToAdoptRead(let from, let result):
+            try serializer.serialize_variant_index(value: 121)
             try serializer.serialize_str(value: from)
             try result.serialize(serializer: serializer)
         case .queueAdopted(let from):
-            try serializer.serialize_variant_index(value: 121)
+            try serializer.serialize_variant_index(value: 122)
             try serializer.serialize_str(value: from)
         case .syncedQueueRead(let owner, let sent, let result):
-            try serializer.serialize_variant_index(value: 122)
+            try serializer.serialize_variant_index(value: 123)
             try serializer.serialize_str(value: owner)
             try serializeArray(value: sent, serializer: serializer) { item, serializer in
                 try serializer.serialize_str(value: item)
@@ -1937,29 +1943,33 @@ indirect public enum Event: Hashable, Equatable {
             try deserializer.decrease_container_depth()
             return .bootWatchdogElapsed(check: check, attempt: attempt)
         case 116:
+            let attempt = try deserializer.deserialize_u32()
             try deserializer.decrease_container_depth()
-            return .retryBoot
+            return .enterWatchdogElapsed(attempt: attempt)
         case 117:
             try deserializer.decrease_container_depth()
-            return .continueOffline
+            return .retryBoot
         case 118:
-            let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .resumeEmailRead(x)
+            return .continueOffline
         case 119:
             let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .queueOwnerRead(x)
+            return .resumeEmailRead(x)
         case 120:
+            let x = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .queueOwnerRead(x)
+        case 121:
             let from = try deserializer.deserialize_str()
             let result = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .queueToAdoptRead(from: from, result: result)
-        case 121:
+        case 122:
             let from = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .queueAdopted(from: from)
-        case 122:
+        case 123:
             let owner = try deserializer.deserialize_str()
             let sent = try deserializeArray(deserializer: deserializer) { deserializer in
                 try deserializer.deserialize_str()

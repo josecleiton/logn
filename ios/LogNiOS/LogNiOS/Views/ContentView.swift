@@ -20,28 +20,31 @@ struct ContentView: View {
         )
     }
 
-    private var showsOnboarding: Binding<Bool> {
-        Binding(get: { core.viewModel.showOnboarding }, set: { _ in })
-    }
-
     var body: some View {
         // A navegação mora dentro de cada tela raiz, não em volta delas: quando a
         // partida é empurrada, ela toma a tela inteira e a barra sai junto — que é o
         // comportamento que o documento de gameplay mostra.
+        //
+        // O onboarding é a tela, não uma capa por cima dela. Como capa, ele abria no
+        // mesmo instante em que o login saía, e a apresentação segurava o login na tela
+        // por quase um segundo, já com o botão de volta a "Entrar".
         Group {
-            switch tab {
-            case .trilhas:
-                NavigationStack {
-                    SkillTreeHostView(tab: $tab, catalogRequested: $catalogRequested)
-                        .environmentObject(core)
-                        .environmentObject(storeKit)
+            if core.viewModel.showOnboarding {
+                OnboardingView { wantsCatalog in
+                    tab = .trilhas
+                    catalogRequested = wantsCatalog
                 }
-            case .arena:
-                NavigationStack { ArenaHostView(tab: $tab).environmentObject(core) }
-            case .placar:
-                NavigationStack { StandingsHostView(tab: $tab).environmentObject(core) }
+                .environmentObject(core)
+                .transition(.opacity)
+            } else {
+                tabRoot
             }
         }
+        .animation(.easeOut(duration: 0.25), value: core.viewModel.showOnboarding)
+        // Aqui, e não na árvore: com o onboarding na frente a árvore não existe, e o
+        // cartão dele ficava sem o nome da trilha, que vem da mesma busca.
+        .onAppear(perform: loadNodesIfNeeded)
+        .onChange(of: core.viewModel.hasAccessToken) { _ in loadNodesIfNeeded() }
         .tint(LognDark.accent)
         // Dark-first e, por ora, dark-only: `LognLight` existe nos tokens mas nenhum
         // mock desenha o app em claro, então o app não oferece a escolha.
@@ -57,17 +60,44 @@ struct ContentView: View {
             PurchaseProgressView()
                 .environmentObject(core)
         }
-        .fullScreenCover(isPresented: showsOnboarding) {
-            OnboardingView { wantsCatalog in
-                tab = .trilhas
-                catalogRequested = wantsCatalog
-            }
-            .environmentObject(core)
-        }
         .sheet(item: $storeKit.guestPrompt) { prompt in
             GuestPurchaseSheet(prompt: prompt)
                 .environmentObject(core)
                 .environmentObject(storeKit)
+        }
+    }
+
+    /// Busca a árvore assim que a sessão existe.
+    ///
+    /// Nada disparava `fetchNodes` depois do login: entrar autenticado caía no estado
+    /// vazio e só o "Tentar de novo" carregava o mapa. O visitante não entra aqui porque
+    /// o Core já lhe entrega os nós locais.
+    ///
+    /// A árvore da semente também conta como "falta buscar": com ela na tela, a conta
+    /// logada nunca falava com o servidor, e o catálogo e as licenças da trilha paga,
+    /// que vêm atrás dos desafios, nunca chegavam.
+    private func loadNodesIfNeeded() {
+        guard core.viewModel.hasAccessToken,
+              core.viewModel.nodes.isEmpty || core.viewModel.trailFromBundle,
+              !core.viewModel.isFetching else { return }
+        core.dispatch(event: .fetchNodes)
+    }
+
+    @ViewBuilder
+    private var tabRoot: some View {
+        Group {
+            switch tab {
+            case .trilhas:
+                NavigationStack {
+                    SkillTreeHostView(tab: $tab, catalogRequested: $catalogRequested)
+                        .environmentObject(core)
+                        .environmentObject(storeKit)
+                }
+            case .arena:
+                NavigationStack { ArenaHostView(tab: $tab).environmentObject(core) }
+            case .placar:
+                NavigationStack { StandingsHostView(tab: $tab).environmentObject(core) }
+            }
         }
     }
 }
@@ -253,14 +283,10 @@ struct SkillTreeHostView: View {
                 .environmentObject(core)
                 .environmentObject(storeKit)
         }
-        .onAppear(perform: loadNodesIfNeeded)
-        .onChange(of: core.viewModel.hasAccessToken) { _ in loadNodesIfNeeded() }
-        .onChange(of: catalogRequested) { requested in
-            if requested {
-                showsCatalog = true
-                catalogRequested = false
-            }
-        }
+        // O onboarding é a tela antes desta: o pedido do catálogo chega antes de a
+        // árvore existir, e o `onChange` abaixo não dispara com o valor de partida.
+        .onAppear { openCatalogIfRequested(catalogRequested) }
+        .onChange(of: catalogRequested, perform: openCatalogIfRequested)
         // Trocou de trilha (compra aberta, amostra, "Voltar para"): a árvore volta à frente.
         .onChange(of: track.id) { _ in showsCatalog = false }
         .sheet(isPresented: $showsProfile) {
@@ -270,20 +296,10 @@ struct SkillTreeHostView: View {
         }
     }
 
-    /// Busca a árvore assim que a sessão existe.
-    ///
-    /// Nada disparava `fetchNodes` depois do login: entrar autenticado caía no estado
-    /// vazio e só o "Tentar de novo" carregava o mapa. O visitante não entra aqui porque
-    /// o Core já lhe entrega os nós locais.
-    ///
-    /// A árvore da semente também conta como "falta buscar": com ela na tela, a conta
-    /// logada nunca falava com o servidor, e o catálogo e as licenças da trilha paga,
-    /// que vêm atrás dos desafios, nunca chegavam.
-    private func loadNodesIfNeeded() {
-        guard core.viewModel.hasAccessToken,
-              core.viewModel.nodes.isEmpty || core.viewModel.trailFromBundle,
-              !core.viewModel.isFetching else { return }
-        core.dispatch(event: .fetchNodes)
+    private func openCatalogIfRequested(_ requested: Bool) {
+        guard requested else { return }
+        showsCatalog = true
+        catalogRequested = false
     }
 
     private func openTrack(_ id: String) {

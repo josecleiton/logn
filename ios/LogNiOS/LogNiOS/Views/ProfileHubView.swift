@@ -76,6 +76,7 @@ struct ProfileHubView: View {
             CriticalLogoutSheet(
                 pendingCount: pending,
                 xpAtRisk: Int(vm.xpIntoLevel),
+                isSyncing: vm.isSyncing,
                 // Um evento só: quem decide sair é o core, depois da fila subir.
                 onSyncAndLeave: { core.dispatch(event: .syncAndLogout) },
                 onStay: { showsCriticalLogout = false },

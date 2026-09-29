@@ -86,6 +86,8 @@ struct LogoutNoticeView: View {
 struct CriticalLogoutSheet: View {
     let pendingCount: Int
     let xpAtRisk: Int
+    /// A fila está subindo: a saída espera a resposta, e o botão diz isso.
+    let isSyncing: Bool
     let onSyncAndLeave: () -> Void
     let onStay: () -> Void
     let onDiscard: () -> Void
@@ -116,14 +118,23 @@ struct CriticalLogoutSheet: View {
                     .padding(.top, 9)
 
                 Button(action: onSyncAndLeave) {
-                    Text(Str.Logout.sync_and_leave)
-                        .font(.plexSansSemiBold(15, relativeTo: .callout))
-                        .foregroundColor(LognDark.onAccent)
-                        .frame(maxWidth: .infinity, minHeight: 50)
-                        .background(LognDark.accent)
-                        .cornerRadius(Radius.sm)
+                    Group {
+                        if isSyncing {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: LognDark.onAccent))
+                        } else {
+                            Text(Str.Logout.sync_and_leave)
+                                .font(.plexSansSemiBold(15, relativeTo: .callout))
+                        }
+                    }
+                    .foregroundColor(LognDark.onAccent)
+                    .frame(maxWidth: .infinity, minHeight: 50)
+                    .background(LognDark.accent)
+                    .cornerRadius(Radius.sm)
                 }
                 .buttonStyle(PressSinkStyle())
+                .disabled(isSyncing)
+                .accessibilityLabel(Str.Logout.sync_and_leave)
                 .padding(.top, 18)
 
                 Button(action: onStay) {
@@ -144,6 +155,8 @@ struct CriticalLogoutSheet: View {
                         .frame(maxWidth: .infinity, minHeight: 42)
                 }
                 .buttonStyle(.plain)
+                // Descartar com o envio no ar apagaria a fila que está subindo.
+                .disabled(isSyncing)
                 .padding(.top, 4)
             }
             .padding(.horizontal, 20)

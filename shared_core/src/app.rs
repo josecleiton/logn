@@ -202,6 +202,9 @@ pub enum Event {
     /// `attempt` é a tentativa que pôs o relógio para correr: o de uma tentativa
     /// anterior não corta a de agora.
     BootWatchdogElapsed { check: crate::domain::BootCheck, attempt: u32 },
+    /// Passou o tempo que a entrada pelo login espera pela trilha. `attempt` como no da
+    /// abertura.
+    EnterWatchdogElapsed { attempt: u32 },
     /// Sem rede na abertura: tentar de novo.
     RetryBoot,
     /// Sem rede na abertura: entrar com o que está no aparelho.
@@ -280,6 +283,35 @@ const BOOT_WAIT_SECS: u64 = 5;
 fn boot_watchdog(check: BootCheck, attempt: u32) -> Command<Effect, Event> {
     let (tick, _handle) = Time::notify_after(std::time::Duration::from_secs(BOOT_WAIT_SECS));
     tick.then_send(move |_| Event::BootWatchdogElapsed { check: check.clone(), attempt })
+}
+
+/// Quanto o login espera pela trilha antes de abrir o app com o que já tem. Sem teto,
+/// uma resposta presa deixava o botão girando para sempre.
+const ENTER_WAIT_SECS: u64 = 6;
+
+/// Põe o prazo da entrada para correr. O app abre quando a trilha chegar ou ele acabar.
+fn enter_watchdog(model: &mut Model) -> Command<Effect, Event> {
+    model.entering_attempt += 1;
+    let attempt = model.entering_attempt;
+    let (tick, _handle) = Time::notify_after(std::time::Duration::from_secs(ENTER_WAIT_SECS));
+    tick.then_send(move |_| Event::EnterWatchdogElapsed { attempt })
+}
+
+/// Acaba a entrada, com a trilha que houver. Renderiza só quando de fato estava
+/// entrando: nas buscas de fundo de quem já está no app, o render é de quem chamou.
+fn finish_entering(model: &mut Model) -> Command<Effect, Event> {
+    if !model.entering_session {
+        return Command::done();
+    }
+    model.entering_session = false;
+    render::render()
+}
+
+/// Quem está entrando agora, e não quem já estava no app. Troca de senha de dentro do
+/// app devolve token também, e não pode jogar o jogador de volta ao login. Lido antes
+/// de o token novo entrar no modelo.
+fn arriving_from_login(model: &Model) -> bool {
+    model.access_token.is_none() && !model.session_offline && !model.is_guest
 }
 
 /// Dono da fila de quem joga sem conta.
@@ -393,6 +425,16 @@ pub struct Model {
     pub is_syncing: bool,
     pub is_fetching: bool,
     pub is_authenticating: bool,
+    /// Entrou pela tela de login e a trilha ainda não chegou.
+    ///
+    /// O app abria com o token, antes do conteúdo, e cada resposta redesenhava a
+    /// árvore: a semente com a tarja, a trilha do servidor, e o cabeçalho quando o
+    /// catálogo vinha. Enquanto isto vale, o shell continua no login com o botão
+    /// esperando, e a árvore aparece uma vez só, pronta.
+    pub entering_session: bool,
+    /// Tentativa de entrada que pôs o prazo de `ENTER_WAIT_SECS` para correr. O prazo
+    /// de uma entrada anterior não corta a de agora.
+    pub entering_attempt: u32,
     pub is_guest: bool,
     pub locale: String,
     pub pending_retry_event: Option<Event>, // Para o interceptor 401
@@ -1482,6 +1524,7 @@ fn begin_session(model: &mut Model, body: &[u8]) -> Option<Command<Effect, Event
         email: String,
     }
     let data = serde_json::from_slice::<AuthResp>(body).ok()?;
+    model.entering_session = arriving_from_login(model);
     model.access_token = Some(data.access_token);
     if !data.user_id.is_empty() {
         model.user_id = data.user_id;
@@ -1662,6 +1705,9 @@ impl LogNApp {
         // depois do login.
         fail_purchase(model, "", StatusKey::SessionExpired);
         model.purchase_retries.clear();
+        // A sessão caiu no meio da entrada: o login volta a ser tocável já, sem esperar
+        // o prazo da entrada.
+        model.entering_session = false;
         let boot = if model.boot.active {
             model.boot.session = Some(boot_line(BootCheck::Session, BootVerdict::Fail, BootDetail::SessionEnded, 0));
             model.boot.sync = None;
@@ -1745,6 +1791,7 @@ impl App for LogNApp {
                         struct AuthResp { access_token: String, refresh_token: String, #[serde(default)] user_id: String, #[serde(default)] refresh_expires_at: i64 }
                         
                         if let Ok(data) = serde_json::from_slice::<AuthResp>(&response.body) {
+                            model.entering_session = arriving_from_login(model);
                             model.access_token = Some(data.access_token);
                             if !data.user_id.is_empty() {
                                 model.user_id = data.user_id;
@@ -1985,6 +2032,15 @@ impl App for LogNApp {
                     .and(self.claim_queue(model, &owner, &[GUEST_QUEUE_OWNER, ""]))
                 };
 
+                // Quem vem do login espera a trilha nesta tela: ela é buscada daqui, e
+                // não da árvore quando ela aparece, que era o que a fazia aparecer antes
+                // do conteúdo.
+                let queue = if model.entering_session {
+                    queue.and(enter_watchdog(model)).and(self.update(Event::FetchNodes, model))
+                } else {
+                    queue
+                };
+
                 // Identifica na telemetria e busca o que já está no servidor. Com a
                 // análise de uso desligada, não identifica: o que o SDK ainda manda
                 // (erros, medições) sai com identificador anônimo.
@@ -2042,6 +2098,7 @@ impl App for LogNApp {
                 model.is_guest = false;
                 model.session_offline = false;
                 model.session_expires_at = 0;
+                model.entering_session = false;
                 model.review_prompt_pending = false;
                 // A trilha paga é da conta que saiu. O disco fica, sob o id dela; a
                 // memória não, senão quem entra depois neste aparelho abriria a trilha.
@@ -2249,6 +2306,7 @@ impl App for LogNApp {
                 model.status_key = StatusKey::Silent;
                 model.access_token = None;
                 model.is_authenticating = false;
+                model.entering_session = false;
 
                 // Sem token no aparelho não há sessão a conferir: a abertura acaba aqui,
                 // antes de a splash ter o que mostrar, e quem joga agora é o visitante.
@@ -2542,6 +2600,8 @@ impl App for LogNApp {
                             Command::request_from_shell(KeyValueOperation::Get { key: "refresh_token".into() }).then_send(Event::TokenRead)
                         } else {
                             model.status = format!("Error: {}", response.status);
+                            // Sem árvore nova, quem está entrando entra com a que houver.
+                            model.entering_session = false;
                             render::render()
                         }
                     }
@@ -2550,6 +2610,7 @@ impl App for LogNApp {
                     // o jogador e gerar evento de sync com node_id que não existe.
                     HttpResult::Err(_) => {
                         model.status = "Offline: mantendo a trilha que já estava".to_string();
+                        model.entering_session = false;
                         render::render()
                     }
                 }
@@ -2603,6 +2664,7 @@ Event::FetchChallenges => {
                         model.status = "Offline: mantendo os desafios que já estavam".to_string();
                     }
                 }
+                model.entering_session = false;
                 render::render()
             }
 
@@ -2624,6 +2686,9 @@ Event::FetchChallenges => {
             // Sem 401 com refresh aqui, nem na licença e no pacote: são buscas de fundo,
             // e a próxima abertura tenta de novo. O refresh fica com quem o jogador vê.
             Event::TracksFetched(result) => {
+                // O catálogo é o último pedaço que muda a tela: com ele, a árvore e o
+                // cabeçalho aparecem juntos. Deu errado ou não, a entrada acaba aqui.
+                let entered = finish_entering(model);
                 if let HttpResult::Ok(response) = result {
                     if response.status == 200 {
                         if let Ok(tracks) = serde_json::from_slice::<Vec<crate::domain::Track>>(&response.body) {
@@ -2632,7 +2697,7 @@ Event::FetchChallenges => {
                             // libera a trilha (spec, critério 2), sem esperar um toque. Só
                             // com o índice do aparelho já lido; antes disso, é a leitura
                             // dele que pede, e os dois juntos baixariam em dobro.
-                            let snapshot = save_offline_snapshot(model);
+                            let snapshot = entered.and(save_offline_snapshot(model));
                             if model.track_index_loaded_for != model.user_id || model.user_id.is_empty() {
                                 return snapshot;
                             }
@@ -3234,6 +3299,7 @@ Event::FetchChallenges => {
                         struct AuthResp { access_token: String, refresh_token: String, #[serde(default)] user_id: String, #[serde(default)] refresh_expires_at: i64 }
 
                         if let Ok(data) = serde_json::from_slice::<AuthResp>(&response.body) {
+                            model.entering_session = arriving_from_login(model);
                             model.access_token = Some(data.access_token);
                             if !data.user_id.is_empty() {
                                 model.user_id = data.user_id;
@@ -3488,6 +3554,7 @@ Event::FetchChallenges => {
                         struct AuthResp { access_token: String, refresh_token: String, #[serde(default)] user_id: String, #[serde(default)] refresh_expires_at: i64 }
 
                         if let Ok(data) = serde_json::from_slice::<AuthResp>(&response.body) {
+                            model.entering_session = arriving_from_login(model);
                             model.access_token = Some(data.access_token);
                             if !data.user_id.is_empty() {
                                 model.user_id = data.user_id;
@@ -3576,8 +3643,12 @@ Event::FetchChallenges => {
                     body: body_bytes,
                 };
                 
+                // O render vai junto, como no `Login`: sem ele o `is_syncing` só chegava ao
+                // shell com a resposta, já desligado, e "Sincronizar e sair" não mostrava
+                // que estava esperando a rede.
                 Command::request_from_shell(request)
                     .then_send(Event::SyncCompleted)
+                    .and(render::render())
             }
             Event::SyncCompleted(result) => {
                 model.is_syncing = false;
@@ -3640,7 +3711,9 @@ Event::FetchChallenges => {
                                 // A fila subiu: agora sair é seguro.
                                 return flush.and(boot).and(self.update(Event::Logout, model));
                             }
-                            return flush.and(boot);
+                            // O `SyncNow` pôs o "sincronizando" na tela; fora da abertura,
+                            // ninguém mais renderiza para tirá-lo.
+                            return flush.and(boot).and(render::render());
                         } else if response.status == 409 {
                             // Rebase: o conteúdo da fila continua bom, só o
                             // encadeamento é que partiu do lugar errado. Reencadeia a
@@ -4039,6 +4112,10 @@ Event::FetchChallenges => {
                     .and(render::render())
             }
 
+            Event::EnterWatchdogElapsed { attempt } if attempt != model.entering_attempt => Command::done(),
+            // A trilha não chegou no prazo: abre com o que há. O que ainda estiver no ar
+            // chega depois, como em qualquer busca de fundo.
+            Event::EnterWatchdogElapsed { .. } => finish_entering(model),
             Event::BootWatchdogElapsed { attempt, .. } if attempt != model.boot.attempt => Command::done(),
             Event::BootWatchdogElapsed { check, .. } => match check {
                 // A rede não respondeu a tempo: segue como se não houvesse rede. O
@@ -4430,6 +4507,7 @@ Event::FetchChallenges => {
         let show_onboarding = model.prefs_loaded
             && !model.onboarding_done
             && (model.access_token.is_some() || model.session_offline || model.is_guest)
+            && !model.entering_session
             && !model.boot.active;
 
         ViewModel {
@@ -4437,9 +4515,11 @@ Event::FetchChallenges => {
             pending_sync_count: model.pending_events.len() as u32,
             is_syncing: model.is_syncing,
             is_fetching: model.is_fetching,
-            is_authenticating: model.is_authenticating,
-            has_access_token: model.access_token.is_some(),
-            has_session: model.access_token.is_some() || model.session_offline,
+            // Quem está entrando continua no login, com o botão esperando, até a trilha
+            // chegar: o shell só vê a sessão quando há o que mostrar nela.
+            is_authenticating: model.is_authenticating || model.entering_session,
+            has_access_token: model.access_token.is_some() && !model.entering_session,
+            has_session: (model.access_token.is_some() || model.session_offline) && !model.entering_session,
             is_offline_session: model.session_offline,
             trail_from_bundle: model.trail_from_bundle,
             trail_generated_at: model.trail_generated_at.clone(),
@@ -4449,7 +4529,14 @@ Event::FetchChallenges => {
             challenges: model.challenges.clone(),
             nodes: computed_nodes,
             otp_email: model.otp_email.clone(),
-            account_email: model.account_email.clone(),
+            // Como o nome abaixo: depois de sair, vem do instantâneo. O perfil ainda está
+            // descendo quando a saída chega, e sem isto ele descia sem e-mail, com o
+            // avatar do cabeçalho virando "?".
+            account_email: model
+                .logout_undo
+                .as_ref()
+                .map(|s| s.email.clone())
+                .unwrap_or_else(|| model.account_email.clone()),
             otp_verified: model.otp_verified,
             global_xp: model.global_xp,
             bugs_found: model.bugs_found,
@@ -4585,8 +4672,11 @@ mod tests {
         )];
 
         let mut cmd = app.update(Event::SyncAndLogout, &mut model);
-        let req = cmd.expect_one_effect();
-        assert!(matches!(req, Effect::Http(ref r) if r.operation.url == "/api/v1/sync"));
+        // Sem o render junto do request, "Sincronizar e sair" não mostra que está esperando.
+        let effects: Vec<_> = cmd.effects().collect();
+        assert!(effects.iter().any(|e| matches!(e, Effect::Render(_))), "a espera tem de chegar à tela");
+        assert!(app.view(&model).is_syncing);
+        assert!(effects.iter().any(|e| matches!(e, Effect::Http(r) if r.operation.url == "/api/v1/sync")));
 
         let failure = HttpResult::Ok(crux_http::protocol::HttpResponse {
             status: 500, headers: vec![], body: vec![],
@@ -4596,6 +4686,116 @@ mod tests {
         assert_eq!(model.pending_events.len(), 1, "a fila que não subiu fica");
         assert!(model.access_token.is_some(), "e a sessão continua de pé");
         assert!(!model.logout_after_sync);
+    }
+
+    /// O sync de fundo que deu certo tira o "sincronizando" da tela.
+    ///
+    /// Com o render no `SyncNow`, o shell passou a ver o envio começar; sem render na
+    /// resposta, fora da abertura, ele ficava "sincronizando" até outro render qualquer.
+    #[test]
+    fn test_a_background_sync_that_succeeds_renders_the_end() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("tok".into());
+        model.user_id = USER_B.into();
+        model.pending_events = vec![answer("a1", GameEvent::GENESIS)];
+
+        let _ = app.update(Event::SyncNow, &mut model);
+        let mut cmd = app.update(Event::SyncCompleted(http(200, serde_json::json!({ "new_top": "abc" }))), &mut model);
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Render(_))));
+        assert!(!app.view(&model).is_syncing);
+    }
+
+    /// Leva um login por senha até o fim da cadeia do cofre, onde a trilha é pedida.
+    fn login_until_session_stored(app: &LogNApp, model: &mut Model) -> Command<Effect, Event> {
+        let _ = app.update(Event::Login { email: "a@example.com".into(), password_hash: "senha".into() }, model);
+        let _ = app.update(
+            Event::LoginCompleted(http(200, serde_json::json!({
+                "access_token": "acc", "refresh_token": "ref", "user_id": USER_B,
+            }))),
+            model,
+        );
+        let _ = app.update(Event::TokenStored(kv_empty()), model);
+        let _ = app.update(Event::AccountEmailStored(kv_empty()), model);
+        app.update(Event::SessionExpiryStored(kv_empty()), model)
+    }
+
+    /// O app abre depois do login uma vez só, com a trilha e o catálogo já na tela.
+    ///
+    /// Abria com o token, antes do conteúdo, e cada resposta redesenhava a árvore: a
+    /// semente com a tarja, a trilha do servidor, o cabeçalho quando o catálogo chegava.
+    /// Depois de um logout, a primeira tela era "não foi possível carregar o mapa".
+    #[test]
+    fn test_login_opens_the_app_once_the_trail_arrived() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+
+        let mut cmd = login_until_session_stored(&app, &mut model);
+        let urls: Vec<String> = cmd
+            .effects()
+            .filter_map(|e| match e {
+                Effect::Http(r) => Some(r.operation.url.clone()),
+                _ => None,
+            })
+            .collect();
+        assert!(urls.contains(&"/api/v1/nodes".to_string()), "a trilha é pedida pelo login, não pela árvore");
+
+        let waiting = |model: &Model| {
+            let view = app.view(model);
+            !view.has_session && !view.has_access_token && view.is_authenticating
+        };
+        assert!(waiting(&model), "o login segue esperando, com o botão girando");
+
+        let _ = app.update(Event::ProgressFetched(http(200, serde_json::json!({
+            "global_xp": 0, "bugs_found": 0, "dry_runs_completed": 0,
+        }))), &mut model);
+        let _ = app.update(Event::NodesFetched(http(200, serde_json::json!({ "nodes": [], "origins": [] }))), &mut model);
+        let _ = app.update(Event::ChallengesFetched(http(200, serde_json::json!([]))), &mut model);
+        assert!(waiting(&model), "sem o catálogo o cabeçalho ainda mudaria depois");
+
+        let mut cmd = app.update(Event::TracksFetched(http(200, serde_json::json!([]))), &mut model);
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Render(_))));
+        let view = app.view(&model);
+        assert!(view.has_session && view.has_access_token && !view.is_authenticating);
+    }
+
+    /// Sem a trilha, o login não prende ninguém: a falha abre o app com o que houver, e
+    /// o prazo abre quando a resposta não vem.
+    #[test]
+    fn test_login_opens_the_app_when_the_trail_does_not_come() {
+        let app = LogNApp::default();
+
+        let mut model = Model::default();
+        let _ = login_until_session_stored(&app, &mut model);
+        let _ = app.update(Event::NodesFetched(HttpResult::Err(crux_http::HttpError::Io("offline".into()))), &mut model);
+        assert!(app.view(&model).has_session, "falha de rede abre o app");
+
+        let mut model = Model::default();
+        let _ = login_until_session_stored(&app, &mut model);
+        let attempt = model.entering_attempt;
+        let _ = app.update(Event::EnterWatchdogElapsed { attempt: attempt - 1 }, &mut model);
+        assert!(!app.view(&model).has_session, "o prazo de uma entrada anterior não corta esta");
+        let mut cmd = app.update(Event::EnterWatchdogElapsed { attempt }, &mut model);
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Render(_))));
+        assert!(app.view(&model).has_session, "o prazo acabou: abre com o que há");
+    }
+
+    /// Quem já está no app e troca a senha não volta à tela de login esperando a trilha.
+    #[test]
+    fn test_password_reset_inside_the_app_does_not_leave_the_app() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("old".into());
+        model.user_id = USER_B.into();
+
+        let _ = app.update(
+            Event::ResetPasswordCompleted(http(200, serde_json::json!({
+                "access_token": "acc", "refresh_token": "ref", "user_id": USER_B,
+            }))),
+            &mut model,
+        );
+        assert!(!model.entering_session);
+        assert!(app.view(&model).has_session);
     }
 
     /// Desfazer a saída devolve a sessão inteira, inclusive a do disco.
@@ -4646,6 +4846,9 @@ mod tests {
         );
         assert!(model.access_token.is_none());
         assert!(app.view(&model).just_logged_out);
+        // O perfil ainda está descendo quando a saída chega: ele desce com o e-mail.
+        assert!(model.account_email.is_empty());
+        assert_eq!(app.view(&model).account_email, "jogador@example.com");
 
         let mut cmd = app.update(Event::UndoLogout, &mut model);
         let req = cmd
