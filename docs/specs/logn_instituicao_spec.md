@@ -248,7 +248,7 @@ O código reaproveita o `otpHash` com HMAC, com propósito `verify_institution` 
 `user_id` no HMAC. Validade, tentativas e intervalo seguem os OTPs de hoje
 (`OTPMaxAttempts`, `OTPResendCooldown`), mais um teto de 5 envios em 24 h por conta.
 
-**Códigos novos em `backend/api_errors.go`:**
+**Códigos novos em `backend/internal/httpapi/api_errors.go`:**
 
 | Código | Status | Quando |
 |---|---|---|
@@ -555,12 +555,13 @@ esta entrega fixou só o que o texto afirma (seção 8).
 - `backend/internal/domain/repository.go`: `UserStats` ganha
   `Institution *UserInstitution json:"institution"`, preenchido em `GetUserStats`.
   Atualizar o comentário de `purgeAccount`.
-- `backend/api_errors.go`: os códigos da seção 5.
-- `backend/institution_handlers.go` e as rotas dentro de `auth(...)` em `backend/main.go`.
+- `backend/internal/httpapi/api_errors.go`: os códigos da seção 5.
+- `backend/internal/httpapi/institution_handlers.go` e as rotas dentro de `auth(...)` em
+  `backend/internal/httpapi/routes.go`.
 - Testes: domínio e sufixo, domínio compartilhado, histórico, limite de pedidos,
   vencimento e renovação, domínio desconhecido vira pedido, cifra e HMAC sem e-mail em
   claro, código errado, e-mail já usado, troca apaga, expurgo leva as tabelas novas, e
-  em `backend/main_test.go` os códigos, status, 202, 422 em vez de 401 e 401 sem token.
+  em `backend/internal/httpapi/server_test.go` os códigos, status, 202, 422 em vez de 401 e 401 sem token.
 - ADR 0011, "Prova de vínculo institucional separada do login, com e-mail cifrado".
 
 **4. Core**

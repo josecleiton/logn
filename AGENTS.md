@@ -51,7 +51,7 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
 
 7. **Erro de rota que o app lê é `writeError(w, status, code)`, nunca `http.Error`
    com frase.** Ficam fora a rota interna de purga, o `/ready` e as páginas HTML de
-   `/legal`, que ninguém do app lê. O corpo é `{"code", "message"}`; o código está em `backend/api_errors.go` e é
+   `/legal`, que ninguém do app lê. O corpo é `{"code", "message"}`; o código está em `backend/internal/httpapi/api_errors.go` e é
    contrato com app instalado — acrescente, não renomeie. O Core decide pelo código
    (`api_code` em `app.rs`), e erro que o jogador pode corrigir ganha `StatusKey`
    próprio.

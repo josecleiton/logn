@@ -1,4 +1,4 @@
-package main
+package httpapi
 
 import (
 	"context"
@@ -6,8 +6,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"os"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -16,68 +14,6 @@ import (
 	"github.com/josecleiton/logn/backend/internal/legal"
 	"github.com/josecleiton/logn/backend/internal/locale"
 )
-
-// socialVerifiersFromEnv monta um verificador por provedor configurado.
-//
-// Sem GOOGLE_IOS_CLIENT_ID o login pelo Google fica desligado, e a rota responde
-// `provider_disabled`; o servidor sobe do mesmo jeito. O client ID não é segredo, e
-// derrubar o deploy por ele tiraria do ar também quem entra por e-mail.
-//
-// A Apple liga só com as três variáveis da chave do Sign in with Apple (ADR 0017): sem
-// a chave não há como revogar o acesso na exclusão da conta, e a Apple exige a
-// revogação. Uma parte sem as outras é configuração pela metade, e em produção o
-// servidor aborta.
-func socialVerifiersFromEnv() (map[string]socialauth.Verifier, map[string]socialauth.Revoker) {
-	verifiers := map[string]socialauth.Verifier{}
-	revokers := map[string]socialauth.Revoker{}
-	if aud := strings.TrimSpace(os.Getenv("GOOGLE_IOS_CLIENT_ID")); aud != "" {
-		v, err := socialauth.NewGoogleVerifier(aud)
-		if err != nil {
-			log.Fatalf("GOOGLE_IOS_CLIENT_ID inválido: %v", err)
-		}
-		verifiers[socialauth.ProviderGoogle] = v
-	} else {
-		log.Println("GOOGLE_IOS_CLIENT_ID is not set. Google sign-in is disabled.")
-	}
-
-	teamID := strings.TrimSpace(os.Getenv("APPLE_SIGNIN_TEAM_ID"))
-	keyID := strings.TrimSpace(os.Getenv("APPLE_SIGNIN_KEY_ID"))
-	// No Secret Manager a PEM vem com quebras de verdade; no .env, numa linha só, com
-	// `\n` escrito.
-	privateKey := strings.ReplaceAll(os.Getenv("APPLE_SIGNIN_PRIVATE_KEY"), `\n`, "\n")
-	switch set := btoi(teamID != "") + btoi(keyID != "") + btoi(privateKey != ""); set {
-	case 0:
-		log.Println("APPLE_SIGNIN_* is not set. Sign in with Apple is disabled.")
-	case 3:
-		bundleID := strings.TrimSpace(os.Getenv("APPLE_BUNDLE_ID"))
-		if bundleID == "" {
-			bundleID = "sh.logn.app"
-		}
-		v, err := socialauth.NewAppleVerifier(bundleID, nil)
-		if err != nil {
-			log.Fatalf("Sign in with Apple: %v", err)
-		}
-		r, err := socialauth.NewAppleRevoker(teamID, keyID, bundleID, privateKey, nil)
-		if err != nil {
-			log.Fatalf("Sign in with Apple: %v", err)
-		}
-		verifiers[socialauth.ProviderApple] = v
-		revokers[socialauth.ProviderApple] = r
-	default:
-		if os.Getenv("K_SERVICE") != "" {
-			log.Fatalf("APPLE_SIGNIN_TEAM_ID, APPLE_SIGNIN_KEY_ID and APPLE_SIGNIN_PRIVATE_KEY must be set together.")
-		}
-		log.Println("WARNING: APPLE_SIGNIN_* is only partly set. Sign in with Apple is disabled.")
-	}
-	return verifiers, revokers
-}
-
-func btoi(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
 
 type SocialLoginRequest struct {
 	Provider string `json:"provider"`

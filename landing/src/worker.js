@@ -1,7 +1,7 @@
 // Só entra aqui o que o `run_worker_first` manda: `/legal/*`. O resto do site sai
 // direto dos assets.
 //
-// As páginas de termos e privacidade vivem no backend (`backend/legal_pages.go`), que
+// As páginas de termos e privacidade vivem no backend (`backend/internal/httpapi/legal_pages.go`), que
 // já as serve com CSP, allowlist de tags e as três línguas. O Worker só as expõe em
 // `logn.sh/legal/...`, sem copiar texto jurídico para cá — uma fonte, não duas.
 
