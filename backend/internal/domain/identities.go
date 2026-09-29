@@ -71,6 +71,15 @@ func (r *Repository) CreateSocialUser(ctx context.Context, email, provider, subj
 	return id, nil
 }
 
+// HasProviderIdentity diz se a conta tem alguma identidade do provedor.
+func (r *Repository) HasProviderIdentity(ctx context.Context, userID, provider string) (bool, error) {
+	var ok bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (SELECT 1 FROM user_identities WHERE user_id = $1 AND provider = $2)`,
+		userID, provider).Scan(&ok)
+	return ok, err
+}
+
 // HasIdentity diz se a identidade externa é desta conta. É a prova de dono que a
 // exclusão pede a quem não tem senha.
 func (r *Repository) HasIdentity(ctx context.Context, userID, provider, subject string) (bool, error) {

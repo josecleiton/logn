@@ -20,6 +20,12 @@ smtp_port = "465" # 465 = TLS implícito; 587 = STARTTLS (o gomail escolhe pela 
 # Client ID iOS do login com Google (ADR 0016). Vazio desliga o login com Google.
 google_ios_client_id = "000000000000-seuclientid.apps.googleusercontent.com"
 
+# Sign in with Apple (ADR 0017). Desligado até a chave existir; a .p8 vai direto ao
+# secret logn-apple-signin-key, nunca por aqui.
+enable_apple_signin  = false
+apple_signin_team_id = "SEUTEAMID0"
+apple_signin_key_id  = "SUAKEYID00"
+
 # Imagem já publicada no Artifact Registry (ver README para como gerar).
 container_image = "us-east1-docker.pkg.dev/seu-projeto-gcp/cloud-run-source-deploy/logn@sha256:..."
 

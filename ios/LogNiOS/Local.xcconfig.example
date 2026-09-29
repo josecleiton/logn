@@ -13,5 +13,8 @@ TELEMETRY_KEY = phc_SuaChaveAqui
 // Client ID iOS do login com Google (Google Auth Platform > Clients). Vazio esconde o botão.
 GOOGLE_IOS_CLIENT_ID = 000000000000-seuclientid.apps.googleusercontent.com
 
+// Sign in with Apple: só com o time pago. Vazio, o build sai sem a capability e sem o botão.
+LOGN_CODE_SIGN_ENTITLEMENTS =
+
 // Team ID da Apple usado para assinar o build (Apple Developer > Membership)
 DEVELOPMENT_TEAM = SEU_TEAM_ID

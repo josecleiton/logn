@@ -188,9 +188,10 @@ struct ManageAccountView: View {
                 onDelete: { password in
                     core.dispatch(event: .deleteAccount(passwordHash: password))
                 },
-                onDeleteWithGoogle: { credential in
+                onDeleteWithProvider: { proof in
                     core.dispatch(event: .deleteAccountWithProvider(
-                        provider: "google", idToken: credential.idToken, nonce: credential.nonce))
+                        provider: proof.provider, idToken: proof.idToken, nonce: proof.nonce,
+                        authorizationCode: proof.authorizationCode))
                 }
             )
             .environmentObject(core)
@@ -289,17 +290,26 @@ struct ManageAccountView: View {
     }
 }
 
+/// A prova de dono que a exclusão manda quando não é pela senha.
+struct ProviderProof {
+    let provider: String
+    let idToken: String
+    let nonce: String
+    /// Da Apple, para o servidor revogar o acesso. Vazio no Google.
+    let authorizationCode: String
+}
+
 struct DeleteAccountSheet: View {
     let onDelete: (String) -> Void
-    /// Conta criada pelo Google não tem senha: prova que é dona entrando no Google de
+    /// Conta criada por um provedor não tem senha: prova que é dona entrando nele de
     /// novo, na hora. O servidor só aceita login de poucos minutos atrás.
-    let onDeleteWithGoogle: (GoogleAuth.Credential) -> Void
+    let onDeleteWithProvider: (ProviderProof) -> Void
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var core: CoreWrapper
 
     @State private var password = ""
     @State private var confirmation = ""
-    @State private var googleBusy = false
+    @State private var providerBusy = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -335,6 +345,8 @@ struct DeleteAccountSheet: View {
 
             Button(action: {
                 if canDelete {
+                    // Sobra de uma exclusão pelo Google que falhou não é revogada por esta.
+                    GoogleAuth.shared.pendingRevocation = ""
                     onDelete(password)
                     dismiss()
                 }
@@ -348,15 +360,11 @@ struct DeleteAccountSheet: View {
             }
             .disabled(!canDelete)
 
+            if AppleAuth.shared.isConfigured {
+                providerButton(Str.Logout.delete_with_apple, action: deleteWithApple)
+            }
             if GoogleAuth.shared.isConfigured {
-                Button(action: deleteWithGoogle) {
-                    Text(Str.Logout.delete_with_google)
-                        .font(.plexSans(14))
-                        .foregroundColor(confirmed ? LognDark.textSecondary : LognDark.textDim)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .buttonStyle(.plain)
-                .disabled(!confirmed || googleBusy)
+                providerButton(Str.Logout.delete_with_google, action: deleteWithGoogle)
             }
         }
         .padding(20)
@@ -370,16 +378,51 @@ struct DeleteAccountSheet: View {
         return !password.isEmpty && confirmed
     }
 
+    @ViewBuilder
+    private func providerButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.plexSans(14))
+                .foregroundColor(confirmed ? LognDark.textSecondary : LognDark.textDim)
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(.plain)
+        .disabled(!confirmed || providerBusy)
+    }
+
     private func deleteWithGoogle() {
-        googleBusy = true
+        providerBusy = true
         Task {
-            defer { googleBusy = false }
+            defer { providerBusy = false }
             do {
                 let credential = try await GoogleAuth.shared.signIn()
-                onDeleteWithGoogle(credential)
+                // Revogado só se a exclusão der certo: a tela "conta desativada" dispara.
+                GoogleAuth.shared.pendingRevocation = credential.accessToken
+                onDeleteWithProvider(ProviderProof(
+                    provider: "google", idToken: credential.idToken, nonce: credential.nonce, authorizationCode: ""))
                 dismiss()
             } catch GoogleAuth.Failure.cancelled {
                 // Desistiu na janela do Google: a conta fica.
+            } catch {
+                core.dispatch(event: .socialLoginFailed)
+            }
+        }
+    }
+
+    private func deleteWithApple() {
+        providerBusy = true
+        Task {
+            defer { providerBusy = false }
+            do {
+                let credential = try await AppleAuth.shared.signIn()
+                GoogleAuth.shared.pendingRevocation = ""
+                // O servidor troca o código e revoga na Apple; o aparelho não faz nada.
+                onDeleteWithProvider(ProviderProof(
+                    provider: "apple", idToken: credential.idToken, nonce: credential.nonce,
+                    authorizationCode: credential.authorizationCode))
+                dismiss()
+            } catch AppleAuth.Failure.cancelled {
+                // Desistiu na folha da Apple: a conta fica.
             } catch {
                 core.dispatch(event: .socialLoginFailed)
             }

@@ -304,6 +304,9 @@ pub enum StatusKey {
     SocialEmailUnverified,
     /// `provider_disabled`: o servidor está com o login por esse provedor desligado.
     SocialProviderDisabled,
+    /// `provider_reauth_required`: excluir a conta pede a confirmação pela Apple, não a
+    /// senha (ADR 0017).
+    ProviderReauthRequired,
 }
 
 /// Uma das verificações que a abertura roda antes de soltar o jogador no app.

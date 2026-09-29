@@ -50,9 +50,10 @@ purchase_revoked = "Esta compra fue reembolsada o cancelada y ya no desbloquea l
 purchase_needs_account = "Para comprar una pista, crea una cuenta o inicia sesión."
 track_revoked = "Se revocó el acceso a una pista de pago. El XP que ganaste se queda."
 track_download_failed = "La compra está en tu cuenta, pero la pista no se pudo descargar ahora. Se descarga sola la próxima vez que abras la app con internet."
-social_sign_in_failed = "No se pudo iniciar sesión con Google. Inténtalo de nuevo."
+social_sign_in_failed = "No se pudo iniciar sesión de esa forma. Inténtalo de nuevo."
 social_email_unverified = "Google todavía no confirmó el correo de esta cuenta. Confírmalo allí e inténtalo de nuevo."
-social_provider_disabled = "El inicio de sesión con Google no está disponible ahora. Entra con correo y contraseña."
+social_provider_disabled = "Este inicio de sesión no está disponible ahora. Entra con correo y contraseña."
+provider_reauth_required = "Esta cuenta también entra con Apple. Para eliminarla, confirma con Apple."
 wait_seconds = "Espera %{seconds} s"
 sample_standings = "Datos de ejemplo. La tabla de posiciones aún no está activa: equipos, puestos y números son ficticios."
 
@@ -251,6 +252,7 @@ restored_title = "Eliminación cancelada"
 restored_body = "Tu cuenta volvió con todo tu progreso y ya no se eliminará."
 notice_ok = "Entendido"
 delete_with_google = "Confirmar con Google en lugar de la contraseña"
+delete_with_apple = "Confirmar con Apple en lugar de la contraseña"
 
 [account]
 manage = "Administrar cuenta"

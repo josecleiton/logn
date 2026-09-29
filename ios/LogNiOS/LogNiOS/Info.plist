@@ -33,6 +33,8 @@
 	<string>1</string>
 	<key>LogNApiBaseURL</key>
 	<string>${API_BASE_URL}</string>
+	<key>LogNAppleSignIn</key>
+	<string>${LOGN_CODE_SIGN_ENTITLEMENTS}</string>
 	<key>LogNGoogleClientID</key>
 	<string>${GOOGLE_IOS_CLIENT_ID}</string>
 	<key>LogNPostHogHost</key>

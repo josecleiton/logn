@@ -62,6 +62,7 @@
 		CF9D002B22CE05C3BC5D80D6 /* LeaveMatchSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4811EB169815262BA8CDC9F /* LeaveMatchSheet.swift */; };
 		D7C66D51C4C07B02BDCF7FD7 /* legal-terms.pt-BR.html in Resources */ = {isa = PBXBuildFile; fileRef = A22C79FFC5A566973EBC4A20 /* legal-terms.pt-BR.html */; };
 		E2D8CA6DB078DBFF781C1263 /* legal-privacy.es.html in Resources */ = {isa = PBXBuildFile; fileRef = AA26092B0334D250671544C2 /* legal-privacy.es.html */; };
+		E2F37B6674FCB2BFD41D9ED6 /* AppleAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64E79C96A0A5D515C9314756 /* AppleAuth.swift */; };
 		E4D312CCDFFA8F61AEA205B5 /* BootLineCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45E6D51BEB841417BC35FF82 /* BootLineCopy.swift */; };
 		E51C5DD63A8796B58694D004 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2A37D7575A08B4C92B940D53 /* IBMPlexMono-Regular.ttf */; };
 		E618B59B0A839990BDA626EA /* MatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BCAD3D7D269E2D03F55181F /* MatchView.swift */; };
@@ -103,6 +104,7 @@
 		50E1734BB756CB9066ECEC94 /* ScoreboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoreboardView.swift; sourceTree = "<group>"; };
 		549AE758216A25FF57DE3F1B /* AccountNoticeViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountNoticeViews.swift; sourceTree = "<group>"; };
 		580707575DDD44682E65BC01 /* StoreKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitManager.swift; sourceTree = "<group>"; };
+		64E79C96A0A5D515C9314756 /* AppleAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleAuth.swift; sourceTree = "<group>"; };
 		6E3DB489715A5B620395CD47 /* LogoutViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogoutViews.swift; sourceTree = "<group>"; };
 		72C915F676CBB9F04656C255 /* CoreWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreWrapper.swift; sourceTree = "<group>"; };
 		752CBF98CC2C51F2EDC3EF62 /* IBMPlexSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Regular.ttf"; sourceTree = "<group>"; };
@@ -132,6 +134,7 @@
 		C54D531EF24FAD3B3299DBF0 /* SampleDataNotice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleDataNotice.swift; sourceTree = "<group>"; };
 		C5B2B5EA563D4C0A69035BF3 /* ResetPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetPasswordView.swift; sourceTree = "<group>"; };
 		C5B7C9FB40CD745774D3BA3F /* IBMPlexMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Medium.ttf"; sourceTree = "<group>"; };
+		CDC2747AFDE52EC7AB92ACF8 /* LogNiOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LogNiOS.entitlements; sourceTree = "<group>"; };
 		CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		D06AADFA16250D1A08A15AFE /* LognTopics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LognTopics.swift; sourceTree = "<group>"; };
 		D729B95C717FE4538867D790 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
@@ -191,6 +194,7 @@
 		4DA05EDD2970433B4DA72D53 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				64E79C96A0A5D515C9314756 /* AppleAuth.swift */,
 				72C915F676CBB9F04656C255 /* CoreWrapper.swift */,
 				F0F824827A71810A1B195C0D /* GoogleAuth.swift */,
 				580707575DDD44682E65BC01 /* StoreKitManager.swift */,
@@ -298,6 +302,7 @@
 			children = (
 				F486C5E97DFDCE2C80818FB7 /* Assets.xcassets */,
 				36CC53FEE4EF414C2FFE69AB /* Info.plist */,
+				CDC2747AFDE52EC7AB92ACF8 /* LogNiOS.entitlements */,
 				80804A0792E45E01C5BE3D0B /* LogNiOSApp.swift */,
 				A8F69132C2B41918F5A02B2B /* StoreKitConfig.storekit */,
 				856EBED95C7BAADCCD7D633E /* Components */,
@@ -429,6 +434,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6FEEE4F67862A78B1A8ED436 /* AccountNoticeViews.swift in Sources */,
+				E2F37B6674FCB2BFD41D9ED6 /* AppleAuth.swift in Sources */,
 				FA39E591FFCF6E0D9F6EABC6 /* BalloonShape.swift in Sources */,
 				E4D312CCDFFA8F61AEA205B5 /* BootLineCopy.swift in Sources */,
 				EEA1C8659AB655793D5D76FC /* CatalogView.swift in Sources */,
@@ -554,6 +560,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "$(LOGN_CODE_SIGN_ENTITLEMENTS)";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				INFOPLIST_FILE = LogNiOS/Info.plist;
@@ -639,6 +646,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "$(LOGN_CODE_SIGN_ENTITLEMENTS)";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				INFOPLIST_FILE = LogNiOS/Info.plist;

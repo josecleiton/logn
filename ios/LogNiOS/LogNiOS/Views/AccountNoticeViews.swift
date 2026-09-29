@@ -48,6 +48,9 @@ struct DeletionNoticeView: View {
                 .padding(.bottom, 28)
             }
         }
+        // A exclusão confirmada pelo Google deu certo: agora o LogN sai dos apps com
+        // acesso à conta Google. Sem token pendente (senha, Apple), não faz nada.
+        .task { await GoogleAuth.shared.revokePending() }
     }
 
     /// A data do expurgo por extenso, na língua do app.

@@ -52,9 +52,10 @@ purchase_revoked = "Esta compra foi reembolsada ou cancelada e não libera mais 
 purchase_needs_account = "Para comprar uma trilha, crie uma conta ou entre."
 track_revoked = "O acesso a uma trilha paga foi revogado. O XP que você ganhou continua."
 track_download_failed = "A compra está na sua conta, mas não consegui baixar a trilha agora. Ela baixa sozinha na próxima abertura com internet."
-social_sign_in_failed = "Não consegui entrar com o Google. Tente de novo."
+social_sign_in_failed = "Não consegui entrar por esse login. Tente de novo."
 social_email_unverified = "O Google ainda não confirmou o e-mail desta conta. Confirme por lá e tente de novo."
-social_provider_disabled = "O login com o Google está fora do ar agora. Entre com e-mail e senha."
+social_provider_disabled = "Este login está fora do ar agora. Entre com e-mail e senha."
+provider_reauth_required = "Esta conta também entra pela Apple. Para excluir, confirme com a Apple."
 wait_seconds = "Aguarde %{seconds} s"
 sample_standings = "Dados de exemplo. O ranking ainda não está no ar: times, posições e números são fictícios."
 
@@ -253,6 +254,7 @@ restored_title = "Exclusão cancelada"
 restored_body = "Sua conta voltou com todo o progresso e não será mais apagada."
 notice_ok = "Entendi"
 delete_with_google = "Confirmar com o Google no lugar da senha"
+delete_with_apple = "Confirmar com a Apple no lugar da senha"
 
 [account]
 manage = "Gerenciar conta"

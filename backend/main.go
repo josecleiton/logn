@@ -27,6 +27,8 @@ type Server struct {
 	storekit       *storekit.Validator
 	// Um verificador por provedor de login ligado. Provedor fora do mapa está desligado.
 	social map[string]socialauth.Verifier
+	// Provedores que exigem revogar o acesso na exclusão da conta (a Apple).
+	revokers map[string]socialauth.Revoker
 }
 
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
@@ -310,12 +312,14 @@ func main() {
 	repo := domain.NewRepository(pool)
 	mailer := email.NewMailer()
 	validator := cloudauth.NewGoogleValidator()
+	social, revokers := socialVerifiersFromEnv()
 	server := &Server{
 		repo:           repo,
 		mailer:         mailer,
 		cloudValidator: validator,
 		storekit:       storeKitValidatorFromEnv(),
-		social:         socialVerifiersFromEnv(),
+		social:         social,
+		revokers:       revokers,
 	}
 
 	if os.Getenv("PURGE_ONLY") == "true" {

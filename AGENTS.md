@@ -99,7 +99,8 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    lugar é variável de ambiente (`.env`, ignorado) e Secret Manager. Fallback fixo só
    em desenvolvimento, e o servidor **aborta** em produção (`K_SERVICE` setado) se
    `JWT_SECRET`, `TRACK_KEY_SECRET` ou `APPLE_BUNDLE_ID` faltarem, ou se
-   `APPLE_XCODE_ROOT_CERT` estiver setado; não crie outro fallback nem enfraqueça esse. Chave de
+   `APPLE_XCODE_ROOT_CERT` estiver setado, ou se só parte de `APPLE_SIGNIN_*` vier
+   (ADR 0017); não crie outro fallback nem enfraqueça esse. Chave de
    telemetria e URL da API chegam ao iOS por `Local.xcconfig` (ignorado) e
    `Info.plist`, nunca em literal Swift. Placeholder em exemplo é visivelmente falso
    (`phc_SuaChaveAqui`). Não logue token, senha, OTP, e-mail completo nem corpo de

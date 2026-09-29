@@ -52,9 +52,10 @@ purchase_revoked = "This purchase was refunded or cancelled and no longer unlock
 purchase_needs_account = "To buy a track, create an account or sign in."
 track_revoked = "Access to a paid track was revoked. The XP you earned stays."
 track_download_failed = "The purchase is on your account, but the track couldn't download right now. It downloads on its own the next time you open the app online."
-social_sign_in_failed = "Couldn't sign in with Google. Try again."
+social_sign_in_failed = "Couldn't sign in that way. Try again."
 social_email_unverified = "Google hasn't confirmed this account's email yet. Confirm it there and try again."
-social_provider_disabled = "Sign in with Google is down right now. Use your email and password."
+social_provider_disabled = "This sign-in option is down right now. Use your email and password."
+provider_reauth_required = "This account also signs in with Apple. To delete it, confirm with Apple."
 wait_seconds = "Wait %{seconds} s"
 sample_standings = "Sample data. The ranking isn't live yet: teams, positions and numbers are made up."
 
@@ -253,6 +254,7 @@ restored_title = "Deletion cancelled"
 restored_body = "Your account is back with all your progress and will no longer be erased."
 notice_ok = "Got it"
 delete_with_google = "Confirm with Google instead of a password"
+delete_with_apple = "Confirm with Apple instead of a password"
 
 [account]
 manage = "Manage account"

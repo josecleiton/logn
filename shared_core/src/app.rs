@@ -182,8 +182,9 @@ pub enum Event {
     /// viaja é a senha em si, sobre TLS, e o servidor confere com Argon2.
     DeleteAccount { password_hash: String },
     /// Pede a exclusão provando que é dono com um login novo no provedor: é o caminho
-    /// da conta que não tem senha.
-    DeleteAccountWithProvider { provider: String, id_token: String, nonce: String },
+    /// da conta que não tem senha. `authorization_code` é o da Apple, com que o servidor
+    /// revoga o acesso; vazio no Google.
+    DeleteAccountWithProvider { provider: String, id_token: String, nonce: String, authorization_code: String },
     AccountDeleted(HttpResult),
     /// Fechou a tela "conta desativada, apagada até DD/MM".
     DismissDeletionNotice,
@@ -3219,7 +3220,7 @@ Event::FetchChallenges => {
                     .then_send(Event::AccountDeleted)
                     .and(render::render())
             }
-            Event::DeleteAccountWithProvider { provider, id_token, nonce } => {
+            Event::DeleteAccountWithProvider { provider, id_token, nonce, authorization_code } => {
                 if model.access_token.is_none() {
                     model.status_key = StatusKey::NoConnection;
                     return render::render();
@@ -3229,9 +3230,12 @@ Event::FetchChallenges => {
                     method: "POST".to_string(),
                     url: "/api/v1/users/me/delete".to_string(),
                     headers: auth_headers(&model.access_token, &model.locale),
-                    body: serde_json::json!({ "provider": provider, "id_token": id_token, "nonce": nonce })
-                        .to_string()
-                        .into_bytes(),
+                    body: serde_json::json!({
+                        "provider": provider, "id_token": id_token, "nonce": nonce,
+                        "authorization_code": authorization_code,
+                    })
+                    .to_string()
+                    .into_bytes(),
                 };
                 Command::request_from_shell(request)
                     .then_send(Event::AccountDeleted)
@@ -3280,6 +3284,12 @@ Event::FetchChallenges => {
                     }
                     HttpResult::Ok(response) if response.status == 401 => {
                         model.status_key = StatusKey::WrongCredentials;
+                    }
+                    // A conta também entra pela Apple: a senha não basta, porque só a
+                    // confirmação pela Apple traz o código que revoga o acesso.
+                    HttpResult::Ok(response) if response.status == 409
+                        && api_code(&response.body).as_deref() == Some("provider_reauth_required") => {
+                        model.status_key = StatusKey::ProviderReauthRequired;
                     }
                     HttpResult::Ok(response) if response.status == 429 => {
                         return rate_limited(model, &response, false);
@@ -8136,13 +8146,30 @@ mod tests {
         let mut model = Model::default();
         model.access_token = Some("acc".into());
         let mut cmd = app.update(
-            Event::DeleteAccountWithProvider { provider: "google".into(), id_token: "novo".into(), nonce: "n".into() },
+            Event::DeleteAccountWithProvider {
+                provider: "apple".into(), id_token: "novo".into(), nonce: "n".into(),
+                authorization_code: "code-1".into(),
+            },
             &mut model,
         );
         let reqs = http_requests(&mut cmd);
         assert_eq!(reqs[0].url, "/api/v1/users/me/delete");
         let body = body_of(&reqs[0]);
         assert_eq!(body["id_token"], "novo");
+        assert_eq!(body["provider"], "apple");
+        // O código vai junto: é com ele que o servidor revoga o acesso na Apple.
+        assert_eq!(body["authorization_code"], "code-1");
         assert!(body.get("password").is_none());
+    }
+
+    #[test]
+    fn deleting_an_apple_linked_account_by_password_asks_for_apple() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("acc".into());
+        let _ = app.update(Event::DeleteAccount { password_hash: "senha-forte".into() }, &mut model);
+        let _ = app.update(Event::AccountDeleted(api_error(409, "provider_reauth_required")), &mut model);
+        assert_eq!(model.status_key, StatusKey::ProviderReauthRequired);
+        assert!(model.access_token.is_some(), "a conta segue de pé");
     }
 }

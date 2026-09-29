@@ -62,6 +62,7 @@ track_download_failed = {}
 social_sign_in_failed = {}
 social_email_unverified = {}
 social_provider_disabled = {}
+provider_reauth_required = {}
 wait_seconds ={ placeholders = [{ name = "seconds", type = "int" }] }
 sample_standings = {}
 # Sair da partida. O Core decide se pergunta; a cópia mora aqui.
@@ -271,6 +272,7 @@ restored_title = {}
 restored_body = {}
 notice_ok = {}
 delete_with_google = {}
+delete_with_apple = {}
 
 [groups.account.keys]
 manage = {}

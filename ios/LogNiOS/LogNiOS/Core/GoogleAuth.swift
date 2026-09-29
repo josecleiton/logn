@@ -19,6 +19,9 @@ final class GoogleAuth: NSObject {
         let idToken: String
         /// O nonce cru. O Google recebeu o SHA-256 dele; só o servidor vê este valor.
         let nonce: String
+        /// Só para `revoke` depois de excluir a conta. Não sai do aparelho e não é
+        /// guardado: vence em uma hora.
+        let accessToken: String
     }
 
     enum Failure: Error {
@@ -33,6 +36,7 @@ final class GoogleAuth: NSObject {
     private static let discoveryURL = URL(string: "https://accounts.google.com/.well-known/openid-configuration")!
     private static let fallbackAuthorization = URL(string: "https://accounts.google.com/o/oauth2/v2/auth")!
     private static let fallbackToken = URL(string: "https://oauth2.googleapis.com/token")!
+    private static let revokeURL = URL(string: "https://oauth2.googleapis.com/revoke")!
 
     private var endpoints: (authorization: URL, token: URL)?
     private var session: ASWebAuthenticationSession?
@@ -59,6 +63,8 @@ final class GoogleAuth: NSObject {
         guard !inFlight else { throw Failure.cancelled }
         inFlight = true
         defer { inFlight = false }
+        // Exclusão que não deu certo deixou o token aqui; um login novo o descarta.
+        pendingRevocation = ""
 
         // O esquema de retorno é o Client ID ao contrário, como o Google exige para
         // client de iOS. A sessão intercepta o retorno sozinha, sem entrada no Info.plist.
@@ -76,7 +82,8 @@ final class GoogleAuth: NSObject {
             URLQueryItem(name: "client_id", value: clientID),
             URLQueryItem(name: "redirect_uri", value: redirectURI),
             URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(name: "scope", value: "openid email profile"),
+            // Só o que o servidor usa: `sub`, `email` e `email_verified`. Nome e foto não.
+            URLQueryItem(name: "scope", value: "openid email"),
             URLQueryItem(name: "code_challenge", value: Self.base64URL(Data(SHA256.hash(data: Data(verifier.utf8))))),
             URLQueryItem(name: "code_challenge_method", value: "S256"),
             URLQueryItem(name: "state", value: state),
@@ -97,11 +104,34 @@ final class GoogleAuth: NSObject {
         guard value("state") == state else { throw Failure.failed }
         guard let code = value("code"), !code.isEmpty else { throw Failure.failed }
 
-        let idToken = try await exchange(
+        let tokens = try await exchange(
             code: code, verifier: verifier, clientID: clientID,
             redirectURI: redirectURI, endpoint: tokenEndpoint
         )
-        return Credential(idToken: idToken, nonce: nonce)
+        return Credential(idToken: tokens.idToken, nonce: nonce, accessToken: tokens.accessToken)
+    }
+
+    /// O access token do login que confirmou uma exclusão, esperando ela dar certo.
+    /// Só na memória; sai na revogação ou no próximo login.
+    var pendingRevocation = ""
+
+    /// Revoga o token pendente, se houver. Chamado quando a exclusão deu certo.
+    func revokePending() async {
+        let token = pendingRevocation
+        pendingRevocation = ""
+        await revoke(accessToken: token)
+    }
+
+    /// Tira o LogN dos apps com acesso à conta Google da pessoa. Só na exclusão da
+    /// conta: no login comum, revogar apagaria o consentimento e o Google pediria de
+    /// novo a cada entrada. Falha não importa; a conta já foi desativada.
+    func revoke(accessToken: String) async {
+        guard !accessToken.isEmpty else { return }
+        var request = URLRequest(url: Self.revokeURL)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.httpBody = "token=\(Self.formEncode(accessToken))".data(using: .utf8)
+        _ = try? await URLSession.shared.data(for: request)
     }
 
     // MARK: - Etapas
@@ -126,7 +156,7 @@ final class GoogleAuth: NSObject {
         }
     }
 
-    private func exchange(code: String, verifier: String, clientID: String, redirectURI: String, endpoint: URL) async throws -> String {
+    private func exchange(code: String, verifier: String, clientID: String, redirectURI: String, endpoint: URL) async throws -> (idToken: String, accessToken: String) {
         let fields = [
             ("code", code),
             ("client_id", clientID),
@@ -146,11 +176,11 @@ final class GoogleAuth: NSObject {
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw Failure.failed }
-        struct TokenResponse: Decodable { let id_token: String }
+        struct TokenResponse: Decodable { let id_token: String; let access_token: String? }
         guard let token = try? JSONDecoder().decode(TokenResponse.self, from: data), !token.id_token.isEmpty else {
             throw Failure.failed
         }
-        return token.id_token
+        return (token.id_token, token.access_token ?? "")
     }
 
     /// Os endereços do discovery document, lidos uma vez por execução do app. Cada um só

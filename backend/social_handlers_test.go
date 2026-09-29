@@ -394,3 +394,163 @@ func TestDeleteAccountWithoutPasswordNeedsItsOwnIdentity(t *testing.T) {
 		t.Fatalf("exclusão com a própria identidade: %d %s", rec.Code, rec.Body.String())
 	}
 }
+
+// fakeRevoker guarda os códigos que recebeu, com o `sub` de cada um, e falha quando
+// mandado.
+type fakeRevoker struct {
+	codes []string
+	fail  bool
+}
+
+func (f *fakeRevoker) Revoke(_ context.Context, code, subject string) error {
+	f.codes = append(f.codes, code+"@"+subject)
+	if f.fail {
+		return errors.New("apple fora do ar")
+	}
+	return nil
+}
+
+// withApple liga a Apple na fixture, com os tokens dela e o revogador falso.
+func (f *socialFixture) withApple(tokens fakeVerifier) *fakeRevoker {
+	rv := &fakeRevoker{}
+	f.s.social[socialauth.ProviderApple] = tokens
+	f.s.revokers = map[string]socialauth.Revoker{socialauth.ProviderApple: rv}
+	return rv
+}
+
+func appleBody(token string) map[string]any {
+	b := signupBody(token)
+	b["provider"] = "apple"
+	return b
+}
+
+func (f *socialFixture) deleteAs(t *testing.T, userID, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+	req.Header.Set("Authorization", bearer(t, userID))
+	rec := httptest.NewRecorder()
+	f.s.deleteAccountHandler(rec, req)
+	return rec
+}
+
+func TestAppleDisabledWithoutItsKey(t *testing.T) {
+	s := &Server{social: map[string]socialauth.Verifier{}}
+	rec := httptest.NewRecorder()
+	s.socialLoginHandler(rec, httptest.NewRequest(http.MethodPost, "/",
+		strings.NewReader(`{"provider":"apple","id_token":"t","nonce":"n"}`)))
+	expect(t, rec, http.StatusServiceUnavailable, codeProviderDisabled)
+}
+
+func TestAppleSignupAndDeletionRevokesTheGrant(t *testing.T) {
+	f := newSocialFixture(t, fakeVerifier{})
+	apple := fakeVerifier{}
+	rv := f.withApple(apple)
+	addr := f.email("apple")
+	f.cleanupEmail(t, addr)
+	apple["t"] = socialauth.Identity{Subject: "apple-sub-" + f.tag, Email: addr, EmailVerified: true}
+
+	userID := sessionUser(t, f.post(t, appleBody("t")))
+	if owns, _ := f.s.repo.HasIdentity(context.Background(), userID, "apple", "apple-sub-"+f.tag); !owns {
+		t.Fatal("identidade da Apple não gravada")
+	}
+
+	// Sem o código, não há como revogar: a exclusão não passa.
+	expect(t, f.deleteAs(t, userID, `{"provider":"apple","id_token":"t","nonce":"`+fakeNonce+`"}`),
+		http.StatusBadRequest, codeInvalidRequest)
+	if !f.s.repo.IsUserActive(context.Background(), userID) {
+		t.Fatal("conta desativada sem revogação possível")
+	}
+
+	rec := f.deleteAs(t, userID, `{"provider":"apple","id_token":"t","nonce":"`+fakeNonce+`","authorization_code":"code-1"}`)
+	if rec.Code != http.StatusOK || f.s.repo.IsUserActive(context.Background(), userID) {
+		t.Fatalf("exclusão pela Apple: %d %s", rec.Code, rec.Body.String())
+	}
+	// O código vai com o `sub` que provou a posse: é ele que a revogação confere.
+	if want := "code-1@apple-sub-" + f.tag; len(rv.codes) != 1 || rv.codes[0] != want {
+		t.Fatalf("revogação recebeu %v, want [%s]", rv.codes, want)
+	}
+}
+
+// Conta com Google e Apple: confirmar pelo Google não basta, porque a Apple ficaria
+// autorizada.
+func TestGoogleDeletionOfAnAppleLinkedAccountGoesThroughApple(t *testing.T) {
+	google := fakeVerifier{}
+	f := newSocialFixture(t, google)
+	apple := fakeVerifier{}
+	rv := f.withApple(apple)
+	addr := f.email("dois-provedores")
+	f.cleanupEmail(t, addr)
+	apple["a"] = socialauth.Identity{Subject: "apple-dois-" + f.tag, Email: addr, EmailVerified: true}
+	google["g"] = socialauth.Identity{Subject: "google-dois-" + f.tag, Email: addr, EmailVerified: true}
+	userID := sessionUser(t, f.post(t, appleBody("a")))
+	if got := sessionUser(t, f.post(t, loginBody("g"))); got != userID {
+		t.Fatalf("Google entrou em %s, want %s", got, userID)
+	}
+
+	expect(t, f.deleteAs(t, userID, `{"provider":"google","id_token":"g","nonce":"`+fakeNonce+`"}`),
+		http.StatusConflict, codeProviderReauthRequired)
+	if !f.s.repo.IsUserActive(context.Background(), userID) || len(rv.codes) != 0 {
+		t.Fatal("exclusão pelo Google passou sem revogar a Apple")
+	}
+}
+
+// Apple desligada depois de haver contas nela: a exclusão pela senha não fica sem
+// saída.
+func TestDeletionWithAppleDisabledDoesNotTrapTheAccount(t *testing.T) {
+	f := newSocialFixture(t, fakeVerifier{})
+	addr := f.email("apple-desligada")
+	userID := f.seedPasswordUser(t, addr)
+	if _, err := f.s.repo.LinkIdentity(context.Background(), "apple", "apple-velha-"+f.tag, userID); err != nil {
+		t.Fatal(err)
+	}
+	// Sem `withApple`: nenhum revogador ligado.
+	if rec := f.deleteAs(t, userID, `{"password":"senha-forte-do-teste"}`); rec.Code != http.StatusOK {
+		t.Fatalf("exclusão presa com a Apple desligada: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAppleOutageDoesNotBlockDeletion(t *testing.T) {
+	f := newSocialFixture(t, fakeVerifier{})
+	apple := fakeVerifier{}
+	rv := f.withApple(apple)
+	rv.fail = true
+	addr := f.email("apple-fora")
+	f.cleanupEmail(t, addr)
+	apple["t"] = socialauth.Identity{Subject: "apple-fora-" + f.tag, Email: addr, EmailVerified: true}
+	userID := sessionUser(t, f.post(t, appleBody("t")))
+
+	rec := f.deleteAs(t, userID, `{"provider":"apple","id_token":"t","nonce":"`+fakeNonce+`","authorization_code":"c"}`)
+	if rec.Code != http.StatusOK || f.s.repo.IsUserActive(context.Background(), userID) {
+		t.Fatalf("Apple fora do ar segurou a exclusão: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestPasswordDeletionOfAnAppleLinkedAccountGoesThroughApple(t *testing.T) {
+	f := newSocialFixture(t, fakeVerifier{})
+	apple := fakeVerifier{}
+	f.withApple(apple)
+	addr := f.email("senha-e-apple")
+	userID := f.seedPasswordUser(t, addr)
+	apple["t"] = socialauth.Identity{Subject: "apple-ligada-" + f.tag, Email: addr, EmailVerified: true}
+	// O primeiro login pela Apple liga a identidade à conta com senha.
+	if got := sessionUser(t, f.post(t, appleBody("t"))); got != userID {
+		t.Fatalf("login pela Apple em %s, want %s", got, userID)
+	}
+
+	expect(t, f.deleteAs(t, userID, `{"password":"senha-forte-do-teste"}`),
+		http.StatusConflict, codeProviderReauthRequired)
+	if !f.s.repo.IsUserActive(context.Background(), userID) {
+		t.Fatal("conta desativada pela senha sem revogar a Apple")
+	}
+
+	// Conta com senha e só Google continua saindo pela senha.
+	g := newSocialFixture(t, fakeVerifier{})
+	g.withApple(fakeVerifier{})
+	other := g.seedPasswordUser(t, g.email("so-google"))
+	if _, err := g.s.repo.LinkIdentity(context.Background(), "google", "g-"+g.tag, other); err != nil {
+		t.Fatal(err)
+	}
+	if rec := g.deleteAs(t, other, `{"password":"senha-forte-do-teste"}`); rec.Code != http.StatusOK {
+		t.Fatalf("conta sem Apple barrada: %d %s", rec.Code, rec.Body.String())
+	}
+}

@@ -38,6 +38,9 @@ const (
 	codeSocialEmailUnverified = "social_email_unverified"
 	// A identidade não tem conta: o app pede idade e aceite e manda o pedido de novo.
 	codeSignupRequired = "signup_required"
+	// Excluir a conta pela senha não vale quando ela também entra por provedor que
+	// exige revogar o acesso (a Apple): a confirmação tem de passar por ele.
+	codeProviderReauthRequired = "provider_reauth_required"
 
 	// Trilhas pagas.
 	codePurchaseInvalid             = "purchase_invalid"

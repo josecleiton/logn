@@ -58,6 +58,18 @@ resource "google_secret_manager_secret" "origin_shared_secret" {
   }
 }
 
+# A chave `.p8` do Sign in with Apple (ADR 0017), em PEM. É com ela que o servidor
+# revoga o acesso na exclusão da conta. Criado sempre, como o de origem, e referenciado
+# pelo Cloud Run só com enable_apple_signin=true, depois de subir o valor:
+#   gcloud secrets versions add logn-apple-signin-key --data-file=AuthKey_XXXXXXXXXX.p8
+resource "google_secret_manager_secret" "apple_signin_key" {
+  secret_id = "logn-apple-signin-key"
+
+  replication {
+    auto {}
+  }
+}
+
 # A conta com que o serviço roda lê cada segredo que o Cloud Run referencia, um por um,
 # e nenhum outro. Ela tinha roles/secretmanager.secretAccessor no projeto: todo segredo
 # criado ali, de qualquer coisa, ela passaria a ler sem ninguém decidir. Segredo novo
@@ -70,6 +82,7 @@ locals {
     smtp_pass            = google_secret_manager_secret.smtp_pass.id
     track_key_secret     = google_secret_manager_secret.track_key_secret.id
     origin_shared_secret = google_secret_manager_secret.origin_shared_secret.id
+    apple_signin_key     = google_secret_manager_secret.apple_signin_key.id
   }
 }
 

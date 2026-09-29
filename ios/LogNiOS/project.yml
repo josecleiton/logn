@@ -26,6 +26,10 @@ targets:
     - package: PostHog
     settings:
       DEVELOPMENT_TEAM: $(DEVELOPMENT_TEAM)
+      # Sign in with Apple (ADR 0017): o time gratuito não assina a capability, e o
+      # build quebraria com ela. Vazio no .env, o app sai sem entitlement e sem o botão;
+      # com o time pago, LOGN_CODE_SIGN_ENTITLEMENTS = LogNiOS/LogNiOS.entitlements.
+      CODE_SIGN_ENTITLEMENTS: $(LOGN_CODE_SIGN_ENTITLEMENTS)
       INFOPLIST_KEY_CFBundleDisplayName: LogN
       INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.educational-games"
       INFOPLIST_KEY_LSApplicationSecondaryCategoryType: "public.app-category.education"
@@ -61,6 +65,8 @@ targets:
         LogNPostHogHost: ${POSTHOG_HOST}
         # Client ID iOS do login com Google (ADR 0016). Vazio, o botão não aparece.
         LogNGoogleClientID: ${GOOGLE_IOS_CLIENT_ID}
+        # O mesmo valor do entitlement: sem ele, o botão da Apple não aparece.
+        LogNAppleSignIn: ${LOGN_CODE_SIGN_ENTITLEMENTS}
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - logn

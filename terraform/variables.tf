@@ -77,6 +77,28 @@ variable "google_ios_client_id" {
   default     = ""
 }
 
+# --- Sign in with Apple (ADR 0017) ---
+# Tudo desligado até existir a chave, que só a conta paga do Apple Developer gera
+# (Certificates, Identifiers & Profiles > Keys, com "Sign in with Apple").
+
+variable "enable_apple_signin" {
+  description = "Liga o Sign in with Apple no Cloud Run. Só depois de subir a .p8 para o secret logn-apple-signin-key."
+  type        = bool
+  default     = false
+}
+
+variable "apple_signin_team_id" {
+  description = "Team ID do Apple Developer (10 caracteres), emissor do client_secret da revogação."
+  type        = string
+  default     = ""
+}
+
+variable "apple_signin_key_id" {
+  description = "Key ID da chave do Sign in with Apple (10 caracteres), no cabeçalho do client_secret."
+  type        = string
+  default     = ""
+}
+
 variable "container_image" {
   description = <<-EOT
     Imagem já publicada no Artifact Registry que o Cloud Run deve rodar (digest ou

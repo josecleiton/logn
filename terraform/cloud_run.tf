@@ -171,6 +171,32 @@ resource "google_cloud_run_v2_service" "logn" {
         }
       }
 
+      # Sign in with Apple (ADR 0017). Desligado, o servidor responde provider_disabled
+      # para a Apple; as três vêm juntas, ou o servidor não sobe.
+      dynamic "env" {
+        for_each = var.enable_apple_signin ? {
+          APPLE_SIGNIN_TEAM_ID = var.apple_signin_team_id
+          APPLE_SIGNIN_KEY_ID  = var.apple_signin_key_id
+        } : {}
+        content {
+          name  = env.key
+          value = env.value
+        }
+      }
+
+      dynamic "env" {
+        for_each = var.enable_apple_signin ? [1] : []
+        content {
+          name = "APPLE_SIGNIN_PRIVATE_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.apple_signin_key.secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
+
       dynamic "env" {
         for_each = var.enable_origin_verification ? [1] : []
         content {

@@ -53,6 +53,7 @@ extension LogN.StatusKey {
         case .socialSignInFailed:          return Str.Status.social_sign_in_failed
         case .socialEmailUnverified:       return Str.Status.social_email_unverified
         case .socialProviderDisabled:      return Str.Status.social_provider_disabled
+        case .providerReauthRequired:      return Str.Status.provider_reauth_required
         }
     }
 

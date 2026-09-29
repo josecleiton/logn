@@ -85,6 +85,7 @@ backend/test_match_sync
 !backend/schema/migrations/0051_trilha_disponivel.sql
 !backend/schema/migrations/0053_template_trade_off.sql
 !backend/schema/migrations/0055_identidades_sociais.sql
+!backend/schema/migrations/0056_identidade_apple.sql
 
 # Termos e política no modo do app, para ler sem rede. `just legal-bundle` gera a partir
 # do servidor, como a trilha empacotada.

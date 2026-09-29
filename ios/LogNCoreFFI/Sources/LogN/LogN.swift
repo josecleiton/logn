@@ -1042,8 +1042,9 @@ indirect public enum Event: Hashable, Equatable {
     /// viaja é a senha em si, sobre TLS, e o servidor confere com Argon2.
     case deleteAccount(passwordHash: String)
     /// Pede a exclusão provando que é dono com um login novo no provedor: é o caminho
-    /// da conta que não tem senha.
-    case deleteAccountWithProvider(provider: String, idToken: String, nonce: String)
+    /// da conta que não tem senha. `authorization_code` é o da Apple, com que o servidor
+    /// revoga o acesso; vazio no Google.
+    case deleteAccountWithProvider(provider: String, idToken: String, nonce: String, authorizationCode: String)
     case accountDeleted(HttpResult)
     /// Fechou a tela "conta desativada, apagada até DD/MM".
     case dismissDeletionNotice
@@ -1400,11 +1401,12 @@ indirect public enum Event: Hashable, Equatable {
         case .deleteAccount(let passwordHash):
             try serializer.serialize_variant_index(value: 106)
             try serializer.serialize_str(value: passwordHash)
-        case .deleteAccountWithProvider(let provider, let idToken, let nonce):
+        case .deleteAccountWithProvider(let provider, let idToken, let nonce, let authorizationCode):
             try serializer.serialize_variant_index(value: 107)
             try serializer.serialize_str(value: provider)
             try serializer.serialize_str(value: idToken)
             try serializer.serialize_str(value: nonce)
+            try serializer.serialize_str(value: authorizationCode)
         case .accountDeleted(let x):
             try serializer.serialize_variant_index(value: 108)
             try x.serialize(serializer: serializer)
@@ -1894,8 +1896,9 @@ indirect public enum Event: Hashable, Equatable {
             let provider = try deserializer.deserialize_str()
             let idToken = try deserializer.deserialize_str()
             let nonce = try deserializer.deserialize_str()
+            let authorizationCode = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
-            return .deleteAccountWithProvider(provider: provider, idToken: idToken, nonce: nonce)
+            return .deleteAccountWithProvider(provider: provider, idToken: idToken, nonce: nonce, authorizationCode: authorizationCode)
         case 108:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
@@ -3845,6 +3848,9 @@ indirect public enum StatusKey: Hashable, Equatable {
     case socialEmailUnverified
     /// `provider_disabled`: o servidor está com o login por esse provedor desligado.
     case socialProviderDisabled
+    /// `provider_reauth_required`: excluir a conta pede a confirmação pela Apple, não a
+    /// senha (ADR 0017).
+    case providerReauthRequired
 
     public func serialize<S: Serializer>(serializer: S) throws {
         try serializer.increase_container_depth()
@@ -3929,6 +3935,8 @@ indirect public enum StatusKey: Hashable, Equatable {
             try serializer.serialize_variant_index(value: 38)
         case .socialProviderDisabled:
             try serializer.serialize_variant_index(value: 39)
+        case .providerReauthRequired:
+            try serializer.serialize_variant_index(value: 40)
         }
         try serializer.decrease_container_depth()
     }
@@ -4063,6 +4071,9 @@ indirect public enum StatusKey: Hashable, Equatable {
         case 39:
             try deserializer.decrease_container_depth()
             return .socialProviderDisabled
+        case 40:
+            try deserializer.decrease_container_depth()
+            return .providerReauthRequired
         default: throw DeserializationError.invalidInput(issue: "Unknown variant index for StatusKey: \(index)")
         }
     }

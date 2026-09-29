@@ -12,6 +12,7 @@ struct LoginView: View {
     @State private var password = ""
     @State private var ssoEnabled = false
     @State private var googleEnabled = false
+    @State private var appleEnabled = false
     @State private var legalSheet: LegalKind? = LegalKind.launchOverride
     /// Só em DEBUG: `-LogNStartScreen cadastro` abre o cadastro direto. O toque
     /// sintético no link depende da janela do Simulator estar acessível, e nem sempre está.
@@ -53,9 +54,9 @@ struct LoginView: View {
                 
                 // Content
                 VStack(spacing: Space.sm) {
-                    if ssoEnabled {
-                    // Apple e GitHub ainda não entram: ficam atrás da flag geral.
-                        Button(action: {}) {
+                    // O botão branco é da diretriz da Apple; o design system o mantém assim.
+                    if appleEnabled {
+                        Button(action: signInWithApple) {
                             HStack(spacing: 12) {
                                 Image(systemName: "applelogo")
                                     .font(.system(size: 20))
@@ -70,6 +71,7 @@ struct LoginView: View {
                             .cornerRadius(Radius.sm)
                             .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(Color.clear, lineWidth: 1))
                         }
+                        .disabled(core.viewModel.isAuthenticating || signInLocked)
                     }
 
                     if googleEnabled {
@@ -77,6 +79,7 @@ struct LoginView: View {
                             .disabled(core.viewModel.isAuthenticating || signInLocked)
                     }
 
+                    // GitHub ainda não entra: fica atrás da flag geral.
                     if ssoEnabled {
                         Button(action: {}) {
                             HStack(spacing: 12) {
@@ -97,7 +100,7 @@ struct LoginView: View {
                         }
                     }
 
-                    if ssoEnabled || googleEnabled {
+                    if ssoEnabled || googleEnabled || appleEnabled {
                         // Divider
                         HStack(spacing: 12) {
                             Rectangle().fill(LognDark.line).frame(height: 1)
@@ -287,6 +290,21 @@ struct LoginView: View {
         // dele, a flag some com o botão e quem entra por e-mail segue entrando.
         googleEnabled = GoogleAuth.shared.isConfigured
             && PostHogSDK.shared.isFeatureEnabled("sso_google_enabled")
+        appleEnabled = AppleAuth.shared.isConfigured
+            && PostHogSDK.shared.isFeatureEnabled("sso_apple_enabled")
+    }
+
+    private func signInWithApple() {
+        Task {
+            do {
+                let credential = try await AppleAuth.shared.signIn()
+                core.dispatch(event: .socialLogin(provider: "apple", idToken: credential.idToken, nonce: credential.nonce))
+            } catch AppleAuth.Failure.cancelled {
+                // Fechou a folha da Apple: nada a dizer.
+            } catch {
+                core.dispatch(event: .socialLoginFailed)
+            }
+        }
     }
 
     private func signInWithGoogle() {

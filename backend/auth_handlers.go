@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/josecleiton/logn/backend/internal/domain"
+	"github.com/josecleiton/logn/backend/internal/infrastructure/socialauth"
 	"github.com/josecleiton/logn/backend/internal/legal"
 	"github.com/josecleiton/logn/backend/internal/locale"
 )
@@ -388,12 +389,18 @@ func (s *Server) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 // exclusão de conta.
 const deleteReauthMaxAge = 5 * time.Minute
 
+// revocationRequired são os provedores cuja autorização a exclusão tem de revogar. A
+// lista é fixa, e não o que estiver ligado: desligar a Apple não pode apagar a regra.
+var revocationRequired = []string{socialauth.ProviderApple}
+
 type DeleteAccountRequest struct {
 	Password string `json:"password"`
 	// Conta sem senha prova que é dona com um login novo no provedor (ADR 0016).
 	Provider string `json:"provider,omitempty"`
 	IDToken  string `json:"id_token,omitempty"`
 	Nonce    string `json:"nonce,omitempty"`
+	// Da Apple, junto do token: é com ele que o servidor revoga o acesso (ADR 0017).
+	AuthorizationCode string `json:"authorization_code,omitempty"`
 }
 
 func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
@@ -421,6 +428,9 @@ func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// O `sub` que provou a posse, quando a prova foi um provedor. A revogação confere
+	// que o código é dele.
+	var provedSubject string
 	if req.IDToken != "" {
 		// A identidade do token tem de ser desta conta: um login válido de outra conta
 		// no mesmo provedor não apaga nada aqui.
@@ -444,12 +454,45 @@ func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusUnauthorized, codeInvalidCredentials)
 			return
 		}
+		// Provedor que exige revogar precisa do código para isso. Sem ele a conta
+		// sairia com o acesso ainda autorizado no provedor.
+		if _, needs := s.revokers[req.Provider]; needs && req.AuthorizationCode == "" {
+			writeError(w, http.StatusBadRequest, codeInvalidRequest)
+			return
+		}
+		provedSubject = id.Subject
 	} else {
 		match, compareErr := domain.ComparePasswordAndHash(req.Password, user.PasswordHash)
 		if user.PasswordHash == "" || compareErr != nil || !match {
 			writeError(w, http.StatusUnauthorized, codeInvalidCredentials)
 			return
 		}
+	}
+
+	// Qualquer que seja a prova (senha, Google), se a conta também entra por provedor
+	// que exige revogar e a prova não foi ele, a exclusão tem de passar por ele: é o
+	// único jeito de ter o código que revoga o acesso.
+	for _, provider := range revocationRequired {
+		if provider == req.Provider && req.IDToken != "" {
+			continue
+		}
+		linked, err := s.repo.HasProviderIdentity(ctx, userID, provider)
+		if err != nil {
+			log.Printf("identidades não conferidas na exclusão: user=%s erro=%v", userID, err)
+			writeError(w, http.StatusInternalServerError, codeInternal)
+			return
+		}
+		if !linked {
+			continue
+		}
+		if _, enabled := s.revokers[provider]; enabled {
+			writeError(w, http.StatusConflict, codeProviderReauthRequired)
+			return
+		}
+		// Provedor desligado depois de haver contas nele: sem como confirmar por ele,
+		// segurar a exclusão deixaria a pessoa sem saída. Sai, e o log avisa que falta
+		// revogar à mão.
+		log.Printf("exclusão sem revogação possível: provider=%s user=%s (provedor desligado)", provider, userID)
 	}
 
 	purgeAfter, err := s.repo.MarkAccountForDeletion(ctx, userID)
@@ -459,6 +502,18 @@ func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("exclusão pedida: user=%s expurgo_a_partir_de=%s", userID, purgeAfter.Format(time.RFC3339))
+
+	// Depois de a conta estar desativada: a Apple fora do ar não segura a exclusão, que
+	// é o que o jogador pediu. A falha fica no log para revogar à mão.
+	// O contexto não morre com o pedido: a conta já está desativada, e o código é de uso
+	// único; cair a conexão agora não pode desperdiçá-lo.
+	if revoker, ok := s.revokers[req.Provider]; ok && provedSubject != "" {
+		if err := revoker.Revoke(context.WithoutCancel(ctx), req.AuthorizationCode, provedSubject); err != nil {
+			log.Printf("acesso não revogado no provedor: provider=%s user=%s erro=%v", req.Provider, userID, err)
+		} else {
+			log.Printf("acesso revogado no provedor: provider=%s user=%s", req.Provider, userID)
+		}
+	}
 
 	// A data em que o expurgo pode apagar a conta: o app mostra "apagada até DD/MM".
 	w.Header().Set("Content-Type", "application/json")
