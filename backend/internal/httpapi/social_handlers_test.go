@@ -15,6 +15,7 @@ import (
 	"github.com/josecleiton/logn/backend/internal/domain"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/email"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/socialauth"
+	"github.com/josecleiton/logn/backend/internal/legal"
 )
 
 // fakeVerifier aceita os tokens que conhece, cada um com a identidade dele e um nonce
@@ -40,6 +41,9 @@ type socialFixture struct {
 	pool *pgxpool.Pool
 	// Um sufixo por teste: os e-mails não colidem com os de outra execução.
 	tag string
+	// Versões vigentes de termos e privacidade, lidas do banco. Fixar um número quebrava
+	// o teste a cada documento novo publicado por migração.
+	terms, privacy int
 }
 
 func newSocialFixture(t *testing.T, tokens fakeVerifier) *socialFixture {
@@ -55,6 +59,11 @@ func newSocialFixture(t *testing.T, tokens fakeVerifier) *socialFixture {
 		pool: pool,
 		tag:  newTestUUID(t)[:8],
 	}
+	current, err := f.s.currentLegalVersions(context.Background())
+	if err != nil {
+		t.Fatalf("versões legais: %v", err)
+	}
+	f.terms, f.privacy = current[legal.Terms].Version, current[legal.Privacy].Version
 	return f
 }
 
@@ -95,13 +104,13 @@ func loginBody(token string) map[string]any {
 	return map[string]any{"provider": "google", "id_token": token, "nonce": fakeNonce}
 }
 
-func signupBody(token string) map[string]any {
+func (f *socialFixture) signupBody(token string) map[string]any {
 	b := loginBody(token)
 	b["age_confirmed"] = true
 	b["country"] = "BR"
 	b["legal_acceptances"] = []map[string]any{
-		{"kind": "terms", "version": 1, "locale": "pt-BR"},
-		{"kind": "privacy", "version": 1, "locale": "pt-BR"},
+		{"kind": "terms", "version": f.terms, "locale": "pt-BR"},
+		{"kind": "privacy", "version": f.privacy, "locale": "pt-BR"},
 	}
 	return b
 }
@@ -169,22 +178,23 @@ func TestSocialSignupNeedsAgeAndTerms(t *testing.T) {
 	rec := f.post(t, loginBody("novo"))
 	expect(t, rec, http.StatusConflict, codeSignupRequired)
 
-	noAge := signupBody("novo")
+	noAge := f.signupBody("novo")
 	noAge["age_confirmed"] = false
 	expect(t, f.post(t, noAge), http.StatusBadRequest, codeAgeNotConfirmed)
 
-	noTerms := signupBody("novo")
-	noTerms["legal_acceptances"] = []map[string]any{{"kind": "terms", "version": 1, "locale": "pt-BR"}}
+	noTerms := f.signupBody("novo")
+	noTerms["legal_acceptances"] = []map[string]any{{"kind": "terms", "version": f.terms, "locale": "pt-BR"}}
 	expect(t, f.post(t, noTerms), http.StatusBadRequest, codeLegalAcceptanceRequired)
 
-	oldTerms := signupBody("novo")
+	// Privacidade em dia e termos uma versão atrás: só os termos recusam.
+	oldTerms := f.signupBody("novo")
 	oldTerms["legal_acceptances"] = []map[string]any{
-		{"kind": "terms", "version": 0, "locale": "pt-BR"},
-		{"kind": "privacy", "version": 1, "locale": "pt-BR"},
+		{"kind": "terms", "version": f.terms - 1, "locale": "pt-BR"},
+		{"kind": "privacy", "version": f.privacy, "locale": "pt-BR"},
 	}
 	expect(t, f.post(t, oldTerms), http.StatusConflict, codeLegalVersionOutdated)
 
-	badCountry := signupBody("novo")
+	badCountry := f.signupBody("novo")
 	badCountry["country"] = "XYZ"
 	expect(t, f.post(t, badCountry), http.StatusBadRequest, codeInvalidCountry)
 
@@ -195,7 +205,7 @@ func TestSocialSignupNeedsAgeAndTerms(t *testing.T) {
 		t.Fatalf("conta criada por pedido recusado: %d", n)
 	}
 
-	userID := sessionUser(t, f.post(t, signupBody("novo")))
+	userID := sessionUser(t, f.post(t, f.signupBody("novo")))
 
 	// Conta sem senha, com idade e aceites gravados.
 	var hasPassword, ageConfirmed bool
@@ -227,7 +237,7 @@ func TestSocialLoginRefusesUnverifiedEmail(t *testing.T) {
 	victim := f.seedPasswordUser(t, addr)
 	tokens["forjado"] = socialauth.Identity{Subject: "sub-atacante-" + f.tag, Email: addr, EmailVerified: false}
 
-	expect(t, f.post(t, signupBody("forjado")), http.StatusForbidden, codeSocialEmailUnverified)
+	expect(t, f.post(t, f.signupBody("forjado")), http.StatusForbidden, codeSocialEmailUnverified)
 
 	owns, _ := f.s.repo.HasIdentity(context.Background(), victim, "google", "sub-atacante-"+f.tag)
 	if owns {
@@ -337,7 +347,7 @@ func TestPasswordlessAccountCanSetAPasswordByEmailCode(t *testing.T) {
 	addr := f.email("ganha-senha")
 	f.cleanupEmail(t, addr)
 	tokens["t"] = socialauth.Identity{Subject: "sub-ganha-" + f.tag, Email: addr, EmailVerified: true}
-	userID := sessionUser(t, f.post(t, signupBody("t")))
+	userID := sessionUser(t, f.post(t, f.signupBody("t")))
 
 	const code = "123456"
 	if err := f.s.repo.SaveOTP(context.Background(), addr, code, domain.OTPPurposeResetPassword, time.Minute); err != nil {
@@ -364,7 +374,7 @@ func TestDeleteAccountWithoutPasswordNeedsItsOwnIdentity(t *testing.T) {
 	f.cleanupEmail(t, addr)
 	tokens["dono"] = socialauth.Identity{Subject: "sub-dono-" + f.tag, Email: addr, EmailVerified: true}
 	tokens["outro"] = socialauth.Identity{Subject: "sub-outro-" + f.tag, Email: f.email("outro"), EmailVerified: true}
-	userID := sessionUser(t, f.post(t, signupBody("dono")))
+	userID := sessionUser(t, f.post(t, f.signupBody("dono")))
 
 	del := func(body string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
@@ -418,8 +428,8 @@ func (f *socialFixture) withApple(tokens fakeVerifier) *fakeRevoker {
 	return rv
 }
 
-func appleBody(token string) map[string]any {
-	b := signupBody(token)
+func (f *socialFixture) appleBody(token string) map[string]any {
+	b := f.signupBody(token)
 	b["provider"] = "apple"
 	return b
 }
@@ -449,7 +459,7 @@ func TestAppleSignupAndDeletionRevokesTheGrant(t *testing.T) {
 	f.cleanupEmail(t, addr)
 	apple["t"] = socialauth.Identity{Subject: "apple-sub-" + f.tag, Email: addr, EmailVerified: true}
 
-	userID := sessionUser(t, f.post(t, appleBody("t")))
+	userID := sessionUser(t, f.post(t, f.appleBody("t")))
 	if owns, _ := f.s.repo.HasIdentity(context.Background(), userID, "apple", "apple-sub-"+f.tag); !owns {
 		t.Fatal("identidade da Apple não gravada")
 	}
@@ -482,7 +492,7 @@ func TestGoogleDeletionOfAnAppleLinkedAccountGoesThroughApple(t *testing.T) {
 	f.cleanupEmail(t, addr)
 	apple["a"] = socialauth.Identity{Subject: "apple-dois-" + f.tag, Email: addr, EmailVerified: true}
 	google["g"] = socialauth.Identity{Subject: "google-dois-" + f.tag, Email: addr, EmailVerified: true}
-	userID := sessionUser(t, f.post(t, appleBody("a")))
+	userID := sessionUser(t, f.post(t, f.appleBody("a")))
 	if got := sessionUser(t, f.post(t, loginBody("g"))); got != userID {
 		t.Fatalf("Google entrou em %s, want %s", got, userID)
 	}
@@ -517,7 +527,7 @@ func TestAppleOutageDoesNotBlockDeletion(t *testing.T) {
 	addr := f.email("apple-fora")
 	f.cleanupEmail(t, addr)
 	apple["t"] = socialauth.Identity{Subject: "apple-fora-" + f.tag, Email: addr, EmailVerified: true}
-	userID := sessionUser(t, f.post(t, appleBody("t")))
+	userID := sessionUser(t, f.post(t, f.appleBody("t")))
 
 	rec := f.deleteAs(t, userID, `{"provider":"apple","id_token":"t","nonce":"`+fakeNonce+`","authorization_code":"c"}`)
 	if rec.Code != http.StatusOK || f.s.repo.IsUserActive(context.Background(), userID) {
@@ -533,7 +543,7 @@ func TestPasswordDeletionOfAnAppleLinkedAccountGoesThroughApple(t *testing.T) {
 	userID := f.seedPasswordUser(t, addr)
 	apple["t"] = socialauth.Identity{Subject: "apple-ligada-" + f.tag, Email: addr, EmailVerified: true}
 	// O primeiro login pela Apple liga a identidade à conta com senha.
-	if got := sessionUser(t, f.post(t, appleBody("t"))); got != userID {
+	if got := sessionUser(t, f.post(t, f.appleBody("t"))); got != userID {
 		t.Fatalf("login pela Apple em %s, want %s", got, userID)
 	}
 
