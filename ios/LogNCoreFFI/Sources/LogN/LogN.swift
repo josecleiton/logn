@@ -794,6 +794,7 @@ indirect public enum Effect: Hashable, Equatable {
     case secureStore(KeyValueOperation)
     case telemetry(TelemetryOperation)
     case monitoring(MonitoringOperation)
+    case log(LogOperation)
     case time(TimeRequest)
     case storeReview(StoreReviewOperation)
 
@@ -815,11 +816,14 @@ indirect public enum Effect: Hashable, Equatable {
         case .monitoring(let x):
             try serializer.serialize_variant_index(value: 4)
             try x.serialize(serializer: serializer)
-        case .time(let x):
+        case .log(let x):
             try serializer.serialize_variant_index(value: 5)
             try x.serialize(serializer: serializer)
-        case .storeReview(let x):
+        case .time(let x):
             try serializer.serialize_variant_index(value: 6)
+            try x.serialize(serializer: serializer)
+        case .storeReview(let x):
+            try serializer.serialize_variant_index(value: 7)
             try x.serialize(serializer: serializer)
         }
         try serializer.decrease_container_depth()
@@ -856,10 +860,14 @@ indirect public enum Effect: Hashable, Equatable {
             try deserializer.decrease_container_depth()
             return .monitoring(x)
         case 5:
+            let x = try LogN.LogOperation.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .log(x)
+        case 6:
             let x = try LogN.TimeRequest.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .time(x)
-        case 6:
+        case 7:
             let x = try LogN.StoreReviewOperation.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .storeReview(x)
@@ -2638,6 +2646,122 @@ indirect public enum KeyValueResult: Hashable, Equatable {
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> KeyValueResult {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+/// Severidade de um registro de log.
+indirect public enum LogLevel: Hashable, Equatable {
+    case debug
+    case info
+    case warn
+    case error
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        switch self {
+        case .debug:
+            try serializer.serialize_variant_index(value: 0)
+        case .info:
+            try serializer.serialize_variant_index(value: 1)
+        case .warn:
+            try serializer.serialize_variant_index(value: 2)
+        case .error:
+            try serializer.serialize_variant_index(value: 3)
+        }
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> LogLevel {
+        let index = try deserializer.deserialize_variant_index()
+        try deserializer.increase_container_depth()
+        switch index {
+        case 0:
+            try deserializer.decrease_container_depth()
+            return .debug
+        case 1:
+            try deserializer.decrease_container_depth()
+            return .info
+        case 2:
+            try deserializer.decrease_container_depth()
+            return .warn
+        case 3:
+            try deserializer.decrease_container_depth()
+            return .error
+        default: throw DeserializationError.invalidInput(issue: "Unknown variant index for LogLevel: \(index)")
+        }
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> LogLevel {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+/// Um registro de log estruturado. O shell escolhe o provedor (hoje, os Logs do
+/// PostHog). Fire-and-forget, como a telemetria.
+/// 
+/// Log é o rastro do que aconteceu; o que não deveria acontecer vai também como
+/// `MonitoringOperation::LogError`, que vira issue. Mensagem e atributos nunca levam
+/// token, senha, OTP, e-mail nem corpo de requisição (AGENTS.md, regra 9): rota,
+/// status e código de erro bastam.
+public struct LogOperation: Hashable, Equatable {
+    public var level: LogLevel
+    public var message: String
+    public var attributes: [String: String]
+
+    public init(level: LogLevel, message: String, attributes: [String: String]) {
+        self.level = level
+        self.message = message
+        self.attributes = attributes
+    }
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        try self.level.serialize(serializer: serializer)
+        try serializer.serialize_str(value: self.message)
+        try serializeMap(value: self.attributes, serializer: serializer) { key, value, serializer in
+            try serializer.serialize_str(value: key)
+            try serializer.serialize_str(value: value)
+        }
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> LogOperation {
+        try deserializer.increase_container_depth()
+        let level = try LogN.LogLevel.deserialize(deserializer: deserializer)
+        let message = try deserializer.deserialize_str()
+        let attributes = try deserializeMap(deserializer: deserializer) { deserializer in
+            let key = try deserializer.deserialize_str()
+            let value = try deserializer.deserialize_str()
+            return (key, value)
+        }
+        try deserializer.decrease_container_depth()
+        return LogOperation(level: level, message: message, attributes: attributes)
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> LogOperation {
         let deserializer = BincodeDeserializer.init(input: input);
         let obj = try deserialize(deserializer: deserializer)
         if deserializer.get_buffer_offset() < input.count {

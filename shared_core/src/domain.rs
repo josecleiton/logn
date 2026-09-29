@@ -708,6 +708,36 @@ impl crux_core::capability::Operation for MonitoringOperation {
     type Output = ();
 }
 
+/// Severidade de um registro de log.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum LogLevel {
+    Debug,
+    Info,
+    Warn,
+    Error,
+}
+
+/// Um registro de log estruturado. O shell escolhe o provedor (hoje, os Logs do
+/// PostHog). Fire-and-forget, como a telemetria.
+///
+/// Log é o rastro do que aconteceu; o que não deveria acontecer vai também como
+/// `MonitoringOperation::LogError`, que vira issue. Mensagem e atributos nunca levam
+/// token, senha, OTP, e-mail nem corpo de requisição (AGENTS.md, regra 9): rota,
+/// status e código de erro bastam.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug)]
+#[facet(fg::namespace = "LogN")]
+pub struct LogOperation {
+    pub level: LogLevel,
+    pub message: String,
+    pub attributes: std::collections::HashMap<String, String>,
+}
+
+impl crux_core::capability::Operation for LogOperation {
+    type Output = ();
+}
+
 /// Pede ao shell que ofereça a avaliação na loja (App Store / Play Store).
 /// Não tem retorno: a loja não diz se mostrou, e o Core não espera. Fire-and-forget.
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]

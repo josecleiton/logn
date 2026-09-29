@@ -26,6 +26,14 @@ enum Telemetry {
         }
         let config = PostHogConfig(projectToken: key, host: host)
         config.captureApplicationLifecycleEvents = analyticsEnabled
+        // Os logs do Core saem com o nome do serviço, para separar dos de outro cliente
+        // (Android) no mesmo projeto. O resto (lote, buffer, teto por janela) fica no
+        // padrão do SDK.
+        config.logs.serviceName = "logn-ios"
+        // Crash do app vira `$exception` no Error Tracking, mandado na abertura seguinte.
+        // É o único jeito de ver erro crítico: o que derruba o app não passa pelo Core.
+        // A política de privacidade cita (seção de dados técnicos).
+        config.errorTrackingConfig.autoCapture = true
         // O IP do cliente não se desliga aqui: o SDK não tem essa opção. Descartar o
         // IP é o "Discard client IP data" nas configurações do projeto em PostHog, que
         // a política de privacidade promete.

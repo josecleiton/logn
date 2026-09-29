@@ -8,6 +8,13 @@ import App
 import LogN
 import PostHog
 
+/// Um erro que o Core relatou, no formato que o `captureException` do PostHog pede. A
+/// mensagem é o título da issue e o que a agrupa.
+struct CoreError: LocalizedError {
+    let message: String
+    var errorDescription: String? { message }
+}
+
 public class CoreWrapper: ObservableObject {
     private let coreFFI = CoreFFI()
     
@@ -182,7 +189,9 @@ public class CoreWrapper: ObservableObject {
             case .telemetry(let operation):
                 handleTelemetry(id: request.id, operation: operation)
             case .monitoring(let operation):
-                handleMonitoring(id: request.id, operation: operation)
+                handleMonitoring(operation)
+            case .log(let operation):
+                handleLog(operation)
             case .time(let operation):
                 handleTime(id: request.id, operation: operation)
             case .storeReview(let operation):
@@ -258,12 +267,14 @@ public class CoreWrapper: ObservableObject {
         }
     }
     
-    private func handleMonitoring(id: UInt32, operation: MonitoringOperation) {
+    private func handleMonitoring(_ operation: MonitoringOperation) {
         switch operation {
         case .logError(let message, let details):
             print("MONITORING ERROR: \(message) - \(details)")
-            PostHogSDK.shared.capture("error", properties: [
-                "message": message,
+            // `$exception` em vez de um evento `error` solto: cai no Error Tracking, que
+            // agrupa por mensagem em issues. O trace é o do shell, onde o efeito chega;
+            // o erro nasceu no Core, e quem diz onde é a mensagem.
+            PostHogSDK.shared.captureException(CoreError(message: message), properties: [
                 "details": details
             ])
         case .startSpan(let name):
@@ -273,8 +284,22 @@ public class CoreWrapper: ObservableObject {
             print("MONITORING SPAN END: \(name)")
             PostHogSDK.shared.capture("span_ended", properties: ["span_name": name])
         }
+        // notify_shell, como a avaliação da loja: o Core não espera resolve.
+    }
 
-        resolveUnitEffect(id: id)
+    /// O provedor de log é o PostHog (Logs, `/i/v1/logs`). Trocar de provedor é mexer
+    /// só aqui. O SDK guarda em disco e manda em lote; com a análise de uso desligada
+    /// os logs seguem, como os erros: são diagnóstico, não uso.
+    private func handleLog(_ operation: LogOperation) {
+        let level: PostHogLogSeverity
+        switch operation.level {
+        case .debug: level = .debug
+        case .info: level = .info
+        case .warn: level = .warn
+        case .error: level = .error
+        }
+        PostHogSDK.shared.captureLog(operation.message, level: level, attributes: operation.attributes)
+        // notify_shell: sem resolve.
     }
 
     private func handleTelemetry(id: UInt32, operation: TelemetryOperation) {

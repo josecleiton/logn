@@ -756,6 +756,7 @@ pub enum Effect {
     SecureStore(KeyValueOperation),
     Telemetry(crate::domain::TelemetryOperation),
     Monitoring(crate::domain::MonitoringOperation),
+    Log(crate::domain::LogOperation),
     Time(TimeRequest),
     StoreReview(crate::domain::StoreReviewOperation),
 }
@@ -1368,6 +1369,76 @@ fn account_restored(body: &[u8]) -> bool {
     serde_json::from_slice::<RestoredFlag>(body).map(|f| f.account_restored).unwrap_or(false)
 }
 
+/// Um registro de log para o shell.
+fn log(level: crate::domain::LogLevel, message: &str, attributes: &[(&str, String)]) -> Command<Effect, Event> {
+    Command::notify_shell(crate::domain::LogOperation {
+        level,
+        message: message.to_string(),
+        attributes: attributes.iter().map(|(k, v)| (k.to_string(), v.clone())).collect(),
+    })
+    .build()
+}
+
+/// A rota do servidor que cada resposta HTTP responde. Só os eventos que carregam uma
+/// resposta estão aqui.
+fn http_route(event: &Event) -> Option<(&'static str, &HttpResult)> {
+    Some(match event {
+        Event::LoginCompleted(r) => ("/api/v1/auth/login", r),
+        Event::SocialLoginCompleted(r) => ("/api/v1/auth/social", r),
+        Event::RegisterCompleted(r) => ("/api/v1/auth/register", r),
+        Event::RefreshCompleted(r) => ("/api/v1/auth/refresh", r),
+        Event::OTPRequested(r) => ("/api/v1/auth/request-otp", r),
+        Event::OTPVerified(r) => ("/api/v1/auth/verify-otp", r),
+        Event::ResetPasswordCompleted(r) => ("/api/v1/auth/reset-password", r),
+        Event::AccountDeleted(r) => ("/api/v1/users/me/delete", r),
+        Event::SyncCompleted(r) => ("/api/v1/sync", r),
+        Event::NodesFetched(r) => ("/api/v1/nodes", r),
+        Event::ChallengesFetched(r) => ("/api/v1/challenges", r),
+        Event::ProgressFetched(r) => ("/api/v1/progress", r),
+        Event::TracksFetched(r) => ("/api/v1/tracks", r),
+        Event::LegalVersionsFetched(r) => ("/api/v1/legal/current", r),
+        Event::PurchaseSubmitted { result, .. } => ("/api/v1/purchases", result),
+        Event::LicenseFetched { result, .. } => ("/api/v1/tracks/{id}/license", result),
+        Event::PackageFetched { result, .. } => ("/api/v1/tracks/{id}/package", result),
+        _ => return None,
+    })
+}
+
+/// O que registrar de uma resposta HTTP. O caminho feliz e os 4xx (erro de quem usa,
+/// que a tela já trata) não viram nada. Sem rede é o normal de um app offline-first:
+/// só informação. 5xx é defeito do servidor: log de erro e issue. A rota vai com o id
+/// no lugar do valor, para não carregar id de conta nem de trilha.
+fn observe_http(event: &Event) -> Option<Command<Effect, Event>> {
+    use crate::domain::LogLevel;
+    let (route, result) = http_route(event)?;
+    match result {
+        HttpResult::Ok(response) if response.status >= 500 => {
+            let status = response.status.to_string();
+            let code = api_code(&response.body).unwrap_or_default();
+            let message = format!("server error {status} on {route}");
+            Some(
+                log(LogLevel::Error, &message, &[("route", route.into()), ("status", status.clone()), ("code", code.clone())])
+                    .and(Command::notify_shell(crate::domain::MonitoringOperation::LogError {
+                        message,
+                        details: if code.is_empty() { status } else { format!("{status} {code}") },
+                    })
+                    .build()),
+            )
+        }
+        HttpResult::Ok(_) => None,
+        HttpResult::Err(error) => {
+            let (level, kind) = match error {
+                crux_http::HttpError::Io(_) => (LogLevel::Info, "io"),
+                crux_http::HttpError::Timeout => (LogLevel::Warn, "timeout"),
+                crux_http::HttpError::Url(_) => (LogLevel::Error, "url"),
+                _ => (LogLevel::Warn, "other"),
+            };
+            // A frase do erro fica de fora: pode trazer o endereço inteiro.
+            Some(log(level, &format!("request did not complete on {route}"), &[("route", route.into()), ("kind", kind.into())]))
+        }
+    }
+}
+
 /// O login pelo provedor esperando a tela de idade e termos (ADR 0016).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SocialCredential {
@@ -1611,6 +1682,11 @@ impl App for LogNApp {
     type Effect = Effect;
 
     fn update(&self, event: Self::Event, model: &mut Self::Model) -> Command<Self::Effect, Self::Event> {
+        // As respostas HTTP que falharam viram log (e as que não deviam acontecer, erro)
+        // aqui, num lugar só, antes de cada handler tratar a sua. Os handlers seguem
+        // devolvendo cedo com `return`; a closure é o que deixa o log sair junto.
+        let observed = observe_http(&event);
+        let handle = || -> Command<Effect, Event> {
         match event {
 
             Event::TelemetrySent => {
@@ -4253,6 +4329,12 @@ Event::FetchChallenges => {
                 }
                 render::render()
             }
+        }
+        };
+        let command = handle();
+        match observed {
+            Some(log) => command.and(log),
+            None => command,
         }
     }
 
@@ -8171,5 +8253,77 @@ mod tests {
         let _ = app.update(Event::AccountDeleted(api_error(409, "provider_reauth_required")), &mut model);
         assert_eq!(model.status_key, StatusKey::ProviderReauthRequired);
         assert!(model.access_token.is_some(), "a conta segue de pé");
+    }
+
+    /// Os registros de log e de erro que o comando pediu.
+    fn logs_of(cmd: &mut Command<Effect, Event>) -> (Vec<crate::domain::LogOperation>, Vec<crate::domain::MonitoringOperation>) {
+        let (mut logs, mut errors) = (vec![], vec![]);
+        for e in cmd.effects() {
+            match e {
+                Effect::Log(r) => logs.push(r.operation.clone()),
+                Effect::Monitoring(r) => errors.push(r.operation.clone()),
+                _ => {}
+            }
+        }
+        (logs, errors)
+    }
+
+    #[test]
+    fn a_server_error_becomes_an_error_log_and_an_issue() {
+        use crate::domain::{LogLevel, MonitoringOperation};
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let mut cmd = app.update(Event::SyncCompleted(api_error(503, "internal")), &mut model);
+        let (logs, errors) = logs_of(&mut cmd);
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0].level, LogLevel::Error);
+        assert_eq!(logs[0].attributes["route"], "/api/v1/sync");
+        assert_eq!(logs[0].attributes["status"], "503");
+        assert_eq!(logs[0].attributes["code"], "internal");
+        assert!(matches!(&errors[..], [MonitoringOperation::LogError { message, .. }] if message == "server error 503 on /api/v1/sync"));
+    }
+
+    #[test]
+    fn being_offline_is_information_not_an_error() {
+        use crate::domain::LogLevel;
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let mut cmd = app.update(
+            Event::NodesFetched(HttpResult::Err(crux_http::HttpError::Io("offline sh.logn/secret?token=x".into()))),
+            &mut model,
+        );
+        let (logs, errors) = logs_of(&mut cmd);
+        assert!(errors.is_empty(), "sem rede não é issue");
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0].level, LogLevel::Info);
+        assert_eq!(logs[0].attributes["kind"], "io");
+        // A frase do erro, que pode trazer o endereço inteiro, não vai para o log.
+        let everything = format!("{} {:?}", logs[0].message, logs[0].attributes);
+        assert!(!everything.contains("token") && !everything.contains("secret"));
+    }
+
+    #[test]
+    fn expected_answers_do_not_log() {
+        let app = LogNApp::default();
+        for result in [api_error(401, "invalid_credentials"), api_error(429, "rate_limited"), http(200, serde_json::json!({}))] {
+            let mut model = Model::default();
+            let mut cmd = app.update(Event::LoginCompleted(result), &mut model);
+            let (logs, errors) = logs_of(&mut cmd);
+            assert!(logs.is_empty() && errors.is_empty(), "4xx e sucesso não viram log");
+        }
+    }
+
+    #[test]
+    fn the_route_hides_ids() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let mut cmd = app.update(
+            Event::LicenseFetched { user_id: USER_A.into(), track_id: "trilha-1".into(), result: api_error(500, "internal") },
+            &mut model,
+        );
+        let (logs, _) = logs_of(&mut cmd);
+        let everything = format!("{} {:?}", logs[0].message, logs[0].attributes);
+        assert!(everything.contains("/api/v1/tracks/{id}/license"));
+        assert!(!everything.contains(USER_A) && !everything.contains("trilha-1"));
     }
 }
