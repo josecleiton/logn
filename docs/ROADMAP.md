@@ -84,12 +84,12 @@ Trilhas` e `LogN Validade Offline`. PRD:
 
 Antes de vender a primeira trilha:
 
-- **Termos e política novos.** A spec pede, como pré-requisito, uma versão dos termos
-  marcada como relevante, com as hipóteses de revogação da seção 7, e uma versão nova da
-  política de privacidade, que passa a coletar o registro de aparelhos
-  (`identifierForVendor`) e as compras. Nenhuma das duas foi escrita. Junto vem a folha de
-  aceite pendente, que avisa o jogador quando uma versão nova entra em vigor (ADR 0008): o
-  servidor já tem `pending` e `accept`, e a página já marca as seções novas.
+- **Termos e política novos.** A v3 está escrita nas três línguas em `logn-conteudo/legal/`,
+  com o "o que mudou" em `legal/mudancas/v3.json`, e o bloqueio de novo aceite existe
+  (ADR 0020). Falta, nesta ordem: a revisão jurídica, que resolve os marcadores
+  `[A CONFIRMAR]` (arrependimento, prazo da contestação, encerramento do serviço, guarda
+  do registro das compras); o app com o bloqueio na loja; ligar `APP_PEDE_REACEITE`; e
+  gerar a migração da v3 com `--material`.
 - **Notificações da App Store.** O backend está no ar com as trilhas; falta cadastrar no
   App Store Connect a URL das notificações, que é a `.run.app`, não o domínio atrás do
   Cloudflare.
