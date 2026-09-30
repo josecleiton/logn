@@ -101,3 +101,17 @@ ios/LogNiOS/LogNiOS/Resources/Legal/
 landing/dist/
 landing/.wrangler/
 landing/.dev.vars
+
+# Android: saída do build, o SDK local e, acima de tudo, a assinatura. A upload key e as
+# senhas dela nunca entram no repositório (regra 9); `keystore.properties.example`
+# mostra o formato.
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/local.properties
+android/keystore.properties
+*.jks
+*.keystore
+*.aab
+*.apk
