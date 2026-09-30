@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- O Play Console só deixa criar produto in-app depois de receber um AAB com esta
-         permissão (ADR 0022). A biblioteca do Play Billing a declara sozinha quando
-         entrar; até lá ela fica aqui. -->
-    <uses-permission android:name="com.android.vending.BILLING" />
-
+    <!-- A permissão BILLING vem da Play Billing Library (app/build.gradle.kts). Escrita
+         aqui à mão, sem a biblioteca, o Play Console a lê como a API AIDL antiga. -->
     <application
         android:allowBackup="false"
         android:label="@string/app_name"

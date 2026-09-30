@@ -1,11 +1,16 @@
 # Cliente Android
 
-Por enquanto é um esqueleto: uma tela com o nome do app, sem dependência nenhuma. Existe
-para o Play Console ter um AAB do pacote `sh.logn.app` (ADR 0022). Sem ele, a Google Play
-Developer API responde `applicationNotFound`, e os produtos das trilhas não podem ser
-criados, porque o Console só os aceita depois de receber um AAB com a permissão
-`com.android.vending.BILLING`. O cliente de verdade (Kotlin, Compose, o Core pela FFI)
-entra por cima disto.
+Por enquanto é um esqueleto: uma tela com o nome do app. Existe para o Play Console ter
+um AAB do pacote `sh.logn.app` (ADR 0022). Sem ele, a Google Play Developer API responde
+`applicationNotFound`, e os produtos das trilhas não podem ser criados, porque o Console
+só os aceita depois de receber um AAB com a permissão `com.android.vending.BILLING`. O
+cliente de verdade (Kotlin, Compose, o Core pela FFI) entra por cima disto.
+
+A única dependência é a Play Billing Library, e é ela quem declara a permissão. Escrita à
+mão no manifesto, sem a biblioteca, a permissão conta como a API AIDL antiga, e o Console
+recusa (o piso é a 8.0).
+
+`versionCode` sobe a cada upload, inclusive depois de um upload recusado.
 
 ## Build
 

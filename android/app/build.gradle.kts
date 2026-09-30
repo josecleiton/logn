@@ -20,8 +20,10 @@ android {
         applicationId = "sh.logn.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.0.1"
+        // Cada upload no Play Console gasta um número: o de cima tem de ser maior que o
+        // último enviado, mesmo que ele tenha sido recusado.
+        versionCode = 2
+        versionName = "0.0.2"
     }
 
     signingConfigs {
@@ -46,4 +48,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+}
+
+dependencies {
+    // A Play Billing Library (ADR 0022). É ela quem declara a permissão BILLING, e é
+    // pela versão dela que o Play Console decide se o app pode vender: a permissão
+    // escrita à mão, sem a biblioteca, conta como a API AIDL antiga e é recusada. A
+    // compra ainda não é chamada; o cliente de verdade usa esta mesma dependência.
+    implementation("com.android.billingclient:billing:9.1.0")
 }
