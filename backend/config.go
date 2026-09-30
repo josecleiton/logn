@@ -10,13 +10,15 @@ import (
 	"os"
 	"strings"
 
+	"github.com/josecleiton/logn/backend/internal/googleplay"
+	"github.com/josecleiton/logn/backend/internal/httpapi"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/socialauth"
 	"github.com/josecleiton/logn/backend/internal/storekit"
 )
 
 // socialVerifiersFromEnv monta um verificador por provedor configurado.
 //
-// Sem GOOGLE_IOS_CLIENT_ID o login pelo Google fica desligado, e a rota responde
+// Sem nenhum client do Google (googleClientsFromEnv) o login pelo Google fica desligado, e a rota responde
 // `provider_disabled`; o servidor sobe do mesmo jeito. O client ID não é segredo, e
 // derrubar o deploy por ele tiraria do ar também quem entra por e-mail.
 //
@@ -27,14 +29,18 @@ import (
 func socialVerifiersFromEnv() (map[string]socialauth.Verifier, map[string]socialauth.Revoker) {
 	verifiers := map[string]socialauth.Verifier{}
 	revokers := map[string]socialauth.Revoker{}
-	if aud := strings.TrimSpace(os.Getenv("GOOGLE_IOS_CLIENT_ID")); aud != "" {
-		v, err := socialauth.NewGoogleVerifier(aud)
+	clients, err := googleClientsFromEnv(os.Getenv)
+	if err != nil {
+		log.Fatalf("Login com Google mal configurado: %v", err)
+	}
+	if len(clients) > 0 {
+		v, err := socialauth.NewGoogleVerifier(clients...)
 		if err != nil {
-			log.Fatalf("GOOGLE_IOS_CLIENT_ID inválido: %v", err)
+			log.Fatalf("Login com Google mal configurado: %v", err)
 		}
 		verifiers[socialauth.ProviderGoogle] = v
 	} else {
-		log.Println("GOOGLE_IOS_CLIENT_ID is not set. Google sign-in is disabled.")
+		log.Println("GOOGLE_IOS_CLIENT_ID and GOOGLE_WEB_CLIENT_ID are not set. Google sign-in is disabled.")
 	}
 
 	teamID := strings.TrimSpace(os.Getenv("APPLE_SIGNIN_TEAM_ID"))
@@ -67,6 +73,49 @@ func socialVerifiersFromEnv() (map[string]socialauth.Verifier, map[string]social
 		log.Println("WARNING: APPLE_SIGNIN_* is only partly set. Sign in with Apple is disabled.")
 	}
 	return verifiers, revokers
+}
+
+// googleClientsFromEnv monta os pares aceitos do login com Google.
+//
+//   - GOOGLE_IOS_CLIENT_ID: o iOS, que pede o token para si mesmo;
+//   - GOOGLE_WEB_CLIENT_ID com GOOGLE_ANDROID_CLIENT_ID: o Android, que pede em nome do
+//     client web (ADR 0022). Um sem o outro é configuração pela metade, e o servidor
+//     não sobe: só o web aceitaria token pedido por qualquer client do projeto.
+func googleClientsFromEnv(getenv func(string) string) ([]socialauth.GoogleClient, error) {
+	var clients []socialauth.GoogleClient
+	if ios := strings.TrimSpace(getenv("GOOGLE_IOS_CLIENT_ID")); ios != "" {
+		clients = append(clients, socialauth.GoogleClient{Audience: ios, AuthorizedParty: ios})
+	}
+	web := strings.TrimSpace(getenv("GOOGLE_WEB_CLIENT_ID"))
+	android := strings.TrimSpace(getenv("GOOGLE_ANDROID_CLIENT_ID"))
+	switch {
+	case web != "" && android != "":
+		// Cada client é um só: o verificador fica com o primeiro par cuja audiência
+		// confere, e um id repetido faria o outro par nunca ser tentado.
+		ios := strings.TrimSpace(getenv("GOOGLE_IOS_CLIENT_ID"))
+		if web == android || (ios != "" && (ios == web || ios == android)) {
+			return nil, errors.New("GOOGLE_IOS_CLIENT_ID, GOOGLE_WEB_CLIENT_ID e GOOGLE_ANDROID_CLIENT_ID têm de ser clients diferentes")
+		}
+		clients = append(clients, socialauth.GoogleClient{Audience: web, AuthorizedParty: android})
+	case web != "" || android != "":
+		return nil, errors.New("GOOGLE_WEB_CLIENT_ID e GOOGLE_ANDROID_CLIENT_ID vêm juntos")
+	}
+	return clients, nil
+}
+
+// playFromEnv liga a compra pelo Google Play com PLAY_PACKAGE_NAME (ADR 0022). Vazio, a
+// compra pelo Play responde `store_unavailable`, e o resto do serviço segue.
+func playFromEnv() httpapi.PlayVerifier {
+	pkg := strings.TrimSpace(os.Getenv("PLAY_PACKAGE_NAME"))
+	if pkg == "" {
+		log.Println("PLAY_PACKAGE_NAME is not set. Google Play purchases are disabled.")
+		return nil
+	}
+	c, err := googleplay.NewClient(pkg, googleplay.DefaultBaseURL, nil)
+	if err != nil {
+		log.Fatalf("PLAY_PACKAGE_NAME inválido: %v", err)
+	}
+	return c
 }
 
 func btoi(b bool) int {

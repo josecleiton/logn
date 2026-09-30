@@ -86,26 +86,27 @@ func (a ManualLicenseAction) common() (ManualLicenseAction, error) {
 }
 
 // entitlementTransaction acha a transação da licença da conta na trilha, com o
-// provedor que a vendeu, lido do registro da compra, que não muda.
+// provedor que a vendeu. Desde a 0066 a licença guarda o provedor; antes ele saía do
+// registro da compra, e `GrantEntitlement` usava o da Apple fixo (ADR 0021).
+//
+// Licença sem registro da compra ao lado é dado montado à mão, e a revogação recusa:
+// o bloqueio manual é da transação, e sem registro não há de onde tirar que ela existe.
 func entitlementTransaction(ctx context.Context, tx pgx.Tx, userID, trackID string) (provider, originalTransactionID string, err error) {
-	var p *string
+	var recorded bool
 	err = tx.QueryRow(ctx, `
-		SELECT st.provider, e.original_transaction_id
+		SELECT e.provider, e.original_transaction_id,
+		       EXISTS (SELECT 1 FROM store_transactions st
+		               WHERE st.provider = e.provider AND st.original_transaction_id = e.original_transaction_id)
 		FROM entitlements e
-		LEFT JOIN LATERAL (
-			SELECT provider FROM store_transactions
-			WHERE original_transaction_id = e.original_transaction_id
-			ORDER BY created_at LIMIT 1
-		) st ON TRUE
 		WHERE e.user_id = $1 AND e.track_id = $2`,
-		userID, trackID).Scan(&p, &originalTransactionID)
+		userID, trackID).Scan(&provider, &originalTransactionID, &recorded)
 	if err != nil {
 		return "", "", err
 	}
-	if p == nil {
+	if !recorded {
 		return "", "", ErrNoStoreRecord
 	}
-	return *p, originalTransactionID, nil
+	return provider, originalTransactionID, nil
 }
 
 // RevokeManually revoga a licença ativa da conta na trilha, grava a evidência e devolve

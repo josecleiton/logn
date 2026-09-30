@@ -17,6 +17,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/josecleiton/logn/backend/internal/googleplay"
 	"github.com/josecleiton/logn/backend/internal/locale"
 )
 
@@ -33,12 +34,13 @@ func (f Finding) String() string { return f.Where + ": " + f.Msg }
 
 // track é uma linha de `trilhas/tracks.json`. O slug é o nome da pasta da trilha.
 type track struct {
-	ID                string  `json:"id"`
-	Slug              string  `json:"slug"`
-	Kind              string  `json:"kind"`
-	Status            string  `json:"status"`
-	Author            string  `json:"author"`
-	AppStoreProductID *string `json:"app_store_product_id"`
+	ID     string `json:"id"`
+	Slug   string `json:"slug"`
+	Kind   string `json:"kind"`
+	Status string `json:"status"`
+	Author string `json:"author"`
+	// O mesmo id nas duas lojas (ADR 0022).
+	StoreProductID *string `json:"store_product_id"`
 	// Só vale na criação da trilha: depois, quem abre e fecha a vitrine é o banco
 	// (ADR 0014). Ausente é disponível.
 	Available *bool  `json:"available"`
@@ -264,19 +266,23 @@ func (c *checker) checkTracks(trilhas string, tracks []track) []string {
 		if t.Color != "" && !colorRe.MatchString(t.Color) {
 			c.fail(where, "color %q fora de ^#[0-9A-F]{6}$", t.Color)
 		}
-		hasProduct := t.AppStoreProductID != nil && strings.TrimSpace(*t.AppStoreProductID) != ""
+		hasProduct := t.StoreProductID != nil && strings.TrimSpace(*t.StoreProductID) != ""
 		switch t.Kind {
 		case "free":
 			free++
 			if hasProduct {
-				c.fail(where, "a gratuita não tem app_store_product_id")
+				c.fail(where, "a gratuita não tem store_product_id")
 			}
 			if t.Available != nil && !*t.Available {
 				c.fail(where, "a gratuita não sai da vitrine")
 			}
 		case "paid":
 			if !hasProduct {
-				c.fail(where, "trilha paga sem app_store_product_id")
+				c.fail(where, "trilha paga sem store_product_id")
+			} else if !googleplay.ValidProductID(*t.StoreProductID) {
+				// O Play aceita só minúscula, dígito, `.` e `_`, começando por letra ou
+				// dígito; a App Store aceita isso também.
+				c.fail(where, "store_product_id %q não vale no Google Play", *t.StoreProductID)
 			}
 		default:
 			c.fail(where, "kind %q fora de free e paid", t.Kind)

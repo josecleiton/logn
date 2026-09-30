@@ -38,7 +38,7 @@ func fakeToken(alg string) string {
 
 func verifierReturning(p *idtoken.Payload, err error) *GoogleVerifier {
 	return &GoogleVerifier{
-		audience: testAudience,
+		clients: []GoogleClient{{Audience: testAudience, AuthorizedParty: testAudience}},
 		validate: func(_ context.Context, _, aud string) (*idtoken.Payload, error) {
 			if aud != testAudience {
 				return nil, errors.New("audiência errada chegou à validação")
@@ -143,8 +143,68 @@ func TestEmailVerifiedNeedsToBeTrue(t *testing.T) {
 
 func TestEmptyAudienceIsRefused(t *testing.T) {
 	for _, aud := range []string{"", "  "} {
-		if _, err := NewGoogleVerifier(aud); err == nil {
+		if _, err := NewGoogleVerifier(GoogleClient{Audience: aud, AuthorizedParty: testAudience}); err == nil {
 			t.Fatalf("audiência %q aceita", aud)
+		}
+		if _, err := NewGoogleVerifier(GoogleClient{Audience: testAudience, AuthorizedParty: aud}); err == nil {
+			t.Fatalf("azp %q aceito", aud)
+		}
+	}
+	if _, err := NewGoogleVerifier(); err == nil {
+		t.Fatal("verificador sem client aceito")
+	}
+}
+
+const (
+	testWebClient     = "web-client.apps.googleusercontent.com"
+	testAndroidClient = "android-client.apps.googleusercontent.com"
+)
+
+// O Android pede o token em nome do client web: `aud` web, `azp` Android (ADR 0022).
+// O par é o que vale, nunca uma das pontas sozinha.
+func TestAndroidPair(t *testing.T) {
+	v := &GoogleVerifier{
+		clients: []GoogleClient{
+			{Audience: testAudience, AuthorizedParty: testAudience},
+			{Audience: testWebClient, AuthorizedParty: testAndroidClient},
+		},
+	}
+	token := func(aud, azp string) *GoogleVerifier {
+		v.validate = func(_ context.Context, _, want string) (*idtoken.Payload, error) {
+			if want != aud {
+				return nil, errors.New("idtoken: audience provided does not match aud claim in the JWT")
+			}
+			p := goodPayload(nonceA)
+			if azp == "" {
+				delete(p.Claims, "azp")
+			} else {
+				p.Claims["azp"] = azp
+			}
+			return p, nil
+		}
+		return v
+	}
+
+	if _, err := token(testWebClient, testAndroidClient).Verify(context.Background(), fakeToken("RS256"), nonceA); err != nil {
+		t.Fatalf("token do Android recusado: %v", err)
+	}
+	if _, err := token(testAudience, testAudience).Verify(context.Background(), fakeToken("RS256"), nonceA); err != nil {
+		t.Fatalf("token do iOS recusado: %v", err)
+	}
+	if _, err := token(testAudience, "").Verify(context.Background(), fakeToken("RS256"), nonceA); err != nil {
+		t.Fatalf("token do iOS sem azp recusado: %v", err)
+	}
+	for name, c := range map[string][2]string{
+		"web pedido por outro client":  {testWebClient, "outro-client.apps.googleusercontent.com"},
+		"web pedido pelo iOS":          {testWebClient, testAudience},
+		"web pedido pelo próprio web":  {testWebClient, testWebClient},
+		"web sem azp":                  {testWebClient, ""},
+		"iOS pedido pelo Android":      {testAudience, testAndroidClient},
+		"audiência do Android sozinha": {testAndroidClient, testAndroidClient},
+		"audiência de outro app":       {"outro.apps.googleusercontent.com", testAndroidClient},
+	} {
+		if _, err := token(c[0], c[1]).Verify(context.Background(), fakeToken("RS256"), nonceA); err == nil {
+			t.Errorf("%s: token aceito", name)
 		}
 	}
 }
@@ -197,7 +257,13 @@ func TestVerifyWithTheRealValidator(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	v := &GoogleVerifier{audience: testAudience, validate: validator.Validate}
+	v := &GoogleVerifier{
+		clients: []GoogleClient{
+			{Audience: testAudience, AuthorizedParty: testAudience},
+			{Audience: testWebClient, AuthorizedParty: testAndroidClient},
+		},
+		validate: validator.Validate,
+	}
 
 	now := time.Now()
 	claims := func(mut func(map[string]any)) map[string]any {
@@ -215,9 +281,14 @@ func TestVerifyWithTheRealValidator(t *testing.T) {
 	if _, err := v.Verify(ctx, signRS256(t, key, "k1", claims(nil)), nonceA); err != nil {
 		t.Fatalf("token bom recusado: %v", err)
 	}
+	android := claims(func(c map[string]any) { c["aud"] = testWebClient; c["azp"] = testAndroidClient })
+	if _, err := v.Verify(ctx, signRS256(t, key, "k1", android), nonceA); err != nil {
+		t.Fatalf("token do Android recusado pela validação de verdade: %v", err)
+	}
 
 	refused := map[string]string{
 		"audiência de outro app":   signRS256(t, key, "k1", claims(func(c map[string]any) { c["aud"] = "outro.apps.googleusercontent.com" })),
+		"web com azp do iOS":       signRS256(t, key, "k1", claims(func(c map[string]any) { c["aud"] = testWebClient })),
 		"vencido":                  signRS256(t, key, "k1", claims(func(c map[string]any) { c["exp"] = now.Add(-time.Minute).Unix() })),
 		"assinado por outra chave": signRS256(t, other, "k1", claims(nil)),
 		"chave desconhecida":       signRS256(t, key, "k2", claims(nil)),

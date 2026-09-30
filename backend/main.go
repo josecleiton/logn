@@ -109,6 +109,7 @@ func main() {
 		Mailer:         email.NewMailer(),
 		CloudValidator: cloudauth.NewGoogleValidator(),
 		StoreKit:       storeKitValidatorFromEnv(),
+		Play:           playFromEnv(),
 		Social:         social,
 		Revokers:       revokers,
 		GitHub:         githubExchanger,

@@ -50,6 +50,11 @@ const (
 	codeUnknownProduct              = "unknown_product"
 	codeEntitlementRequired         = "entitlement_required"
 	codeDeviceIDRequired            = "device_id_required"
+	// Compra do Google Play ainda não paga (boleto, dinheiro): o app espera e manda de
+	// novo quando a loja avisar que pagou (ADR 0022).
+	codePurchasePending = "purchase_pending"
+	// A loja do pedido não está ligada neste servidor.
+	codeStoreUnavailable = "store_unavailable"
 
 	// Revogação manual (ADR 0021). Quem lê é o `just revoke`, não o app.
 	codeLicenseNotActive        = "license_not_active"

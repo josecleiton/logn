@@ -1,13 +1,16 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/josecleiton/logn/backend/internal/domain"
+	"github.com/josecleiton/logn/backend/internal/googleplay"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/cloudauth"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/email"
 )
@@ -82,6 +85,96 @@ func (s *Server) purgeHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"status": "ok", "purged": purged, "waitlist_purged": pending})
+}
+
+// playVoidedWindow é quanto para trás a consulta das compras anuladas olha. A API guarda
+// 30 dias; um a menos de folga para o relógio. Revogar de novo o que já está revogado
+// não muda nada, e a janela larga cobre os dias em que o job não rodou.
+const playVoidedWindow = 29 * 24 * time.Hour
+
+// playVoidedHandler revoga as compras do Google Play anuladas: reembolso, estorno e
+// cancelamento (ADR 0022). Quem chama é o Cloud Scheduler, com a mesma conta da purga.
+//
+// Erro de banco ou da loja responde 500, e o Scheduler tenta de novo. Compra anulada que
+// não é nossa também entra em `revoked_transactions`: ela nunca vira licença depois.
+func (s *Server) playVoidedHandler(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.internalCaller(w, r, envSchedulerAccount); !ok {
+		return
+	}
+	if s.play == nil {
+		http.Error(w, "Google Play disabled", http.StatusServiceUnavailable)
+		return
+	}
+
+	voided, err := s.play.Voided(r.Context(), time.Now().Add(-playVoidedWindow))
+	if err != nil {
+		log.Printf("compras anuladas do Google Play não lidas: erro=%v", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+	for _, v := range voided {
+		if v.PurchaseToken == "" {
+			continue
+		}
+		reason := "refund"
+		if v.Fraud() {
+			reason = "fraud"
+		}
+		at := v.VoidedAtMs()
+		if at == 0 {
+			at = time.Now().UnixMilli()
+		}
+		if err := s.repo.RevokeTransaction(r.Context(), domain.ProviderGooglePlay,
+			googleplay.TransactionKey(v.PurchaseToken), reason, at); err != nil {
+			log.Printf("compra anulada do Google Play não revogada: erro=%v", err)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
+	}
+	log.Printf("compras anuladas do Google Play ok: %d na janela", len(voided))
+
+	// A compra gravada cujo reconhecimento falhou, e o app não mandou de novo, o Play
+	// estorna em 3 dias. O job reconhece o que ficou para trás nesse prazo.
+	acked, err := s.acknowledgePending(r.Context())
+	if err != nil {
+		log.Printf("compras do Google Play sem reconhecimento: erro=%v", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"status": "ok", "voided": len(voided), "acknowledged": acked})
+}
+
+// playAcknowledgeWindow é o prazo do Play para reconhecer, com um dia de folga.
+const playAcknowledgeWindow = 4 * 24 * time.Hour
+
+// acknowledgePending reconhece as compras do Play dos últimos dias que ainda estão sem
+// reconhecimento, e devolve quantas. Compra que não vale mais (anulada, cancelada) fica
+// como está: reconhecer não a faz valer, e a revogação já cuidou dela.
+func (s *Server) acknowledgePending(ctx context.Context) (int, error) {
+	refs, err := s.repo.RecentPlayPurchases(ctx, time.Now().Add(-playAcknowledgeWindow))
+	if err != nil {
+		return 0, err
+	}
+	acked := 0
+	for _, ref := range refs {
+		p, err := s.play.Product(ctx, ref.ProductID, ref.PurchaseToken)
+		if errors.Is(err, googleplay.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return acked, err
+		}
+		if _, err := p.Environment(); err != nil || !p.NeedsAcknowledge() {
+			continue
+		}
+		if err := s.acknowledgePlay(ctx, ref.ProductID, ref.PurchaseToken); err != nil {
+			return acked, err
+		}
+		acked++
+	}
+	return acked, nil
 }
 
 // licenseActionRequest é o corpo de revoke e appeal. `reason` só na revogação,

@@ -9,6 +9,31 @@ func envOf(m map[string]string) func(string) string {
 	return func(k string) string { return m[k] }
 }
 
+func TestGoogleClientsFromEnv(t *testing.T) {
+	both, err := googleClientsFromEnv(envOf(map[string]string{
+		"GOOGLE_IOS_CLIENT_ID": "ios", "GOOGLE_WEB_CLIENT_ID": "web", "GOOGLE_ANDROID_CLIENT_ID": "android",
+	}))
+	if err != nil || len(both) != 2 || both[0].AuthorizedParty != "ios" || both[1].Audience != "web" || both[1].AuthorizedParty != "android" {
+		t.Fatalf("iOS e Android: %+v %v", both, err)
+	}
+	if none, err := googleClientsFromEnv(envOf(nil)); err != nil || len(none) != 0 {
+		t.Fatalf("sem nada: %+v %v", none, err)
+	}
+	// Meio par é o web aceitando token de qualquer client do projeto.
+	for _, env := range []map[string]string{
+		{"GOOGLE_WEB_CLIENT_ID": "web"},
+		{"GOOGLE_ANDROID_CLIENT_ID": "android"},
+		{"GOOGLE_IOS_CLIENT_ID": "ios", "GOOGLE_WEB_CLIENT_ID": "web"},
+		{"GOOGLE_WEB_CLIENT_ID": "same", "GOOGLE_ANDROID_CLIENT_ID": "same"},
+		{"GOOGLE_IOS_CLIENT_ID": "same", "GOOGLE_WEB_CLIENT_ID": "same", "GOOGLE_ANDROID_CLIENT_ID": "android"},
+		{"GOOGLE_IOS_CLIENT_ID": "same", "GOOGLE_WEB_CLIENT_ID": "web", "GOOGLE_ANDROID_CLIENT_ID": "same"},
+	} {
+		if _, err := googleClientsFromEnv(envOf(env)); err == nil {
+			t.Errorf("aceitou %v", env)
+		}
+	}
+}
+
 func TestServerKeysComeFromTheJSONOrLoose(t *testing.T) {
 	keys, err := parseServerKeys(envOf(map[string]string{
 		"SERVER_KEYS":      `{"jwt_secret":"j","github_client_secret":"g"}`,

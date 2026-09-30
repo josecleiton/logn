@@ -29,3 +29,39 @@ resource "google_cloud_scheduler_job" "purge_deleted_accounts" {
     }
   }
 }
+
+# A Google Play Developer API não vem ligada no projeto; sem ela, toda consulta de
+# compra responde 403, e o backend responde 502 à compra (ADR 0022).
+resource "google_project_service" "android_publisher" {
+  count              = var.play_package_name != "" ? 1 : 0
+  service            = "androidpublisher.googleapis.com"
+  disable_on_destroy = false
+}
+
+# Reembolso e estorno do Google Play (ADR 0022): uma vez por dia, a rota interna lê a
+# Voided Purchases API e revoga. Mesma URL .run.app e mesma conta da purga; a janela da
+# consulta é de 29 dias, então um dia sem rodar não perde nada.
+resource "google_cloud_scheduler_job" "play_voided_purchases" {
+  count            = var.play_package_name != "" ? 1 : 0
+  name             = "play-voided-purchases"
+  region           = var.region
+  schedule         = "30 3 * * *"
+  time_zone        = "Etc/UTC"
+  attempt_deadline = "180s"
+
+  retry_config {
+    min_backoff_duration = "5s"
+    max_backoff_duration = "3600s"
+    max_doublings        = 5
+  }
+
+  http_target {
+    http_method = "POST"
+    uri         = "${local.scheduler_audience}/api/v1/internal/play/voided"
+
+    oidc_token {
+      service_account_email = google_service_account.scheduler.email
+      audience              = local.scheduler_audience
+    }
+  }
+}

@@ -22,8 +22,11 @@ import (
 // TRACK_KEY_SECRET; o servidor não sobe em produção sem ela, como com JWT_SECRET.
 var TrackKeySecret []byte
 
-// ProviderAppleStoreKit é o provedor das compras da App Store, como vai no banco.
-const ProviderAppleStoreKit = "apple_storekit"
+// Os provedores de compra, como vão no banco.
+const (
+	ProviderAppleStoreKit = "apple_storekit"
+	ProviderGooglePlay    = "google_play"
+)
 
 // OfflineLicenseValidity é quanto a trilha comprada abre sem falar com o servidor.
 const OfflineLicenseValidity = 30 * 24 * time.Hour
@@ -67,7 +70,7 @@ func (r *Repository) GetTracks(ctx context.Context, lang, userID string) ([]Trac
 	rows, err := r.db.Query(ctx, `
 		WITH mine AS (
 			SELECT track_id, status, revoked_reason FROM entitlements WHERE user_id = NULLIF($2, '')::uuid)
-		SELECT t.id, t.slug, t.kind, t.status, t.author, COALESCE(t.app_store_product_id, ''),
+		SELECT t.id, t.slug, t.kind, t.status, t.author, COALESCE(t.store_product_id, ''),
 		       t.content_version, t.color, tt.name, COALESCE(tt.description, ''),
 		       (SELECT count(*) FROM skill_nodes n WHERE n.track_id = t.id),
 		       (SELECT count(*) FROM challenges c JOIN skill_nodes n ON n.id = c.node_id WHERE n.track_id = t.id),
@@ -99,13 +102,17 @@ func (r *Repository) GetTracks(ctx context.Context, lang, userID string) ([]Trac
 
 // PurchaseGrant é uma transação já verificada, pronta para virar direito de acesso.
 type PurchaseGrant struct {
-	UserID                string
+	UserID string
+	// A loja que vendeu: ProviderAppleStoreKit ou ProviderGooglePlay.
+	Provider              string
 	ProductID             string
 	OriginalTransactionID string
 	TransactionID         string
 	Environment           string
-	AppAccountToken       string
-	RawPayload            string
+	// O id da conta que a loja devolve: o `appAccountToken` da Apple, o
+	// `obfuscatedExternalAccountId` do Play. O app põe o id da conta nos dois.
+	AppAccountToken string
+	RawPayload      string
 	// Restauração: a transação pode ter sido comprada por outra conta, desde que ela
 	// não esteja mais ativa (spec, seção 5).
 	Restore bool
@@ -117,18 +124,21 @@ type PurchaseGrant struct {
 // de revogadas não some com a conta. Antes o upsert reativava o direito de quem
 // reenviava o JWS de uma compra já reembolsada.
 func (r *Repository) GrantEntitlement(ctx context.Context, g PurchaseGrant) (string, error) {
+	if g.Provider != ProviderAppleStoreKit && g.Provider != ProviderGooglePlay {
+		return "", fmt.Errorf("provedor de compra desconhecido: %q", g.Provider)
+	}
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return "", err
 	}
 	defer tx.Rollback(ctx)
 
-	if err := lockTransaction(ctx, tx, ProviderAppleStoreKit, g.OriginalTransactionID); err != nil {
+	if err := lockTransaction(ctx, tx, g.Provider, g.OriginalTransactionID); err != nil {
 		return "", err
 	}
 
 	var trackID string
-	err = tx.QueryRow(ctx, `SELECT id FROM tracks WHERE app_store_product_id = $1 AND kind = 'paid'`, g.ProductID).Scan(&trackID)
+	err = tx.QueryRow(ctx, `SELECT id FROM tracks WHERE store_product_id = $1 AND kind = 'paid'`, g.ProductID).Scan(&trackID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", ErrUnknownProduct
 	}
@@ -144,7 +154,7 @@ func (r *Repository) GrantEntitlement(ctx context.Context, g PurchaseGrant) (str
 		               WHERE provider = $1 AND original_transaction_id = $2 AND reversed_at_ms IS NULL)
 		    OR EXISTS (SELECT 1 FROM manual_revocations
 		               WHERE provider = $1 AND original_transaction_id = $2 AND status = 'revoked')`,
-		ProviderAppleStoreKit, g.OriginalTransactionID).Scan(&revoked); err != nil {
+		g.Provider, g.OriginalTransactionID).Scan(&revoked); err != nil {
 		return "", err
 	}
 	if revoked {
@@ -179,16 +189,17 @@ func (r *Repository) GrantEntitlement(ctx context.Context, g PurchaseGrant) (str
 			(user_id, track_id, provider, provider_transaction_id, original_transaction_id, environment, raw_payload)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (provider, provider_transaction_id) DO NOTHING`,
-		g.UserID, trackID, ProviderAppleStoreKit, g.TransactionID, g.OriginalTransactionID, g.Environment, g.RawPayload); err != nil {
+		g.UserID, trackID, g.Provider, g.TransactionID, g.OriginalTransactionID, g.Environment, g.RawPayload); err != nil {
 		return "", err
 	}
 
 	_, err = tx.Exec(ctx, `
-		INSERT INTO entitlements (user_id, track_id, original_transaction_id, status)
-		VALUES ($1, $2, $3, 'active')
+		INSERT INTO entitlements (user_id, track_id, provider, original_transaction_id, status)
+		VALUES ($1, $2, $3, $4, 'active')
 		ON CONFLICT (user_id, track_id) DO UPDATE
-		SET status = 'active', revoked_reason = NULL, original_transaction_id = EXCLUDED.original_transaction_id`,
-		g.UserID, trackID, g.OriginalTransactionID)
+		SET status = 'active', revoked_reason = NULL, provider = EXCLUDED.provider,
+		    original_transaction_id = EXCLUDED.original_transaction_id`,
+		g.UserID, trackID, g.Provider, g.OriginalTransactionID)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "entitlements_one_active_owner" {
 		return "", ErrOwnedByOtherAccount
@@ -197,6 +208,49 @@ func (r *Repository) GrantEntitlement(ctx context.Context, g PurchaseGrant) (str
 		return "", err
 	}
 	return trackID, tx.Commit(ctx)
+}
+
+// IsPaidProduct diz se o id é o produto de uma trilha paga. A compra pelo Google Play
+// confere isto antes de perguntar à loja: o id vai para o caminho da URL da API, e só
+// sai de lista fechada.
+func (r *Repository) IsPaidProduct(ctx context.Context, productID string) (bool, error) {
+	var ok bool
+	err := r.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM tracks WHERE store_product_id = $1 AND kind = 'paid')`,
+		productID).Scan(&ok)
+	return ok, err
+}
+
+// PlayPurchaseRef é o que o reconhecimento de uma compra do Play precisa.
+type PlayPurchaseRef struct {
+	ProductID     string `json:"product_id"`
+	PurchaseToken string `json:"purchase_token"`
+}
+
+// RecentPlayPurchases devolve as compras do Play gravadas desde `since`, para o job
+// diário reconhecer a que ficou sem reconhecimento (ADR 0022). O produto e o token
+// saem do registro da compra, que o servidor escreveu.
+func (r *Repository) RecentPlayPurchases(ctx context.Context, since time.Time) ([]PlayPurchaseRef, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT raw_payload FROM store_transactions
+		WHERE provider = $1 AND created_at >= $2
+		ORDER BY created_at`, ProviderGooglePlay, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []PlayPurchaseRef
+	for rows.Next() {
+		var raw string
+		if err := rows.Scan(&raw); err != nil {
+			return nil, err
+		}
+		var ref PlayPurchaseRef
+		if err := json.Unmarshal([]byte(raw), &ref); err != nil || ref.ProductID == "" || ref.PurchaseToken == "" {
+			return nil, fmt.Errorf("registro de compra do Play ilegível: %v", err)
+		}
+		out = append(out, ref)
+	}
+	return out, rows.Err()
 }
 
 // lockTransaction serializa, até o fim da transação do banco, tudo que mexe numa mesma
@@ -244,7 +298,8 @@ func (r *Repository) RevokeTransaction(ctx context.Context, provider, originalTr
 		UPDATE entitlements e SET status = 'revoked', revoked_reason = rt.reason
 		FROM revoked_transactions rt
 		WHERE rt.provider = $1 AND rt.original_transaction_id = $2 AND rt.reversed_at_ms IS NULL
-		  AND e.original_transaction_id = rt.original_transaction_id AND e.status = 'active'`,
+		  AND e.provider = rt.provider AND e.original_transaction_id = rt.original_transaction_id
+		  AND e.status = 'active'`,
 		provider, originalTransactionID); err != nil {
 		return err
 	}
@@ -285,14 +340,14 @@ func (r *Repository) ReinstateRefund(ctx context.Context, provider, originalTran
 	if _, err := tx.Exec(ctx, `
 		UPDATE entitlements e SET revoked_reason = m.reason
 		FROM manual_revocations m
-		WHERE e.original_transaction_id = $1 AND e.revoked_reason = 'refund'
+		WHERE e.provider = $2 AND e.original_transaction_id = $1 AND e.revoked_reason = 'refund'
 		  AND m.provider = $2 AND m.original_transaction_id = $1 AND m.status = 'revoked'`,
 		originalTransactionID, provider); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE entitlements SET status = 'active', revoked_reason = NULL
-		WHERE original_transaction_id = $1 AND revoked_reason = 'refund'
+		WHERE provider = $2 AND original_transaction_id = $1 AND revoked_reason = 'refund'
 		  AND NOT EXISTS (SELECT 1 FROM manual_revocations
 		                  WHERE provider = $2 AND original_transaction_id = $1 AND status = 'revoked')`,
 		originalTransactionID, provider); err != nil {

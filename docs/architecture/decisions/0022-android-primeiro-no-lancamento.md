@@ -54,12 +54,13 @@ A conta do Google Play Console já existe e é de organização, verificada no C
   - O servidor faz o acknowledge logo depois de gravar a licença. Sem acknowledge em 3 dias, o Play estorna sozinho.
 - **Compra de testador de licença libera a trilha**, como a de Sandbox na ADR 0013. A diferença é que só as contas que cadastramos no Play Console conseguem fazê-la.
 - **Credencial sem chave.** A conta de serviço do Cloud Run é convidada no Play Console, com permissão só de ver dados financeiros e gerenciar pedidos. O token vem do servidor de metadados, com o escopo `androidpublisher`, e a chamada é REST por `net/http`, sem SDK, como na ADR 0016. Não entra segredo novo nem dependência nova.
-- **Reembolso por consulta diária.** Um job do Cloud Scheduler chama `POST /api/v1/internal/play/voided`, que lê a Voided Purchases API e revoga pelo mesmo caminho de `revoked_transactions`. A rota confere emissor, audiência e a conta que assinou, e essa conta é só dela (ADR 0021).
-- O provedor deixa de ser constante em `GrantEntitlement` e na notificação, e fecha a pendência da ADR 0021: as duas travas passam a usar o provedor da compra.
+- **A compra chega pela mesma rota.** `POST /api/v1/purchases` e `/restore` aceitam `{"jws"}`, como sempre, ou `{"provider":"google_play","product_id","purchase_token"}`. Antes de qualquer pedido à loja, o produto é conferido no banco (`IsPaidProduct`) e o token passa por um formato fechado, porque os dois entram no caminho da URL da API. Há dois códigos novos: `purchase_pending` (409), para compra ainda não paga, e `store_unavailable` (503), para o Play desligado. Falha da loja ou do acknowledge responde 502, e o app manda de novo: gravar a licença é idempotente.
+- **Reembolso por consulta diária.** Um job do Cloud Scheduler chama `POST /api/v1/internal/play/voided`, que lê a Voided Purchases API (29 dias para trás) e revoga pelo mesmo caminho de `revoked_transactions`. Anulação por fraude ou estorno (`voidedReason` 5, 6 e 7) vira `fraud`; o resto vira `refund`. A rota confere emissor, audiência e a conta que assinou. A conta é a do Scheduler, a mesma da purga: quem chama as duas é o mesmo job, e as duas só leem a loja e revogam, sem nada a devolver a quem chamou.
+- **O provedor passa a morar na licença** (`entitlements.provider`, 0066). `GrantEntitlement` usa o da compra, e a revogação manual lê o provedor da licença em vez do registro da compra. Isso fecha a pendência da ADR 0021. `RevokeTransaction` e `ReinstateRefund` só mexem na licença da mesma loja.
 
 **Login no Android:**
 
-- Google pelo Credential Manager. O ID token vem com a audiência do *client id web*, então o backend passa a aceitar uma lista de audiências (a do iOS e a web).
+- Google pelo Credential Manager. O ID token volta com `aud` = client web (o `serverClientId`) e `azp` = client Android. Aceitar só a audiência web deixaria passar token pedido por qualquer client do projeto, então o backend aceita **pares** `(aud, azp)`: `(iOS, iOS)` com `GOOGLE_IOS_CLIENT_ID`, e `(web, Android)` com `GOOGLE_WEB_CLIENT_ID` e `GOOGLE_ANDROID_CLIENT_ID`, que vêm juntos, senão o servidor não sobe. Cada audiência passa pela validação inteira; nada do token é lido antes de a assinatura conferir. `azp` ausente só vale no par do iOS.
 - GitHub funciona como está.
 - Sem "Entrar com Apple": no Android ele exige um Services ID, que exige a conta paga. O segredo `logn-apple-signin-key` continua no Terraform, reservado.
 
@@ -77,6 +78,13 @@ A conta do Google Play Console já existe e é de organização, verificada no C
 
 ## 4. Consequências
 
+- **A loja diz de que produto é a compra.** O id do produto vai no caminho da consulta, e a loja recusa token de outro produto. Mas a documentação não promete isso, e um token de item barato do mesmo app não pode abrir uma trilha. Quando a resposta traz `productId`, ele tem de ser o pedido, e a quantidade tem de ser um.
+- **Reconhecimento que falhou não vira estorno calado.** A licença é gravada antes do reconhecimento. Se ele falha e o app não manda de novo, o job diário das anuladas reconhece as compras dos últimos 4 dias que ainda estão sem reconhecimento. Reconhecimento que falhou mas chegou à loja vale como feito.
+- **Erro nosso não é compra inválida.** Só a resposta do token que não vale (410, ou 400 e 404 com o motivo do token) vira `purchase_invalid`. Pacote errado, conta sem permissão ou API desligada respondem 502, e o app tenta de novo. Erro da API vai para o log sem a URL, que leva o token.
+- **Compra de código promocional resgatado na loja** chega sem conta dentro, e só entra pela restauração. O cliente Android tem de chamar a restauração ao abrir.
+- **Limites do job das anuladas:** se ele ficar mais de 29 dias sem rodar, os reembolsos anteriores se perdem, porque a API guarda 30 dias. Mais de 20 mil anuladas na janela fazem o job falhar em toda rodada. Falta um alerta de falha do Scheduler.
+- **Ordem do deploy da 0066:** ela renomeia `app_store_product_id`, e a revisão antiga do Cloud Run lê o nome antigo. Entre a migração e a troca de tráfego, `/tracks` e `/purchases` respondem 500. Sem usuários, isso é aceito. `gen_conteudo.py` e `tracks.json` de `logn-conteudo` mudam junto, ou o `content-check` e a próxima migração de conteúdo quebram.
+- **O Core ainda manda só `{"jws"}`.** `SubmitPurchase` em `app.rs` tem de ganhar a forma do Play quando o cliente Android existir, e o Core precisa mapear `purchase_pending` e `store_unavailable` para `StatusKey`.
 - **Sem AAB, sem teste ponta a ponta.** O Play Console só cria produto depois de receber um AAB com a permissão de billing, e `purchaseToken` só sai de um cliente real. Até lá, a verificação do Play é testada contra respostas montadas a partir da documentação.
 - A página `/account/delete/` e a seção 10 da política dizem a mesma coisa. Quem mudar uma muda a outra. O app Android precisa usar os mesmos rótulos, "Gerenciar conta → Excluir minha conta".
 - `LOGN_API_ORIGIN` na landing só depois da rota e da política no ar, nessa ordem.

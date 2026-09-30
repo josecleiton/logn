@@ -72,7 +72,7 @@ func newStoreFixture(t *testing.T) *storeFixture {
 		alice:     newTestUUID(t),
 		bob:       newTestUUID(t),
 	}
-	if _, err := conn.Exec(ctx, `INSERT INTO tracks (id, slug, kind, author, app_store_product_id) VALUES ($1, $2, 'paid', 'Test', $3)`,
+	if _, err := conn.Exec(ctx, `INSERT INTO tracks (id, slug, kind, author, store_product_id) VALUES ($1, $2, 'paid', 'Test', $3)`,
 		f.trackID, "test-"+f.trackID[:8], f.productID); err != nil {
 		t.Fatal(err)
 	}

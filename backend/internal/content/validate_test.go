@@ -228,9 +228,9 @@ func withPaidTrack() map[string]any {
 	files := trail()
 	product := "com.example.logn.track.t"
 	files["trilhas/tracks.json"] = []any{
-		map[string]any{"id": freeTrackID, "slug": "free", "kind": "free", "status": "active", "author": "LogN", "app_store_product_id": nil},
+		map[string]any{"id": freeTrackID, "slug": "free", "kind": "free", "status": "active", "author": "LogN", "store_product_id": nil},
 		map[string]any{"id": paidTrackID, "slug": "paga", "kind": "paid", "status": "active", "author": "LogN",
-			"app_store_product_id": product, "available": false},
+			"store_product_id": product, "available": false},
 	}
 	for _, l := range []string{"pt-BR", "en", "es"} {
 		files["trilhas/tracks."+l+".json"] = map[string]any{
@@ -282,8 +282,11 @@ func TestTracksArePassedOneByOne(t *testing.T) {
 			f["trilhas/tracks.json"].([]any)[0].(map[string]any)["available"] = false
 		}, "a gratuita não sai da vitrine"},
 		{"paga sem produto", func(f map[string]any) {
-			f["trilhas/tracks.json"].([]any)[1].(map[string]any)["app_store_product_id"] = nil
-		}, "trilha paga sem app_store_product_id"},
+			f["trilhas/tracks.json"].([]any)[1].(map[string]any)["store_product_id"] = nil
+		}, "trilha paga sem store_product_id"},
+		{"produto que o Play recusa", func(f map[string]any) {
+			f["trilhas/tracks.json"].([]any)[1].(map[string]any)["store_product_id"] = "Com.Example-Track"
+		}, "não vale no Google Play"},
 		{"trilha sem nome em português", func(f map[string]any) {
 			delete(f["trilhas/tracks.pt-BR.json"].(map[string]any), paidTrackID)
 		}, "falta a trilha em português"},

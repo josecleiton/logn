@@ -59,19 +59,36 @@ const maxLoggedLen = 64
 // validateFunc é a assinatura de `idtoken.Validate`, trocada nos testes.
 type validateFunc func(ctx context.Context, idToken, audience string) (*idtoken.Payload, error)
 
-// GoogleVerifier aceita só tokens emitidos pelo Google para o client ID do app.
+// GoogleClient é um par aceito de `aud` (para quem o token foi emitido) e `azp` (o
+// client que o pediu).
+//
+// No iOS os dois são o client iOS. No Android (ADR 0022) o Credential Manager pede o
+// token em nome do client web (`serverClientId`), e ele volta com `aud` = client web e
+// `azp` = client Android: aceitar só o `aud` deixaria passar token pedido por qualquer
+// outro client do mesmo projeto.
+type GoogleClient struct {
+	Audience        string
+	AuthorizedParty string
+}
+
+// GoogleVerifier aceita só tokens emitidos pelo Google para um dos pares do app.
 type GoogleVerifier struct {
-	audience string
+	clients  []GoogleClient
 	validate validateFunc
 }
 
-// NewGoogleVerifier recusa audiência vazia: `idtoken.Validate` pula a checagem de `aud`
-// quando ela vem vazia, e aí qualquer token do Google para qualquer app passaria.
-func NewGoogleVerifier(audience string) (*GoogleVerifier, error) {
-	if strings.TrimSpace(audience) == "" {
-		return nil, errors.New("socialauth: audiência vazia")
+// NewGoogleVerifier recusa par com campo vazio: `idtoken.Validate` pula a checagem de
+// `aud` quando ela vem vazia, e aí qualquer token do Google para qualquer app passaria.
+func NewGoogleVerifier(clients ...GoogleClient) (*GoogleVerifier, error) {
+	if len(clients) == 0 {
+		return nil, errors.New("socialauth: nenhum client do Google")
 	}
-	return &GoogleVerifier{audience: audience, validate: idtoken.Validate}, nil
+	for _, c := range clients {
+		if strings.TrimSpace(c.Audience) == "" || strings.TrimSpace(c.AuthorizedParty) == "" {
+			return nil, errors.New("socialauth: client do Google com audiência ou azp vazio")
+		}
+	}
+	return &GoogleVerifier{clients: clients, validate: idtoken.Validate}, nil
 }
 
 var googleIssuers = map[string]bool{
@@ -93,10 +110,20 @@ func (g *GoogleVerifier) Verify(ctx context.Context, idToken, rawNonce string) (
 		return Identity{}, fmt.Errorf("algoritmo recusado: %q", clip(alg))
 	}
 
-	// Assinatura contra as chaves públicas do Google, `aud` e `exp`.
+	// Assinatura contra as chaves públicas do Google, `aud` e `exp`, contra cada
+	// audiência aceita. É a validação inteira em cada tentativa: nada do token é lido
+	// antes de a assinatura conferir.
 	ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
-	payload, err := g.validate(ctx, idToken, g.audience)
+	var payload *idtoken.Payload
+	var client GoogleClient
+	var err error
+	for _, c := range g.clients {
+		if payload, err = g.validate(ctx, idToken, c.Audience); err == nil {
+			client = c
+			break
+		}
+	}
 	if err != nil {
 		return Identity{}, err
 	}
@@ -106,9 +133,12 @@ func (g *GoogleVerifier) Verify(ctx context.Context, idToken, rawNonce string) (
 	if payload.Subject == "" {
 		return Identity{}, errors.New("token sem sub")
 	}
-	// `azp` é o client que pediu o token. Com um client só ele é igual ao `aud`; a
-	// checagem segura o dia em que outro client ID entrar no mesmo projeto.
-	if azp, _ := payload.Claims["azp"].(string); azp != "" && azp != g.audience {
+	// `azp` é o client que pediu o token, e tem de ser o do par da audiência que
+	// conferiu. Ausente, só vale no par em que o client pede para si mesmo (o iOS): no
+	// Android o `azp` é o que distingue o nosso client de qualquer outro do projeto.
+	azp, _ := payload.Claims["azp"].(string)
+	selfIssued := client.AuthorizedParty == client.Audience
+	if azp != client.AuthorizedParty && !(azp == "" && selfIssued) {
 		return Identity{}, fmt.Errorf("azp recusado: %q", clip(azp))
 	}
 	issuedAt := time.Unix(payload.IssuedAt, 0)

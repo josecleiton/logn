@@ -97,6 +97,45 @@ variable "google_ios_client_id" {
   default     = ""
 }
 
+# --- Android e Google Play (ADR 0022) ---
+
+variable "google_web_client_id" {
+  description = <<-EOT
+    Client ID do tipo "Aplicativo da Web" no Google Auth Platform. No Android, o
+    Credential Manager pede o ID token em nome dele (serverClientId), e ele é o `aud` do
+    token. Vem junto com google_android_client_id, ou o backend não sobe.
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "google_android_client_id" {
+  description = <<-EOT
+    Client ID do tipo "Android" (pacote + SHA-1 da assinatura). É o `azp` do ID token do
+    Android, e é o que separa o nosso app de qualquer outro client do projeto.
+  EOT
+  type        = string
+  default     = ""
+
+  # Um sem o outro o Terraform deixaria de mandar os dois, e o login do Android sumiria
+  # calado; o backend recusa subir com meio par, e aqui também.
+  validation {
+    condition     = (var.google_android_client_id == "") == (var.google_web_client_id == "")
+    error_message = "google_web_client_id e google_android_client_id vêm juntos."
+  }
+}
+
+variable "play_package_name" {
+  description = <<-EOT
+    Nome do pacote do app no Google Play. Liga a compra pelo Play e o job diário das
+    compras anuladas. A conta de serviço do Cloud Run precisa estar convidada no Play
+    Console (Usuários e permissões) com "Ver dados financeiros" e "Gerenciar pedidos";
+    isso não é Terraform. Vazio desliga os dois.
+  EOT
+  type        = string
+  default     = ""
+}
+
 # --- Sign in with Apple (ADR 0017) ---
 # Tudo desligado até existir a chave, que só a conta paga do Apple Developer gera
 # (Certificates, Identifiers & Profiles > Keys, com "Sign in with Apple").

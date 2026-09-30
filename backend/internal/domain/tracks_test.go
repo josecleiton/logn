@@ -48,7 +48,7 @@ func seedPaidTrack(t *testing.T, conn *pgxpool.Pool) paidTrack {
 		sql  string
 		args []any
 	}{
-		{`INSERT INTO tracks (id, slug, kind, author, app_store_product_id) VALUES ($1, $2, 'paid', 'Test', $3)`,
+		{`INSERT INTO tracks (id, slug, kind, author, store_product_id) VALUES ($1, $2, 'paid', 'Test', $3)`,
 			[]any{p.id, "test-" + suffix, p.productID}},
 		{`INSERT INTO track_translations (track_id, locale, name) VALUES ($1, 'pt-BR', 'Trilha T'), ($1, 'en', 'Track T'), ($1, 'es', 'Pista T')`,
 			[]any{p.id}},
@@ -101,7 +101,7 @@ func revokedCleanup(t *testing.T, conn *pgxpool.Pool, txID string) {
 
 func grant(p paidTrack, userID, token, txID string, restore bool) PurchaseGrant {
 	return PurchaseGrant{
-		UserID: userID, ProductID: p.productID, OriginalTransactionID: txID, TransactionID: txID,
+		UserID: userID, Provider: ProviderAppleStoreKit, ProductID: p.productID, OriginalTransactionID: txID, TransactionID: txID,
 		Environment: "Sandbox", AppAccountToken: token, RawPayload: "jws", Restore: restore,
 	}
 }
@@ -370,6 +370,45 @@ func TestOneActiveAccountPerTransaction(t *testing.T) {
 	}
 	if err := repo.CheckEntitlement(ctx, b, p.id); err != nil {
 		t.Fatalf("conta nova sem a trilha: %v", err)
+	}
+}
+
+// As duas lojas têm espaços de id separados (0066): a revogação de uma não toca a
+// licença da outra, mesmo com o mesmo id de transação.
+func TestRevocationStaysInItsStore(t *testing.T) {
+	conn := setupTestDB(t)
+	t.Cleanup(conn.Close)
+	repo := NewRepository(conn)
+	ctx := context.Background()
+	p := seedPaidTrack(t, conn)
+	a := seedUser(t, conn)
+	txID := "test-" + testUUID(t)[:12]
+	revokedCleanup(t, conn, txID)
+
+	if _, err := repo.GrantEntitlement(ctx, grant(p, a, a, txID, false)); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.RevokeTransaction(ctx, ProviderGooglePlay, txID, "refund", 1); err != nil {
+		t.Fatal(err)
+	}
+	var status string
+	conn.QueryRow(ctx, `SELECT status FROM entitlements WHERE user_id = $1 AND track_id = $2`, a, p.id).Scan(&status)
+	if status != "active" {
+		t.Fatalf("reembolso do Play revogou a licença da App Store: %s", status)
+	}
+	if err := repo.RevokeTransaction(ctx, ProviderAppleStoreKit, txID, "refund", 1); err != nil {
+		t.Fatal(err)
+	}
+	conn.QueryRow(ctx, `SELECT status FROM entitlements WHERE user_id = $1 AND track_id = $2`, a, p.id).Scan(&status)
+	if status != "revoked" {
+		t.Fatalf("reembolso da App Store não revogou: %s", status)
+	}
+
+	// Provedor fora da lista não grava nada.
+	g := grant(p, a, a, txID, false)
+	g.Provider = "stripe"
+	if _, err := repo.GrantEntitlement(ctx, g); err == nil {
+		t.Error("provedor desconhecido aceito")
 	}
 }
 

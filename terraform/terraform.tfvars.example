@@ -23,6 +23,17 @@ smtp_port = "465" # 465 = TLS implícito; 587 = STARTTLS (o gomail escolhe pela 
 # Client ID iOS do login com Google (ADR 0016). Vazio desliga o login com Google.
 google_ios_client_id = "000000000000-seuclientid.apps.googleusercontent.com"
 
+# Login com Google no Android (ADR 0022): o client web (aud) e o Android (azp), juntos.
+google_web_client_id     = ""
+google_android_client_id = ""
+
+# Compra pelo Google Play e o job das compras anuladas (ADR 0022). Antes, convide a conta
+# de serviço do Cloud Run no Play Console. Vazio desliga.
+play_package_name = ""
+
+# Lista de espera do iPhone (ADR 0022). Só depois de a política cobrir a lista.
+enable_waitlist = false
+
 # Client ID do OAuth App do GitHub (ADR 0019). O secret vai em logn-server-keys, nunca
 # por aqui; os dois só valem juntos. Vazio desliga o login com GitHub.
 github_client_id = "Ov23liSeuClientId000"

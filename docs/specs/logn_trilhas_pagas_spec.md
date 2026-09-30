@@ -64,11 +64,11 @@ CREATE TABLE tracks (
     kind        VARCHAR(8)  NOT NULL CHECK (kind IN ('free', 'paid')),
     status      VARCHAR(16) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'discontinued')),
     author      VARCHAR(255) NOT NULL,
-    app_store_product_id VARCHAR(255) UNIQUE,  -- nulo na trilha gratuita
+    store_product_id VARCHAR(255) UNIQUE,  -- nulo na trilha gratuita; o mesmo nas duas lojas (0066)
     content_version INT NOT NULL DEFAULT 1,
     created_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CHECK ((kind = 'paid') = (app_store_product_id IS NOT NULL))
+    CHECK ((kind = 'paid') = (store_product_id IS NOT NULL))
 );
 
 -- Nome e descrição da trilha por língua, no desenho do PRD de conteúdo.

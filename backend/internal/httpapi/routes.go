@@ -20,6 +20,8 @@ type Deps struct {
 	Mailer         *email.Mailer
 	CloudValidator cloudauth.Validator
 	StoreKit       *storekit.Validator
+	// A Google Play Developer API. Nula com PLAY_PACKAGE_NAME vazio.
+	Play PlayVerifier
 	// Um verificador por provedor de login ligado. Provedor fora do mapa está desligado.
 	Social map[string]socialauth.Verifier
 	// Provedores que revogam o acesso na exclusão da conta (a Apple, o GitHub).
@@ -42,6 +44,7 @@ func New(d Deps) (http.Handler, error) {
 		mailer:         d.Mailer,
 		cloudValidator: d.CloudValidator,
 		storekit:       d.StoreKit,
+		play:           d.Play,
 		social:         d.Social,
 		revokers:       d.Revokers,
 		github:         d.GitHub,
@@ -101,6 +104,8 @@ func New(d Deps) (http.Handler, error) {
 	}
 	mux.HandleFunc("POST /api/v1/internal/licenses/revoke", internal(server.revokeLicenseHandler))
 	mux.HandleFunc("POST /api/v1/internal/licenses/appeal", internal(server.appealLicenseHandler))
+	// Reembolso e estorno do Google Play, uma vez por dia pelo Cloud Scheduler (ADR 0022).
+	mux.HandleFunc("POST /api/v1/internal/play/voided", internal(server.playVoidedHandler))
 
 	registerLegalRoutes(mux, legalStore{server.repo}, d.LegalStrict)
 	server.registerWaitlistRoutes(mux)

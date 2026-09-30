@@ -182,6 +182,28 @@ resource "google_cloud_run_v2_service" "logn" {
         }
       }
 
+      # Login com Google no Android (ADR 0022): o par web + Android, os dois ou nenhum.
+      dynamic "env" {
+        for_each = var.google_web_client_id != "" && var.google_android_client_id != "" ? {
+          GOOGLE_WEB_CLIENT_ID     = var.google_web_client_id
+          GOOGLE_ANDROID_CLIENT_ID = var.google_android_client_id
+        } : {}
+        content {
+          name  = env.key
+          value = env.value
+        }
+      }
+
+      # Compra pelo Google Play (ADR 0022). O token da API sai do servidor de metadados,
+      # sem chave nem segredo.
+      dynamic "env" {
+        for_each = var.play_package_name != "" ? [1] : []
+        content {
+          name  = "PLAY_PACKAGE_NAME"
+          value = var.play_package_name
+        }
+      }
+
       # Lista de espera do iPhone (ADR 0022). Os dois domínios públicos: a landing, para
       # onde as rotas respondem com 303, e a API, para os links do e-mail. Desligada, as
       # rotas não existem; uma variável sem a outra, o servidor não sobe.

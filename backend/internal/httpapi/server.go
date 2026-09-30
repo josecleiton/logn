@@ -26,6 +26,9 @@ type Server struct {
 	mailer         *email.Mailer
 	cloudValidator cloudauth.Validator
 	storekit       *storekit.Validator
+	// A Google Play Developer API (ADR 0022). Nula, a compra pelo Play responde
+	// `store_unavailable`.
+	play PlayVerifier
 	// O aviso da revogação manual; é o mailer, trocado nos testes.
 	licenseNotifier LicenseNotifier
 	// Um verificador por provedor de login ligado. Provedor fora do mapa está desligado.
