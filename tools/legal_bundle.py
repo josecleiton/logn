@@ -22,6 +22,8 @@ import urllib.request
 BASE = os.environ.get("LEGAL_BUNDLE_BASE_URL", "http://localhost:8080")
 DESTINO = os.environ.get("LEGAL_BUNDLE_OUT", "ios/LogNiOS/LogNiOS/Resources/Legal")
 ALLOW_DRAFT = os.environ.get("LEGAL_BUNDLE_ALLOW_DRAFT") == "1"
+# A Cloudflare na frente da produção barra o User-Agent padrão do urllib com 403.
+USER_AGENT = "logn-legal-bundle/1"
 
 KINDS = ["terms", "privacy"]
 LOCALES = ["pt-BR", "en", "es"]
@@ -30,7 +32,8 @@ LOCALES = ["pt-BR", "en", "es"]
 def buscar(kind: str, locale: str):
     url = f"{BASE}/legal/{kind}?embed=1&lang={locale}"
     try:
-        with urllib.request.urlopen(url, timeout=10) as r:
+        pedido = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(pedido, timeout=10) as r:
             if r.status != 200:
                 sys.exit(f"{url} respondeu {r.status}")
             servida = r.headers.get("Content-Language")

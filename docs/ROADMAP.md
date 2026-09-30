@@ -66,12 +66,10 @@ O que saiu em setembro de 2026 e deixou uma ponta aberta:
 - **Conteúdo em três línguas** (ADR 0009) está no ar em português, inglês e espanhol. O
   espanhol passou por revisão de texto, mas ainda precisa de um revisor técnico nativo
   antes da loja.
-- **Termos e política** (ADR 0008) estão na versão 1, sem marcador de rascunho, com
-  aceite no cadastro e exclusão de conta de verdade. O PRD pede revisão jurídica do texto
-  final; confirmar se ela aconteceu antes de publicar.
 - **Build de loja:** `just release-ios` empacota a trilha e os documentos a partir da
-  produção e gera o `.ipa`, sem enviar. Antes dele, `just seed-bundle --release`: os nós
-  ganharam `track_id` e `requires_purchase`, e uma semente de antes disso não serve.
+  produção e gera o `.ipa`, sem enviar. A semente (versão 3, com `track_id` e
+  `requires_purchase`) e a cópia offline da v3 dos documentos foram geradas da produção
+  em 2026-09-30; o `release-ios` gera as duas de novo.
 
 ## Trilhas pagas: o que falta depois do PR #2
 
@@ -84,19 +82,22 @@ Trilhas` e `LogN Validade Offline`. PRD:
 
 Antes de vender a primeira trilha:
 
-- **Termos e política novos.** A v3 está no ar desde 2026-09-30 (migração 0061 do
-  repositório de conteúdo), relevante: toda conta aceita de novo pelo bloqueio da ADR 0020,
-  e `APP_PEDE_REACEITE` está ligado. Ela saiu sem revisão de advogado, só com a revisão
-  automatizada. O build de loja precisa de `just legal-bundle` de novo, para a cópia
-  offline dos documentos no app ser a v3.
-  O texto da v3 promete duas
-  coisas que o código ainda não faz: apagar `store_transactions` e `revoked_transactions`
-  5 anos depois da transação (a primeira vence em 2031), e o e-mail que avisa a pessoa
-  depois de uma revogação manual, que hoje é um roteiro de SQL. A revisão automatizada
-  deixou riscos em aberto para o advogado: o encerramento de conta por mau uso contra a
-  trilha comprada, o novo aceite futuro contra o que já foi comprado, as cláusulas da
-  ANPD nos contratos dos fornecedores, a base legal do aceite, os aceites apagados na
-  exclusão, adolescentes, os portões de XP e a guarda dos registros de acesso.
+- **Termos e política novos.** A v3 está no ar desde 2026-09-30, relevante: toda conta
+  aceita de novo pelo bloqueio da ADR 0020, e `APP_PEDE_REACEITE` está ligado. A migração
+  0062 do repositório de conteúdo substituiu o texto da 0061 antes de qualquer aceite,
+  fechando três riscos da revisão automatizada: encerrar a conta por mau uso não revoga
+  trilha comprada, uma versão nova não muda as condições do que já foi comprado, e a
+  transferência internacional se apoia nos contratos de tratamento de dados, sem afirmar
+  cláusulas da ANPD. Daqui em diante, com aceite registrado, correção é versão nova.
+  A v3 saiu sem revisão de advogado, e ficam em aberto para ele: a base legal do aceite,
+  os aceites apagados na exclusão, adolescentes, os portões de XP e a guarda dos
+  registros de acesso.
+  O texto promete duas coisas que o código ainda não faz: apagar `store_transactions` e
+  `revoked_transactions` 5 anos depois da transação (a primeira vence em 2031), e o
+  e-mail que avisa a pessoa depois de uma revogação manual, que hoje é um roteiro de SQL.
+- **Login com GitHub.** No ar no servidor; o botão só aparece com o flag
+  `sso_github_enabled` do PostHog, que fica desligado até o login e a exclusão de conta
+  pelo GitHub rodarem de ponta a ponta num aparelho.
 - **Notificações da App Store.** O backend está no ar com as trilhas; falta cadastrar no
   App Store Connect a URL das notificações, que é a `.run.app`, não o domínio atrás do
   Cloudflare.

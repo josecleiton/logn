@@ -38,12 +38,15 @@ DESTINO = os.environ.get(
     "SEED_BUNDLE_OUT",
     "ios/LogNiOS/LogNiOS/Resources/trail-seed.json",
 )
+# A Cloudflare na frente da produção barra o User-Agent padrão do urllib com 403.
+USER_AGENT = "logn-seed-bundle/1"
 
 
 def buscar(caminho: str, lingua: str):
     url = f"{BASE}{caminho}?lang={lingua}"
     try:
-        with urllib.request.urlopen(url, timeout=10) as r:
+        pedido = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(pedido, timeout=10) as r:
             if r.status != 200:
                 sys.exit(f"{url} respondeu {r.status}")
             servida = r.headers.get("Content-Language", "")
