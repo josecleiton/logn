@@ -1,0 +1,14 @@
+root = true
+
+[*.{kt,kts}]
+indent_size = 4
+max_line_length = 140
+ktlint_code_style = ktlint_official
+# Composable é substantivo com maiúscula (`SplashScreen`), por convenção do Compose.
+ktlint_function_naming_ignore_when_annotated_with = Composable
+# `when` exaustivo sobre efeito ou variante: uma linha por caso lê melhor que blocos.
+ktlint_standard_when-entry-bracing = disabled
+ktlint_standard_blank-line-between-when-conditions = disabled
+
+[android/generated/**]
+ktlint = disabled

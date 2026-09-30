@@ -1,0 +1,85 @@
+# LogN Android — `just android/<receita>` da raiz, ou `just <receita>` daqui.
+#
+# O código gerado (tipos do Core, ponte boltffi, .so, strings) vive em android/generated/,
+# fora do git. `generate` o refaz inteiro; o Gradle recusa o build se o Core ou o
+# catálogo mudaram depois do último (`verifyGenerated`, em core-shell).
+
+set shell := ["bash", "-euo", "pipefail", "-c"]
+set working-directory := ".."
+
+ndk := env("ANDROID_NDK_HOME", env("HOME") / "Library/Android/sdk/ndk/29.0.14206865")
+app := "sh.logn.app"
+
+default:
+    @just --list --justfile android/Justfile
+
+# Tipos do Core em Kotlin (facet typegen), pacote sh.logn.core.
+typegen:
+    cd shared_core && cargo run --bin codegen --features codegen -- --language kotlin --output-dir ../android/generated/typegen
+
+# Strings do catálogo em res/values*/strings.xml e os acessores `Str`.
+i18n:
+    cargo run --manifest-path tools_i18n/Cargo.toml -- --language kotlin --catalog i18n --output-dir android/generated/localization --android-package sh.logn.coreshell --core-package sh.logn.core
+
+# A ponte JNI e o .so de cada ABI. `just android/ffi release` para o build de loja.
+ffi profile="debug":
+    cd shared_core && ANDROID_NDK_HOME={{ ndk }} boltffi pack android {{ if profile == "release" { "--release" } else { "" } }}
+    echo {{ profile }} >| android/generated/PROFILE
+
+# Tudo que o Gradle espera em android/generated/.
+generate profile="debug": typegen i18n (ffi profile)
+    touch android/generated/STAMP
+
+# Semente da trilha e documentos legais nos assets (fora do git, regra 8). Backend de pé.
+seed:
+    SEED_BUNDLE_OUT=android/app/src/main/assets/trail-seed.json python3 tools/seed_bundle.py
+    LEGAL_BUNDLE_OUT=android/app/src/main/assets/legal python3 tools/legal_bundle.py
+
+build:
+    cd android && ./gradlew :app:assembleDebug
+
+# O backend local chega ao aparelho por `adb reverse` (o debug fala com localhost:8080).
+reverse:
+    adb reverse tcp:8080 tcp:8080
+
+install: reverse
+    cd android && ./gradlew :app:installDebug
+    adb shell am start -n {{ app }}/.MainActivity
+
+# Abre como visitante, o `-LogNStartAsGuest` de iOS. Só em debug.
+guest: reverse
+    adb shell am force-stop {{ app }}
+    adb shell am start -n {{ app }}/.MainActivity --ez logn.start_as_guest true
+
+# Captura da tela do aparelho. Uso: just android/shot /caminho/tela.png
+shot path:
+    adb exec-out screencap -p >| {{ path }}
+
+# Toque em pixels do aparelho (1080×2400 no de teste). Uso: just android/tap 540 1200
+tap x y:
+    adb shell input tap {{ x }} {{ y }}
+
+test:
+    cd android && ./gradlew :core-shell:testDebugUnitTest :app:testDebugUnitTest
+
+# Testes no aparelho conectado: a ponte com o .so de verdade.
+itest:
+    cd android && ./gradlew :app:connectedDebugAndroidTest
+
+lint:
+    ktlint "android/app/src/**/*.kt" "android/core-shell/src/**/*.kt"
+    cd android && ./gradlew :app:lintDebug :core-shell:lintDebug
+
+# Medida solta fora de ui/theme: número com .dp/.sp em tela é token que falta.
+tokens-gate:
+    ! grep -rnE '[0-9]\.?[0-9]*\.(dp|sp)\b' android/app/src/main/java --include=*.kt | grep -v '/ui/theme/'
+
+# Os .so alinhados a 16 KB (exigência do Play para Android 15+).
+check-16kb:
+    for so in android/generated/boltffi/jniLibs/*/libshared_core.so; do \
+        align=$(llvm-objdump -p "$so" 2>/dev/null | awk '/LOAD/{print $NF; exit}' || true); \
+        echo "$so $align"; \
+    done
+
+# Cheque do dia a dia: gerar, compilar, testar e o portão de tokens.
+check: generate build test tokens-gate

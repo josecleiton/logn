@@ -109,7 +109,14 @@ android/.gradle/
 android/.kotlin/
 android/build/
 android/app/build/
+android/core-shell/build/
 android/local.properties
+# O que `just android/generate` produz: tipos do Core, glue JNI, .so e as strings do
+# catálogo. Sai de shared_core/ e de i18n/ a cada build (ADR 0023).
+android/generated/
+# Trilha e documentos embutidos: currículo, gerados por `just release-android` (regra 8).
+android/app/src/main/assets/trail-seed.json
+android/app/src/main/assets/legal/
 android/keystore.properties
 *.jks
 *.keystore

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- `checkDependencies` traz para cá os recursos gerados de core-shell: as mesmas regras de lá. -->
+<lint>
+    <issue id="all">
+        <ignore path="**/generated/typegen/**" />
+        <ignore path="**/generated/boltffi/**" />
+    </issue>
+    <issue id="PluralsCandidate">
+        <ignore path="**/generated/localization/**" />
+    </issue>
+    <issue id="TypographyEllipsis">
+        <ignore path="**/generated/localization/**" />
+    </issue>
+    <!-- Retrato só, decidido para o lançamento (ADR 0023): o mapa e a partida não têm
+         layout de paisagem, nem no iOS. -->
+    <issue id="LockedOrientationActivity" severity="ignore" />
+    <issue id="DiscouragedApi">
+        <ignore path="src/main/AndroidManifest.xml" />
+    </issue>
+    <!-- Versões fixadas de propósito e atualizadas por ADR, não pelo aviso do lint. -->
+    <issue id="AndroidGradlePluginVersion" severity="ignore" />
+    <issue id="GradleDependency" severity="ignore" />
+    <issue id="NewerVersionAvailable" severity="ignore" />
+</lint>

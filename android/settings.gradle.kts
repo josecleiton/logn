@@ -19,4 +19,8 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "LogN"
-include(":app")
+
+// :app é a interface em Compose. :core-shell é a ponte com o Core Rust e compila o que
+// `just android/generate` gera em android/generated/ (tipos do Core, glue JNI, .so e as
+// strings do catálogo); nada disso é módulo, e nada disso vai para o git (ADR 0023).
+include(":app", ":core-shell")

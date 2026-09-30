@@ -3,7 +3,7 @@
 //!
 //! The mappers are the reason this is generated rather than written: an
 //! exhaustive `when` with no `else` is what makes a new variant in
-//! `shared/src/match_engine.rs` a build failure in *every* shell instead of a blank
+//! `shared_core/src/match_engine.rs` a build failure in *every* shell instead of a blank
 //! label in one.
 //!
 //! Matching a variant is where Kotlin needs more from us than Swift does. Swift
@@ -58,6 +58,12 @@ pub fn emit(catalog: &Catalog, out: &Path, package: &str, core_package: &str) ->
         }
     }
 
+    // android:localeConfig: the languages the app offers in the system's per-app language
+    // setting, and what `cmd locale set-app-locales` accepts.
+    let dir = out.join("res").join("xml");
+    std::fs::create_dir_all(&dir).with_context(|| format!("creating {}", dir.display()))?;
+    write(&dir.join("locales_config.xml"), &locales_config(catalog))?;
+
     let dir = out
         .join("java")
         .join(package.replace('.', "/"))
@@ -78,6 +84,16 @@ pub fn emit(catalog: &Catalog, out: &Path, package: &str, core_package: &str) ->
 fn resources(catalog: &Catalog, locale: &crate::catalog::Locale) -> String {
     let mut out = String::from("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
     out.push_str("<!-- Generated from i18n/. Do not edit. -->\n<resources>\n");
+
+    // The language the interface actually resolved to, which is what the Core has to be
+    // told: a device set to French shows the source language, and must say so. It is the
+    // Android side of `Bundle.main.preferredLocalizations` on Apple. Not marked
+    // `translatable="false"`: it differs per locale on purpose.
+    push!(
+        out,
+        "    <string name=\"i18n_locale\">{}</string>\n",
+        locale.tag
+    );
 
     // Info.plist descriptions are an Apple concept; Android asks for permissions
     // without a reason string.
@@ -103,7 +119,7 @@ fn resources(catalog: &Catalog, locale: &crate::catalog::Locale) -> String {
                 }
                 Message::Plural(forms) => {
                     push!(out, "    <plurals name=\"{name}\">\n");
-                    for (category, text) in forms {
+                    for (category, text) in with_many(&locale.tag, forms) {
                         push!(
                             out,
                             "        <item quantity=\"{category}\">{}</item>\n",
@@ -366,7 +382,7 @@ fn strings_file(catalog: &Catalog, package: &str, core_package: &str) -> String 
             }
 
             // No `else`. The exhaustiveness is the point: a variant added to
-            // `shared/src/match_engine.rs` has to break this build.
+            // `shared_core/src/match_engine.rs` has to break this build.
             out.push_str("}\n");
         }
     }
@@ -448,6 +464,40 @@ fn base_language(tag: &str) -> Option<&str> {
     tag.split_once('-').map(|(language, _)| language)
 }
 
+/// Languages whose CLDR plural rules have a `many` category (the "1 milhão de" form).
+/// The catalog writes `one` and `other`, which is all Apple asks for; Android's lint
+/// fails a `<plurals>` missing a category the language has.
+const LANGUAGES_WITH_MANY: [&str; 5] = ["ca", "es", "fr", "it", "pt"];
+
+/// The plural forms to emit: the catalog's, plus `many` as a copy of `other` where the
+/// language has that category and the catalog does not spell it out. For every count
+/// the app shows, `many` and `other` read the same.
+fn with_many<'a>(
+    tag: &str,
+    forms: &'a std::collections::BTreeMap<String, String>,
+) -> Vec<(&'a str, &'a String)> {
+    let mut out: Vec<(&str, &String)> = forms.iter().map(|(k, v)| (k.as_str(), v)).collect();
+    let language = base_language(tag).unwrap_or(tag);
+    if LANGUAGES_WITH_MANY.contains(&language)
+        && !forms.contains_key("many")
+        && let Some(other) = forms.get("other")
+    {
+        out.push(("many", other));
+    }
+    out
+}
+
+fn locales_config(catalog: &Catalog) -> String {
+    let mut out = String::from("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
+    out.push_str("<!-- Generated from i18n/. Do not edit. -->\n");
+    out.push_str("<locale-config xmlns:android=\"http://schemas.android.com/apk/res/android\">\n");
+    for locale in &catalog.locales {
+        push!(out, "    <locale android:name=\"{}\" />\n", locale.tag);
+    }
+    out.push_str("</locale-config>\n");
+    out
+}
+
 fn write(path: &Path, contents: &str) -> Result<()> {
     std::fs::write(path, contents).with_context(|| format!("writing {}", path.display()))
 }
@@ -456,6 +506,38 @@ fn write(path: &Path, contents: &str) -> Result<()> {
 mod tests {
     use super::*;
     use crate::catalog::{Group, Key, Locale, Placeholder};
+
+    #[test]
+    fn many_is_filled_from_other_where_the_language_has_it() {
+        let forms = std::collections::BTreeMap::from([
+            ("one".to_owned(), "1 balão".to_owned()),
+            ("other".to_owned(), "%d balões".to_owned()),
+        ]);
+        let pt: Vec<_> = with_many("pt-BR", &forms).into_iter().map(|(k, _)| k).collect();
+        assert_eq!(pt, ["one", "other", "many"]);
+        assert_eq!(with_many("pt-BR", &forms)[2].1, "%d balões");
+        let en: Vec<_> = with_many("en", &forms).into_iter().map(|(k, _)| k).collect();
+        assert_eq!(en, ["one", "other"]);
+    }
+
+    #[test]
+    fn every_locale_says_which_language_it_is() {
+        let catalog = status_catalog();
+        for locale in &catalog.locales {
+            let xml = resources(&catalog, locale);
+            assert!(
+                xml.contains(&format!(
+                    "<string name=\"i18n_locale\">{}</string>",
+                    locale.tag
+                )),
+                "{xml}"
+            );
+        }
+        let config = locales_config(&catalog);
+        for locale in &catalog.locales {
+            assert!(config.contains(&format!("android:name=\"{}\"", locale.tag)));
+        }
+    }
 
     #[test]
     fn resource_names_are_snake_case() {
@@ -540,7 +622,7 @@ mod tests {
     #[test]
     fn mappers_are_exhaustive_without_an_else() {
         // The whole reason the mappers are generated rather than written: a new
-        // variant in shared/src/match_engine.rs has to break the Android build
+        // variant in shared_core/src/match_engine.rs has to break the Android build
         // instead of blanking a label at runtime.
         for catalog in [status_catalog(), confirmation_catalog()] {
             let file = strings_file(&catalog, "sh.logn.app", "sh.logn.core");

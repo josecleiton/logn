@@ -16,7 +16,29 @@ error_style = "throwing"
 distribution = "local"
 layout = "ffi-only"
 
+# Cliente Android (ADR 0023). A saída vai para android/generated/, fora do git: toda
+# receita de build passa por `just android/generate`, e .so velho com tipos novos é
+# variante de bincode trocada. min_sdk e architectures têm de bater com o Gradle.
 [targets.android]
-enabled = false
+enabled = true
+output = "../android/generated/boltffi"
+min_sdk = 26
+# r28 ou mais alinha o .so em páginas de 16 KB por padrão.
+ndk_version = "29.0.14206865"
+architectures = ["arm64", "x86_64"]
+
+[targets.android.kotlin]
+output = "../android/generated/boltffi/kotlin"
+package = "sh.logn.ffi"
+module_name = "LogNCoreFFI"
+library_name = "shared_core"
+desktop_loader = "none"
+
+[targets.android.pack]
+output = "../android/generated/boltffi/jniLibs"
+
+[targets.android.header]
+output = "../android/generated/boltffi/include"
+
 [targets.wasm]
 enabled = false
