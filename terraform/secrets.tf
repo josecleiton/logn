@@ -19,29 +19,8 @@ resource "google_secret_manager_secret" "db_migrator_url" {
   }
 }
 
-# Aposentado pela ADR 0019: o valor foi para logn-server-keys. O container fica até a
-# revisão que lê SERVER_KEYS estar servindo, e sai no passo 4 da troca, com a versão
-# destruída antes (`gcloud secrets versions destroy`).
-resource "google_secret_manager_secret" "jwt_secret" {
-  secret_id = "logn-jwt-secret"
-
-  replication {
-    auto {}
-  }
-}
-
 resource "google_secret_manager_secret" "smtp_pass" {
   secret_id = "logn-smtp-pass"
-
-  replication {
-    auto {}
-  }
-}
-
-# Aposentado pela ADR 0019, como o logn-jwt-secret acima: o valor foi para
-# logn-server-keys.
-resource "google_secret_manager_secret" "track_key_secret" {
-  secret_id = "logn-track-key-secret"
 
   replication {
     auto {}
@@ -56,8 +35,11 @@ resource "google_secret_manager_secret" "track_key_secret" {
 #   É rotação com migração de dados, não troca de variável.
 # - github_client_secret: só junto de github_client_id no tfvars; um sem o outro, o
 #   servidor não sobe.
-# A primeira versão copia os valores das versões atuais, nunca à mão, e sobe antes do
-# apply que troca o Cloud Run: ver a ordem na ADR 0019 (apply com -target primeiro).
+# Versão nova parte da anterior, trocando só o campo que muda, nunca à mão do zero:
+#   gcloud secrets versions access latest --secret=logn-server-keys \
+#     | jq --arg v "$NOVO" '.github_client_secret = $v' \
+#     | gcloud secrets versions add logn-server-keys --data-file=-
+# Substituiu logn-jwt-secret e logn-track-key-secret, um segredo por chave (ADR 0019).
 resource "google_secret_manager_secret" "server_keys" {
   secret_id = "logn-server-keys"
 
@@ -95,15 +77,10 @@ resource "google_secret_manager_secret" "apple_signin_key" {
 # que o serviço use entra neste mapa (AGENTS.md, regra 9).
 locals {
   runtime_secrets = {
-    db_url          = google_secret_manager_secret.db_url.id
-    db_migrator_url = google_secret_manager_secret.db_migrator_url.id
-    server_keys     = google_secret_manager_secret.server_keys.id
-    smtp_pass       = google_secret_manager_secret.smtp_pass.id
-    # Os dois aposentados pela ADR 0019 continuam legíveis até o passo 4 da troca: a
-    # revisão antiga ainda os lê a cada instância que sobe, e tirar o acesso no mesmo
-    # apply que a troca derrubaria a próxima instância dela.
-    jwt_secret           = google_secret_manager_secret.jwt_secret.id
-    track_key_secret     = google_secret_manager_secret.track_key_secret.id
+    db_url               = google_secret_manager_secret.db_url.id
+    db_migrator_url      = google_secret_manager_secret.db_migrator_url.id
+    server_keys          = google_secret_manager_secret.server_keys.id
+    smtp_pass            = google_secret_manager_secret.smtp_pass.id
     origin_shared_secret = google_secret_manager_secret.origin_shared_secret.id
     apple_signin_key     = google_secret_manager_secret.apple_signin_key.id
   }
