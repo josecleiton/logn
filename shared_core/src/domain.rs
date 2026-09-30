@@ -312,18 +312,20 @@ pub enum StatusKey {
 /// Uma das verificações que a abertura roda antes de soltar o jogador no app.
 ///
 /// A splash é o log de um juiz: cada verificação imprime o seu veredito numa linha, na
-/// ordem, e a splash some quando a última fecha. Termos entram aqui quando o app
-/// souber conferir se a versão aceita ainda é a vigente.
+/// ordem, e a splash some quando a última fecha. A ordem é sessão, sync, termos: o sync
+/// vem antes para nenhum XP depender do aceite (ADR 0020).
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[facet(fg::namespace = "LogN")]
 #[repr(u8)]
 pub enum BootCheck {
     Session,
     Sync,
+    Terms,
 }
 
 /// Como uma linha da abertura está. `Warn` não segura o jogador; `Fail` na sessão
-/// manda para o login.
+/// manda para o login. `Skipped` é a verificação que não rodou e roda na próxima
+/// abertura (termos sem rede).
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[facet(fg::namespace = "LogN")]
 #[repr(u8)]
@@ -332,6 +334,7 @@ pub enum BootVerdict {
     Ok,
     Warn,
     Fail,
+    Skipped,
 }
 
 /// O que a linha tem a dizer, como chave. A frase mora no catálogo.
@@ -358,6 +361,63 @@ pub enum BootDetail {
     Rejected,
     /// Sync: passou do tempo da abertura. O envio segue por trás.
     StillSending,
+    /// Termos: perguntando ao servidor o que a conta tem para aceitar.
+    TermsChecking,
+    /// Termos: a conta aceitou a vigente.
+    TermsCurrent,
+    /// Termos: há versão relevante para aceitar; o app bloqueia.
+    TermsChanged,
+    /// Termos: só mudanças não relevantes; o app avisa uma vez.
+    TermsNotice,
+    /// Termos: sem rede ou sem resposta a tempo; confere na próxima abertura.
+    TermsDeferred,
+}
+
+/// O sinal de uma mudança nos termos, como o diff do design: `+`, `~`, `−`.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum TermsChangeKind {
+    Added,
+    Changed,
+    Removed,
+}
+
+/// Uma linha do "o que mudou" da tela de novo aceite. `summary` é conteúdo: vem do
+/// servidor já na língua do app, e o cliente mostra como chegou.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[facet(fg::namespace = "LogN")]
+pub struct TermsChange {
+    /// `terms` ou `privacy`.
+    pub kind: String,
+    /// A versão em que a mudança entrou.
+    pub version: u32,
+    pub change: TermsChangeKind,
+    /// O id da seção no documento, para abrir o documento com ela destacada.
+    pub section: String,
+    pub summary: String,
+}
+
+/// A tela que cobre o app quando há versão relevante para aceitar (ADR 0020).
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[facet(fg::namespace = "LogN")]
+pub struct TermsUpdateViewModel {
+    /// A última versão aceita pela conta, e a data de vigência dela (AAAA-MM-DD). Zero
+    /// e vazia quando a conta nunca aceitou.
+    pub from_version: u32,
+    pub from_date: String,
+    /// A vigente, e a data de vigência dela.
+    pub to_version: u32,
+    pub to_date: String,
+    /// Quantas versões ficaram entre a aceita e a vigente, contando a vigente.
+    pub versions_skipped: u32,
+    /// Todas as mudanças das versões puladas, na ordem.
+    pub changes: Vec<TermsChange>,
+    /// As seções a destacar ao abrir cada documento.
+    pub terms_sections: Vec<String>,
+    pub privacy_sections: Vec<String>,
+    /// O aceite foi enviado e espera o servidor.
+    pub accepting: bool,
 }
 
 /// Uma linha do log da abertura.

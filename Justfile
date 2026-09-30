@@ -155,7 +155,9 @@ test-core:
 # Sincroniza as chaves do .env raiz para o formato consumível das shells nativas
 sync-env:
     @echo "// Generated auto-magically from .env by Justfile" > ios/LogNiOS/Local.xcconfig
-    @sed -e 's/#.*//g' -e '/^$/d' -e 's/\/\//\/\$()\//g' .env >> ios/LogNiOS/Local.xcconfig
+    @# Segredo do servidor (`*_SECRET`) não vai para o build do app: config de build aparece
+    @# em log do xcodebuild, e um `${...}` no Info.plist o embarcaria (ADR 0019).
+    @sed -e 's/#.*//g' -e '/^$/d' -e '/^[A-Z0-9_]*_SECRET=/d' -e 's/\/\//\/\$()\//g' .env >> ios/LogNiOS/Local.xcconfig
     @echo "Local.xcconfig synced from .env!"
 
 # Empacota a trilha atual (nós + desafios) dentro do app, para a primeira abertura sem

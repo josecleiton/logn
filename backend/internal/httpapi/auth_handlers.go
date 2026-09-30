@@ -393,6 +393,12 @@ const deleteReauthMaxAge = 5 * time.Minute
 // lista é fixa, e não o que estiver ligado: desligar a Apple não pode apagar a regra.
 var revocationRequired = []string{socialauth.ProviderApple}
 
+// tokenDiscarder é o revogador que também sabe apagar o token de uma exclusão que não
+// aconteceu (o GitHub). A Apple não precisa: o código dela vence em cinco minutos.
+type tokenDiscarder interface {
+	Discard(ctx context.Context, accessToken string) error
+}
+
 type DeleteAccountRequest struct {
 	Password string `json:"password"`
 	// Conta sem senha prova que é dona com um login novo no provedor (ADR 0016).
@@ -421,6 +427,22 @@ func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+
+	// O access token de uma troca de exclusão do GitHub não expira sozinho. Se a
+	// exclusão para antes de revogar (bilhete de outra conta, Apple exigida, erro), ele é
+	// apagado aqui, em vez de ficar vivo no aparelho (ADR 0019).
+	marked := false
+	if d, ok := s.revokers[req.Provider].(tokenDiscarder); ok && req.AuthorizationCode != "" {
+		defer func() {
+			if marked {
+				return
+			}
+			if err := d.Discard(context.WithoutCancel(ctx), req.AuthorizationCode); err != nil {
+				log.Printf("token da exclusão recusada não apagado: provider=%s user=%s erro=%v", req.Provider, userID, err)
+			}
+		}()
+	}
+
 	user, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		// Token válido de conta que não existe mais: para o app, é sessão sem dono.
@@ -501,6 +523,8 @@ func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
+	// Daqui em diante o token é da revogação, que o consome.
+	marked = true
 	log.Printf("exclusão pedida: user=%s expurgo_a_partir_de=%s", userID, purgeAfter.Format(time.RFC3339))
 
 	// Depois de a conta estar desativada: a Apple fora do ar não segura a exclusão, que

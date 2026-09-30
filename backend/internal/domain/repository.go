@@ -2,6 +2,8 @@ package domain
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -560,12 +562,20 @@ func createUserTx(ctx context.Context, tx pgx.Tx, email, passwordHash string, ag
 		return "", err
 	}
 
+	// O hash é do corpo que o servidor serve naquela língua, calculado aqui, como no
+	// reaceite (ADR 0020). Documento que não existe não grava aceite: é erro.
 	for _, acc := range acceptances {
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO legal_acceptances (user_id, kind, version, locale)
-			VALUES ($1, $2, $3, $4)
-		`, id, acc.Kind, acc.Version, acc.Locale); err != nil {
+		tag, err := tx.Exec(ctx, `
+			INSERT INTO legal_acceptances (user_id, kind, version, locale, body_sha256, source)
+			SELECT $1, d.kind, d.version, d.locale, encode(sha256(convert_to(d.body_html, 'UTF8')), 'hex'), 'signup'
+			FROM legal_documents d
+			WHERE d.kind = $2 AND d.version = $3 AND d.locale = $4
+		`, id, acc.Kind, acc.Version, acc.Locale)
+		if err != nil {
 			return "", err
+		}
+		if tag.RowsAffected() != 1 {
+			return "", fmt.Errorf("aceite de documento inexistente: %s v%d %s", acc.Kind, acc.Version, acc.Locale)
 		}
 	}
 	return id, nil
@@ -777,11 +787,14 @@ func (r *Repository) purgeAccount(ctx context.Context, userID string) (bool, err
 	return true, tx.Commit(ctx)
 }
 
+// GetLatestLegalDocument é a versão vigente: a maior já em vigor. Uma versão publicada
+// antes da data de vigência não vale ainda, nem na página, nem no cadastro, nem no
+// aceite (ADR 0020).
 func (r *Repository) GetLatestLegalDocument(ctx context.Context, kind, locale string) (*LegalDocument, error) {
 	query := `
 		SELECT id, kind, locale, version, effective_at, material, body_html, created_at
 		FROM legal_documents
-		WHERE kind = $1 AND locale = $2
+		WHERE kind = $1 AND locale = $2 AND effective_at <= CURRENT_TIMESTAMP
 		ORDER BY version DESC LIMIT 1
 	`
 	var doc LegalDocument
@@ -810,50 +823,206 @@ func (r *Repository) GetLegalDocumentByVersion(ctx context.Context, kind string,
 	return &doc, nil
 }
 
-func (r *Repository) GetPendingLegalDocuments(ctx context.Context, userID string) ([]LegalDocument, error) {
-	// Pega a última versão de cada kind que seja <= current time,
-	// mas que o usuário não aceitou uma versão >= ela.
-	// Por simplificação (o PRD indica pegar pendentes relevantes).
-	// "Uma versão com material: bloqueia o app... sem material: avisa"
-	// Na verdade, vamos trazer os documentos recentes que o user não tem na tabela acceptances
-	query := `
-		WITH latest_docs AS (
-			SELECT kind, MAX(version) as version
-			FROM legal_documents
-			GROUP BY kind
-		)
-		SELECT d.id, d.kind, d.locale, d.version, d.effective_at, d.material, d.body_html, d.created_at
-		FROM legal_documents d
-		JOIN latest_docs ld ON d.kind = ld.kind AND d.version = ld.version
-		WHERE NOT EXISTS (
-			SELECT 1 FROM legal_acceptances a
-			WHERE a.user_id = $1 AND a.kind = d.kind AND a.version >= d.version
-		)
-	`
-	rows, err := r.db.Query(ctx, query, userID)
+// LegalPendingDoc é um documento cuja vigente a conta ainda não aceitou (ADR 0020).
+type LegalPendingDoc struct {
+	Kind    string
+	Version int
+	// A língua em que o documento foi servido: a pedida, ou o português.
+	Locale      string
+	EffectiveAt time.Time
+	// Alguma versão entre a aceita e a vigente é relevante.
+	Material bool
+	// SHA-256 (hex) do corpo da vigente, na língua servida.
+	BodySHA256 string
+	// 0 quando a conta nunca aceitou esse documento.
+	AcceptedVersion     int
+	AcceptedEffectiveAt *time.Time
+}
+
+// LegalChange é uma linha do "o que mudou" de uma versão.
+type LegalChange struct {
+	Kind    string
+	Version int
+	Change  string
+	Section string
+	Summary string
+}
+
+// ID é como o aceite diz que a mudança foi mostrada.
+func (c LegalChange) ID() string {
+	return fmt.Sprintf("%s:%d:%s", c.Kind, c.Version, c.Section)
+}
+
+// LegalPending é o que a conta tem para aceitar, com o que mudou desde o último aceite.
+type LegalPending struct {
+	Documents []LegalPendingDoc
+	Changes   []LegalChange
+}
+
+// LegalKinds são os documentos, na ordem em que a tela os mostra.
+var LegalKinds = []string{"terms", "privacy"}
+
+// GetLegalPending lê, para cada documento, a vigente, a última aceita pela conta e o
+// que mudou entre as duas, na língua pedida (o português quando faltar).
+func (r *Repository) GetLegalPending(ctx context.Context, userID, locale string) (LegalPending, error) {
+	var out LegalPending
+	for _, kind := range LegalKinds {
+		// A vigente sai do português, que sempre existe e prevalece. Depois vem o corpo
+		// dessa versão na língua pedida, e o português se ela faltar: escolher a vigente
+		// pela língua pedida deixaria quem lê em inglês numa versão velha, sem pendência.
+		doc, err := r.GetLatestLegalDocument(ctx, kind, legalFallbackLocale)
+		if errors.Is(err, pgx.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return LegalPending{}, err
+		}
+		if locale != legalFallbackLocale {
+			var local LegalDocument
+			err := r.db.QueryRow(ctx, `
+				SELECT id, kind, locale, version, effective_at, material, body_html, created_at
+				FROM legal_documents WHERE kind = $1 AND locale = $2 AND version = $3
+			`, kind, locale, doc.Version).Scan(
+				&local.ID, &local.Kind, &local.Locale, &local.Version, &local.EffectiveAt, &local.Material, &local.BodyHTML, &local.CreatedAt,
+			)
+			if err == nil {
+				doc = &local
+			} else if !errors.Is(err, pgx.ErrNoRows) {
+				return LegalPending{}, err
+			}
+		}
+
+		var accepted int
+		if err := r.db.QueryRow(ctx, `
+			SELECT COALESCE(MAX(version), 0) FROM legal_acceptances WHERE user_id = $1 AND kind = $2
+		`, userID, kind).Scan(&accepted); err != nil {
+			return LegalPending{}, err
+		}
+		if accepted >= doc.Version {
+			continue
+		}
+
+		p := LegalPendingDoc{
+			Kind: kind, Version: doc.Version, Locale: doc.Locale, EffectiveAt: doc.EffectiveAt,
+			BodySHA256: SHA256Hex(doc.BodyHTML), AcceptedVersion: accepted,
+		}
+		// Relevante é qualquer versão pulada, não só a vigente: pular uma relevante no
+		// meio não a torna menor.
+		if err := r.db.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1 FROM legal_documents
+				WHERE kind = $1 AND locale = $2 AND version > $3 AND version <= $4 AND material
+			)
+		`, kind, legalFallbackLocale, accepted, doc.Version).Scan(&p.Material); err != nil {
+			return LegalPending{}, err
+		}
+		if accepted > 0 {
+			var at time.Time
+			err := r.db.QueryRow(ctx, `
+				SELECT effective_at FROM legal_documents WHERE kind = $1 AND locale = $2 AND version = $3
+			`, kind, legalFallbackLocale, accepted).Scan(&at)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return LegalPending{}, err
+			}
+			if err == nil {
+				p.AcceptedEffectiveAt = &at
+			}
+		}
+		out.Documents = append(out.Documents, p)
+
+		changes, err := r.legalChanges(ctx, kind, accepted, doc.Version, locale)
+		if err != nil {
+			return LegalPending{}, err
+		}
+		out.Changes = append(out.Changes, changes...)
+	}
+	return out, nil
+}
+
+// legalFallbackLocale é a língua que sempre existe e que prevalece.
+const legalFallbackLocale = "pt-BR"
+
+// legalChanges lê as mudanças das versões em (from, to], na língua pedida; a versão que
+// não tem essa língua sai em português.
+func (r *Repository) legalChanges(ctx context.Context, kind string, from, to int, locale string) ([]LegalChange, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT version, locale, change, section_id, summary
+		FROM legal_document_changes
+		WHERE kind = $1 AND version > $2 AND version <= $3 AND locale IN ($4, $5)
+		ORDER BY version, position
+	`, kind, from, to, locale, legalFallbackLocale)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var docs []LegalDocument
+	byVersion := map[int]map[string][]LegalChange{}
+	var versions []int
 	for rows.Next() {
-		var doc LegalDocument
-		if err := rows.Scan(
-			&doc.ID, &doc.Kind, &doc.Locale, &doc.Version, &doc.EffectiveAt, &doc.Material, &doc.BodyHTML, &doc.CreatedAt,
-		); err != nil {
+		var c LegalChange
+		var loc string
+		if err := rows.Scan(&c.Version, &loc, &c.Change, &c.Section, &c.Summary); err != nil {
 			return nil, err
 		}
-		docs = append(docs, doc)
+		c.Kind = kind
+		if byVersion[c.Version] == nil {
+			byVersion[c.Version] = map[string][]LegalChange{}
+			versions = append(versions, c.Version)
+		}
+		byVersion[c.Version][loc] = append(byVersion[c.Version][loc], c)
 	}
-	return docs, nil
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	var out []LegalChange
+	for _, v := range versions {
+		if list, ok := byVersion[v][locale]; ok {
+			out = append(out, list...)
+		} else {
+			out = append(out, byVersion[v][legalFallbackLocale]...)
+		}
+	}
+	return out, nil
 }
 
-func (r *Repository) AcceptLegalDocument(ctx context.Context, userID, kind string, version int, locale string) error {
-	_, err := r.db.Exec(ctx, `
-		INSERT INTO legal_acceptances (user_id, kind, version, locale)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT DO NOTHING
-	`, userID, kind, version, locale)
-	return err
+// SHA256Hex é o hash com que o aceite prova o texto que estava na tela.
+func SHA256Hex(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:])
+}
+
+// LegalAcceptanceRecord é um documento aceito no reaceite ou na faixa (ADR 0020). O
+// hash já foi conferido contra o documento servido.
+type LegalAcceptanceRecord struct {
+	Kind        string
+	Version     int
+	Locale      string
+	BodySHA256  string
+	FromVersion int
+}
+
+// RecordLegalAcceptances grava os aceites de um pedido numa transação: ou os dois
+// documentos, ou nenhum. Repetir o mesmo aceite (o app mandou de novo) não muda nada.
+// A hora é a do banco.
+func (r *Repository) RecordLegalAcceptances(ctx context.Context, userID string, recs []LegalAcceptanceRecord, shown []string, appVersion, platform, source string) error {
+	shownJSON, err := json.Marshal(shown)
+	if err != nil {
+		return err
+	}
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	for _, rec := range recs {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO legal_acceptances
+				(user_id, kind, version, locale, body_sha256, from_version, shown_changes, app_version, platform, source)
+			VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, NULLIF($8, ''), NULLIF($9, ''), $10)
+			ON CONFLICT DO NOTHING
+		`, userID, rec.Kind, rec.Version, rec.Locale, rec.BodySHA256, rec.FromVersion, string(shownJSON), appVersion, platform, source); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
 }

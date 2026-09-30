@@ -116,6 +116,13 @@ resource "google_cloud_run_v2_service" "logn" {
         name  = "GOOGLE_IOS_CLIENT_ID"
         value = var.google_ios_client_id
       }
+      # O Client ID do OAuth App do GitHub (ADR 0019). Vazio, o GitHub fica desligado; o
+      # secret vem em SERVER_KEYS, e os dois só valem juntos: um sem o outro, o servidor
+      # não sobe.
+      env {
+        name  = "GITHUB_CLIENT_ID"
+        value = var.github_client_id
+      }
 
       env {
         name = "DATABASE_URL"
@@ -135,11 +142,13 @@ resource "google_cloud_run_v2_service" "logn" {
           }
         }
       }
+      # JWT, track key e o secret do GitHub, num JSON só (ADR 0019). Substitui JWT_SECRET
+      # e TRACK_KEY_SECRET, que eram um segredo cada.
       env {
-        name = "JWT_SECRET"
+        name = "SERVER_KEYS"
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.jwt_secret.secret_id
+            secret  = google_secret_manager_secret.server_keys.secret_id
             version = "latest"
           }
         }
@@ -149,15 +158,6 @@ resource "google_cloud_run_v2_service" "logn" {
         value_source {
           secret_key_ref {
             secret  = google_secret_manager_secret.smtp_pass.secret_id
-            version = "latest"
-          }
-        }
-      }
-      env {
-        name = "TRACK_KEY_SECRET"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.track_key_secret.secret_id
             version = "latest"
           }
         }

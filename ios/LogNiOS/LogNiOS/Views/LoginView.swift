@@ -10,7 +10,7 @@ struct LoginView: View {
     
     @State private var email = ""
     @State private var password = ""
-    @State private var ssoEnabled = false
+    @State private var githubEnabled = false
     @State private var googleEnabled = false
     @State private var appleEnabled = false
     @State private var legalSheet: LegalKind? = LegalKind.launchOverride
@@ -79,9 +79,8 @@ struct LoginView: View {
                             .disabled(core.viewModel.isAuthenticating || signInLocked)
                     }
 
-                    // GitHub ainda não entra: fica atrás da flag geral.
-                    if ssoEnabled {
-                        Button(action: {}) {
+                    if githubEnabled {
+                        Button(action: signInWithGitHub) {
                             HStack(spacing: 12) {
                                 Image("GitHubIcon")
                                     .renderingMode(.original)
@@ -98,9 +97,10 @@ struct LoginView: View {
                             .cornerRadius(Radius.sm)
                             .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
                         }
+                        .disabled(core.viewModel.isAuthenticating || signInLocked)
                     }
 
-                    if ssoEnabled || googleEnabled || appleEnabled {
+                    if githubEnabled || googleEnabled || appleEnabled {
                         // Divider
                         HStack(spacing: 12) {
                             Rectangle().fill(LognDark.line).frame(height: 1)
@@ -285,9 +285,10 @@ struct LoginView: View {
     private var canSignIn: Bool { !email.isEmpty && !password.isEmpty && !signInLocked }
 
     private func readFlags() {
-        ssoEnabled = PostHogSDK.shared.isFeatureEnabled("sso_enabled")
-        // A chave para desligar o Google sem versão nova: se o login quebrar do lado
+        // A chave para desligar cada provedor sem versão nova: se o login quebrar do lado
         // dele, a flag some com o botão e quem entra por e-mail segue entrando.
+        githubEnabled = GitHubAuth.shared.isConfigured
+            && PostHogSDK.shared.isFeatureEnabled("sso_github_enabled")
         googleEnabled = GoogleAuth.shared.isConfigured
             && PostHogSDK.shared.isFeatureEnabled("sso_google_enabled")
         appleEnabled = AppleAuth.shared.isConfigured
@@ -314,6 +315,20 @@ struct LoginView: View {
                 core.dispatch(event: .socialLogin(provider: "google", idToken: credential.idToken, nonce: credential.nonce))
             } catch GoogleAuth.Failure.cancelled {
                 // Fechou a janela do Google: nada a dizer.
+            } catch {
+                core.dispatch(event: .socialLoginFailed)
+            }
+        }
+    }
+
+    private func signInWithGitHub() {
+        Task {
+            do {
+                let credential = try await GitHubAuth.shared.signIn()
+                // O Core troca o código pelo bilhete no servidor e segue o login.
+                core.dispatch(event: .gitHubCodeReceived(code: credential.code, codeVerifier: credential.verifier, nonce: credential.nonce))
+            } catch GitHubAuth.Failure.cancelled {
+                // Fechou a janela do GitHub: nada a dizer.
             } catch {
                 core.dispatch(event: .socialLoginFailed)
             }

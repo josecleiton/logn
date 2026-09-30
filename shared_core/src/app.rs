@@ -5,6 +5,7 @@ use facet_generate_attrs as fg;
 use crux_http::protocol::{HttpRequest, HttpResult};
 use crux_kv::{KeyValueOperation, KeyValueResult, KeyValueResponse};
 use crux_time::{Time, TimeRequest};
+use sha2::{Digest, Sha256};
 use crate::domain::{
     BootCheck, BootDetail, BootLine, BootVerdict, Challenge, GameEvent, StatusKey, SyncPayload,
     TelemetryOperation,
@@ -33,6 +34,11 @@ pub enum Event {
     /// O login no provedor falhou no aparelho, antes de chegar ao servidor (rede, troca
     /// do código). Cancelar pelo próprio jogador não manda isto.
     SocialLoginFailed,
+    /// O shell fez o login no GitHub e entrega o código, o verifier do PKCE e o nonce
+    /// cru que gerou (ADR 0019). O GitHub não emite ID token: o Core troca o código pelo
+    /// bilhete no servidor e segue como `SocialLogin`.
+    GitHubCodeReceived { code: String, code_verifier: String, nonce: String },
+    GitHubExchanged(HttpResult),
     ContinueAsGuest,
     TokenStored(KeyValueResult),
     AccountEmailStored(KeyValueResult),
@@ -185,6 +191,11 @@ pub enum Event {
     /// da conta que não tem senha. `authorization_code` é o da Apple, com que o servidor
     /// revoga o acesso; vazio no Google.
     DeleteAccountWithProvider { provider: String, id_token: String, nonce: String, authorization_code: String },
+    /// A exclusão confirmada por um login novo no GitHub (ADR 0019). A troca devolve o
+    /// bilhete e o access token, que vai como `authorization_code` para o servidor
+    /// revogar a autorização.
+    DeleteAccountWithGitHub { code: String, code_verifier: String, nonce: String },
+    GitHubDeleteExchanged(HttpResult),
     AccountDeleted(HttpResult),
     /// Fechou a tela "conta desativada, apagada até DD/MM".
     DismissDeletionNotice,
@@ -205,6 +216,23 @@ pub enum Event {
     /// Passou o tempo que a entrada pelo login espera pela trilha. `attempt` como no da
     /// abertura.
     EnterWatchdogElapsed { attempt: u32 },
+    /// A versão do app e a plataforma, que o aceite dos termos grava. O shell manda na
+    /// abertura, junto da língua.
+    SetClientInfo { app_version: String, platform: String },
+    /// Pergunta ao servidor o que a conta tem para aceitar (ADR 0020). A abertura roda
+    /// depois do sync; o login, quando a sessão fica de pé.
+    FetchTermsPending,
+    /// `owner` é a conta que perguntou: a resposta de uma conta que já saiu não decide o
+    /// bloqueio da que entrou depois.
+    TermsPendingFetched { owner: String, result: HttpResult },
+    /// "Aceitar e continuar" na tela de novo aceite. A caixa é da tela: o botão só
+    /// manda isto marcada.
+    AcceptTerms,
+    TermsAccepted(HttpResult),
+    /// O aceite da faixa de mudanças não relevantes, mandado quando ela aparece.
+    TermsNoticeAccepted(HttpResult),
+    /// Fechou a faixa de mudanças não relevantes.
+    DismissTermsNotice,
     /// Sem rede na abertura: tentar de novo.
     RetryBoot,
     /// Sem rede na abertura: entrar com o que está no aparelho.
@@ -248,6 +276,8 @@ pub struct Boot {
     pub active: bool,
     pub session: Option<crate::domain::BootLine>,
     pub sync: Option<crate::domain::BootLine>,
+    /// A terceira linha, depois do sync (ADR 0020).
+    pub terms: Option<crate::domain::BootLine>,
     pub awaiting_offline_choice: bool,
     /// A espera pela sessão estourou e a abertura seguiu pelo caminho sem rede. A
     /// resposta do refresh que chegar depois ainda vale — o servidor já trocou o token,
@@ -270,6 +300,137 @@ impl Boot {
     fn session_ok(&self) -> bool {
         matches!(&self.session, Some(l) if l.verdict == BootVerdict::Ok)
     }
+
+    fn terms_running(&self) -> bool {
+        self.active && matches!(&self.terms, Some(l) if l.verdict == BootVerdict::Running)
+    }
+}
+
+/// O que a conta tem para aceitar, como `GET /api/v1/legal/pending` disse (ADR 0020).
+/// Quem decide se bloqueia é o servidor.
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct TermsPending {
+    #[serde(default)]
+    pub blocking: bool,
+    #[serde(default)]
+    pub documents: Vec<PendingLegalDoc>,
+    #[serde(default)]
+    pub changes: Vec<PendingLegalChange>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct PendingLegalDoc {
+    pub kind: String,
+    pub version: u32,
+    pub locale: String,
+    #[serde(default)]
+    pub effective_at: String,
+    pub sha256: String,
+    #[serde(default)]
+    pub accepted_version: u32,
+    #[serde(default)]
+    pub accepted_effective_at: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct PendingLegalChange {
+    pub id: String,
+    pub kind: String,
+    pub version: u32,
+    pub change: String,
+    pub section: String,
+    pub summary: String,
+}
+
+/// Pergunta pelos termos, marcando de que conta é a pergunta.
+fn fetch_terms_pending(model: &Model) -> Command<Effect, Event> {
+    let request = HttpRequest {
+        method: "GET".to_string(),
+        url: "/api/v1/legal/pending".to_string(),
+        headers: auth_headers(&model.access_token, &model.locale),
+        body: vec![],
+    };
+    let owner = model.user_id.clone();
+    Command::request_from_shell(request).then_send(move |result| Event::TermsPendingFetched { owner: owner.clone(), result })
+}
+
+/// O aceite de tudo o que está pendente, com a prova: versão, língua servida, hash do
+/// texto, versão de origem e o que a tela mostrou. `source` é `reaccept` (a tela que
+/// bloqueia) ou `notice` (a faixa).
+fn terms_accept_request(model: &Model, pending: &TermsPending, source: &str) -> HttpRequest {
+    let documents: Vec<serde_json::Value> = pending
+        .documents
+        .iter()
+        .map(|d| {
+            serde_json::json!({
+                "kind": d.kind, "version": d.version, "locale": d.locale,
+                "sha256": d.sha256, "from_version": d.accepted_version,
+            })
+        })
+        .collect();
+    let shown: Vec<&str> = pending.changes.iter().map(|c| c.id.as_str()).collect();
+    HttpRequest {
+        method: "POST".to_string(),
+        url: "/api/v1/legal/accept".to_string(),
+        headers: auth_headers(&model.access_token, &model.locale),
+        body: serde_json::json!({
+            "documents": documents,
+            "shown_changes": shown,
+            "client": { "app": model.client_app_version, "platform": model.client_platform },
+            "source": source,
+        })
+        .to_string()
+        .into_bytes(),
+    }
+}
+
+/// A tela de novo aceite, quando há versão relevante e sessão.
+fn terms_update_view(model: &Model) -> Option<crate::domain::TermsUpdateViewModel> {
+    let pending = model.terms_pending.as_ref()?;
+    if !pending.blocking || model.access_token.is_none() {
+        return None;
+    }
+    // Termos e política andam juntos, mas uma conta pode ter aceitado um sem o outro:
+    // "de" é o aceite mais antigo, "para" a vigente mais nova.
+    let from = pending.documents.iter().min_by_key(|d| d.accepted_version)?;
+    let to = pending.documents.iter().max_by_key(|d| d.version)?;
+    let mut versions: Vec<u32> = pending.changes.iter().map(|c| c.version).collect();
+    versions.sort_unstable();
+    versions.dedup();
+    let sections = |kind: &str| -> Vec<String> {
+        let mut out: Vec<String> = Vec::new();
+        for c in pending.changes.iter().filter(|c| c.kind == kind) {
+            if !out.contains(&c.section) {
+                out.push(c.section.clone());
+            }
+        }
+        out
+    };
+    Some(crate::domain::TermsUpdateViewModel {
+        from_version: from.accepted_version,
+        from_date: from.accepted_effective_at.clone(),
+        to_version: to.version,
+        to_date: to.effective_at.clone(),
+        versions_skipped: versions.len().max(1) as u32,
+        changes: pending
+            .changes
+            .iter()
+            .map(|c| crate::domain::TermsChange {
+                kind: c.kind.clone(),
+                version: c.version,
+                change: match c.change.as_str() {
+                    "added" => crate::domain::TermsChangeKind::Added,
+                    "removed" => crate::domain::TermsChangeKind::Removed,
+                    _ => crate::domain::TermsChangeKind::Changed,
+                },
+                section: c.section.clone(),
+                summary: c.summary.clone(),
+            })
+            .collect(),
+        terms_sections: sections("terms"),
+        privacy_sections: sections("privacy"),
+        accepting: model.terms_accepting,
+    })
 }
 
 fn boot_line(check: BootCheck, verdict: BootVerdict, detail: BootDetail, count: usize) -> BootLine {
@@ -348,14 +509,14 @@ fn read_resume_email() -> Command<Effect, Event> {
 /// A splash como a tela a desenha. A barra anda meia linha quando uma verificação
 /// começa e a outra meia quando ela fecha.
 fn boot_view(boot: &Boot) -> crate::domain::BootViewModel {
-    let lines: Vec<BootLine> = [&boot.session, &boot.sync].into_iter().flatten().cloned().collect();
+    let lines: Vec<BootLine> = [&boot.session, &boot.sync, &boot.terms].into_iter().flatten().cloned().collect();
     let steps: u32 = lines
         .iter()
         .map(|l| if l.verdict == BootVerdict::Running { 1 } else { 2 })
         .sum();
     crate::domain::BootViewModel {
         in_progress: boot.active,
-        progress: (steps * 100 / 4).min(100) as u8,
+        progress: (steps * 100 / 6).min(100) as u8,
         lines,
         awaiting_offline_choice: boot.awaiting_offline_choice,
     }
@@ -528,6 +689,22 @@ pub struct Model {
     pub social_pending: Option<SocialCredential>,
     /// O servidor respondeu `signup_required` e o app mostra a tela de idade e termos.
     pub social_signup_required: bool,
+    /// O nonce cru de um login ou exclusão pelo GitHub, entre a troca do código e o
+    /// pedido que usa o bilhete (ADR 0019). Só na memória.
+    pub github_nonce: Option<String>,
+    /// O que a conta tem para aceitar, quando há versão relevante (ADR 0020). Fica de
+    /// pé na saída da conta: o desfazer devolve a sessão, e o bloqueio tem de voltar com
+    /// ela. Quem entra em seguida busca de novo.
+    pub terms_pending: Option<TermsPending>,
+    /// De que conta é o `terms_pending`.
+    pub terms_pending_owner: String,
+    /// O aceite da tela de termos foi enviado e espera o servidor.
+    pub terms_accepting: bool,
+    /// Só mudanças não relevantes: a faixa na árvore, uma vez.
+    pub terms_notice: bool,
+    /// A versão do app e a plataforma, que o aceite grava. Vêm do shell na abertura.
+    pub client_app_version: String,
+    pub client_platform: String,
     /// O jogador desligou "Análise de uso". Guardado ao contrário para o padrão do
     /// `Default` (falso) ser o padrão do produto: ligado.
     pub analytics_disabled: bool,
@@ -766,6 +943,11 @@ pub struct ViewModel {
     pub analytics_enabled: bool,
     /// A splash da abertura.
     pub boot: crate::domain::BootViewModel,
+    /// Versão relevante dos termos para aceitar: a tela cobre o app até aceitar ou sair
+    /// (ADR 0020).
+    pub terms_update: Option<crate::domain::TermsUpdateViewModel>,
+    /// Só mudanças não relevantes: a faixa discreta na árvore, até fechar.
+    pub terms_notice: bool,
     /// E-mail para o login já vir preenchido depois de uma sessão que acabou. Vazio
     /// quando não há.
     pub resume_email: String,
@@ -1427,6 +1609,11 @@ fn http_route(event: &Event) -> Option<(&'static str, &HttpResult)> {
     Some(match event {
         Event::LoginCompleted(r) => ("/api/v1/auth/login", r),
         Event::SocialLoginCompleted(r) => ("/api/v1/auth/social", r),
+        Event::GitHubExchanged(r) => ("/api/v1/auth/github/exchange", r),
+        Event::GitHubDeleteExchanged(r) => ("/api/v1/auth/github/exchange", r),
+        Event::TermsPendingFetched { result, .. } => ("/api/v1/legal/pending", result),
+        Event::TermsAccepted(r) => ("/api/v1/legal/accept", r),
+        Event::TermsNoticeAccepted(r) => ("/api/v1/legal/accept", r),
         Event::RegisterCompleted(r) => ("/api/v1/auth/register", r),
         Event::RefreshCompleted(r) => ("/api/v1/auth/refresh", r),
         Event::OTPRequested(r) => ("/api/v1/auth/request-otp", r),
@@ -1507,6 +1694,30 @@ fn social_login_body(model: &Model, cred: &SocialCredential, signup: Option<(boo
         };
     }
     body.to_string().into_bytes()
+}
+
+/// O pedido de `POST /api/v1/auth/github/exchange` (ADR 0019). O nonce vai só como
+/// hash; o cru fica no modelo até o pedido que usa o bilhete.
+fn github_exchange_request(model: &Model, code: &str, code_verifier: &str, nonce: &str, purpose: &str) -> HttpRequest {
+    let nonce_hash = Sha256::digest(nonce.as_bytes()).iter().map(|b| format!("{:02x}", b)).collect::<String>();
+    HttpRequest {
+        method: "POST".to_string(),
+        url: "/api/v1/auth/github/exchange".to_string(),
+        headers: base_headers(&model.locale),
+        body: serde_json::json!({
+            "code": code, "code_verifier": code_verifier, "nonce_hash": nonce_hash, "purpose": purpose,
+        })
+        .to_string()
+        .into_bytes(),
+    }
+}
+
+/// O que a troca do GitHub devolve. `access_token` só vem na troca de exclusão.
+#[derive(Deserialize)]
+struct GitHubExchange {
+    ticket: String,
+    #[serde(default)]
+    access_token: String,
 }
 
 /// Abre a sessão com a resposta de login do servidor e manda o refresh token para o
@@ -1674,11 +1885,37 @@ impl LogNApp {
         self.finish_boot(model)
     }
 
-    /// A última linha fechou: a splash sai. Não há duração mínima.
+    /// O sync fechou (ou não tinha o que fazer): falta a linha dos termos. Com a sessão de
+    /// pé e rede, ela pergunta ao servidor; sem uma das duas, fica para a próxima abertura
+    /// (ADR 0020). Sessão que caiu não chega aqui com linha nenhuma: vai para o login.
     fn finish_boot(&self, model: &mut Model) -> Command<Effect, Event> {
+        if model.boot.active && model.boot.terms.is_none() && model.boot.session_ok() {
+            model.boot.awaiting_offline_choice = false;
+            if model.access_token.is_some() {
+                model.boot.terms = Some(boot_line(BootCheck::Terms, BootVerdict::Running, BootDetail::TermsChecking, 0));
+                return fetch_terms_pending(model)
+                    .and(boot_watchdog(BootCheck::Terms, model.boot.attempt))
+                    .and(render::render());
+            }
+            model.boot.terms = Some(boot_line(BootCheck::Terms, BootVerdict::Skipped, BootDetail::TermsDeferred, 0));
+        }
+        self.close_boot(model)
+    }
+
+    /// A última linha fechou: a splash sai. Não há duração mínima.
+    fn close_boot(&self, model: &mut Model) -> Command<Effect, Event> {
         model.boot.active = false;
         model.boot.awaiting_offline_choice = false;
         render::render()
+    }
+
+    /// Fecha a linha dos termos da abertura, se ela estava rodando.
+    fn settle_boot_terms(&self, model: &mut Model, verdict: BootVerdict, detail: BootDetail) -> Command<Effect, Event> {
+        if !model.boot.terms_running() {
+            return render::render();
+        }
+        model.boot.terms = Some(boot_line(BootCheck::Terms, verdict, detail, 0));
+        self.close_boot(model)
     }
 
     /// A sessão acabou (o servidor recusou, ou o prazo local venceu). A splash fecha na
@@ -1892,7 +2129,62 @@ impl App for LogNApp {
 
             Event::SocialLoginFailed => {
                 end_social_login(model);
+                model.github_nonce = None;
                 model.status_key = StatusKey::SocialSignInFailed;
+                render::render()
+            }
+
+            Event::GitHubCodeReceived { code, code_verifier, nonce } => {
+                if model.auth_cooldown.is_active() {
+                    return still_rate_limited(model);
+                }
+                // Uma troca por vez: o nonce da outra seria trocado por este no meio.
+                if model.github_nonce.is_some() {
+                    return Command::done();
+                }
+                model.is_authenticating = true;
+                model.status_key = StatusKey::SigningIn;
+                model.social_signup_required = false;
+                let request = github_exchange_request(model, &code, &code_verifier, &nonce, "login");
+                model.github_nonce = Some(nonce);
+                Command::request_from_shell(request)
+                    .then_send(Event::GitHubExchanged)
+                    .and(render::render())
+            }
+
+            Event::GitHubExchanged(result) => {
+                model.is_authenticating = false;
+                // Resposta sem troca pendente é de um login que já acabou: não abre nada.
+                let Some(nonce) = model.github_nonce.take() else {
+                    return Command::done();
+                };
+                match result {
+                    HttpResult::Ok(response) if response.status == 200 => {
+                        match serde_json::from_slice::<GitHubExchange>(&response.body) {
+                            // Dali em diante é o login pelo provedor de sempre, com o
+                            // bilhete no lugar do ID token.
+                            Ok(ex) if !ex.ticket.is_empty() => {
+                                return self.update(
+                                    Event::SocialLogin { provider: "github".into(), id_token: ex.ticket, nonce },
+                                    model,
+                                );
+                            }
+                            _ => model.status_key = StatusKey::ServerUnreadable,
+                        }
+                    }
+                    HttpResult::Ok(response) if response.status == 429 => {
+                        return rate_limited(model, &response, false);
+                    }
+                    HttpResult::Ok(response) => {
+                        model.status_key = match api_code(&response.body).as_deref() {
+                            Some("provider_disabled") => StatusKey::SocialProviderDisabled,
+                            _ => StatusKey::SocialSignInFailed,
+                        };
+                    }
+                    HttpResult::Err(_) => {
+                        model.status_key = StatusKey::NoConnection;
+                    }
+                }
                 render::render()
             }
 
@@ -2040,6 +2332,17 @@ impl App for LogNApp {
                 } else {
                     queue
                 };
+
+                // Conta antiga entrando num aparelho novo não passa pela splash com
+                // sessão: os termos são conferidos aqui (ADR 0020). O bloqueio de quem
+                // estava antes neste aparelho não vale para esta conta; o desta mesma conta
+                // continua até o servidor dizer outra coisa, para uma busca que falhe não
+                // soltar quem saiu da tela de aceite e entrou de novo.
+                if model.terms_pending_owner != model.user_id {
+                    model.terms_pending = None;
+                    model.terms_notice = false;
+                }
+                let queue = queue.and(self.update(Event::FetchTermsPending, model));
 
                 // Identifica na telemetria e busca o que já está no servidor. Com a
                 // análise de uso desligada, não identifica: o que o SDK ainda manda
@@ -3383,6 +3686,63 @@ Event::FetchChallenges => {
                     .then_send(Event::AccountDeleted)
                     .and(render::render())
             }
+            Event::DeleteAccountWithGitHub { code, code_verifier, nonce } => {
+                if model.access_token.is_none() {
+                    model.status_key = StatusKey::NoConnection;
+                    return render::render();
+                }
+                // Uma troca por vez: o nonce da outra seria trocado por este no meio.
+                if model.github_nonce.is_some() {
+                    return Command::done();
+                }
+                model.is_authenticating = true;
+                let mut request = github_exchange_request(model, &code, &code_verifier, &nonce, "delete");
+                // A troca de exclusão pede a sessão, como a exclusão.
+                request.headers = auth_headers(&model.access_token, &model.locale);
+                model.github_nonce = Some(nonce);
+                Command::request_from_shell(request)
+                    .then_send(Event::GitHubDeleteExchanged)
+                    .and(render::render())
+            }
+            Event::GitHubDeleteExchanged(result) => {
+                model.is_authenticating = false;
+                let Some(nonce) = model.github_nonce.take() else {
+                    return Command::done();
+                };
+                match result {
+                    HttpResult::Ok(response) if response.status == 200 => {
+                        match serde_json::from_slice::<GitHubExchange>(&response.body) {
+                            // O access token passa só por aqui, a caminho do servidor, que o
+                            // usa para revogar e não o devolve.
+                            Ok(ex) if !ex.ticket.is_empty() && !ex.access_token.is_empty() => {
+                                return self.update(
+                                    Event::DeleteAccountWithProvider {
+                                        provider: "github".into(),
+                                        id_token: ex.ticket,
+                                        nonce,
+                                        authorization_code: ex.access_token,
+                                    },
+                                    model,
+                                );
+                            }
+                            _ => model.status_key = StatusKey::ServerUnreadable,
+                        }
+                    }
+                    HttpResult::Ok(response) if response.status == 429 => {
+                        return rate_limited(model, &response, false);
+                    }
+                    HttpResult::Ok(response) => {
+                        model.status_key = match api_code(&response.body).as_deref() {
+                            Some("provider_disabled") => StatusKey::SocialProviderDisabled,
+                            _ => StatusKey::WrongCredentials,
+                        };
+                    }
+                    HttpResult::Err(_) => {
+                        model.status_key = StatusKey::NoConnection;
+                    }
+                }
+                render::render()
+            }
             Event::AccountDeleted(result) => {
                 model.is_authenticating = false;
                 match result {
@@ -3401,6 +3761,9 @@ Event::FetchChallenges => {
                         model.is_guest = false;
                         model.logout_undo = None;
                         model.status_key = StatusKey::Silent;
+                        // A conta saiu: o bloqueio dos termos era dela.
+                        model.terms_pending = None;
+                        model.terms_notice = false;
                         // Até quando entrar ainda recupera a conta: a tela de despedida
                         // mostra a data. Resposta sem o campo não mostra tela nenhuma.
                         #[derive(Deserialize)]
@@ -4135,7 +4498,116 @@ Event::FetchChallenges => {
                     let queued = model.pending_events.len();
                     self.settle_boot_sync(model, BootVerdict::Warn, BootDetail::StillSending, queued)
                 }
+                // Os termos não responderam a tempo: o app entra, e a resposta que chegar
+                // depois ainda põe a tela de aceite na frente, se houver.
+                BootCheck::Terms => self.settle_boot_terms(model, BootVerdict::Skipped, BootDetail::TermsDeferred),
             },
+
+            Event::SetClientInfo { app_version, platform } => {
+                model.client_app_version = app_version;
+                model.client_platform = platform;
+                Command::done()
+            }
+
+            Event::FetchTermsPending => {
+                if model.access_token.is_none() {
+                    return Command::done();
+                }
+                fetch_terms_pending(model)
+            }
+
+            // Resposta de outra conta (saiu uma, entrou outra no meio): não decide nada aqui.
+            Event::TermsPendingFetched { owner, .. } if owner != model.user_id => Command::done(),
+
+            Event::TermsPendingFetched { result, .. } => {
+                let detail = match result {
+                    HttpResult::Ok(response) if response.status == 200 => {
+                        match serde_json::from_slice::<TermsPending>(&response.body) {
+                            Ok(pending) if pending.documents.is_empty() => {
+                                model.terms_pending = None;
+                                BootDetail::TermsCurrent
+                            }
+                            Ok(pending) if pending.blocking => {
+                                model.terms_pending = Some(pending);
+                                model.terms_pending_owner = model.user_id.clone();
+                                BootDetail::TermsChanged
+                            }
+                            // Só não relevantes: a faixa aparece, e o aceite é gravado ao
+                            // aparecer, como pede o design. Fechar a faixa também conta.
+                            Ok(pending) => {
+                                model.terms_pending = None;
+                                model.terms_notice = true;
+                                let accept = Command::request_from_shell(terms_accept_request(model, &pending, "notice"))
+                                    .then_send(Event::TermsNoticeAccepted);
+                                return accept.and(self.settle_boot_terms(model, BootVerdict::Ok, BootDetail::TermsNotice));
+                            }
+                            Err(_) => BootDetail::TermsDeferred,
+                        }
+                    }
+                    // Fora da abertura, o token venceu: renova e pergunta de novo, em vez de
+                    // deixar a conta sem conferir até a próxima abertura.
+                    HttpResult::Ok(response) if response.status == 401 && !model.boot.terms_running() => {
+                        model.pending_retry_event = Some(Event::FetchTermsPending);
+                        return self.update(Event::AttemptRefresh, model);
+                    }
+                    // Qualquer outra resposta, ou sem rede: confere na próxima abertura. O
+                    // bloqueio que já estava na memória continua.
+                    _ => BootDetail::TermsDeferred,
+                };
+                let verdict = if detail == BootDetail::TermsDeferred { BootVerdict::Skipped } else { BootVerdict::Ok };
+                self.settle_boot_terms(model, verdict, detail)
+            }
+
+            Event::AcceptTerms => {
+                let Some(pending) = model.terms_pending.clone() else {
+                    return Command::done();
+                };
+                if model.terms_accepting || !pending.blocking {
+                    return Command::done();
+                }
+                model.terms_accepting = true;
+                model.status_key = StatusKey::Silent;
+                Command::request_from_shell(terms_accept_request(model, &pending, "reaccept"))
+                    .then_send(Event::TermsAccepted)
+                    .and(render::render())
+            }
+
+            Event::TermsAccepted(result) => {
+                model.terms_accepting = false;
+                match result {
+                    HttpResult::Ok(response) if response.status == 200 => {
+                        model.terms_pending = None;
+                        model.status_key = StatusKey::Silent;
+                    }
+                    // A tela estava velha (versão nova no meio, ou o aceite já tinha ido):
+                    // busca de novo, e o que o servidor disser agora é o que vale.
+                    HttpResult::Ok(response)
+                        if response.status == 409 && api_code(&response.body).as_deref() == Some("legal_version_outdated") =>
+                    {
+                        return self.update(Event::FetchTermsPending, model).and(render::render());
+                    }
+                    // Quem ficou na tela além do prazo do token: renova e manda o mesmo aceite,
+                    // em vez de deixar o botão mudo até fechar o app.
+                    HttpResult::Ok(response) if response.status == 401 => {
+                        model.pending_retry_event = Some(Event::AcceptTerms);
+                        return self.update(Event::AttemptRefresh, model);
+                    }
+                    HttpResult::Ok(response) if response.status == 429 => {
+                        return rate_limited(model, &response, false);
+                    }
+                    HttpResult::Ok(_) => model.status_key = StatusKey::ServerUnreadable,
+                    HttpResult::Err(_) => model.status_key = StatusKey::NoConnection,
+                }
+                render::render()
+            }
+
+            // Se o aceite da faixa não chegou, a próxima abertura mostra a faixa de novo.
+            Event::TermsNoticeAccepted(_) => Command::done(),
+
+            Event::DismissTermsNotice => {
+                model.terms_notice = false;
+                render::render()
+            }
 
             Event::RetryBoot => {
                 if !model.boot.active || !model.boot.awaiting_offline_choice {
@@ -4576,6 +5048,8 @@ Event::FetchChallenges => {
             social_signup_required: model.social_signup_required,
             analytics_enabled: !model.analytics_disabled,
             boot: boot_view(&model.boot),
+            terms_update: terms_update_view(model),
+            terms_notice: model.terms_notice && model.access_token.is_some(),
             resume_email: model.resume_email.clone(),
             account_user_id: if model.is_guest { String::new() } else { model.user_id.clone() },
             tracks,
@@ -6415,7 +6889,7 @@ mod tests {
         let view = app.view(&model);
         assert!(view.boot.in_progress);
         assert_eq!(view.boot.lines, vec![boot_line(BootCheck::Session, BootVerdict::Running, BootDetail::Checking, 0)]);
-        assert_eq!(view.boot.progress, 25);
+        assert_eq!(view.boot.progress, 16);
         assert!(
             cmd.effects().any(|e| matches!(e, Effect::Time(_))),
             "a espera pela rede tem teto"
@@ -6453,16 +6927,28 @@ mod tests {
             model.boot.sync,
             Some(boot_line(BootCheck::Sync, BootVerdict::Running, BootDetail::Sending, 2))
         );
-        assert_eq!(app.view(&model).boot.progress, 75);
+        assert_eq!(app.view(&model).boot.progress, 50);
 
-        let _ = app.update(
+        let mut cmd = app.update(
             Event::SyncCompleted(http(200, serde_json::json!({ "new_top": "abc" }))),
             &mut model,
         );
+        // Depois do sync, os termos: a fila subiu antes de o aceite ser perguntado.
+        assert!(
+            http_requests(&mut cmd).iter().any(|r| r.url == "/api/v1/legal/pending"),
+            "com o sync fechado, a abertura pergunta pelos termos"
+        );
+        let view = app.view(&model);
+        assert!(view.boot.in_progress);
+        assert_eq!(view.boot.lines[1], boot_line(BootCheck::Sync, BootVerdict::Ok, BootDetail::Sent, 2));
+        assert_eq!(view.boot.lines[2], boot_line(BootCheck::Terms, BootVerdict::Running, BootDetail::TermsChecking, 0));
+
+        let _ = app.update(terms_for_a(http(200, serde_json::json!({ "documents": [] }))), &mut model);
         let view = app.view(&model);
         assert!(!view.boot.in_progress, "a última linha fechou: a splash sai");
-        assert_eq!(view.boot.lines[1], boot_line(BootCheck::Sync, BootVerdict::Ok, BootDetail::Sent, 2));
-        assert!(view.has_session);
+        assert_eq!(view.boot.lines[2], boot_line(BootCheck::Terms, BootVerdict::Ok, BootDetail::TermsCurrent, 0));
+        assert_eq!(view.boot.progress, 100);
+        assert!(view.has_session && view.terms_update.is_none());
     }
 
     #[test]
@@ -6473,10 +6959,12 @@ mod tests {
         let _ = app.update(Event::OfflineQueueRestored { owner: USER_A.into(), result: kv_empty() }, &mut model);
         let mut cmd = app.update(Event::QueueToAdoptRead { from: String::new(), result: kv_empty() }, &mut model);
 
-        assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))), "fila vazia não vai à rede");
+        let urls: Vec<String> = http_requests(&mut cmd).into_iter().map(|r| r.url).collect();
+        assert_eq!(urls, vec!["/api/v1/legal/pending".to_string()], "fila vazia não vai ao sync; os termos, sim");
         let view = app.view(&model);
-        assert!(!view.boot.in_progress);
         assert_eq!(view.boot.lines[1], boot_line(BootCheck::Sync, BootVerdict::Ok, BootDetail::NothingToSend, 0));
+        let _ = app.update(terms_for_a(http(200, serde_json::json!({ "documents": [] }))), &mut model);
+        assert!(!app.view(&model).boot.in_progress);
     }
 
     /// Sem token no cofre não há o que conferir: nada de splash, e a fila é a do visitante.
@@ -6763,13 +7251,195 @@ mod tests {
 
         let _ = app.update(Event::BootWatchdogElapsed { check: BootCheck::Sync, attempt: 1 }, &mut model);
         let view = app.view(&model);
-        assert!(!view.boot.in_progress);
         assert_eq!(view.boot.lines[1], boot_line(BootCheck::Sync, BootVerdict::Warn, BootDetail::StillSending, 1));
         assert!(model.is_syncing, "o envio segue");
+        // Os termos também têm teto: sem resposta, o app entra e confere depois.
+        let _ = app.update(Event::BootWatchdogElapsed { check: BootCheck::Terms, attempt: 1 }, &mut model);
+        let view = app.view(&model);
+        assert!(!view.boot.in_progress);
+        assert_eq!(view.boot.lines[2], boot_line(BootCheck::Terms, BootVerdict::Skipped, BootDetail::TermsDeferred, 0));
     }
 
-    /// Entrar com outra conta não sobe a fila da anterior.
-    ///
+    /// A resposta dos termos para a conta A, a que as aberturas dos testes usam.
+    fn terms_for_a(result: HttpResult) -> Event {
+        Event::TermsPendingFetched { owner: USER_A.into(), result }
+    }
+
+    fn pending_terms(blocking: bool) -> HttpResult {
+        http(200, serde_json::json!({
+            "blocking": blocking,
+            "documents": [
+                { "kind": "terms", "version": 4, "locale": "pt-BR", "effective_at": "2026-11-01",
+                  "sha256": "aa", "accepted_version": 2, "accepted_effective_at": "2026-09-28" },
+                { "kind": "privacy", "version": 4, "locale": "pt-BR", "effective_at": "2026-11-01",
+                  "sha256": "bb", "accepted_version": 2, "accepted_effective_at": "2026-09-28" }
+            ],
+            "changes": [
+                { "id": "terms:3:secao-a", "kind": "terms", "version": 3, "change": "added", "section": "secao-a", "summary": "Mudança A." },
+                { "id": "terms:4:secao-b", "kind": "terms", "version": 4, "change": "removed", "section": "secao-b", "summary": "Mudança B." },
+                { "id": "privacy:4:secao-c", "kind": "privacy", "version": 4, "change": "changed", "section": "secao-c", "summary": "Mudança C." }
+            ]
+        }))
+    }
+
+    /// Abre até a linha dos termos, com a sessão e a fila vazia.
+    fn boot_to_terms(app: &LogNApp, model: &mut Model) {
+        boot_online(app, model, USER_A);
+        let _ = app.update(Event::OfflineQueueRestored { owner: USER_A.into(), result: kv_empty() }, model);
+        let _ = app.update(Event::QueueToAdoptRead { from: String::new(), result: kv_empty() }, model);
+        assert!(model.boot.terms_running());
+    }
+
+    #[test]
+    fn material_terms_block_the_app_and_accepting_sends_the_proof() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let _ = app.update(Event::SetClientInfo { app_version: "1.8.0".into(), platform: "ios".into() }, &mut model);
+        boot_to_terms(&app, &mut model);
+
+        let _ = app.update(terms_for_a(pending_terms(true)), &mut model);
+        let view = app.view(&model);
+        assert!(!view.boot.in_progress, "a splash sai, e a tela de aceite fica na frente");
+        assert_eq!(view.boot.lines[2].detail, BootDetail::TermsChanged);
+        let gate = view.terms_update.expect("versão relevante cobre o app");
+        assert_eq!((gate.from_version, gate.from_date.as_str()), (2, "2026-09-28"));
+        assert_eq!((gate.to_version, gate.to_date.as_str()), (4, "2026-11-01"));
+        assert_eq!(gate.versions_skipped, 2, "as duas versões puladas somam no diff");
+        assert_eq!(gate.changes.len(), 3);
+        assert_eq!(gate.changes[1].change, crate::domain::TermsChangeKind::Removed);
+        assert_eq!(gate.terms_sections, vec!["secao-a".to_string(), "secao-b".to_string()]);
+        assert_eq!(gate.privacy_sections, vec!["secao-c".to_string()]);
+
+        let mut cmd = app.update(Event::AcceptTerms, &mut model);
+        let reqs = http_requests(&mut cmd);
+        assert_eq!(reqs.len(), 1);
+        assert_eq!(reqs[0].url, "/api/v1/legal/accept");
+        let body = body_of(&reqs[0]);
+        assert_eq!(body["source"], "reaccept");
+        assert_eq!(body["documents"].as_array().unwrap().len(), 2);
+        assert_eq!(body["documents"][0]["sha256"], "aa");
+        assert_eq!(body["documents"][0]["from_version"], 2);
+        assert_eq!(body["shown_changes"].as_array().unwrap().len(), 3);
+        assert_eq!(body["client"]["app"], "1.8.0");
+        assert_eq!(body["client"]["platform"], "ios");
+        assert!(app.view(&model).terms_update.unwrap().accepting);
+
+        // O segundo toque não manda outro aceite.
+        let mut again = app.update(Event::AcceptTerms, &mut model);
+        assert!(http_requests(&mut again).is_empty());
+
+        let _ = app.update(Event::TermsAccepted(http(200, serde_json::json!({}))), &mut model);
+        assert!(app.view(&model).terms_update.is_none(), "aceito, o app abre");
+    }
+
+    #[test]
+    fn stale_terms_screen_fetches_again() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        boot_to_terms(&app, &mut model);
+        let _ = app.update(terms_for_a(pending_terms(true)), &mut model);
+        let _ = app.update(Event::AcceptTerms, &mut model);
+        let mut cmd = app.update(Event::TermsAccepted(api_error(409, "legal_version_outdated")), &mut model);
+        assert!(http_requests(&mut cmd).iter().any(|r| r.url == "/api/v1/legal/pending"));
+        assert!(app.view(&model).terms_update.is_some(), "o bloqueio fica até o servidor dizer outra coisa");
+
+        // Sem rede no aceite: o bloqueio fica, e o erro aparece.
+        let _ = app.update(Event::AcceptTerms, &mut model);
+        let _ = app.update(Event::TermsAccepted(HttpResult::Err(crux_http::HttpError::Timeout)), &mut model);
+        assert!(app.view(&model).terms_update.is_some());
+        assert_eq!(model.status_key, StatusKey::NoConnection);
+    }
+
+    #[test]
+    fn minor_terms_changes_show_a_notice_and_record_it() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        boot_to_terms(&app, &mut model);
+        let mut cmd = app.update(terms_for_a(pending_terms(false)), &mut model);
+        let reqs = http_requests(&mut cmd);
+        assert_eq!(reqs.len(), 1, "o aceite da faixa é gravado quando ela aparece");
+        assert_eq!(body_of(&reqs[0])["source"], "notice");
+        let view = app.view(&model);
+        assert!(!view.boot.in_progress && view.terms_update.is_none() && view.terms_notice);
+        assert_eq!(view.boot.lines[2].detail, BootDetail::TermsNotice);
+
+        let _ = app.update(Event::DismissTermsNotice, &mut model);
+        assert!(!app.view(&model).terms_notice);
+    }
+
+    #[test]
+    fn terms_are_deferred_without_a_network_session() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        boot_to_terms(&app, &mut model);
+        let _ = app.update(terms_for_a(HttpResult::Err(crux_http::HttpError::Io("offline".into()))), &mut model);
+        let view = app.view(&model);
+        assert!(!view.boot.in_progress && view.terms_update.is_none());
+        assert_eq!(view.boot.lines[2], boot_line(BootCheck::Terms, BootVerdict::Skipped, BootDetail::TermsDeferred, 0));
+
+        // A resposta que chega depois de o app abrir ainda põe o bloqueio na frente.
+        let _ = app.update(terms_for_a(pending_terms(true)), &mut model);
+        assert!(app.view(&model).terms_update.is_some());
+    }
+
+    #[test]
+    fn the_terms_block_belongs_to_the_session() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        boot_to_terms(&app, &mut model);
+        let _ = app.update(terms_for_a(pending_terms(true)), &mut model);
+
+        // Sem sessão, a tela some (o login vem na frente); o desfazer devolve os dois.
+        let token = model.access_token.take();
+        assert!(app.view(&model).terms_update.is_none());
+        model.access_token = token;
+        assert!(app.view(&model).terms_update.is_some());
+
+        // A mesma conta saindo pela tela de aceite e entrando de novo: o bloqueio fica até
+        // o servidor responder, e uma resposta que falhe não a solta.
+        let mut cmd = app.update(Event::SessionExpiryStored(kv_empty()), &mut model);
+        assert!(http_requests(&mut cmd).iter().any(|r| r.url == "/api/v1/legal/pending"));
+        let _ = app.update(terms_for_a(HttpResult::Err(crux_http::HttpError::Timeout)), &mut model);
+        assert!(app.view(&model).terms_update.is_some(), "busca que falhou não solta o bloqueio");
+
+        // Outra conta entrando neste aparelho busca a dela, sem herdar este bloqueio.
+        model.user_id = USER_B.into();
+        model.entering_session = true;
+        let mut cmd = app.update(Event::SessionExpiryStored(kv_empty()), &mut model);
+        assert!(model.terms_pending.is_none());
+        assert!(http_requests(&mut cmd).iter().any(|r| r.url == "/api/v1/legal/pending"));
+
+        // A resposta atrasada da conta A não decide o bloqueio da B.
+        let _ = app.update(terms_for_a(pending_terms(true)), &mut model);
+        assert!(model.terms_pending.is_none(), "resposta de outra conta não bloqueia esta");
+    }
+
+    #[test]
+    fn a_stale_token_on_accept_renews_and_retries() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        boot_to_terms(&app, &mut model);
+        let _ = app.update(terms_for_a(pending_terms(true)), &mut model);
+        let _ = app.update(Event::AcceptTerms, &mut model);
+        let _ = app.update(Event::TermsAccepted(api_error(401, "unauthenticated")), &mut model);
+        assert!(matches!(model.pending_retry_event, Some(Event::AcceptTerms)), "o aceite volta depois do refresh");
+        assert!(!model.terms_accepting);
+    }
+
+    #[test]
+    fn terms_are_deferred_on_an_offline_session() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        boot_online(&app, &mut model, USER_A);
+        // Sessão aberta sem rede, dentro do prazo: sem token de acesso não há como
+        // perguntar, e a linha fecha como adiada.
+        model.access_token = None;
+        model.boot.sync = None;
+        let mut cmd = app.finish_boot(&mut model);
+        assert!(http_requests(&mut cmd).is_empty());
+        assert_eq!(model.boot.terms, Some(boot_line(BootCheck::Terms, BootVerdict::Skipped, BootDetail::TermsDeferred, 0)));
+        assert!(!model.boot.active);
+    }
     /// A fila era uma chave só e não dizia de quem era: depois de a sessão de A expirar,
     /// B entrava e o sync mandava as partidas de A como se fossem de B.
     #[test]
@@ -8445,6 +9115,133 @@ mod tests {
         // O código vai junto: é com ele que o servidor revoga o acesso na Apple.
         assert_eq!(body["authorization_code"], "code-1");
         assert!(body.get("password").is_none());
+    }
+
+    fn github_code(app: &LogNApp, model: &mut Model) -> Vec<HttpRequest> {
+        let mut cmd = app.update(
+            Event::GitHubCodeReceived { code: "cod".into(), code_verifier: "ver".into(), nonce: "nonce-cru".into() },
+            model,
+        );
+        http_requests(&mut cmd)
+    }
+
+    #[test]
+    fn github_login_trades_the_code_for_a_ticket_and_logs_in_with_it() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+
+        let reqs = github_code(&app, &mut model);
+        assert_eq!(reqs.len(), 1);
+        assert_eq!(reqs[0].url, "/api/v1/auth/github/exchange");
+        let body = body_of(&reqs[0]);
+        assert_eq!(body["code"], "cod");
+        assert_eq!(body["code_verifier"], "ver");
+        assert_eq!(body["purpose"], "login");
+        // Na troca o nonce vai só como hash; o cru espera o pedido do bilhete.
+        let hash: String = Sha256::digest(b"nonce-cru").iter().map(|b| format!("{:02x}", b)).collect();
+        assert_eq!(body["nonce_hash"], hash);
+        assert!(!String::from_utf8_lossy(&reqs[0].body).contains("\"nonce-cru\""));
+        assert!(model.is_authenticating);
+
+        let mut cmd = app.update(Event::GitHubExchanged(http(200, serde_json::json!({ "ticket": "bilhete" }))), &mut model);
+        let reqs = http_requests(&mut cmd);
+        assert_eq!(reqs.len(), 1);
+        assert_eq!(reqs[0].url, "/api/v1/auth/social");
+        let body = body_of(&reqs[0]);
+        assert_eq!(body["provider"], "github");
+        assert_eq!(body["id_token"], "bilhete");
+        assert_eq!(body["nonce"], "nonce-cru");
+        assert!(model.github_nonce.is_none(), "o nonce não fica na memória depois da troca");
+        assert!(model.social_pending.is_some(), "o bilhete fica para o signup_required");
+    }
+
+    #[test]
+    fn github_exchange_refused_does_not_log_in() {
+        let cases = [
+            (api_error(401, "social_token_invalid"), StatusKey::SocialSignInFailed),
+            (api_error(503, "provider_disabled"), StatusKey::SocialProviderDisabled),
+            (http(200, serde_json::json!({ "ticket": "" })), StatusKey::ServerUnreadable),
+            (HttpResult::Err(crux_http::HttpError::Timeout), StatusKey::NoConnection),
+        ];
+        for (result, want) in cases {
+            let app = LogNApp::default();
+            let mut model = Model::default();
+            github_code(&app, &mut model);
+            let mut cmd = app.update(Event::GitHubExchanged(result), &mut model);
+            assert!(http_requests(&mut cmd).is_empty(), "sem bilhete não há login");
+            assert_eq!(model.status_key, want);
+            assert!(!model.is_authenticating && model.github_nonce.is_none());
+        }
+    }
+
+    #[test]
+    fn late_github_exchange_opens_nothing() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let mut cmd = app.update(Event::GitHubExchanged(http(200, serde_json::json!({ "ticket": "bilhete" }))), &mut model);
+        assert!(http_requests(&mut cmd).is_empty(), "troca sem login pendente não entra em conta nenhuma");
+    }
+
+    #[test]
+    fn github_deletion_sends_the_ticket_and_the_token_to_revoke() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("acc".into());
+        let mut cmd = app.update(
+            Event::DeleteAccountWithGitHub { code: "cod".into(), code_verifier: "ver".into(), nonce: "nonce-cru".into() },
+            &mut model,
+        );
+        let reqs = http_requests(&mut cmd);
+        assert_eq!(reqs[0].url, "/api/v1/auth/github/exchange");
+        assert_eq!(body_of(&reqs[0])["purpose"], "delete");
+        assert!(
+            reqs[0].headers.iter().any(|h| h.name.eq_ignore_ascii_case("authorization") && h.value == "Bearer acc"),
+            "a troca de exclusão vai com a sessão"
+        );
+
+        // Outra troca no meio não troca o nonce desta.
+        let mut again = app.update(
+            Event::GitHubCodeReceived { code: "c2".into(), code_verifier: "v2".into(), nonce: "outro".into() },
+            &mut model,
+        );
+        assert!(http_requests(&mut again).is_empty());
+        assert_eq!(model.github_nonce.as_deref(), Some("nonce-cru"));
+
+        let mut cmd = app.update(
+            Event::GitHubDeleteExchanged(http(200, serde_json::json!({ "ticket": "bilhete", "access_token": "gho_x" }))),
+            &mut model,
+        );
+        let reqs = http_requests(&mut cmd);
+        assert_eq!(reqs[0].url, "/api/v1/users/me/delete");
+        let body = body_of(&reqs[0]);
+        assert_eq!(body["provider"], "github");
+        assert_eq!(body["id_token"], "bilhete");
+        assert_eq!(body["nonce"], "nonce-cru");
+        assert_eq!(body["authorization_code"], "gho_x");
+        assert!(body.get("password").is_none());
+    }
+
+    #[test]
+    fn github_deletion_without_the_token_does_not_delete() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("acc".into());
+        let _ = app.update(
+            Event::DeleteAccountWithGitHub { code: "cod".into(), code_verifier: "ver".into(), nonce: "n".into() },
+            &mut model,
+        );
+        // Sem o token o servidor não teria com que revogar: não chega a pedir.
+        let mut cmd = app.update(Event::GitHubDeleteExchanged(http(200, serde_json::json!({ "ticket": "bilhete" }))), &mut model);
+        assert!(http_requests(&mut cmd).is_empty());
+        assert_eq!(model.status_key, StatusKey::ServerUnreadable);
+
+        let _ = app.update(
+            Event::DeleteAccountWithGitHub { code: "cod".into(), code_verifier: "ver".into(), nonce: "n".into() },
+            &mut model,
+        );
+        let mut cmd = app.update(Event::GitHubDeleteExchanged(api_error(401, "social_token_invalid")), &mut model);
+        assert!(http_requests(&mut cmd).is_empty());
+        assert_eq!(model.status_key, StatusKey::WrongCredentials);
     }
 
     #[test]

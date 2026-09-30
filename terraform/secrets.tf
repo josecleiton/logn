@@ -19,6 +19,9 @@ resource "google_secret_manager_secret" "db_migrator_url" {
   }
 }
 
+# Aposentado pela ADR 0019: o valor foi para logn-server-keys. O container fica até a
+# revisão que lê SERVER_KEYS estar servindo, e sai no passo 4 da troca, com a versão
+# destruída antes (`gcloud secrets versions destroy`).
 resource "google_secret_manager_secret" "jwt_secret" {
   secret_id = "logn-jwt-secret"
 
@@ -35,12 +38,28 @@ resource "google_secret_manager_secret" "smtp_pass" {
   }
 }
 
-# Cifra as chaves de conteúdo das trilhas pagas em `track_keys` (ADR 0013): 32 bytes em
-# base64. O servidor não sobe no Cloud Run sem ele. Trocar o valor invalida as chaves
-# guardadas — é rotação com migração de dados, não troca de variável.
-#   openssl rand -base64 32 | tr -d '\n' | gcloud secrets versions add logn-track-key-secret --data-file=-
+# Aposentado pela ADR 0019, como o logn-jwt-secret acima: o valor foi para
+# logn-server-keys.
 resource "google_secret_manager_secret" "track_key_secret" {
   secret_id = "logn-track-key-secret"
+
+  replication {
+    auto {}
+  }
+}
+
+# As chaves que o servidor gera e que ninguém mais lê, num JSON só (ADR 0019): um
+# segredo por chave passava do free tier do Secret Manager, que cobre 6 versões ativas.
+#   { "jwt_secret": "…", "track_key_secret": "…", "github_client_secret": "…" }
+# - jwt_secret: trocar derruba todas as sessões.
+# - track_key_secret: 32 bytes em base64; trocar tranca as trilhas compradas (ADR 0013).
+#   É rotação com migração de dados, não troca de variável.
+# - github_client_secret: só junto de github_client_id no tfvars; um sem o outro, o
+#   servidor não sobe.
+# A primeira versão copia os valores das versões atuais, nunca à mão, e sobe antes do
+# apply que troca o Cloud Run: ver a ordem na ADR 0019 (apply com -target primeiro).
+resource "google_secret_manager_secret" "server_keys" {
+  secret_id = "logn-server-keys"
 
   replication {
     auto {}
@@ -76,10 +95,14 @@ resource "google_secret_manager_secret" "apple_signin_key" {
 # que o serviço use entra neste mapa (AGENTS.md, regra 9).
 locals {
   runtime_secrets = {
-    db_url               = google_secret_manager_secret.db_url.id
-    db_migrator_url      = google_secret_manager_secret.db_migrator_url.id
+    db_url          = google_secret_manager_secret.db_url.id
+    db_migrator_url = google_secret_manager_secret.db_migrator_url.id
+    server_keys     = google_secret_manager_secret.server_keys.id
+    smtp_pass       = google_secret_manager_secret.smtp_pass.id
+    # Os dois aposentados pela ADR 0019 continuam legíveis até o passo 4 da troca: a
+    # revisão antiga ainda os lê a cada instância que sobe, e tirar o acesso no mesmo
+    # apply que a troca derrubaria a próxima instância dela.
     jwt_secret           = google_secret_manager_secret.jwt_secret.id
-    smtp_pass            = google_secret_manager_secret.smtp_pass.id
     track_key_secret     = google_secret_manager_secret.track_key_secret.id
     origin_shared_secret = google_secret_manager_secret.origin_shared_secret.id
     apple_signin_key     = google_secret_manager_secret.apple_signin_key.id

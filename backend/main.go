@@ -14,6 +14,7 @@ import (
 	"github.com/josecleiton/logn/backend/internal/httpapi"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/cloudauth"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/email"
+	"github.com/josecleiton/logn/backend/internal/infrastructure/socialauth"
 	"github.com/josecleiton/logn/backend/schema"
 )
 
@@ -23,16 +24,8 @@ func main() {
 		dbUrl = "postgres://logn_user:logn_password@localhost:5432/logn_db?sslmode=disable"
 	}
 
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		if os.Getenv("K_SERVICE") != "" {
-			log.Fatalf("JWT_SECRET is not set. Refusing to start in production with an insecure default.")
-		}
-		log.Println("WARNING: JWT_SECRET is not set. Using insecure default for development.")
-		domain.JwtSecretKey = []byte("my-super-secret-logn-key-for-dev")
-	} else {
-		domain.JwtSecretKey = []byte(jwtSecret)
-	}
+	keys := serverKeysFromEnv()
+	domain.JwtSecretKey = jwtSecretFrom(keys)
 
 	config, err := pgxpool.ParseConfig(dbUrl)
 	if err != nil {
@@ -95,10 +88,18 @@ func main() {
 		return
 	}
 
-	domain.TrackKeySecret = trackKeySecretFromEnv()
+	domain.TrackKeySecret = trackKeySecretFrom(keys)
 
 	repo := domain.NewRepository(pool)
 	social, revokers := socialVerifiersFromEnv()
+	// O GitHub é verificador, revogador e a troca do código ao mesmo tempo. Desligado,
+	// fica fora dos três: um *GitHub nulo dentro da interface não seria `nil`.
+	var githubExchanger httpapi.GitHubExchanger
+	if gh := githubFromEnv(keys, domain.JwtSecretKey); gh != nil {
+		social[socialauth.ProviderGitHub] = gh
+		revokers[socialauth.ProviderGitHub] = gh
+		githubExchanger = gh
+	}
 	deps := httpapi.Deps{
 		Repo:           repo,
 		Mailer:         email.NewMailer(),
@@ -106,6 +107,7 @@ func main() {
 		StoreKit:       storeKitValidatorFromEnv(),
 		Social:         social,
 		Revokers:       revokers,
+		GitHub:         githubExchanger,
 		// Termos e política. No Cloud Run o modo é estrito: documento com marcador de
 		// rascunho responde 503, a não ser que LEGAL_ALLOW_DRAFT=true libere a página com a
 		// faixa de rascunho — o caso do TestFlight, enquanto o advogado revisa.

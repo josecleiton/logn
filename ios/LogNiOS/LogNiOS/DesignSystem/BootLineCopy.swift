@@ -11,6 +11,7 @@ extension LogN.BootLine {
         switch check {
         case .session: return Str.Boot.check_session
         case .sync:    return Str.Boot.check_sync
+        case .terms:   return Str.Boot.check_terms
         }
     }
 
@@ -27,6 +28,11 @@ extension LogN.BootLine {
         case .noNetwork:       return Str.Boot.no_network(n)
         case .rejected:        return Str.Boot.rejected
         case .stillSending:    return Str.Boot.still_sending
+        case .termsChecking:   return Str.Boot.terms_checking
+        case .termsCurrent:    return Str.Boot.terms_current
+        case .termsChanged:    return Str.Boot.terms_changed
+        case .termsNotice:     return Str.Boot.terms_notice
+        case .termsDeferred:   return Str.Boot.terms_deferred
         }
     }
 
@@ -38,15 +44,20 @@ extension LogN.BootLine {
         case .ok:      return "checkmark"
         case .warn:    return "exclamationmark"
         case .fail:    return "xmark"
+        case .skipped: return "minus"
         }
     }
 
     var tone: Color {
+        // Termos que mudaram não são erro nem acerto: o design marca com a cor de
+        // informação, e a tela de aceite vem em seguida.
+        if detail == .termsChanged { return LognDark.info }
         switch verdict {
         case .running: return LognDark.textMuted
         case .ok:      return LognDark.correct
         case .warn:    return LognDark.warn
         case .fail:    return LognDark.wrong
+        case .skipped: return LognDark.textMuted
         }
     }
 }

@@ -22,8 +22,10 @@ type Deps struct {
 	StoreKit       *storekit.Validator
 	// Um verificador por provedor de login ligado. Provedor fora do mapa está desligado.
 	Social map[string]socialauth.Verifier
-	// Provedores que exigem revogar o acesso na exclusão da conta (a Apple).
+	// Provedores que revogam o acesso na exclusão da conta (a Apple, o GitHub).
 	Revokers map[string]socialauth.Revoker
+	// Troca o código do GitHub pelo bilhete (ADR 0019). Nulo com o GitHub desligado.
+	GitHub GitHubExchanger
 	// Documento legal com marcador de rascunho responde 503 em vez da página.
 	LegalStrict bool
 }
@@ -40,6 +42,7 @@ func New(d Deps) (http.Handler, error) {
 		storekit:       d.StoreKit,
 		social:         d.Social,
 		revokers:       d.Revokers,
+		github:         d.GitHub,
 	}
 
 	// Rotas de autenticação passam por um limite por IP. Nenhuma tinha limite, e é
@@ -58,6 +61,7 @@ func New(d Deps) (http.Handler, error) {
 	mux.HandleFunc("GET /api/v1/challenges", server.challengesHandler)
 	mux.HandleFunc("POST /api/v1/auth/login", auth(server.loginHandler))
 	mux.HandleFunc("POST /api/v1/auth/social", auth(server.socialLoginHandler))
+	mux.HandleFunc("POST /api/v1/auth/github/exchange", auth(server.githubExchangeHandler))
 	mux.HandleFunc("POST /api/v1/auth/refresh", auth(server.refreshHandler))
 	mux.HandleFunc("POST /api/v1/auth/request-otp", auth(server.requestOTPHandler))
 	mux.HandleFunc("POST /api/v1/auth/verify-otp", auth(server.verifyOTPHandler))
@@ -86,8 +90,15 @@ func New(d Deps) (http.Handler, error) {
 	registerLegalRoutes(mux, legalStore{server.repo}, d.LegalStrict)
 
 	mux.HandleFunc("GET /api/v1/legal/current", server.currentLegalVersionsHandler)
-	mux.HandleFunc("GET /api/v1/legal/pending", auth(server.pendingLegalHandler))
-	mux.HandleFunc("POST /api/v1/legal/accept", auth(server.acceptLegalHandler))
+	// Pendência e aceite têm balde próprio, como as trilhas: toda abertura pergunta pelos
+	// termos, e dividir o balde do login gastava a entrada de quem está atrás de NAT e
+	// fazia um 429 pular o bloqueio (ADR 0020).
+	legalLimiter := newRateLimiter(60, time.Minute)
+	legalRoute := func(h http.HandlerFunc) http.HandlerFunc {
+		return legalLimiter.wrap(limitBody(authBodyLimit, h))
+	}
+	mux.HandleFunc("GET /api/v1/legal/pending", legalRoute(server.pendingLegalHandler))
+	mux.HandleFunc("POST /api/v1/legal/accept", legalRoute(server.acceptLegalHandler))
 
 	// Sondas do Cloud Run e a rota interna do Cloud Scheduler chegam direto do Google,
 	// nunca pelo proxy na frente — ficam fora da checagem de origem.

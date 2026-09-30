@@ -1,7 +1,11 @@
 package main
 
 import (
+	"crypto/subtle"
 	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -72,14 +76,139 @@ func btoi(b bool) int {
 	return 0
 }
 
+// serverKeys são as chaves que o servidor gera e que ninguém mais lê. No Cloud Run elas
+// chegam juntas, num segredo JSON só, em SERVER_KEYS (ADR 0019): um segredo por chave
+// passava do free tier do Secret Manager. Fora dele, cada uma pode vir solta, na
+// variável de sempre.
+type serverKeys struct {
+	JWTSecret          string `json:"jwt_secret"`
+	TrackKeySecret     string `json:"track_key_secret"`
+	GitHubClientSecret string `json:"github_client_secret"`
+}
+
+// serverKeysFromEnv junta SERVER_KEYS e as variáveis soltas. A mesma chave nas duas
+// fontes com valores diferentes é configuração que ninguém sabe qual vale, e o servidor
+// não sobe. Campo desconhecido no JSON também não: é nome escrito errado, e a chave
+// que ele devia trazer ficaria vazia sem aviso.
+func serverKeysFromEnv() serverKeys {
+	keys, err := parseServerKeys(os.Getenv)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	return keys
+}
+
+// parseServerKeys faz o trabalho de serverKeysFromEnv sobre um `getenv` qualquer. Os
+// erros nunca citam valor de chave.
+func parseServerKeys(getenv func(string) string) (serverKeys, error) {
+	var keys serverKeys
+	if raw := getenv("SERVER_KEYS"); raw != "" {
+		dec := json.NewDecoder(strings.NewReader(raw))
+		dec.DisallowUnknownFields()
+		// O erro do decoder pode citar o conteúdo; a mensagem leva só que falhou.
+		if err := dec.Decode(&keys); err != nil {
+			return serverKeys{}, errors.New("SERVER_KEYS is not a valid JSON object with the known keys")
+		}
+		if dec.More() {
+			return serverKeys{}, errors.New("SERVER_KEYS has trailing content after the JSON object")
+		}
+	}
+	for _, k := range []struct {
+		field, env string
+		dst        *string
+	}{
+		{"jwt_secret", "JWT_SECRET", &keys.JWTSecret},
+		{"track_key_secret", "TRACK_KEY_SECRET", &keys.TrackKeySecret},
+		{"github_client_secret", "GITHUB_CLIENT_SECRET", &keys.GitHubClientSecret},
+	} {
+		loose := getenv(k.env)
+		switch {
+		case *k.dst == "":
+			*k.dst = loose
+		case loose != "" && subtle.ConstantTimeCompare([]byte(*k.dst), []byte(loose)) != 1:
+			return serverKeys{}, fmt.Errorf("%s and SERVER_KEYS.%s are both set, with different values", k.env, k.field)
+		}
+	}
+	return keys, nil
+}
+
+// devJWTSecret é a chave de sessão de desenvolvimento. Visivelmente falsa, e recusada no
+// Cloud Run.
+const devJWTSecret = "my-super-secret-logn-key-for-dev"
+
+// minJWTSecretLen é o mínimo aceito em produção. Com o código público, uma chave curta
+// ou copiada do exemplo deixa qualquer um forjar sessão e bilhete do GitHub.
+const minJWTSecretLen = 32
+
+// jwtSecretFrom devolve a chave da sessão. Em produção sem ela, ou com uma fraca, o
+// servidor aborta.
+func jwtSecretFrom(keys serverKeys) []byte {
+	production := os.Getenv("K_SERVICE") != ""
+	if err := checkJWTSecret(keys.JWTSecret, production); err != nil {
+		log.Fatalf("%v", err)
+	}
+	if keys.JWTSecret == "" {
+		log.Println("WARNING: JWT_SECRET is not set. Using insecure default for development.")
+		return []byte(devJWTSecret)
+	}
+	return []byte(keys.JWTSecret)
+}
+
+// checkJWTSecret recusa, em produção, chave vazia, curta, a de desenvolvimento ou o
+// marcador do exemplo da ADR 0019 (`…`).
+func checkJWTSecret(secret string, production bool) error {
+	if !production {
+		return nil
+	}
+	switch {
+	case secret == "":
+		return errors.New("JWT_SECRET is not set. Refusing to start in production with an insecure default")
+	case len(secret) < minJWTSecretLen, secret == devJWTSecret, strings.Contains(secret, "…"):
+		return fmt.Errorf("JWT_SECRET is too weak for production: at least %d random bytes", minJWTSecretLen)
+	}
+	return nil
+}
+
+// githubFromEnv monta a troca e o verificador do GitHub (ADR 0019). Client ID e secret
+// vêm juntos: sem nenhum, o GitHub fica desligado; com um só, é deploy pela metade, e
+// em produção o servidor aborta.
+func githubFromEnv(keys serverKeys, sessionKey []byte) *socialauth.GitHub {
+	clientID := strings.TrimSpace(os.Getenv("GITHUB_CLIENT_ID"))
+	secret := strings.TrimSpace(keys.GitHubClientSecret)
+	switch {
+	case clientID == "" && secret == "":
+		log.Println("GITHUB_CLIENT_ID is not set. GitHub sign-in is disabled.")
+		return nil
+	case clientID == "" || secret == "":
+		if os.Getenv("K_SERVICE") != "" {
+			log.Fatalf("GITHUB_CLIENT_ID and the GitHub client secret must be set together.")
+		}
+		log.Println("WARNING: GitHub sign-in is only partly configured. It is disabled.")
+		return nil
+	}
+	redirect := strings.TrimSpace(os.Getenv("GITHUB_REDIRECT_URI"))
+	if redirect == "" {
+		redirect = githubDefaultRedirect
+	}
+	g, err := socialauth.NewGitHub(clientID, secret, redirect, sessionKey, nil)
+	if err != nil {
+		log.Fatalf("GitHub sign-in: %v", err)
+	}
+	return g
+}
+
+// githubDefaultRedirect é o retorno que o app intercepta, e que o OAuth App do GitHub
+// tem cadastrado como callback. A troca manda o mesmo valor.
+const githubDefaultRedirect = "logn://oauth/github"
+
 // devTrackKeySecret é a chave de desenvolvimento de `track_keys`. Visivelmente falsa, e
 // o servidor recusa subir com ela no Cloud Run.
 var devTrackKeySecret = []byte("logn-dev-track-key-secret-32byte")
 
-// trackKeySecretFromEnv lê TRACK_KEY_SECRET, 32 bytes em base64. Em produção sem ela o
-// servidor aborta, como com JWT_SECRET.
-func trackKeySecretFromEnv() []byte {
-	raw := os.Getenv("TRACK_KEY_SECRET")
+// trackKeySecretFrom lê a chave de `track_keys`, 32 bytes em base64. Em produção sem ela
+// o servidor aborta, como com JWT_SECRET.
+func trackKeySecretFrom(keys serverKeys) []byte {
+	raw := keys.TrackKeySecret
 	if raw == "" {
 		if os.Getenv("K_SERVICE") != "" {
 			log.Fatalf("TRACK_KEY_SECRET is not set. Refusing to start in production without it.")

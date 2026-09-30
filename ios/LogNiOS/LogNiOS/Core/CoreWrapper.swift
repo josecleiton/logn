@@ -105,6 +105,8 @@ public class CoreWrapper: ObservableObject {
             // tem sessão vê a splash por um quadro; quem tem não vê o login piscar
             // enquanto o refresh está no ar.
             boot: BootViewModel(inProgress: true, lines: [], progress: 0, awaitingOfflineChoice: false),
+            termsUpdate: nil,
+            termsNotice: false,
             resumeEmail: "",
             accountUserId: "",
             tracks: [],
@@ -122,6 +124,10 @@ public class CoreWrapper: ObservableObject {
         // e a língua do aceite no cadastro. Nada despachava isto, e o Core mandava o
         // cabeçalho vazio.
         dispatch(event: .setLocale(AppLocale.current))
+        // A versão do app e a plataforma vão no registro do novo aceite dos termos
+        // (ADR 0020), que prova de que app o aceite saiu.
+        let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        dispatch(event: .setClientInfo(appVersion: appVersion, platform: "ios"))
         // A escolha do interruptor "Análise de uso" antes do primeiro login: com ela
         // desligada, o Core não identifica nem manda evento de uso.
         dispatch(event: .restoreAnalyticsPreference)

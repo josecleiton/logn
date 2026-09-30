@@ -33,7 +33,7 @@ type SocialLoginRequest struct {
 func (s *Server) verifySocial(ctx context.Context, w http.ResponseWriter, provider, idToken, nonce string) (socialauth.Identity, bool) {
 	verifier, found := s.social[provider]
 	if !found {
-		if provider == socialauth.ProviderGoogle || provider == socialauth.ProviderApple {
+		if provider == socialauth.ProviderGoogle || provider == socialauth.ProviderApple || provider == socialauth.ProviderGitHub {
 			writeError(w, http.StatusServiceUnavailable, codeProviderDisabled)
 		} else {
 			writeError(w, http.StatusBadRequest, codeInvalidRequest)
@@ -136,6 +136,68 @@ func (s *Server) socialLoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.issueSession(ctx, w, userID, account.Email, restored)
+}
+
+type GitHubExchangeRequest struct {
+	Code         string `json:"code"`
+	CodeVerifier string `json:"code_verifier"`
+	// SHA-256 (hex) do nonce que o app guarda cru e manda depois a `/auth/social`.
+	NonceHash string `json:"nonce_hash"`
+	// "login" ou "delete". Na exclusão, o access token volta junto, para o servidor
+	// revogar a autorização com ele.
+	Purpose string `json:"purpose"`
+}
+
+type GitHubExchangeResponse struct {
+	Ticket      string `json:"ticket"`
+	AccessToken string `json:"access_token,omitempty"`
+}
+
+// githubExchangeHandler troca o código do login no GitHub pelo bilhete que faz o papel
+// do ID token em `/auth/social` e na exclusão (ADR 0019). A troca precisa do secret, que
+// só o servidor tem.
+func (s *Server) githubExchangeHandler(w http.ResponseWriter, r *http.Request) {
+	if s.github == nil {
+		writeError(w, http.StatusServiceUnavailable, codeProviderDisabled)
+		return
+	}
+
+	var req GitHubExchangeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, codeInvalidRequest)
+		return
+	}
+	var keepToken bool
+	switch req.Purpose {
+	case "login":
+	case "delete":
+		// Só quem tem sessão exclui; sem ela, a troca de exclusão só serviria para
+		// tirar do GitHub um token vivo.
+		if _, ok := s.authenticate(w, r); !ok {
+			return
+		}
+		keepToken = true
+	default:
+		writeError(w, http.StatusBadRequest, codeInvalidRequest)
+		return
+	}
+
+	out, err := s.github.Exchange(r.Context(), req.Code, req.CodeVerifier, req.NonceHash, keepToken)
+	switch {
+	case errors.Is(err, socialauth.ErrTokenNotDeleted):
+		// O bilhete vale; só o token ficou vivo no GitHub. O login segue.
+		log.Printf("troca do GitHub: %v", err)
+	case err != nil:
+		// O motivo fica no log, sem código nem token. Para o app é o mesmo código do
+		// token recusado.
+		log.Printf("troca do GitHub recusada: erro=%v", err)
+		writeError(w, http.StatusUnauthorized, codeSocialTokenInvalid)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	json.NewEncoder(w).Encode(GitHubExchangeResponse{Ticket: out.Ticket, AccessToken: out.AccessToken})
 }
 
 // socialSignup cria a conta de quem entrou pelo provedor pela primeira vez. As regras

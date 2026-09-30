@@ -205,6 +205,10 @@ struct ManageAccountView: View {
                     core.dispatch(event: .deleteAccountWithProvider(
                         provider: proof.provider, idToken: proof.idToken, nonce: proof.nonce,
                         authorizationCode: proof.authorizationCode))
+                },
+                onDeleteWithGitHub: { credential in
+                    core.dispatch(event: .deleteAccountWithGitHub(
+                        code: credential.code, codeVerifier: credential.verifier, nonce: credential.nonce))
                 }
             )
             .environmentObject(core)
@@ -317,6 +321,9 @@ struct DeleteAccountSheet: View {
     /// Conta criada por um provedor não tem senha: prova que é dona entrando nele de
     /// novo, na hora. O servidor só aceita login de poucos minutos atrás.
     let onDeleteWithProvider: (ProviderProof) -> Void
+    /// O GitHub não emite ID token: o Core troca o código pelo bilhete e pelo token com
+    /// que o servidor revoga, e só então pede a exclusão (ADR 0019).
+    let onDeleteWithGitHub: (GitHubAuth.Credential) -> Void
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var core: CoreWrapper
 
@@ -379,6 +386,9 @@ struct DeleteAccountSheet: View {
             if GoogleAuth.shared.isConfigured {
                 providerButton(Str.Logout.delete_with_google, action: deleteWithGoogle)
             }
+            if GitHubAuth.shared.isConfigured {
+                providerButton(Str.Logout.delete_with_github, action: deleteWithGitHub)
+            }
         }
         .padding(20)
         .background(LognDark.surfaceRaised)
@@ -436,6 +446,24 @@ struct DeleteAccountSheet: View {
                 dismiss()
             } catch AppleAuth.Failure.cancelled {
                 // Desistiu na folha da Apple: a conta fica.
+            } catch {
+                core.dispatch(event: .socialLoginFailed)
+            }
+        }
+    }
+
+    private func deleteWithGitHub() {
+        providerBusy = true
+        Task {
+            defer { providerBusy = false }
+            do {
+                let credential = try await GitHubAuth.shared.signIn()
+                GoogleAuth.shared.pendingRevocation = ""
+                // O servidor troca o código e revoga no GitHub; o aparelho não faz nada.
+                onDeleteWithGitHub(credential)
+                dismiss()
+            } catch GitHubAuth.Failure.cancelled {
+                // Desistiu na janela do GitHub: a conta fica.
             } catch {
                 core.dispatch(event: .socialLoginFailed)
             }

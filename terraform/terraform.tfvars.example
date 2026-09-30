@@ -20,6 +20,10 @@ smtp_port = "465" # 465 = TLS implícito; 587 = STARTTLS (o gomail escolhe pela 
 # Client ID iOS do login com Google (ADR 0016). Vazio desliga o login com Google.
 google_ios_client_id = "000000000000-seuclientid.apps.googleusercontent.com"
 
+# Client ID do OAuth App do GitHub (ADR 0019). O secret vai em logn-server-keys, nunca
+# por aqui; os dois só valem juntos. Vazio desliga o login com GitHub.
+github_client_id = "Ov23liSeuClientId000"
+
 # Sign in with Apple (ADR 0017). Desligado até a chave existir; a .p8 vai direto ao
 # secret logn-apple-signin-key, nunca por aqui.
 enable_apple_signin  = false

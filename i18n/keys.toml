@@ -273,6 +273,7 @@ restored_body = {}
 notice_ok = {}
 delete_with_google = {}
 delete_with_apple = {}
+delete_with_github = {}
 
 [groups.account.keys]
 manage = {}
@@ -303,6 +304,42 @@ offline_copy = {}
 unavailable = {}
 accept = {}
 loading_accessibility = {}
+
+# A tela de novo aceite (ADR 0020, design `LogN Splash`, tela 02) e a faixa das mudanças
+# não relevantes. O texto de cada mudança é conteúdo: vem do servidor.
+[groups.reaccept.keys]
+eyebrow = {}
+headline = {}
+# Mais de uma versão pulada. O `one` existe porque o catálogo exige; a tela usa
+# `headline` com uma versão só.
+headline_times = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+headline_first = {}
+you_accepted = {}
+current = {}
+version = { placeholders = [{ name = "version", type = "int" }] }
+never_accepted = {}
+what_changed = {}
+changes_count = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+doc_terms = {}
+doc_privacy = {}
+change_where = { placeholders = [{ name = "document", type = "text" }, { name = "version", type = "int" }] }
+sign_added = {}
+sign_changed = {}
+sign_removed = {}
+change_accessibility = { placeholders = [{ name = "sign", type = "text" }, { name = "place", type = "text" }, { name = "summary", type = "text" }] }
+accept_check = { placeholders = [{ name = "version", type = "int" }] }
+read_documents = {}
+accept_button = {}
+accepting = {}
+decline = {}
+decline_title = {}
+decline_body = {}
+sign_out = {}
+delete_account = {}
+back = {}
+notice = {}
+notice_open = {}
+notice_close = {}
 
 [groups.reset.keys]
 title = {}
@@ -362,6 +399,12 @@ sent = { plural = true, placeholders = [{ name = "count", type = "int" }] }
 no_network = { plural = true, placeholders = [{ name = "count", type = "int" }] }
 rejected = {}
 still_sending = {}
+check_terms = {}
+terms_checking = {}
+terms_current = {}
+terms_changed = {}
+terms_notice = {}
+terms_deferred = {}
 offline_notice = {}
 retry = {}
 continue_offline = {}

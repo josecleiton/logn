@@ -67,6 +67,16 @@ variable "smtp_port" {
   default     = "587"
 }
 
+variable "github_client_id" {
+  description = <<-EOT
+    Client ID do OAuth App do GitHub (ADR 0019). Não é segredo; o secret dele vai em
+    logn-server-keys. Os dois valem juntos: vazio aqui com o secret lá, ou o contrário,
+    o servidor não sobe. Vazio nos dois desliga o login com GitHub.
+  EOT
+  type        = string
+  default     = ""
+}
+
 variable "google_ios_client_id" {
   description = <<-EOT
     Client ID do app iOS no Google Auth Platform (termina em .apps.googleusercontent.com).

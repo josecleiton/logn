@@ -6,6 +6,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
@@ -27,8 +28,16 @@ type Server struct {
 	storekit       *storekit.Validator
 	// Um verificador por provedor de login ligado. Provedor fora do mapa está desligado.
 	social map[string]socialauth.Verifier
-	// Provedores que exigem revogar o acesso na exclusão da conta (a Apple).
+	// Provedores que revogam o acesso na exclusão da conta (a Apple, o GitHub). Quem
+	// está aqui exige o `authorization_code` na exclusão confirmada por ele.
 	revokers map[string]socialauth.Revoker
+	// Troca o código do GitHub pelo bilhete. Nulo com o GitHub desligado.
+	github GitHubExchanger
+}
+
+// GitHubExchanger é a troca do código do GitHub (ADR 0019), trocada nos testes.
+type GitHubExchanger interface {
+	Exchange(ctx context.Context, code, verifier, nonceHash string, keepToken bool) (socialauth.Exchanged, error)
 }
 
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {

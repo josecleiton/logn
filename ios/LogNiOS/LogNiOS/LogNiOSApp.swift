@@ -37,6 +37,14 @@ struct LogNiOSApp: App {
                         .transition(.opacity)
                 // Sessão, não credencial: quem abre o app sem rede com a sessão dentro
                 // do prazo entra no jogo, não na tela de login.
+                // Versão relevante dos termos para aceitar: a tela cobre o app, e o
+                // Perfil fica fora de alcance até aceitar ou sair (ADR 0020).
+                } else if let update = core.viewModel.termsUpdate {
+                    TermsUpdateView(update: update)
+                        .environmentObject(core)
+                        // Conteúdo novo é tela nova: a caixa marcada para uma versão não
+                        // vale para a que o servidor trouxe depois de um 409.
+                        .id(TermsUpdateView.identity(of: update))
                 } else if core.viewModel.hasSession || core.viewModel.isGuest {
                     ContentView()
                         .environmentObject(core)
@@ -45,6 +53,14 @@ struct LogNiOSApp: App {
                             // A exclusão pedida foi cancelada por este login.
                             if core.viewModel.accountRestoredNotice {
                                 AccountRestoredCard().environmentObject(core)
+                            }
+                        }
+                        .overlay(alignment: .bottom) {
+                            // Só mudanças não relevantes: a faixa, uma vez.
+                            if core.viewModel.termsNotice {
+                                TermsNoticeBanner()
+                                    .environmentObject(core)
+                                    .padding(.bottom, 96)
                             }
                         }
                 } else if core.viewModel.deletionPurgeAfter > 0 {
