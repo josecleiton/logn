@@ -102,3 +102,71 @@ Os códigos saem do Mailpit (`localhost:8025`), como no iOS.
   cortam o veredito. Volte com `1.0`.
 - Backend parado: o boot termina com erro de rede na linha, sem crash (`adb logcat -b
   crash` vazio).
+
+---
+
+## 3 · Login, cadastro e senha
+
+As coordenadas abaixo são do aparelho de teste (1080×2400); a captura reduzida da
+ferramenta de leitura mostra 900 de largura, então multiplique o que vê nela por 1,2.
+
+**Login.**
+
+```bash
+adb shell input tap 540 948;  adb shell input text 'jogador@example.com'
+adb shell input tap 540 1114; adb shell input text 'errada123'
+adb shell input keyevent KEYCODE_BACK; adb shell input tap 540 1290
+```
+
+- Senha errada: a linha "E-mail ou senha não conferem." em `wrongInk`, sob os links.
+- O botão do GitHub (e o do Google) só aparece com a flag do PostHog ligada e o client no
+  `.env`. Sem chave de telemetria, nenhum aparece, como no iOS.
+- Sair para o cadastro depois de um erro **não** oferece salvar a senha errada.
+- "Esqueci a senha" sem e-mail: aviso no topo e o foco volta ao campo.
+
+**Cadastro.** Criar conta → e-mail, as duas caixas, "Enviar código". O código sai do
+Mailpit:
+
+```bash
+curl -s "localhost:8025/api/v1/search?query=to:android1@example.com" \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['messages'][0]['Snippet'])"
+adb shell input text 123456      # as seis caixas sobem sozinhas no sexto dígito
+```
+
+- Com o código aceito, o passo vira "Definir Senha". Senhas diferentes pintam a borda.
+- Conta criada: o app entra, e o Android oferece salvar a senha (esta sim).
+
+**Documentos.** "Termos de uso" no pé do login abre o documento com "Versão N · vigente
+desde …". Com o backend parado, abre a cópia dos assets com "Cópia salva no aparelho".
+
+**Link de redefinição.**
+
+```bash
+adb shell am start -a android.intent.action.VIEW -d 'logn://reset-password?email=jogador@example.com&code=123456'
+```
+
+A tela de nova senha sobe por cima de qualquer outra, sem o campo do código.
+
+---
+
+## 4 · Termos atualizados
+
+Para ver a tela sem publicar versão nova, recue o aceite da conta de teste no banco
+local:
+
+```bash
+docker exec logn-db-1 psql -U logn_user -d logn_db -c \
+  "update legal_acceptances set version=3 where user_id=(select id from users where email='android1@example.com')"
+adb shell am force-stop sh.logn.app && adb shell am start -n sh.logn.app/.MainActivity
+```
+
+- "DIFF DE TERMOS", v3 → v4 e a lista das mudanças com o sinal na faixa tingida.
+- "Aceitar e continuar" só com a caixa marcada. Aceito, o registro sai com
+  `platform = android` e a versão do app:
+
+```bash
+docker exec logn-db-1 psql -U logn_user -d logn_db -Atc \
+  "select kind, version, platform, app_version, source from legal_acceptances a join users u on u.id = a.user_id where u.email = 'android1@example.com'"
+```
+
+- "Não concordo" abre a folha com sair e excluir a conta.

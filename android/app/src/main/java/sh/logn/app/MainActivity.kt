@@ -8,7 +8,10 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import sh.logn.app.auth.GitHubAuth
 import sh.logn.app.ui.LognRoot
+import sh.logn.app.ui.ResetLink
+import sh.logn.app.ui.ShellState
 import sh.logn.app.ui.theme.LognTheme
 import sh.logn.core.LogN.Event
 
@@ -41,10 +44,24 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
     }
 
-    /** `logn://verify` e `logn://reset-password`, como `handleIncomingURL` de iOS. */
+    override fun onResume() {
+        super.onResume()
+        GitHubAuth.onHostResumed()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        GitHubAuth.onHostPaused()
+    }
+
+    /**
+     * `logn://verify`, `logn://reset-password` e o retorno do GitHub, como
+     * `handleIncomingURL` de iOS.
+     */
     private fun handleIntent(intent: Intent?) {
         val uri: Uri = intent?.data ?: return
         if (uri.scheme != "logn") return
+        if (GitHubAuth.complete(uri)) return
         val code = uri.getQueryParameter("code").orEmpty()
         val email = uri.getQueryParameter("email").orEmpty()
         if (code.isEmpty() || email.isEmpty()) return
@@ -53,8 +70,8 @@ class MainActivity : ComponentActivity() {
                 val purpose = uri.getQueryParameter("purpose") ?: "verify_email"
                 core.update(Event.VerifyOTP(email, code, purpose))
             }
-            // A tela de nova senha chega com as telas de login (fase 2).
-            "reset-password" -> Unit
+            // Em vez de só validar, a tela sobe para a pessoa digitar a senha nova.
+            "reset-password" -> ShellState.resetLink = ResetLink(email, code)
         }
     }
 

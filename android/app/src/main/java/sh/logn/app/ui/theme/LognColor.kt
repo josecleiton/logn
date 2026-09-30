@@ -45,6 +45,14 @@ object LognDark {
     val shine = Color(0xB8FFFFFF)
 }
 
+/** As cores de marca dos provedores de login, das diretrizes de cada um. */
+object ProviderColor {
+    val googleBlue = Color(0xFF4285F4)
+    val googleGreen = Color(0xFF34A853)
+    val googleYellow = Color(0xFFFBBC05)
+    val googleRed = Color(0xFFEA4335)
+}
+
 /** Balões A–M. Identidade categórica do problema, nunca estado. */
 object Balloon {
     private val dark =

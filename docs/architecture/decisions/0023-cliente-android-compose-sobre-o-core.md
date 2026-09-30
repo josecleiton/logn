@@ -99,11 +99,27 @@ system, sem imagem e sem `material-icons-extended`.
 `intent-filter` para cada um (os `<data>` de um filtro se combinam). Activity
 `singleTask`, e o retorno chega por `onNewIntent`.
 
-**Ainda por vir, e já decidido.** Google por Credential Manager (o client web como
-`serverClientId`), GitHub por Custom Tab, sem Apple no Android; Play Billing com a
-restauração na abertura; documentos legais em WebView com `shouldInterceptRequest` e a
-cópia dos assets como reserva; Play In-App Review para o `StoreReview`. Cada uma entra
-nesta ADR, na tabela abaixo, quando entrar no código.
+**Login social.** Sem Apple no Android.
+
+- Google pelo Credential Manager, com o client web como `serverClientId`: o ID token sai
+  com a audiência que o servidor aceita, e com o SHA-256 do nonce, como no iOS. O
+  Credential Manager não entrega access token, então a exclusão da conta não revoga o
+  consentimento no Google; fica com a pessoa, na conta Google dela.
+- GitHub por Custom Tab, com PKCE S256 e `state`, voltando por `logn://oauth/github`. Link
+  sem o `state` do pedido é ignorado sem desfazer o login em curso, porque qualquer app do
+  aparelho pode mandá-lo. O pedido tem teto de dez minutos, e a aba fechada à mão vira
+  desistência no `onResume`.
+- Os dois correm num escopo do processo, e não da tela: a janela do provedor pode
+  recriar a Activity.
+
+**Documentos legais.** WebView sem JavaScript, sem acesso a arquivo, e a página do
+servidor buscada por OkHttp em `shouldInterceptRequest`, que é o único jeito de ler os
+cabeçalhos `X-LogN-Legal-*`; ela vai ao WebView com os cabeçalhos dela, CSP inclusive.
+Resposta diferente de 200, ou falha de rede, cai na cópia dos assets.
+
+**Ainda por vir, e já decidido.** Play Billing com a restauração na abertura; Play
+In-App Review para o `StoreReview`. Cada um entra nesta ADR, na tabela abaixo, quando
+entrar no código.
 
 ## 3. Dependências
 
@@ -119,6 +135,9 @@ nesta ADR, na tabela abaixo, quando entrar no código.
 | security-crypto | 1.1.0 | `EncryptedSharedPreferences` | Keystore à mão com AES-GCM; a biblioteca foi descontinuada sem substituta em Jetpack, e sair dela é a próxima ADR que mexer em armazenamento |
 | posthog-android | 3.58.3 | telemetria e erros | Firebase Crashlytics e Sentry: um segundo destino de dado pessoal para declarar |
 | billing-ktx | 9.1.0 | compra de trilha (já no esqueleto, ADR 0022) | — |
+| credentials, credentials-play-services-auth | 1.5.0 | login com Google pelo Credential Manager, o caminho que o Google mantém | Google Sign-In (`play-services-auth`), descontinuado; OAuth com PKCE numa Custom Tab como no iOS, que pediria um client Android com esquema próprio e a troca do código no aparelho |
+| googleid | 1.1.1 | a opção "Continuar com o Google" e o ID token do Credential Manager | — |
+| browser | 1.8.0 | Custom Tab do login com GitHub | WebView embutido, que o GitHub recusa para OAuth e que exporia a senha do GitHub ao app |
 | junit, robolectric, mockwebserver3, androidx.test | 4.13.2, 4.15.1, 5.4.0, 1.7.0 | teste | — |
 
 ## 4. Descartados

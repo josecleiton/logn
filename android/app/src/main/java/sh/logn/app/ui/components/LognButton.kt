@@ -99,3 +99,41 @@ fun LognButton(
         }
     }
 }
+
+/**
+ * Ação destrutiva irreversível: vermelho só aqui e no veredito. Cheio no botão que
+ * executa (o da folha de exclusão), contorno no que só abre a confirmação.
+ */
+@Composable
+fun DestructiveButton(
+    title: String,
+    modifier: Modifier = Modifier,
+    filled: Boolean = false,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(Radius.sm)
+    val background =
+        when {
+            !filled -> Color.Transparent
+            enabled -> LognDark.wrong
+            else -> LognDark.buttonDisabled
+        }
+    val foreground =
+        when {
+            !enabled -> LognDark.textDim
+            filled -> LognDark.onAccent
+            else -> LognDark.wrongInk
+        }
+    Box(
+        modifier
+            .fillMaxWidth()
+            .height(ButtonMetrics.height)
+            .background(background, shape)
+            .then(if (filled) Modifier else Modifier.border(Stroke.hairline, LognDark.wrong, shape))
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(title, style = LognFont.sans(ButtonMetrics.TEXT_SIZE, FontWeight.SemiBold), color = foreground)
+    }
+}
