@@ -176,6 +176,8 @@ accepted = "accepted"
 failed = "tried, no AC"
 frozen = "submitted after freeze"
 untried = "not tried"
+solving = "in progress"
+open = "open"
 
 [hud]
 lives = { one = "%{count} life", other = "%{count} lives" }

@@ -363,9 +363,15 @@ struct MatchHeader: View {
 
     /// O balão nunca comunica só por cor — a letra e o estado vão no rótulo.
     private func balloonDescription(for l: Character) -> String {
-        if isAccepted(l) { return "problema \(l), aceito" }
-        if l == letter   { return "problema \(l), em resolução" }
-        return "problema \(l), em aberto"
+        let status: String
+        if isAccepted(l) {
+            status = Str.Verdict.accepted
+        } else if l == letter {
+            status = Str.Verdict.solving
+        } else {
+            status = Str.Verdict.open
+        }
+        return Str.Match.problem_status(String(l), status)
     }
 
     private func isAccepted(_ l: Character) -> Bool {

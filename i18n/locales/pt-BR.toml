@@ -176,6 +176,8 @@ accepted = "aceito"
 failed = "tentado, sem AC"
 frozen = "submetido após o congelamento"
 untried = "não tentado"
+solving = "em resolução"
+open = "em aberto"
 
 [hud]
 lives = { one = "%{count} vida", other = "%{count} vidas" }

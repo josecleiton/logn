@@ -28,6 +28,10 @@ struct MatchView: View {
     /// flag estiver ligada.
     @State private var originStoryEnabled = false
 
+    /// A letra do problema em jogo, guardada enquanto não há armadilha. No TLE o Core
+    /// submete sozinho e já avança, e o veredito precisa ser do problema que estourou.
+    @State private var playingLetter: Character?
+
     struct VerdictSnapshot {
         let letter: Character
         let code: VerdictChip.Verdict
@@ -94,6 +98,7 @@ struct MatchView: View {
         .onAppear {
             core.dispatch(event: .startMatch(nodeId: nodeId))
             startTimer()
+            playingLetter = currentLetter
             originStoryEnabled = PostHogSDK.shared.isFeatureEnabled("origin_story_enabled")
         }
         // Quem decide que a partida acabou é o Core; empilhar ou desempilhar tela é do
@@ -101,13 +106,19 @@ struct MatchView: View {
         .onChange(of: core.viewModel.matchLeft) { saiu in
             if saiu { dismiss() }
         }
+        .onChange(of: mv.currentLetter) { _ in
+            if !mv.hasTrap && verdict == nil { playingLetter = currentLetter }
+        }
         .onChange(of: mv.hasTrap) { hasTrap in
             // O TLE não vem de um toque: o relógio zera e o Core submete sozinho.
             // Sem isto a trap ficaria aberta sem tela e o relógio travaria.
             guard hasTrap, verdict == nil else { return }
             withAnimation(.easeOut(duration: 0.12)) {
                 verdict = VerdictSnapshot(
-                    letter: currentLetter,
+                    // O Core já avançou para o próximo problema quando a armadilha chega:
+                    // `currentLetter` aqui seria o seguinte, e o veredito mostrava a letra
+                    // errada com o balão murcho.
+                    letter: playingLetter ?? currentLetter,
                     code: VerdictChip.Verdict(code: mv.lastVerdict),
                     livesLeft: Int(mv.lives)
                 )
@@ -443,6 +454,8 @@ struct MatchView: View {
     private func dismissVerdict() {
         if mv.hasTrap { core.dispatch(event: .matchDismissTrap) }
         withAnimation(.easeOut(duration: 0.18)) { verdict = nil }
+        // A letra mudou com o veredito na tela, e o `onChange` pulou a troca.
+        playingLetter = currentLetter
     }
 
     // MARK: - Relógio

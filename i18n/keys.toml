@@ -194,6 +194,9 @@ accepted = {}
 failed = {}
 frozen = {}
 untried = {}
+# Estado do balão no cabeçalho da partida, lido pelo leitor de tela.
+solving = {}
+open = {}
 
 [groups.hud.keys]
 lives = { plural = true, placeholders = [{ name = "count", type = "int" }] }
