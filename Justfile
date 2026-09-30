@@ -140,9 +140,11 @@ landing-deploy:
 
 # Aponta o proxy /legal/* da landing para o serviço `logn` do Cloud Run. A URL sai do
 # gcloud direto para o secret do Worker, sem passar por arquivo versionado.
-landing-legal-origin:
-    gcloud run services describe logn --region us-east1 --format 'value(status.url)' \
-        | (cd landing && npx wrangler secret put LEGAL_ORIGIN)
+# O destino do redirect de `logn.sh/legal/*`: o domínio público da API, nunca a URL
+# `.run.app`, que recusa `/legal` pela verificação de origem e apareceria no endereço.
+# Uso: just landing-legal-origin https://api.logn.sh
+landing-legal-origin origin:
+    printf '%s' "{{ origin }}" | (cd landing && npx wrangler secret put LEGAL_ORIGIN)
 
 # --- Core (Rust) ---
 

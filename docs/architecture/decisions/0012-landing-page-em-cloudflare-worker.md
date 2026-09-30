@@ -10,7 +10,9 @@
 
 **O build é um script Node sem dependência** (`landing/build.mjs`). Ele lê `landing/i18n/<língua>.toml`, recusa língua com chave a mais, a menos ou vazia, e gera `/`, `/en/` e `/es/` a partir de um template com HTML escapado. `dist/` não entra no git: o `[build]` do Wrangler roda o script a cada deploy. A cópia da landing tem catálogo próprio, e não usa `i18n/keys.toml`, porque é texto de site, não da interface do app, e ninguém a lê pelo `Str.*` gerado.
 
-**O Worker só executa em `/legal/*`** (`run_worker_first`), como proxy de `/legal/terms` e `/legal/privacy` para o backend. Aceita só esses dois caminhos e só `GET`/`HEAD`, repassa só o `lang` de lista fechada e o `Accept-Language`, devolve só uma allowlist de cabeçalhos da resposta e trata redirect do backend como 502. A origem do backend fica no secret `LEGAL_ORIGIN` do Worker (`just landing-legal-origin`), nunca num arquivo versionado (regra 9).
+**O Worker só executa em `/legal/*`** (`run_worker_first`), e redireciona (302) `/legal/terms` e `/legal/privacy` para as páginas do backend no domínio público da API. Aceita só esses dois caminhos e só `GET`/`HEAD`, e leva só o `lang` de lista fechada. O destino fica no secret `LEGAL_ORIGIN` do Worker (`just landing-legal-origin https://api.logn.sh`), nunca a URL `.run.app`, que recusa `/legal` pela verificação de origem.
+
+Era proxy, e nunca funcionou em produção: a Cloudflare não roda a Transform Rule que põe o `X-Origin-Verify` nos pedidos que um Worker faz para um host da própria zona, e o backend recusava todos com `origin_not_verified`. As saídas eram mandar o cabeçalho do Worker, com uma terceira cópia do segredo de origem para manter em dia a cada rotação, ou isentar `/legal/*` da verificação, afrouxando uma defesa (regra 9). O redirect não precisa de segredo; o custo é o endereço mostrar `api.logn.sh`.
 
 **Nada de terceiro na página.** Fontes, CSS e JS saem do próprio domínio; não há Google Fonts nem analytics. Sem script nem estilo inline, a CSP fecha em `'self'`.
 
@@ -25,6 +27,6 @@
 
 ## 4. Consequências
 
-* Deploy: `just landing-deploy`. A zona `logn.sh` precisa estar na conta Cloudflare, e o secret `LEGAL_ORIGIN` configurado antes do primeiro deploy; sem ele, `/legal/*` responde 503.
+* Deploy: `just landing-deploy`. A zona `logn.sh` precisa estar na conta Cloudflare, e o secret `LEGAL_ORIGIN` configurado antes do primeiro deploy; sem ele, `/legal/*` responde 503. Ele ficou sem configurar do lançamento até 2026-09-30, e `logn.sh/legal/*` respondeu 503 nesse tempo.
 * O selo oficial da App Store (`landing/src/assets/badges/`) é arte da Apple, fora da Apache 2.0 (ver `NOTICE`), e só aparece quando o deploy leva `LOGN_APP_STORE_URL`.
 * Tudo em `landing/` é público. A tela do app mostrada na página usa desafio inventado, e o placar usa times fictícios (regra 8).

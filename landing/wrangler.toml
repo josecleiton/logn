@@ -28,10 +28,10 @@ directory = "./dist"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
-# Só `/legal/*` passa pelo Worker (proxy para as páginas legais do backend); o resto
+# Só `/legal/*` passa pelo Worker (redirect para as páginas legais do backend); o resto
 # sai direto dos assets, com os cabeçalhos de `dist/_headers`.
 run_worker_first = ["/legal/*"]
 
-# `LEGAL_ORIGIN` — origem do backend que serve `/legal/terms` e `/legal/privacy`.
-# Não mora aqui: URL de produção fica fora do repositório (AGENTS.md, regra 9).
-# Configure uma vez com `npx wrangler secret put LEGAL_ORIGIN`.
+# `LEGAL_ORIGIN` — o domínio público da API, para onde `/legal/terms` e `/legal/privacy`
+# redirecionam. Nunca a URL `.run.app`, que recusa `/legal` (ADR 0012). Configure uma
+# vez com `just landing-legal-origin https://api.logn.sh`.

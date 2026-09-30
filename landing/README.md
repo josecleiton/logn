@@ -13,14 +13,14 @@ Cloudflare Worker com assets estáticos.
 
 ```
 landing/
-├── wrangler.toml       rotas logn.sh + www.logn.sh, build, assets, proxy /legal/*
+├── wrangler.toml       rotas logn.sh + www.logn.sh, build, assets, redirect /legal/*
 ├── build.mjs           gera dist/ — sem dependência, só Node
 ├── i18n/               cópia da página: pt-BR.toml, en.toml, es.toml
 └── src/
     ├── index.html      template ({{chave}} escapa HTML; {{{chave}}} é só para o build)
     ├── 404.html        "Wrong Answer." — um por língua, o Cloudflare serve o mais próximo
     ├── _headers        CSP e demais cabeçalhos dos assets
-    ├── worker.js       proxy de /legal/terms e /legal/privacy para o backend
+    ├── worker.js       redirect de /legal/terms e /legal/privacy para o backend
     └── assets/         site.css, site.js, icons/ (favicon SVG, PNG 32, apple-touch-icon)
 ```
 
@@ -35,14 +35,14 @@ just landing-deploy    # sobe em logn.sh e www.logn.sh
 ```
 
 Antes do primeiro deploy, a zona `logn.sh` precisa estar na conta Cloudflare (os custom
-domains criam DNS e certificado sozinhos) e o proxy legal precisa da origem do backend:
+domains criam DNS e certificado sozinhos) e o redirect legal precisa do destino:
 
 ```sh
-just landing-legal-origin   # URL do Cloud Run → secret LEGAL_ORIGIN do Worker
+just landing-legal-origin https://api.logn.sh   # → secret LEGAL_ORIGIN do Worker
 ```
 
-A URL fica no secret do Worker e não aparece em nenhum arquivo daqui (AGENTS.md, regra 9).
-Sem ela, `/legal/*` responde 503 — falha fechada.
+É o domínio público da API, nunca a URL `.run.app`: ela recusa `/legal` pela verificação
+de origem, e apareceria no endereço. Sem o secret, `/legal/*` responde 503 — falha fechada.
 
 Quando o app estiver na loja, o deploy passa a levar o link:
 
@@ -67,8 +67,9 @@ línguas de propósito — é o vocabulário de maratona que o app também usa.
   estilo nem script inline; o `site.js` mexe em estilo por CSSOM, que a CSP permite.
 - Nada de terceiro: nem Google Fonts, nem analytics. A página não manda o IP de ninguém
   para outro domínio.
-- O proxy de `/legal/*` aceita só `GET`/`HEAD`, só os dois caminhos, repassa só `lang`
-  (de lista fechada) e `Accept-Language`, e não repassa cookie.
+- O redirect de `/legal/*` aceita só `GET`/`HEAD`, só os dois caminhos, e leva só o
+  `lang` de lista fechada. Não é proxy: a Cloudflare não põe o cabeçalho de origem nos
+  pedidos do Worker para a própria zona (ADR 0012).
 
 ## Conteúdo e marca
 
