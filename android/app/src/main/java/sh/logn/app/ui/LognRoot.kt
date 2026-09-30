@@ -65,6 +65,9 @@ fun LognRoot(core: Core) {
 
     // Quem já estava logado não vê token chegar: o Core avisa que a senha trocou.
     LaunchedEffect(view.hasAccessToken) { if (view.hasAccessToken) ShellState.resetLink = null }
+    // O pedido de cadastro do visitante vale até a conta abrir; depois, o próximo logout
+    // cairia no cadastro em vez da despedida.
+    LaunchedEffect(view.hasSession) { if (view.hasSession) ShellState.wantsRegistration = false }
     LaunchedEffect(view.passwordResetDone) {
         if (view.passwordResetDone) {
             ShellState.resetLink = null
@@ -72,7 +75,7 @@ fun LognRoot(core: Core) {
         }
     }
 
-    CompositionLocalProvider(LocalDispatch provides core::update) {
+    CompositionLocalProvider(LocalDispatch provides core::update, LocalReadView provides { core.view.value }) {
         Box(Modifier.fillMaxSize().background(LognDark.canvas)) {
             // A splash sai em fade: sem duração mínima, uma abertura rápida vira um piscar.
             Crossfade(
