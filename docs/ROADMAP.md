@@ -90,6 +90,14 @@ Antes de vender a primeira trilha:
   `[A CONFIRMAR]` (arrependimento, prazo da contestação, encerramento do serviço, guarda
   do registro das compras); o app com o bloqueio na loja; ligar `APP_PEDE_REACEITE`; e
   gerar a migração da v3 com `--material`.
+  Os marcadores já foram resolvidos (setembro de 2026), e o texto da v3 promete duas
+  coisas que o código ainda não faz: apagar `store_transactions` e `revoked_transactions`
+  5 anos depois da transação (a primeira vence em 2031), e o e-mail que avisa a pessoa
+  depois de uma revogação manual, que hoje é um roteiro de SQL. A revisão automatizada
+  deixou riscos em aberto para o advogado: o encerramento de conta por mau uso contra a
+  trilha comprada, o novo aceite futuro contra o que já foi comprado, as cláusulas da
+  ANPD nos contratos dos fornecedores, a base legal do aceite, os aceites apagados na
+  exclusão, adolescentes, os portões de XP e a guarda dos registros de acesso.
 - **Notificações da App Store.** O backend está no ar com as trilhas; falta cadastrar no
   App Store Connect a URL das notificações, que é a `.run.app`, não o domínio atrás do
   Cloudflare.
