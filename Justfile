@@ -107,6 +107,21 @@ tfvars-pull:
 tfvars-push:
     gcloud storage cp terraform/terraform.tfvars "gs://$(gcloud config get project)-tfstate/terraform/terraform.tfvars"
 
+# Roda o Terraform com o token da Cloudflare lido do Keychain do macOS, sem ele passar
+# por arquivo nenhum: nem o tfvars, nem o bucket. O item se chama
+# logn-cloudflare-api-token e é criado uma vez, com o valor digitado no prompt:
+#   security add-generic-password -a "$USER" -s logn-cloudflare-api-token -w
+# Sem o item, para aqui, antes do Terraform cair no placeholder do variables.tf.
+# Uso: just tf plan        just tf apply        just tf state list
+tf *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! token=$(security find-generic-password -s logn-cloudflare-api-token -w 2>/dev/null); then
+    	echo "Falta o item logn-cloudflare-api-token no Keychain (veja o comentário da receita)." >&2
+    	exit 1
+    fi
+    TF_VAR_cloudflare_api_token="$token" terraform -chdir=terraform {{ args }}
+
 # --- Landing page (Cloudflare Worker) ---
 
 # Gera landing/dist nas três línguas. Com LOGN_PLAY_STORE_URL no ambiente, os botões
