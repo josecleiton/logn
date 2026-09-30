@@ -95,9 +95,10 @@ Antes de vender a primeira trilha:
   O texto promete duas coisas que o código ainda não faz: apagar `store_transactions` e
   `revoked_transactions` 5 anos depois da transação (a primeira vence em 2031), e o
   e-mail que avisa a pessoa depois de uma revogação manual, que hoje é um roteiro de SQL.
-- **Login com GitHub.** No ar no servidor; o botão só aparece com o flag
-  `sso_github_enabled` do PostHog, que fica desligado até o login e a exclusão de conta
-  pelo GitHub rodarem de ponta a ponta num aparelho.
+- **Login com GitHub.** No ar no servidor, e o login rodou de ponta a ponta num iPhone em
+  2026-09-30, e o flag `sso_github_enabled` do PostHog, que mostra o botão, foi ligado no
+  mesmo dia; desligá-lo esconde o botão sem build novo. Falta ver a
+  exclusão de conta confirmada pelo GitHub, que revoga a autorização do app lá.
 - **Notificações da App Store.** O backend está no ar com as trilhas; falta cadastrar no
   App Store Connect a URL das notificações, que é a `.run.app`, não o domínio atrás do
   Cloudflare.
