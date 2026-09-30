@@ -80,7 +80,8 @@ xcrun simctl install booted "$SP/dd/Build/Products/Debug-iphonesimulator/LogNiOS
 xcrun simctl launch booted sh.logn.LogNiOS
 ```
 
-O bundle id é `sh.logn.LogNiOS` — não `com.josecleiton.*`.
+O bundle id é `sh.logn.LogNiOS` — não `com.josecleiton.*`. É o id de teste, de propósito:
+o de loja é `sh.logn.app`, o mesmo pacote do Android.
 
 ---
 
