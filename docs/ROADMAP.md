@@ -68,8 +68,8 @@ O que saiu em setembro de 2026 e deixou uma ponta aberta:
   antes da loja.
 - **Build de loja:** `just release-ios` empacota a trilha e os documentos a partir da
   produção e gera o `.ipa`, sem enviar. A semente (versão 3, com `track_id` e
-  `requires_purchase`) e a cópia offline da v3 dos documentos foram geradas da produção
-  em 2026-09-30; o `release-ios` gera as duas de novo.
+  `requires_purchase`) e a cópia offline dos documentos foram geradas da produção em
+  2026-09-30, com a v3; a v4 saiu no mesmo dia, e o `release-ios` gera as duas de novo.
 
 ## Trilhas pagas: o que falta depois do PR #2
 
@@ -82,7 +82,9 @@ Trilhas` e `LogN Validade Offline`. PRD:
 
 Antes de vender a primeira trilha:
 
-- **Termos e política novos.** A v3 está no ar desde 2026-09-30, relevante: toda conta
+- **Termos e política novos.** A v4 está no ar desde 2026-09-30, não relevante: a
+  política passou a citar o histórico da revogação manual (ADR 0021), e o app mostra a
+  faixa de aviso. Antes dela, a v3, do mesmo dia, relevante: toda conta
   aceita de novo pelo bloqueio da ADR 0020, e `APP_PEDE_REACEITE` está ligado. A migração
   0062 do repositório de conteúdo substituiu o texto da 0061 antes de qualquer aceite,
   fechando três riscos da revisão automatizada: encerrar a conta por mau uso não revoga
@@ -98,8 +100,8 @@ Antes de vender a primeira trilha:
   que apaga.
 - **Revogação manual.** `just revoke` e `just appeal` (ADR 0021) revogam a licença e
   respondem à contestação pela rota interna, com a evidência gravada e o aviso por e-mail
-  da seção 10.5. Nunca rodaram contra a produção. A política ainda não cita a evidência
-  escrita por nós: entra na próxima versão dela.
+  da seção 10.5. Nunca rodaram contra a produção. A política cita esse histórico desde a
+  v4 (2026-09-30).
 - **Login com GitHub.** No ar no servidor, e o login rodou de ponta a ponta num iPhone em
   2026-09-30, e o flag `sso_github_enabled` do PostHog, que mostra o botão, foi ligado no
   mesmo dia; desligá-lo esconde o botão sem build novo. Falta ver a
