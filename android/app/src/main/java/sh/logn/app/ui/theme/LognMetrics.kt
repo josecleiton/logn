@@ -6,6 +6,7 @@ import androidx.compose.ui.unit.dp
 // por componente. Fora de ui/theme, o portão barra número com `.dp`/`.sp`.
 
 object Space {
+    val xxs = 2.dp
     val xs = 4.dp
     val sm = 8.dp
     val md = 12.dp
@@ -126,6 +127,121 @@ object LegalMetrics {
 
     /** Teto do zoom de texto: o AX3 de iOS. */
     const val MAX_TEXT_ZOOM = 200
+}
+
+object TrackMetrics {
+    val balloonHighlightMin = 24.dp
+    val chipPaddingH = 6.dp
+    val chipPaddingV = 2.dp
+    val dayGap = 2.dp
+    val dayHeight = 10.dp
+    val dayRadius = 1.dp
+    const val CHIP_SIZE = 10.5f
+    const val DIMMED_ALPHA = 0.45f
+}
+
+/** A árvore: régua da exploração 4b (passo 88 entre colunas, cordinha de 28). */
+object TreeMetrics {
+    val columnPitch = 88.dp
+    val topInset = 16.dp
+    val bottomInset = 40.dp
+    val stringGap = 28.dp
+    val completed = 56.dp
+    val active = 70.dp
+    val locked = 54.dp
+    val labelActive = 34.dp
+    val label = 22.dp
+    val labelPaddingH = 9.dp
+    val labelPaddingV = 4.dp
+    val labelRadius = 3.dp
+    val degreeBadge = 18.dp
+    val degreeOffsetX = 5.dp
+    val degreeOffsetY = 2.dp
+    val legendPaddingH = 18.dp
+    val legendBottom = 14.dp
+    val dash = 4.dp
+    val dashGap = 6.dp
+    val edgeWidth = 2.5.dp
+    val activeEdgeWidth = 3.dp
+    val checkIcon = 9.dp
+    const val CHECK_STROKE = 3.5f
+    const val LABEL_SIZE = 11.5f
+    const val LABEL_SUB_SIZE = 9.5f
+    const val LABEL_SUB_TRACKING = 0.08f
+    const val COUNT_SIZE = 10f
+    const val DEGREE_SIZE = 9f
+    const val LEGEND_SIZE = 9.5f
+    const val LEGEND_TRACKING = 0.12f
+    const val ICON_RATIO = 0.36f
+    const val ICON_RATIO_LOCKED = 0.34f
+    const val ICON_CENTER = 0.42f
+    const val ICON_STROKE_COMPLETED = 2.4f
+    const val ICON_STROKE_ACTIVE = 2.2f
+    const val EDGE_SLACK = 0.45f
+    const val EDGE_ALPHA = 0.8f
+}
+
+object NodeSheetMetrics {
+    val handleWidth = 36.dp
+    val handleHeight = 3.dp
+    val balloon = 56.dp
+    val icon = 21.dp
+    val neighbourIcon = 17.dp
+    val problemBalloon = 36.dp
+    val problemSlot = 44.dp
+    val statPaddingH = 14.dp
+    val statPaddingV = 12.dp
+    val headerGap = 14.dp
+    val neighbourGap = 9.dp
+    const val TITLE_SIZE = 19f
+    const val STATE_SIZE = 11f
+    const val STATE_TRACKING = 0.1f
+    const val COLUMN_SIZE = 10f
+    const val COLUMN_TRACKING = 0.14f
+    const val NEIGHBOUR_SIZE = 13.5f
+    const val PROBLEM_LETTER_SIZE = 12f
+    const val PROBLEM_CAPTION_SIZE = 9f
+    const val STAT_LABEL_TRACKING = 0.12f
+    const val STAT_VALUE_SIZE = 16f
+    const val PROBLEM_OUTLINE = 6f
+}
+
+object HomeMetrics {
+    val avatar = 40.dp
+    val avatarBadge = 11.dp
+    val avatarBadgeStroke = 2.dp
+    val headerTop = 16.dp
+    val headerBottom = 12.dp
+    val trackBalloon = 16.dp
+    val badgePaddingH = 5.dp
+    val badgePaddingV = 2.dp
+    val skeletonRow = 64.dp
+    val navPaddingV = 13.dp
+    val navIndicator = 2.dp
+    val warnIcon = 11.dp
+    val expiredBalloon = 34.dp
+    val expiredTop = 48.dp
+    val onboardingTop = 40.dp
+    val onboardingSide = 22.dp
+    val onboardingBottom = 26.dp
+    val optionPadding = 14.dp
+    val optionStroke = 1.5.dp
+    const val HEADER_SIZE = 20f
+    const val HEADER_TRACKING = -0.02f
+    const val TRACK_NAME_SIZE = 17f
+    const val META_SIZE = 10f
+    const val BADGE_SIZE = 9.5f
+    const val BADGE_TRACKING = 0.06f
+    const val NAV_SIZE = 10.5f
+    const val NAV_TRACKING = 0.1f
+    const val AVATAR_TEXT_RATIO = 15f / 40f
+    const val AVATAR_FILL_ALPHA = 0.18f
+    const val ARENA_TITLE_SIZE = 21f
+    const val ONBOARDING_TITLE_SIZE = 26f
+    const val ONBOARDING_BODY_SIZE = 14.5f
+    const val OPTION_TITLE_SIZE = 15.5f
+    const val EXPIRED_TITLE_SIZE = 24f
+    const val STAT_VALUE_SIZE = 17f
 }
 
 object RootMetrics {

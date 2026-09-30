@@ -24,6 +24,7 @@ import sh.logn.app.ui.auth.ResetPasswordScreen
 import sh.logn.app.ui.auth.SocialSignupSheet
 import sh.logn.app.ui.components.FullScreenSheet
 import sh.logn.app.ui.components.ToastHost
+import sh.logn.app.ui.home.HomeScreen
 import sh.logn.app.ui.legal.LegalDocumentScreen
 import sh.logn.app.ui.legal.LegalKind
 import sh.logn.app.ui.notice.AccountRestoredCard
@@ -109,10 +110,11 @@ fun LognRoot(core: Core) {
     }
 }
 
-/** As abas do jogo chegam na fase 4; o aviso de conta recuperada já vale. */
+/** O jogo, com os avisos que ficam por cima dele. */
 @Composable
 private fun AppHost(view: ViewModel) {
     Box(Modifier.fillMaxSize().background(LognDark.canvas)) {
+        HomeScreen(view, rememberHomeSlots(view))
         // A exclusão pedida foi cancelada por este login.
         if (view.accountRestoredNotice) AccountRestoredCard(Modifier.align(Alignment.BottomCenter))
         // Só mudanças não relevantes: a faixa, uma vez, acima da barra de abas.
