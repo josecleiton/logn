@@ -109,8 +109,9 @@ tfvars-push:
 
 # --- Landing page (Cloudflare Worker) ---
 
-# Gera landing/dist nas três línguas. Com LOGN_APP_STORE_URL no ambiente, os botões
-# viram "baixar na App Store"; sem ele, "em breve".
+# Gera landing/dist nas três línguas. Com LOGN_PLAY_STORE_URL no ambiente, os botões
+# levam ao Google Play; sem ele, "em breve". LOGN_APP_STORE_URL põe a App Store ao lado,
+# e LOGN_API_ORIGIN abre a lista de espera do iPhone (landing/README.md).
 landing-build:
     node landing/build.mjs
 

@@ -196,7 +196,7 @@ abertos numa tela do app com o HTML das rotas públicas.
   - Nada é usado para rastreio.
 - **Disponibilidade:** todos os países, menos UE, Reino Unido e China, e só depois de o PRD
   de conteúdo completar as três línguas.
-- **Play Console:** fica para quando existir cliente Android. A mesma URL serve.
+- **Play Console:** a mesma URL serve. A ficha também pede a URL de exclusão de conta, que é `https://logn.sh/account/delete` (ADR 0022).
 
 ## 8. E-mail
 

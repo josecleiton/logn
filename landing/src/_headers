@@ -3,6 +3,9 @@
 # A página não tem script nem estilo inline, nem nada de terceiro: fonte, CSS e JS
 # saem do próprio domínio. Por isso a CSP fecha em `'self'` sem hash nem nonce.
 # `/legal/*` não passa por aqui — sai do Worker com os cabeçalhos do backend.
+#
+# O build troca o `form-action` da CSP pelo domínio da API quando a lista de espera está
+# aberta (`LOGN_API_ORIGIN`), e só por ele: o formulário não posta em nenhum outro lugar.
 
 /*
   Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'

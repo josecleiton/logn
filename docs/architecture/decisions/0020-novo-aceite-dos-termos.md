@@ -63,7 +63,7 @@ O backend tinha `pending` e `accept` desde a 0008, sem ninguém chamando. O `pen
 
 **Versão na tela é o inteiro.** "v2 → v3", com a data de vigência de cada uma. O "1.4" do design era exemplo.
 
-**`APP_PEDE_REACEITE` foi ligado em 2026-09-30, com a v3.** A trava existia para uma versão relevante não sair com app sem bloqueio instalado. O app ainda não estava na loja, só no TestFlight, e o próximo build já sai da `main` com o bloqueio; não havia instalação que ficasse sem pedir.
+**`APP_PEDE_REACEITE` foi ligado em 2026-09-30, com a v3.** A trava existia para uma versão relevante não sair com app sem bloqueio instalado. O app não estava na loja nem no TestFlight, só no aparelho do dono pelo Xcode (ADR 0022), e o próximo build já sai da `main` com o bloqueio; não havia instalação que ficasse sem pedir.
 
 ## 3. Alternativas descartadas
 

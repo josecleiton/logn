@@ -264,8 +264,9 @@
   <div class="wrap end">
     <svg class="brand-mark" viewBox="0 0 96 122" width="48" height="61" aria-hidden="true"><use href="#b-full"/></svg>
     <h2 class="end-title">{{end.title}}</h2>
-    {{{page.store}}}
+    <div class="cta-row cta-center">{{{page.store}}}</div>
     <p class="note mono">{{cta.note}}</p>
+    {{{page.waitlist}}}
   </div>
 </section>
 
@@ -279,6 +280,7 @@
       <a href="https://github.com/josecleiton/logn">GitHub</a>
       <a href="/legal/privacy?lang={{page.lang}}">{{footer.privacy}}</a>
       <a href="/legal/terms?lang={{page.lang}}">{{footer.terms}}</a>
+      <a href="{{page.home}}account/delete/">{{footer.delete}}</a>
     </div>
     <p class="foot-legal">{{footer.trademarks}}</p>
   </div>

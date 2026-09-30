@@ -59,6 +59,26 @@ O bincode não grava o nome da variante, só a posição dela no enum; o código
 - Extensão (ex: widget) ou relógio trocando bincode com o app.
 - Se criarmos um shell Android compilado em um pipeline separado.
 
+## Lançamento no Android (ADR 0022)
+
+O lançamento público passou a ser no Google Play. A conta do Play Console, de organização,
+já está verificada. A landing já tem os botões do Google Play, a lista de espera do iPhone
+(fechada até `LOGN_API_ORIGIN`) e `/account/delete/`. Falta, nesta ordem:
+
+- **Backend:** a rota da lista de espera; a migração com `provider` em `entitlements` e o
+  id de produto único; a verificação do Play com acknowledge; o job da Voided Purchases
+  API; e a lista de audiências do Google.
+- **Documentos legais:** substituir a v4 com texto neutro de loja, Google como processador,
+  reembolso pelo Google Play e a seção da lista de espera. Só depois a landing abre a
+  lista.
+- **Cliente Android:** a pasta inteira. Os rótulos de exclusão têm de bater com
+  `/account/delete/`. Para destravar produto e `purchaseToken` reais, basta um AAB mínimo
+  com billing em teste interno, e ele pode vir antes do app completo.
+- **Play Console:** convidar a conta de serviço do Cloud Run, criar os produtos e preencher
+  Segurança dos dados com `https://logn.sh/account/delete`.
+- **iPhone:** entra quando houver 100 confirmados na lista ou receita no Android que pague a
+  conta da Apple, o que vier primeiro.
+
 ## Antes de enviar para a loja
 
 O que saiu em setembro de 2026 e deixou uma ponta aberta:

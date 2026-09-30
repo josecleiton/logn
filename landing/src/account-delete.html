@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="{{page.lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{delete.title}}</title>
+<meta name="description" content="{{delete.description}}">
+<meta name="color-scheme" content="dark light">
+<link rel="canonical" href="{{page.canonical}}">
+{{{page.alternates}}}
+<link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="{{page.css}}">
+</head>
+<body>
+<!-- A URL que a ficha do Google Play leva em "exclusão de conta" (ADR 0022). Repete o
+     que a política já diz na seção 10 e nos direitos; mudou lá, muda aqui. -->
+<main class="wrap doc">
+  <div class="doc-top">
+    <a href="{{page.home}}" class="brand" aria-label="{{nav.home}}">
+      <svg class="brand-mark" viewBox="0 0 96 122" width="19" height="24" aria-hidden="true">
+        <path d="M48 4 C66 4 80 20 80 41 C80 60 66 74 53 79 L48 83 L43 79 C30 74 16 60 16 41 C16 20 30 4 48 4 Z"/>
+        <path d="M41 76 L55 76 L48 91 Z"/>
+        <path d="M48 90 C49 104 56 111 68 113 C78 115 84 115 90 116" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+      <span class="brand-name">LogN</span>
+    </a>
+    {{{page.lang_switcher}}}
+  </div>
+  <h1>{{delete.heading}}</h1>
+  <p class="lead-lg">{{delete.lead}}</p>
+
+  <section class="doc-block">
+    <h2>{{delete.in_app_title}}</h2>
+    <p>{{delete.in_app_body}}</p>
+    <p>{{delete.in_app_after}}</p>
+  </section>
+
+  <section class="doc-block">
+    <h2>{{delete.no_app_title}}</h2>
+    <p>{{delete.no_app_before}} <a href="mailto:contact@logn.sh">contact@logn.sh</a> {{delete.no_app_after}}</p>
+  </section>
+
+  <section class="doc-block">
+    <h2>{{delete.kept_title}}</h2>
+    <p>{{delete.kept_body}}</p>
+  </section>
+
+  <div class="cta-row">
+    <a class="btn-ghost mono" href="/legal/privacy?lang={{page.lang}}">{{delete.policy}} <span class="accent" aria-hidden="true">↗</span></a>
+    <a class="btn-ghost mono" href="{{page.home}}">{{notfound.back}} <span class="accent" aria-hidden="true">↩</span></a>
+  </div>
+</main>
+</body>
+</html>

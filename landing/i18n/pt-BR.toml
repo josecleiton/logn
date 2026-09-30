@@ -24,11 +24,30 @@ home = "LogN, início"
 [cta]
 short_live = "Baixar"
 short_soon = "Em breve"
-over_live = "Baixar na"
-over_soon = "Em breve na"
-note_live = "IPHONE · GRÁTIS · ANDROID A CAMINHO"
-note_soon = "CHEGANDO À APP STORE · ANDROID A CAMINHO"
+# O que vai em cima do nome da loja. "no Google Play", "na App Store": muda o gênero.
+play_live = "Disponível no"
+play_soon = "Em breve no"
+apple_live = "Baixar na"
+note_live = "ANDROID · GRÁTIS · IPHONE A CAMINHO"
+note_soon = "CHEGANDO AO GOOGLE PLAY · IPHONE A CAMINHO"
+note_all = "ANDROID E IPHONE · GRÁTIS"
 read_code = "ler o código"
+
+[waitlist]
+title = "Tem iPhone?"
+lead = "A versão para iPhone vem depois. Deixe seu e-mail e avisamos uma vez, quando ela sair."
+label = "Seu e-mail"
+placeholder = "voce@example.com"
+send = "Me avise"
+note = "Só para esse aviso. Você confirma pelo link que mandarmos e sai da lista quando quiser."
+thanks_title = "Confira seu e-mail."
+thanks_lead = "Se o endereço estiver certo, mandamos um link de confirmação. Você só entra na lista depois de abrir esse link."
+confirmed_title = "Você está na lista."
+confirmed_lead = "Mandamos um e-mail só, quando a versão para iPhone sair. Todo e-mail nosso traz o link para sair da lista."
+left_title = "Você saiu da lista."
+left_lead = "Apagamos seu e-mail da lista de espera. Não escrevemos mais sobre a versão para iPhone."
+error_title = "Não deu certo."
+error_lead = "O link expirou ou o pedido não passou. Volte ao início e tente de novo daqui a pouco."
 
 [hero]
 kicker = "13 PROBLEMAS · 5 HORAS · UM PLACAR — AGORA EM 3 MINUTOS"
@@ -115,7 +134,25 @@ title = "Seu primeiro balão está a três minutos."
 tagline = "Reduza a complexidade das suas soluções."
 privacy = "Privacidade"
 terms = "Termos"
-trademarks = "Apple e App Store são marcas da Apple Inc."
+delete = "Excluir conta"
+trademarks = "Google Play e o logotipo do Google Play são marcas da Google LLC. Apple, iPhone e App Store são marcas da Apple Inc."
+
+# A página de exclusão de conta que a ficha do Google Play exige. Repete a política
+# (seção 10 e direitos); se ela mudar, isto muda junto.
+[delete]
+title = "Excluir conta — LogN"
+description = "Como excluir sua conta e seus dados, pelo app ou por e-mail."
+heading = "Excluir sua conta"
+lead = "Pelo app a exclusão é na hora. Sem o app instalado, peça por e-mail."
+in_app_title = "Pelo app"
+in_app_body = "Abra Gerenciar conta → Excluir minha conta, digite EXCLUIR e confirme que é você: com a senha, ou entrando de novo com sua conta Google, Apple ou GitHub."
+in_app_after = "A conta é desativada na hora. Se você entrar ou redefinir a senha nos 30 dias seguintes, a exclusão é cancelada. Depois disso ela é eliminada de vez, em até 31 dias do pedido: e-mail, senha, progresso, XP, licenças das trilhas e histórico."
+no_app_title = "Sem o app"
+no_app_before = "Escreva para"
+no_app_after = "a partir do e-mail cadastrado na conta, pedindo a exclusão. Respondemos em até 15 dias. Se o pedido vier de outro endereço, pedimos que você confirme respondendo a partir do e-mail cadastrado."
+kept_title = "O que fica"
+kept_body = "Excluir a conta não reembolsa trilhas compradas. O registro das compras fica por 5 anos, sem seu e-mail, para restauração, reembolso e prevenção de fraude. Registros técnicos do servidor somem sozinhos em até 30 dias."
+policy = "política de privacidade"
 
 [notfound]
 title = "Página não encontrada — LogN"

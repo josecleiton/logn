@@ -24,9 +24,9 @@ eles ficam.
 
 | Tema | Decisão |
 |---|---|
-| Cobrança | Compra avulsa por trilha: produto não consumível na App Store. Sem assinatura. |
+| Cobrança | Compra avulsa por trilha: produto único no Google Play e não consumível na App Store, com o mesmo id nas duas. Sem assinatura. |
 | Autoria | Só o dono do app. `author` existe como campo da trilha, para não fechar a porta. |
-| Plataforma | Só iOS no lançamento. O direito de acesso fica na conta, no servidor, para o Android entrar sem migração. |
+| Plataforma | Android no lançamento, com Google Play; iOS quando houver a conta da Apple (ADR 0022). O direito de acesso fica na conta, no servidor, e vale nas duas lojas. |
 | Quem compra | Só com conta. O visitante é levado ao cadastro na hora de comprar. |
 | Compartilhamento Familiar | Desligado. A Apple não deixa desligar depois de ligado. |
 | Amostra | O primeiro nó de cada trilha paga é grátis e vai sem cifra. |
@@ -241,7 +241,6 @@ Como o design resolve os estados, e o que ficou decidido fora dele:
 ## 10. Fora do escopo
 
 - Assinatura.
-- Android e Play Billing.
 - Compartilhamento Familiar.
 - Autores de fora e repasse de receita.
 - Limite de aparelhos.

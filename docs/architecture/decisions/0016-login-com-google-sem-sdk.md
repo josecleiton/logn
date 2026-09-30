@@ -1,5 +1,7 @@
 # ADR 0016: Login com Google, sem SDK
 
+> No Android o ID token chega com a audiência do client id web, e o backend passa a aceitar uma lista de audiências (ADR 0022).
+
 ## 1. Visão Geral
 
 A ADR 0005 previa GitHub, Google, Apple e e-mail, com o app obtendo o token do provedor e o Go validando. Até aqui só o e-mail existia: os três botões da tela de login tinham `action: {}`. Esta ADR fecha o Google: rota, tabela, fluxo no Core e no iOS, e o que fazer quando o e-mail do Google já tem conta com senha.

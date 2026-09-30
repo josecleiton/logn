@@ -1,5 +1,7 @@
 # ADR 0013: Trilha paga — compra, licença e pacote cifrado
 
+> A compra pelo Google Play, ao lado desta, está na ADR 0022. O que vale aqui para a App Store continua valendo.
+
 ## 1. Visão Geral
 
 A spec `docs/specs/logn_trilhas_pagas_spec.md` define a trilha paga: compra avulsa pela App Store, direito na conta, conteúdo baixado e cifrado, 30 dias sem rede. A primeira implementação passou por build e teste e tinha o paywall contornável de três jeitos independentes:

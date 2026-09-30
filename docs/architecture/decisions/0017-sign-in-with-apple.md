@@ -1,5 +1,7 @@
 # ADR 0017: Sign in with Apple
 
+> Sem conta paga do Apple Developer Program, este login não roda em produção, e o Android não o oferece (ADR 0022). O código e o segredo ficam para quando a conta existir.
+
 ## 1. Visão Geral
 
 A diretriz 4.8 da App Store pede que app com login de terceiro (o Google, ADR 0016) ofereça também o Sign in with Apple. E a Apple exige de quem usa o Sign in with Apple que a exclusão de conta revogue o acesso pela REST API dela. Esta ADR segue o desenho da 0016 e registra o que a Apple muda.

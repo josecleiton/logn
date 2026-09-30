@@ -1,7 +1,7 @@
 # ADR 0001: Arquitetura Monorepo com Go e Rust (Crux)
 
 ## Status
-Aceito
+Aceito. A ordem de lançamento ("iOS agora, Android no futuro") foi revista na ADR 0022: o lançamento público é no Android.
 
 ## Contexto
 O LogN requer um backend escalável e um client altamente consistente, capaz de operar em plataformas iOS e Android futuramente, compartilhando exatamente as mesmas lógicas de progresso, repetição e offline-first. Manter códigos de lógica de negócios isolados em Swift e Kotlin resulta em desvios de regra de negócio, retrabalho e bugs inconsistentes.

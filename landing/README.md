@@ -19,6 +19,8 @@ landing/
 └── src/
     ├── index.html      template ({{chave}} escapa HTML; {{{chave}}} é só para o build)
     ├── 404.html        "Wrong Answer." — um por língua, o Cloudflare serve o mais próximo
+    ├── account-delete.html  /account/delete/, a URL de exclusão da ficha do Google Play
+    ├── waitlist.html   as quatro páginas de volta da lista de espera do iPhone
     ├── _headers        CSP e demais cabeçalhos dos assets
     ├── worker.js       redirect de /legal/terms e /legal/privacy para o backend
     └── assets/         site.css, site.js, icons/ (favicon SVG, PNG 32, apple-touch-icon)
@@ -44,13 +46,44 @@ just landing-legal-origin https://api.logn.sh   # → secret LEGAL_ORIGIN do Wor
 É o domínio público da API, nunca a URL `.run.app`: ela recusa `/legal` pela verificação
 de origem, e apareceria no endereço. Sem o secret, `/legal/*` responde 503 — falha fechada.
 
-Quando o app estiver na loja, o deploy passa a levar o link:
+O lançamento é no Google Play (ADR 0022). Quando a ficha estiver publicada, o deploy
+passa a levar o link:
 
 ```sh
-LOGN_APP_STORE_URL=https://apps.apple.com/app/id… just landing-deploy
+LOGN_PLAY_STORE_URL='https://play.google.com/store/apps/details?id=…' just landing-deploy
 ```
 
-Sem a variável, a página diz "em breve na App Store" e os botões levam ao fim da página.
+Sem a variável, a página diz "em breve no Google Play" e os botões levam ao fim da
+página. `LOGN_APP_STORE_URL` põe o selo da App Store ao lado e fecha a lista de espera
+do iPhone; enquanto o app não está lá, fica vazio.
+
+### Lista de espera do iPhone
+
+```sh
+LOGN_API_ORIGIN=https://api.logn.sh just landing-deploy
+```
+
+Com o domínio da API, a seção do fim ganha o formulário "Tem iPhone?", e o `form-action`
+da CSP passa a aceitar esse domínio e só ele. Sem a variável, o formulário não sai e a
+CSP fica com `form-action 'none'`. **Só defina depois que a rota `POST
+/api/v1/waitlist` estiver no ar e a política de privacidade cobrir a lista.**
+
+O backend responde com `303` para uma destas páginas, na língua do formulário:
+
+| Caminho | Quando |
+|---|---|
+| `/waitlist/thanks/` | formulário recebido (a mesma resposta para e-mail novo e repetido) |
+| `/waitlist/confirmed/` | link de confirmação aberto |
+| `/waitlist/left/` | link de saída aberto |
+| `/waitlist/error/` | link vencido, pedido recusado ou limite de pedidos |
+
+Com o prefixo `/en/` e `/es/` nas outras línguas. Saem com `noindex` e fora do sitemap.
+
+### Exclusão de conta
+
+`/account/delete/` (e `/en/…`, `/es/…`) é a URL que a ficha do Google Play pede em
+"Segurança dos dados". Repete a seção 10 da política e o caminho por
+`contact@logn.sh`; mudou a política, muda aqui.
 
 ## Texto
 
@@ -66,7 +99,8 @@ línguas de propósito — é o vocabulário de maratona que o app também usa.
 - CSP `default-src 'none'` com `'self'` só para script, estilo, fonte e imagem. Não há
   estilo nem script inline; o `site.js` mexe em estilo por CSSOM, que a CSP permite.
 - Nada de terceiro: nem Google Fonts, nem analytics. A página não manda o IP de ninguém
-  para outro domínio.
+  para outro domínio. A única saída é o formulário da lista de espera, que posta na
+  própria API, sem JS, e só existe com `LOGN_API_ORIGIN`.
 - O redirect de `/legal/*` aceita só `GET`/`HEAD`, só os dois caminhos, e leva só o
   `lang` de lista fechada. Não é proxy: a Cloudflare não põe o cabeçalho de origem nos
   pedidos do Worker para a própria zona (ADR 0012).
@@ -76,6 +110,15 @@ línguas de propósito — é o vocabulário de maratona que o app também usa.
 Esta pasta é pública como o resto do repositório. O desafio na tela do celular, os
 trechos dos formatos e os times do placar são **inventados** — nenhum vem da trilha real
 (AGENTS.md, regra 8). O mapa de técnicas é ilustrativo e não reproduz o grafo real.
+
+### Selo do Google Play
+
+Não está no repositório ainda: a regra do Google é a mesma da Apple, selo só para app
+disponível. Quando a ficha for publicada, baixe o selo oficial "Disponível no Google
+Play" em PNG, sem alteração, de https://play.google.com/intl/pt-BR/badges/ (e das
+páginas `en` e `es-419`), e salve como `src/assets/badges/google-play-<pt-BR|en|es>.png`.
+O build falha se `LOGN_PLAY_STORE_URL` estiver definido e um deles faltar, e tira a
+proporção do próprio arquivo.
 
 ### Selo da App Store
 
