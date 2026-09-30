@@ -3,6 +3,8 @@ package main
 import (
 	"strings"
 	"testing"
+
+	"github.com/josecleiton/logn/backend/internal/infrastructure/socialauth"
 )
 
 func envOf(m map[string]string) func(string) string {
@@ -11,10 +13,12 @@ func envOf(m map[string]string) func(string) string {
 
 func TestGoogleClientsFromEnv(t *testing.T) {
 	both, err := googleClientsFromEnv(envOf(map[string]string{
-		"GOOGLE_IOS_CLIENT_ID": "ios", "GOOGLE_WEB_CLIENT_ID": "web", "GOOGLE_ANDROID_CLIENT_ID": "android",
+		"GOOGLE_IOS_CLIENT_ID": "ios", "GOOGLE_WEB_CLIENT_ID": "web", "GOOGLE_ANDROID_CLIENT_IDS": "upload, debug,",
 	}))
-	if err != nil || len(both) != 2 || both[0].AuthorizedParty != "ios" || both[1].Audience != "web" || both[1].AuthorizedParty != "android" {
-		t.Fatalf("iOS e Android: %+v %v", both, err)
+	if err != nil || len(both) != 3 || both[0].AuthorizedParty != "ios" ||
+		both[1] != (socialauth.GoogleClient{Audience: "web", AuthorizedParty: "upload"}) ||
+		both[2] != (socialauth.GoogleClient{Audience: "web", AuthorizedParty: "debug"}) {
+		t.Fatalf("iOS e dois Android: %+v %v", both, err)
 	}
 	if none, err := googleClientsFromEnv(envOf(nil)); err != nil || len(none) != 0 {
 		t.Fatalf("sem nada: %+v %v", none, err)
@@ -22,11 +26,13 @@ func TestGoogleClientsFromEnv(t *testing.T) {
 	// Meio par é o web aceitando token de qualquer client do projeto.
 	for _, env := range []map[string]string{
 		{"GOOGLE_WEB_CLIENT_ID": "web"},
-		{"GOOGLE_ANDROID_CLIENT_ID": "android"},
+		{"GOOGLE_WEB_CLIENT_ID": "web", "GOOGLE_ANDROID_CLIENT_IDS": " , "},
+		{"GOOGLE_ANDROID_CLIENT_IDS": "android"},
 		{"GOOGLE_IOS_CLIENT_ID": "ios", "GOOGLE_WEB_CLIENT_ID": "web"},
-		{"GOOGLE_WEB_CLIENT_ID": "same", "GOOGLE_ANDROID_CLIENT_ID": "same"},
-		{"GOOGLE_IOS_CLIENT_ID": "same", "GOOGLE_WEB_CLIENT_ID": "same", "GOOGLE_ANDROID_CLIENT_ID": "android"},
-		{"GOOGLE_IOS_CLIENT_ID": "same", "GOOGLE_WEB_CLIENT_ID": "web", "GOOGLE_ANDROID_CLIENT_ID": "same"},
+		{"GOOGLE_WEB_CLIENT_ID": "same", "GOOGLE_ANDROID_CLIENT_IDS": "same"},
+		{"GOOGLE_IOS_CLIENT_ID": "same", "GOOGLE_WEB_CLIENT_ID": "same", "GOOGLE_ANDROID_CLIENT_IDS": "android"},
+		{"GOOGLE_IOS_CLIENT_ID": "same", "GOOGLE_WEB_CLIENT_ID": "web", "GOOGLE_ANDROID_CLIENT_IDS": "same"},
+		{"GOOGLE_WEB_CLIENT_ID": "web", "GOOGLE_ANDROID_CLIENT_IDS": "a,a"},
 	} {
 		if _, err := googleClientsFromEnv(envOf(env)); err == nil {
 			t.Errorf("aceitou %v", env)

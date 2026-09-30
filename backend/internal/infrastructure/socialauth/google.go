@@ -116,11 +116,16 @@ func (g *GoogleVerifier) Verify(ctx context.Context, idToken, rawNonce string) (
 	ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
 	var payload *idtoken.Payload
-	var client GoogleClient
+	var audience string
 	var err error
+	tried := map[string]bool{}
 	for _, c := range g.clients {
+		if tried[c.Audience] {
+			continue
+		}
+		tried[c.Audience] = true
 		if payload, err = g.validate(ctx, idToken, c.Audience); err == nil {
-			client = c
+			audience = c.Audience
 			break
 		}
 	}
@@ -133,12 +138,12 @@ func (g *GoogleVerifier) Verify(ctx context.Context, idToken, rawNonce string) (
 	if payload.Subject == "" {
 		return Identity{}, errors.New("token sem sub")
 	}
-	// `azp` é o client que pediu o token, e tem de ser o do par da audiência que
-	// conferiu. Ausente, só vale no par em que o client pede para si mesmo (o iOS): no
-	// Android o `azp` é o que distingue o nosso client de qualquer outro do projeto.
+	// `azp` é o client que pediu o token, e tem de ser o de um dos pares da audiência que
+	// conferiu (no Android, um por chave que assina o app). Ausente, só vale no par em
+	// que o client pede para si mesmo (o iOS): no Android o `azp` é o que distingue o
+	// nosso client de qualquer outro do projeto.
 	azp, _ := payload.Claims["azp"].(string)
-	selfIssued := client.AuthorizedParty == client.Audience
-	if azp != client.AuthorizedParty && !(azp == "" && selfIssued) {
+	if !g.authorized(audience, azp) {
 		return Identity{}, fmt.Errorf("azp recusado: %q", clip(azp))
 	}
 	issuedAt := time.Unix(payload.IssuedAt, 0)
@@ -162,6 +167,19 @@ func (g *GoogleVerifier) Verify(ctx context.Context, idToken, rawNonce string) (
 		EmailVerified: claimTrue(payload.Claims["email_verified"]),
 		IssuedAt:      issuedAt,
 	}, nil
+}
+
+// authorized diz se algum par da audiência aceita o `azp`.
+func (g *GoogleVerifier) authorized(audience, azp string) bool {
+	for _, c := range g.clients {
+		if c.Audience != audience {
+			continue
+		}
+		if azp == c.AuthorizedParty || (azp == "" && c.AuthorizedParty == c.Audience) {
+			return true
+		}
+	}
+	return false
 }
 
 func clip(s string) string {

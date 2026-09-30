@@ -182,11 +182,12 @@ resource "google_cloud_run_v2_service" "logn" {
         }
       }
 
-      # Login com Google no Android (ADR 0022): o par web + Android, os dois ou nenhum.
+      # Login com Google no Android (ADR 0022): o client web e os Android, os dois lados
+      # ou nenhum.
       dynamic "env" {
-        for_each = var.google_web_client_id != "" && var.google_android_client_id != "" ? {
-          GOOGLE_WEB_CLIENT_ID     = var.google_web_client_id
-          GOOGLE_ANDROID_CLIENT_ID = var.google_android_client_id
+        for_each = var.google_web_client_id != "" && length(var.google_android_client_ids) > 0 ? {
+          GOOGLE_WEB_CLIENT_ID      = var.google_web_client_id
+          GOOGLE_ANDROID_CLIENT_IDS = join(",", var.google_android_client_ids)
         } : {}
         content {
           name  = env.key

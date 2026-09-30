@@ -78,27 +78,44 @@ func socialVerifiersFromEnv() (map[string]socialauth.Verifier, map[string]social
 // googleClientsFromEnv monta os pares aceitos do login com Google.
 //
 //   - GOOGLE_IOS_CLIENT_ID: o iOS, que pede o token para si mesmo;
-//   - GOOGLE_WEB_CLIENT_ID com GOOGLE_ANDROID_CLIENT_ID: o Android, que pede em nome do
-//     client web (ADR 0022). Um sem o outro é configuração pela metade, e o servidor
-//     não sobe: só o web aceitaria token pedido por qualquer client do projeto.
+//   - GOOGLE_WEB_CLIENT_ID com GOOGLE_ANDROID_CLIENT_IDS: o Android, que pede em nome do
+//     client web (ADR 0022). Um client Android por chave que assina o app (a de debug,
+//     a de upload e a do Play App Signing), separados por vírgula, todos com o mesmo
+//     web. Um lado sem o outro é configuração pela metade, e o servidor não sobe: só o
+//     web aceitaria token pedido por qualquer client do projeto.
 func googleClientsFromEnv(getenv func(string) string) ([]socialauth.GoogleClient, error) {
 	var clients []socialauth.GoogleClient
-	if ios := strings.TrimSpace(getenv("GOOGLE_IOS_CLIENT_ID")); ios != "" {
+	ios := strings.TrimSpace(getenv("GOOGLE_IOS_CLIENT_ID"))
+	if ios != "" {
 		clients = append(clients, socialauth.GoogleClient{Audience: ios, AuthorizedParty: ios})
 	}
 	web := strings.TrimSpace(getenv("GOOGLE_WEB_CLIENT_ID"))
-	android := strings.TrimSpace(getenv("GOOGLE_ANDROID_CLIENT_ID"))
-	switch {
-	case web != "" && android != "":
-		// Cada client é um só: o verificador fica com o primeiro par cuja audiência
-		// confere, e um id repetido faria o outro par nunca ser tentado.
-		ios := strings.TrimSpace(getenv("GOOGLE_IOS_CLIENT_ID"))
-		if web == android || (ios != "" && (ios == web || ios == android)) {
-			return nil, errors.New("GOOGLE_IOS_CLIENT_ID, GOOGLE_WEB_CLIENT_ID e GOOGLE_ANDROID_CLIENT_ID têm de ser clients diferentes")
+	var androids []string
+	for _, id := range strings.Split(getenv("GOOGLE_ANDROID_CLIENT_IDS"), ",") {
+		if id = strings.TrimSpace(id); id != "" {
+			androids = append(androids, id)
 		}
-		clients = append(clients, socialauth.GoogleClient{Audience: web, AuthorizedParty: android})
-	case web != "" || android != "":
-		return nil, errors.New("GOOGLE_WEB_CLIENT_ID e GOOGLE_ANDROID_CLIENT_ID vêm juntos")
+	}
+	switch {
+	case web != "" && len(androids) > 0:
+		// Cada client é um só. Com a audiência do iOS igual à web, o verificador ficaria
+		// no par do iOS e nunca tentaria os do Android.
+		seen := map[string]bool{web: true}
+		if ios != "" {
+			if seen[ios] {
+				return nil, errors.New("GOOGLE_IOS_CLIENT_ID e GOOGLE_WEB_CLIENT_ID têm de ser clients diferentes")
+			}
+			seen[ios] = true
+		}
+		for _, android := range androids {
+			if seen[android] {
+				return nil, fmt.Errorf("GOOGLE_ANDROID_CLIENT_IDS repete um client: %q", android)
+			}
+			seen[android] = true
+			clients = append(clients, socialauth.GoogleClient{Audience: web, AuthorizedParty: android})
+		}
+	case web != "" || len(androids) > 0:
+		return nil, errors.New("GOOGLE_WEB_CLIENT_ID e GOOGLE_ANDROID_CLIENT_IDS vêm juntos")
 	}
 	return clients, nil
 }

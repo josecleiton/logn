@@ -67,7 +67,7 @@ já está verificada. A landing já tem os botões do Google Play, a lista de es
 
 - **Backend:** feito, desligado até configurar. Ficam a lista de espera
   (`enable_waitlist`), a compra pelo Play e o job das anuladas (`play_package_name`) e o
-  login com Google no Android (`google_web_client_id` + `google_android_client_id`). Falta
+  login com Google no Android (`google_web_client_id` + `google_android_client_ids`). Falta
   o Core mandar a compra na forma do Play e mapear `purchase_pending` e
   `store_unavailable`.
 - **Documentos legais:** substituir a v4 com texto neutro de loja, Google como processador,

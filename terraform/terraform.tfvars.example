@@ -23,9 +23,10 @@ smtp_port = "465" # 465 = TLS implícito; 587 = STARTTLS (o gomail escolhe pela 
 # Client ID iOS do login com Google (ADR 0016). Vazio desliga o login com Google.
 google_ios_client_id = "000000000000-seuclientid.apps.googleusercontent.com"
 
-# Login com Google no Android (ADR 0022): o client web (aud) e o Android (azp), juntos.
-google_web_client_id     = ""
-google_android_client_id = ""
+# Login com Google no Android (ADR 0022): o client web (aud) e um client Android (azp)
+# por chave que assina o app (debug, upload, Play App Signing), juntos.
+google_web_client_id      = ""
+google_android_client_ids = []
 
 # Compra pelo Google Play e o job das compras anuladas (ADR 0022). Antes, convide a conta
 # de serviço do Cloud Run no Play Console. Vazio desliga.

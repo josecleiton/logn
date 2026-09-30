@@ -60,7 +60,7 @@ A conta do Google Play Console já existe e é de organização, verificada no C
 
 **Login no Android:**
 
-- Google pelo Credential Manager. O ID token volta com `aud` = client web (o `serverClientId`) e `azp` = client Android. Aceitar só a audiência web deixaria passar token pedido por qualquer client do projeto, então o backend aceita **pares** `(aud, azp)`: `(iOS, iOS)` com `GOOGLE_IOS_CLIENT_ID`, e `(web, Android)` com `GOOGLE_WEB_CLIENT_ID` e `GOOGLE_ANDROID_CLIENT_ID`, que vêm juntos, senão o servidor não sobe. Cada audiência passa pela validação inteira; nada do token é lido antes de a assinatura conferir. `azp` ausente só vale no par do iOS.
+- Google pelo Credential Manager. O ID token volta com `aud` = client web (o `serverClientId`) e `azp` = client Android. Aceitar só a audiência web deixaria passar token pedido por qualquer client do projeto, então o backend aceita **pares** `(aud, azp)`: `(iOS, iOS)` com `GOOGLE_IOS_CLIENT_ID`, e `(web, Android)` com `GOOGLE_WEB_CLIENT_ID` e `GOOGLE_ANDROID_CLIENT_IDS`, que vêm juntos, senão o servidor não sobe. É um client Android por chave que assina o app: a de debug, a de upload (`~/.android/keystores/logn-upload.jks`, fora do repositório) e a do Play App Signing, que o Google gera e o Play Console mostra depois do primeiro upload. Todos ficam sob o mesmo client web, e o `azp` tem de ser um deles. Cada audiência passa pela validação inteira; nada do token é lido antes de a assinatura conferir. `azp` ausente só vale no par do iOS.
 - GitHub funciona como está.
 - Sem "Entrar com Apple": no Android ele exige um Services ID, que exige a conta paga. O segredo `logn-apple-signin-key` continua no Terraform, reservado.
 

@@ -158,6 +158,8 @@ func TestEmptyAudienceIsRefused(t *testing.T) {
 const (
 	testWebClient     = "web-client.apps.googleusercontent.com"
 	testAndroidClient = "android-client.apps.googleusercontent.com"
+	// Outra chave que assina o app (debug, upload, Play App Signing): outro client.
+	testAndroidDebug = "android-debug.apps.googleusercontent.com"
 )
 
 // O Android pede o token em nome do client web: `aud` web, `azp` Android (ADR 0022).
@@ -167,6 +169,7 @@ func TestAndroidPair(t *testing.T) {
 		clients: []GoogleClient{
 			{Audience: testAudience, AuthorizedParty: testAudience},
 			{Audience: testWebClient, AuthorizedParty: testAndroidClient},
+			{Audience: testWebClient, AuthorizedParty: testAndroidDebug},
 		},
 	}
 	token := func(aud, azp string) *GoogleVerifier {
@@ -188,6 +191,11 @@ func TestAndroidPair(t *testing.T) {
 	if _, err := token(testWebClient, testAndroidClient).Verify(context.Background(), fakeToken("RS256"), nonceA); err != nil {
 		t.Fatalf("token do Android recusado: %v", err)
 	}
+	// O segundo client Android da mesma audiência web também vale: o par não é o
+	// primeiro que a audiência achou.
+	if _, err := token(testWebClient, testAndroidDebug).Verify(context.Background(), fakeToken("RS256"), nonceA); err != nil {
+		t.Fatalf("token do segundo client Android recusado: %v", err)
+	}
 	if _, err := token(testAudience, testAudience).Verify(context.Background(), fakeToken("RS256"), nonceA); err != nil {
 		t.Fatalf("token do iOS recusado: %v", err)
 	}
@@ -200,6 +208,7 @@ func TestAndroidPair(t *testing.T) {
 		"web pedido pelo próprio web":  {testWebClient, testWebClient},
 		"web sem azp":                  {testWebClient, ""},
 		"iOS pedido pelo Android":      {testAudience, testAndroidClient},
+		"iOS pedido pelo debug":        {testAudience, testAndroidDebug},
 		"audiência do Android sozinha": {testAndroidClient, testAndroidClient},
 		"audiência de outro app":       {"outro.apps.googleusercontent.com", testAndroidClient},
 	} {

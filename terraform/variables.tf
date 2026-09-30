@@ -103,25 +103,27 @@ variable "google_web_client_id" {
   description = <<-EOT
     Client ID do tipo "Aplicativo da Web" no Google Auth Platform. No Android, o
     Credential Manager pede o ID token em nome dele (serverClientId), e ele é o `aud` do
-    token. Vem junto com google_android_client_id, ou o backend não sobe.
+    token. Vem junto com google_android_client_ids, ou o backend não sobe.
   EOT
   type        = string
   default     = ""
 }
 
-variable "google_android_client_id" {
+variable "google_android_client_ids" {
   description = <<-EOT
-    Client ID do tipo "Android" (pacote + SHA-1 da assinatura). É o `azp` do ID token do
-    Android, e é o que separa o nosso app de qualquer outro client do projeto.
+    Clients ID do tipo "Android" (pacote + SHA-1 da chave que assina), um por chave: a
+    de debug, a de upload e a do Play App Signing, que o Play Console mostra depois do
+    primeiro upload. Cada um é um `azp` aceito no ID token do Android, e é o que separa
+    o nosso app de qualquer outro client do projeto.
   EOT
-  type        = string
-  default     = ""
+  type        = list(string)
+  default     = []
 
   # Um sem o outro o Terraform deixaria de mandar os dois, e o login do Android sumiria
   # calado; o backend recusa subir com meio par, e aqui também.
   validation {
-    condition     = (var.google_android_client_id == "") == (var.google_web_client_id == "")
-    error_message = "google_web_client_id e google_android_client_id vêm juntos."
+    condition     = (length(var.google_android_client_ids) == 0) == (var.google_web_client_id == "")
+    error_message = "google_web_client_id e google_android_client_ids vêm juntos."
   }
 }
 
