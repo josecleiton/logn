@@ -3,6 +3,11 @@ output "cloud_run_url" {
   value       = google_cloud_run_v2_service.logn.uri
 }
 
+output "admin_service_account" {
+  description = "Conta em nome da qual o `just revoke` emite o token das rotas internas de licença (ADR 0021)."
+  value       = google_service_account.admin.email
+}
+
 output "secret_ids" {
   description = "Nomes dos secrets que o Terraform criou — o valor sobe fora daqui, com `gcloud secrets versions add`."
   value = [

@@ -44,6 +44,9 @@ func New(d Deps) (http.Handler, error) {
 		revokers:       d.Revokers,
 		github:         d.GitHub,
 	}
+	if d.Mailer != nil {
+		server.licenseNotifier = d.Mailer
+	}
 
 	// Rotas de autenticação passam por um limite por IP. Nenhuma tinha limite, e é
 	// por elas que se força senha, se varre OTP e se dispara e-mail. Trinta por
@@ -86,6 +89,14 @@ func New(d Deps) (http.Handler, error) {
 	mux.HandleFunc("GET /api/v1/nodes", server.getNodesHandler)
 	mux.HandleFunc("GET /api/v1/progress", server.getUserProgressHandler)
 	mux.HandleFunc("POST /api/v1/internal/purge", server.purgeHandler)
+	// Revogação manual de licença e resposta à contestação (ADR 0021). Quem chama é uma
+	// pessoa pelo `just revoke`; dez por minuto sobra.
+	internalLimiter := newRateLimiter(10, time.Minute)
+	internal := func(h http.HandlerFunc) http.HandlerFunc {
+		return internalLimiter.wrap(limitBody(licenseActionBodyLimit, h))
+	}
+	mux.HandleFunc("POST /api/v1/internal/licenses/revoke", internal(server.revokeLicenseHandler))
+	mux.HandleFunc("POST /api/v1/internal/licenses/appeal", internal(server.appealLicenseHandler))
 
 	registerLegalRoutes(mux, legalStore{server.repo}, d.LegalStrict)
 

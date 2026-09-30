@@ -26,6 +26,8 @@ type Server struct {
 	mailer         *email.Mailer
 	cloudValidator cloudauth.Validator
 	storekit       *storekit.Validator
+	// O aviso da revogação manual; é o mailer, trocado nos testes.
+	licenseNotifier LicenseNotifier
 	// Um verificador por provedor de login ligado. Provedor fora do mapa está desligado.
 	social map[string]socialauth.Verifier
 	// Provedores que revogam o acesso na exclusão da conta (a Apple, o GitHub). Quem

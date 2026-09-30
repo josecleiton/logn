@@ -6,6 +6,9 @@ region                 = "us-east1"
 service_account_email  = "sua-service-account@seu-projeto-gcp.iam.gserviceaccount.com"
 service_audience_url   = "https://seu-servico-xxxxx.a.run.app"
 
+# Quem chama as rotas internas de licença pelo `just revoke` (ADR 0021).
+admin_members = ["user:voce@example.com"]
+
 # Quem pode fazer deploy pelo GitHub Actions (ADR 0015): o repositório de conteúdo.
 github_deploy_repository    = "seu-usuario/seu-repo-de-conteudo"
 github_deploy_repository_id = "123456789" # gh api repos/seu-usuario/seu-repo-de-conteudo --jq .id

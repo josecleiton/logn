@@ -30,7 +30,7 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    no `SET` de todo `UPDATE`. Coluna que nasce com a linha e nunca mais anda mente pior
    que coluna nenhuma.
 
-   **Estado atual, para quem for mexer:** a regra está cumprida desde a `0013_carimbos_de_tempo.sql`. Toda tabela tem `created_at` (agora com `NOT NULL` aplicado pela 0034). `users`, `skill_nodes`, `refresh_tokens`, `otps`, `user_progress`, `challenges`, `user_sync_state`, `skill_node_translations`, `challenge_translations` (0043), `challenge_origins` e `challenge_origin_translations` (0046), `tracks`, `track_translations`, `entitlements` e `entitlement_devices` (0049) têm `updated_at` mantido pelo trigger `trg_<tabela>_updated_at`, que chama `set_updated_at()` — a função já existe, tabela nova só cria o trigger dela. Ficam só com `created_at` as que nunca sofrem `UPDATE`: `game_events` (append-only por desenho, ADR 0002), `user_paid_challenges` (0032), `track_keys` (a chave de uma versão não muda), `store_transactions` e `revoked_transactions` (0050; a revogação sai por `DELETE`, nunca por `UPDATE`), `track_previewers` (0051; entra e sai por `INSERT` e `DELETE`), `user_identities` (0055; idem), `legal_documents`, `legal_acceptances` e `legal_document_changes` (0059; versão publicada não se edita, corrigir é publicar a próxima). `schema_migrations` resolve com `applied_at`. Em `otps` o `updated_at` anda a cada tentativa errada; por isso o intervalo entre envios usa `sent_at` (0031), não ele.
+   **Estado atual, para quem for mexer:** a regra está cumprida desde a `0013_carimbos_de_tempo.sql`. Toda tabela tem `created_at` (agora com `NOT NULL` aplicado pela 0034). `users`, `skill_nodes`, `refresh_tokens`, `otps`, `user_progress`, `challenges`, `user_sync_state`, `skill_node_translations`, `challenge_translations` (0043), `challenge_origins` e `challenge_origin_translations` (0046), `tracks`, `track_translations`, `entitlements` e `entitlement_devices` (0049), `manual_revocations` (0063) têm `updated_at` mantido pelo trigger `trg_<tabela>_updated_at`, que chama `set_updated_at()` — a função já existe, tabela nova só cria o trigger dela. Ficam só com `created_at` as que nunca sofrem `UPDATE`: `game_events` (append-only por desenho, ADR 0002), `user_paid_challenges` (0032), `track_keys` (a chave de uma versão não muda), `store_transactions` e `revoked_transactions` (0050; a revogação sai por `DELETE`, nunca por `UPDATE`), `track_previewers` (0051; entra e sai por `INSERT` e `DELETE`), `user_identities` (0055; idem), `legal_documents`, `legal_acceptances` e `legal_document_changes` (0059; versão publicada não se edita, corrigir é publicar a próxima), `license_actions` (0063; só recebe `INSERT`). `schema_migrations` resolve com `applied_at`. Em `otps` o `updated_at` anda a cada tentativa errada; por isso o intervalo entre envios usa `sent_at` (0031), não ele.
 
 6. **Todo texto que o jogador lê ou ouve sai do catálogo de i18n, nunca de literal no código.**
    Vale para rótulo, botão, legenda, veredito e `accessibilityLabel`, em qualquer cliente.
@@ -128,9 +128,12 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    **Autorização.** Toda rota autenticada tira o `user_id` do token, nunca do corpo:
    `/sync` sobrescreve `payload.UserID`, e é assim que toda rota nova se comporta.
    Exclusão de conta, aceite de termos, progresso e qualquer leitura por id só do
-   próprio usuário. Rota interna (`/api/v1/internal/*`) só com OIDC do Cloud Scheduler
-   validando emissor e `CLOUD_SCHEDULER_AUDIENCE`, e falha fechada (403) se a variável
-   faltar; token estático compartilhado não é opção.
+   próprio usuário. Rota interna (`/api/v1/internal/*`) só com OIDC do Google
+   validando emissor, `CLOUD_SCHEDULER_AUDIENCE` **e a conta que assinou**: a purga só
+   aceita `CLOUD_SCHEDULER_SERVICE_ACCOUNT`, as de licença só `ADMIN_SERVICE_ACCOUNT`
+   (ADR 0021). Audiência sozinha não basta, porque qualquer conta de serviço emite token
+   com ela. Falha fechada (403) se uma variável faltar; token estático compartilhado não
+   é opção, e rota interna nova escolhe a sua conta.
 
    **Integridade do jogo.** XP é constante do servidor (`XPPerAcceptedAnswer`); o
    cliente manda `is_correct`, `challenge_id`, `node_id`, nunca quantia. Pagamento é

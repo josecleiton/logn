@@ -16,7 +16,7 @@ variable "region" {
 }
 
 variable "service_account_email" {
-  description = "Service account que o Cloud Run e o Cloud Scheduler usam para se identificar."
+  description = "Service account com que o Cloud Run roda. O Cloud Scheduler tem a sua (admin.tf)."
   type        = string
 }
 
@@ -27,6 +27,15 @@ variable "service_audience_url" {
     não o domínio custom — troca só se o serviço for recriado do zero.
   EOT
   type        = string
+}
+
+variable "admin_members" {
+  description = <<-EOT
+    Quem pode emitir token em nome da conta logn-admin e chamar as rotas internas de
+    licença (ADR 0021), no formato do IAM ("user:voce@example.com"). Vazio, ninguém chama.
+  EOT
+  type        = list(string)
+  default     = []
 }
 
 variable "github_deploy_repository" {

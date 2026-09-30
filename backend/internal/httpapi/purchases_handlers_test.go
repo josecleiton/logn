@@ -89,6 +89,7 @@ func newStoreFixture(t *testing.T) *storeFixture {
 		conn.Exec(ctx, `DELETE FROM entitlements WHERE track_id = $1`, f.trackID)
 		conn.Exec(ctx, `DELETE FROM entitlement_devices WHERE track_id = $1`, f.trackID)
 		conn.Exec(ctx, `DELETE FROM revoked_transactions WHERE original_transaction_id IN (SELECT original_transaction_id FROM store_transactions WHERE track_id = $1)`, f.trackID)
+		conn.Exec(ctx, `DELETE FROM manual_revocations WHERE original_transaction_id IN (SELECT original_transaction_id FROM store_transactions WHERE track_id = $1)`, f.trackID)
 		conn.Exec(ctx, `DELETE FROM store_transactions WHERE track_id = $1`, f.trackID)
 		conn.Exec(ctx, `DELETE FROM track_keys WHERE track_id = $1`, f.trackID)
 		conn.Exec(ctx, `DELETE FROM tracks WHERE id = $1`, f.trackID)

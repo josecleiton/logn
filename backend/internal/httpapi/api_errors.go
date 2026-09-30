@@ -50,6 +50,12 @@ const (
 	codeUnknownProduct              = "unknown_product"
 	codeEntitlementRequired         = "entitlement_required"
 	codeDeviceIDRequired            = "device_id_required"
+
+	// Revogação manual (ADR 0021). Quem lê é o `just revoke`, não o app.
+	codeLicenseNotActive        = "license_not_active"
+	codeLicenseNotRevoked       = "license_not_revoked"
+	codeLicenseAppealOutOfOrder = "license_appeal_out_of_order"
+	codeLicenseStoreRevoked     = "license_store_revoked"
 )
 
 // apiError é o corpo de todo erro da API. `message` é para quem lê log e curl, em

@@ -18,10 +18,14 @@ import (
 // A notificação da App Store traz transação e renovação assinadas, cada uma com a
 // cadeia de três certificados: fica na casa das dezenas de KB. O teto é folgado de
 // propósito até haver medida de tráfego real; o que ele barra é o corpo sem fim.
+//
+// A revogação manual leva uma evidência de até 2000 caracteres, que o JSON pode escapar
+// a 12 bytes cada (`😀`).
 const (
 	authBodyLimit                 = 16 << 10
 	syncBodyLimit                 = 8 << 20
 	appStoreNotificationBodyLimit = 256 << 10
+	licenseActionBodyLimit        = 32 << 10
 )
 
 func limitBody(n int64, next http.HandlerFunc) http.HandlerFunc {

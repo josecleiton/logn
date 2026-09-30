@@ -63,37 +63,21 @@ deploy-backend:
         --source ./backend \
         --region us-east1
 
-# Cria ou atualiza o job no Cloud Scheduler para expurgar contas deletadas.
-# Cria ou atualiza o job no Cloud Scheduler para expurgar contas deletadas.
-# Extrai automaticamente a URL e a Service Account do serviço Cloud Run.
-deploy-scheduler:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    echo "Consultando informações do serviço 'logn' no Cloud Run..."
-    URL=$(gcloud run services describe logn --region us-east1 --format 'value(status.url)')
-    SA=$(gcloud run services describe logn --region us-east1 --format 'value(spec.template.spec.serviceAccountName)')
+# O job de expurgo do Cloud Scheduler é do Terraform (terraform/scheduler.tf), com conta
+# própria (ADR 0021). Não há receita para criá-lo à mão: a antiga usava a conta do Cloud
+# Run, que a purga recusa, e todo expurgo passava a dar 403 sem ninguém ver.
 
-    if [ -z "$SA" ] || [ "$SA" = "None" ]; then
-    	PROJECT_NUMBER=$(gcloud projects describe $(gcloud config get-value project) --format 'value(projectNumber)')
-    	SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-    fi
+# Revoga à mão a licença de uma conta numa trilha paga e avisa por e-mail (termos,
+# seção 10.5; ADR 0021). reason: redistribution ou account_sharing. A evidência fica
+# gravada: o que foi visto e onde, sem copiar dado pessoal.
+revoke user track reason evidence:
+    python3 tools/license_admin.py revoke {{ quote(user) }} {{ quote(track) }} {{ quote(reason) }} {{ quote(evidence) }}
 
-    echo "Configurando Cloud Scheduler para bater em $URL usando a conta $SA"
-
-    gcloud scheduler jobs create http purge-deleted-accounts \
-    	--schedule="0 3 * * *" \
-    	--uri="$URL/api/v1/internal/purge" \
-    	--http-method=POST \
-    	--oidc-service-account-email="$SA" \
-    	--oidc-token-audience="$URL" \
-    	--location=us-east1 \
-    	|| gcloud scheduler jobs update http purge-deleted-accounts \
-    	--schedule="0 3 * * *" \
-    	--uri="$URL/api/v1/internal/purge" \
-    	--http-method=POST \
-    	--oidc-service-account-email="$SA" \
-    	--oidc-token-audience="$URL" \
-    	--location=us-east1
+# Responde à contestação e avisa por e-mail. outcome: received (redistribuição, a trilha
+# segue fechada), review (compartilhamento, a licença volta enquanto analisamos),
+# accepted ou rejected.
+appeal user track outcome evidence:
+    python3 tools/license_admin.py appeal {{ quote(user) }} {{ quote(track) }} {{ quote(outcome) }} {{ quote(evidence) }}
 
 # --- Terraform: estado e variáveis no bucket `<projeto>-tfstate` ---
 # O bucket é privado, versionado e em us-east1 (Always Free). O nome sai do projeto

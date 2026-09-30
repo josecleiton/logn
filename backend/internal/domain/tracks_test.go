@@ -95,6 +95,7 @@ func seedUser(t *testing.T, conn *pgxpool.Pool) string {
 func revokedCleanup(t *testing.T, conn *pgxpool.Pool, txID string) {
 	t.Cleanup(func() {
 		conn.Exec(context.Background(), `DELETE FROM revoked_transactions WHERE original_transaction_id = $1`, txID)
+		conn.Exec(context.Background(), `DELETE FROM manual_revocations WHERE original_transaction_id = $1`, txID)
 	})
 }
 
@@ -304,7 +305,7 @@ func TestAManualRevocationIsNotUndoneByARefundReversal(t *testing.T) {
 	if _, err := repo.GrantEntitlement(ctx, grant(p, a, a, txID, false)); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.RevokeTransaction(ctx, ProviderAppleStoreKit, txID, "redistribution", 1000); err != nil {
+	if _, err := repo.RevokeManually(ctx, manualAction(p, a, ReasonRedistribution)); err != nil {
 		t.Fatal(err)
 	}
 	// Um REFUND em cima da manual não a torna reversível.

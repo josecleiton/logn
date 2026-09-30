@@ -100,6 +100,17 @@ resource "google_cloud_run_v2_service" "logn" {
         name  = "CLOUD_SCHEDULER_AUDIENCE"
         value = local.scheduler_audience
       }
+      # Quem assina cada rota interna (ADR 0021). Audiência certa não basta: qualquer
+      # conta de serviço consegue um token com ela. A purga aceita só a logn-scheduler;
+      # as de licença, só a logn-admin (admin.tf).
+      env {
+        name  = "CLOUD_SCHEDULER_SERVICE_ACCOUNT"
+        value = google_service_account.scheduler.email
+      }
+      env {
+        name  = "ADMIN_SERVICE_ACCOUNT"
+        value = google_service_account.admin.email
+      }
       env {
         name  = "RUN_MIGRATIONS"
         value = "true"

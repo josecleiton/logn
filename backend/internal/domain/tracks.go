@@ -136,10 +136,14 @@ func (r *Repository) GrantEntitlement(ctx context.Context, g PurchaseGrant) (str
 		return "", err
 	}
 
+	// Os dois bloqueios contam: o da loja e o manual (ADR 0021). O manual em análise não
+	// bloqueia: a licença voltou enquanto analisamos.
 	var revoked bool
 	if err := tx.QueryRow(ctx, `
 		SELECT EXISTS (SELECT 1 FROM revoked_transactions
-		               WHERE provider = $1 AND original_transaction_id = $2 AND reversed_at_ms IS NULL)`,
+		               WHERE provider = $1 AND original_transaction_id = $2 AND reversed_at_ms IS NULL)
+		    OR EXISTS (SELECT 1 FROM manual_revocations
+		               WHERE provider = $1 AND original_transaction_id = $2 AND status = 'revoked')`,
 		ProviderAppleStoreKit, g.OriginalTransactionID).Scan(&revoked); err != nil {
 		return "", err
 	}
@@ -205,14 +209,18 @@ func lockTransaction(ctx context.Context, tx pgx.Tx, provider, originalTransacti
 	return err
 }
 
-// RevokeTransaction revoga a transação: grava entre as revogadas e tira o direito de
-// quem a tiver. Serve à notificação da Apple e ao runbook de revogação manual, com
-// `signedAtMs` a hora da notificação (ou de agora, na manual).
+// RevokeTransaction revoga a transação pela loja: grava entre as revogadas e tira o
+// direito de quem a tiver, com `signedAtMs` a hora da notificação. A revogação manual
+// não passa por aqui, e sim por RevokeManually, com bloqueio próprio (ADR 0021).
 //
-// Revogação que já vale não muda de motivo: um REFUND em cima de uma revogação manual
-// não a torna reversível. Reembolso já revertido só volta com um REFUND mais novo que a
-// reversão — o atrasado, que a Apple reenviou, não conta.
+// Revogação que já vale não muda de motivo. Reembolso já revertido só volta com um
+// REFUND mais novo que a reversão — o atrasado, que a Apple reenviou, não conta. Um
+// reembolso com a licença revogada à mão fica gravado aqui e não mexe no motivo dela:
+// devolver a licença manual depois não a devolve a quem foi reembolsado.
 func (r *Repository) RevokeTransaction(ctx context.Context, provider, originalTransactionID, reason string, signedAtMs int64) error {
+	if manualReason(reason) {
+		return ErrInvalidLicenseAction
+	}
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
@@ -272,10 +280,22 @@ func (r *Repository) ReinstateRefund(ctx context.Context, provider, originalTran
 	if tag.RowsAffected() == 0 {
 		return nil
 	}
+	// Com revogação manual aberta, a licença segue fora, e o motivo volta a ser o dela:
+	// é a contestação que a devolve (ADR 0021). Sem, a licença volta.
+	if _, err := tx.Exec(ctx, `
+		UPDATE entitlements e SET revoked_reason = m.reason
+		FROM manual_revocations m
+		WHERE e.original_transaction_id = $1 AND e.revoked_reason = 'refund'
+		  AND m.provider = $2 AND m.original_transaction_id = $1 AND m.status = 'revoked'`,
+		originalTransactionID, provider); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE entitlements SET status = 'active', revoked_reason = NULL
-		WHERE original_transaction_id = $1 AND revoked_reason = 'refund'`,
-		originalTransactionID); err != nil {
+		WHERE original_transaction_id = $1 AND revoked_reason = 'refund'
+		  AND NOT EXISTS (SELECT 1 FROM manual_revocations
+		                  WHERE provider = $2 AND original_transaction_id = $1 AND status = 'revoked')`,
+		originalTransactionID, provider); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

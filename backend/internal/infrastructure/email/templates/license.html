@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="{{.Lang}}" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>{{.T.Subject}}</title>
+<!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
+<style>
+  @media only screen and (max-width:620px){
+    .wrap{width:100% !important;}
+    .pad{padding-left:20px !important; padding-right:20px !important;}
+    .h1{font-size:28px !important; line-height:32px !important;}
+  }
+</style>
+</head>
+<body style="margin:0; padding:0; background-color:#0B0C0D; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;">
+<span style="display:none !important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px;">{{.T.Preheader}}</span>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%; border-collapse:collapse; background-color:#0B0C0D;">
+  <tr>
+    <td align="center" style="padding:32px 12px 48px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="wrap" style="width:600px; max-width:600px; border-collapse:collapse;">
+
+        <tr>
+          <td class="pad" style="padding:0 32px 28px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tr>
+                    <td valign="middle" style="padding:0 10px 0 0;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                        <tr><td width="22" height="27" bgcolor="#FF7A45" style="width:22px; height:27px; background-color:#FF7A45; border-radius:50% 50% 45% 45%; font-size:0; line-height:0;">&nbsp;</td></tr>
+                        <tr><td align="center" style="font-family:'Courier New', Courier, monospace; font-size:11px; line-height:8px; mso-line-height-rule:exactly; color:#FF7A45;">&#8595;</td></tr>
+                      </table>
+                    </td>
+                    <td valign="middle" style="font-family:Arial, Helvetica, sans-serif; font-size:27px; line-height:30px; mso-line-height-rule:exactly; font-weight:bold; letter-spacing:-0.9px; color:#EDEEEF;">LogN</td>
+                  </tr></table>
+          </td>
+        </tr>
+
+        <tr>
+          <td bgcolor="#111316" style="background-color:#111316; border:1px solid #24282D; border-radius:4px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%; border-collapse:collapse;">
+              <tr><td class="pad" style="padding:0 32px; padding-top:40px;">
+                  <span style="font-family:'Courier New', Courier, monospace; font-size:11px; line-height:16px; mso-line-height-rule:exactly; letter-spacing:1.5px; color:#7E858D; text-transform:uppercase;">{{.T.Eyebrow}}</span>
+                </td></tr>
+              <tr><td class="pad h1" style="padding:0 32px; padding-top:10px; font-family:Arial, Helvetica, sans-serif; font-size:34px; line-height:38px; mso-line-height-rule:exactly; font-weight:bold; letter-spacing:-1px; color:#EDEEEF;">
+                  {{.T.Heading}}
+                </td></tr>
+              <tr><td class="pad" style="padding:0 32px; padding-top:14px; padding-bottom:{{if .T.Reason}}0{{else}}40px{{end}}; font-family:Arial, Helvetica, sans-serif; font-size:16px; line-height:25px; mso-line-height-rule:exactly; color:#99A0A7;">
+                  {{.T.Lead}}
+                </td></tr>
+{{if .T.Reason}}
+              <tr><td class="pad" style="padding:0 32px; padding-top:28px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%; border-collapse:collapse; border-top:1px solid #24282D;">
+                    <tr>
+                      <td style="padding:20px 0 0;">
+                        <span style="font-family:'Courier New', Courier, monospace; font-size:11px; line-height:16px; mso-line-height-rule:exactly; letter-spacing:1.5px; color:#FF7A45; text-transform:uppercase;">{{.T.ReasonLabel}}</span>
+                        <div style="font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:23px; mso-line-height-rule:exactly; color:#EDEEEF; padding-top:5px;">{{.T.Reason}}</div>
+                      </td>
+                    </tr>
+                  </table>
+                </td></tr>
+{{end}}
+{{if .T.Consequence}}
+              <tr><td class="pad" style="padding:0 32px; padding-top:20px; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:23px; mso-line-height-rule:exactly; color:#99A0A7;">
+                  {{.T.Consequence}}
+                </td></tr>
+{{end}}
+{{if .T.Appeal}}
+              <tr><td class="pad" style="padding:0 32px; padding-top:20px; padding-bottom:40px; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:23px; mso-line-height-rule:exactly; color:#EDEEEF;">
+                  {{.T.Appeal}}
+                </td></tr>
+{{end}}
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="pad" style="padding:28px 32px 0; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:19px; mso-line-height-rule:exactly; color:#7E858D;">
+            {{.T.Footer}}
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

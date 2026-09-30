@@ -21,8 +21,10 @@ resource "google_cloud_scheduler_job" "purge_deleted_accounts" {
     http_method = "POST"
     uri         = "${local.scheduler_audience}/api/v1/internal/purge"
 
+    # Conta própria, não a do Cloud Run (admin.tf): o backend só aceita a purga assinada
+    # por ela (CLOUD_SCHEDULER_SERVICE_ACCOUNT, ADR 0021).
     oidc_token {
-      service_account_email = var.service_account_email
+      service_account_email = google_service_account.scheduler.email
       audience              = local.scheduler_audience
     }
   }

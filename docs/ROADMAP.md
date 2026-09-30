@@ -92,9 +92,14 @@ Antes de vender a primeira trilha:
   A v3 saiu sem revisão de advogado, e ficam em aberto para ele: a base legal do aceite,
   os aceites apagados na exclusão, adolescentes, os portões de XP e a guarda dos
   registros de acesso.
-  O texto promete duas coisas que o código ainda não faz: apagar `store_transactions` e
-  `revoked_transactions` 5 anos depois da transação (a primeira vence em 2031), e o
-  e-mail que avisa a pessoa depois de uma revogação manual, que hoje é um roteiro de SQL.
+  O texto promete uma coisa que o código ainda não faz: apagar `store_transactions`,
+  `revoked_transactions` e `manual_revocations` 5 anos depois da transação (a primeira
+  vence em 2031). Não é para agora, mas também não é para deixar de fazer: a política diz
+  que apaga.
+- **Revogação manual.** `just revoke` e `just appeal` (ADR 0021) revogam a licença e
+  respondem à contestação pela rota interna, com a evidência gravada e o aviso por e-mail
+  da seção 10.5. Nunca rodaram contra a produção. A política ainda não cita a evidência
+  escrita por nós: entra na próxima versão dela.
 - **Login com GitHub.** No ar no servidor, e o login rodou de ponta a ponta num iPhone em
   2026-09-30, e o flag `sso_github_enabled` do PostHog, que mostra o botão, foi ligado no
   mesmo dia; desligá-lo esconde o botão sem build novo. Falta ver a
