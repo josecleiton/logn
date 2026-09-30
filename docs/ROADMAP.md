@@ -84,13 +84,12 @@ Trilhas` e `LogN Validade Offline`. PRD:
 
 Antes de vender a primeira trilha:
 
-- **Termos e política novos.** A v3 está escrita nas três línguas em `logn-conteudo/legal/`,
-  com o "o que mudou" em `legal/mudancas/v3.json`, e o bloqueio de novo aceite existe
-  (ADR 0020). Falta, nesta ordem: a revisão jurídica, que resolve os marcadores
-  `[A CONFIRMAR]` (arrependimento, prazo da contestação, encerramento do serviço, guarda
-  do registro das compras); o app com o bloqueio na loja; ligar `APP_PEDE_REACEITE`; e
-  gerar a migração da v3 com `--material`.
-  Os marcadores já foram resolvidos (setembro de 2026), e o texto da v3 promete duas
+- **Termos e política novos.** A v3 está no ar desde 2026-09-30 (migração 0061 do
+  repositório de conteúdo), relevante: toda conta aceita de novo pelo bloqueio da ADR 0020,
+  e `APP_PEDE_REACEITE` está ligado. Ela saiu sem revisão de advogado, só com a revisão
+  automatizada. O build de loja precisa de `just legal-bundle` de novo, para a cópia
+  offline dos documentos no app ser a v3.
+  O texto da v3 promete duas
   coisas que o código ainda não faz: apagar `store_transactions` e `revoked_transactions`
   5 anos depois da transação (a primeira vence em 2031), e o e-mail que avisa a pessoa
   depois de uma revogação manual, que hoje é um roteiro de SQL. A revisão automatizada

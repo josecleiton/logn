@@ -63,7 +63,7 @@ O backend tinha `pending` e `accept` desde a 0008, sem ninguém chamando. O `pen
 
 **Versão na tela é o inteiro.** "v2 → v3", com a data de vigência de cada uma. O "1.4" do design era exemplo.
 
-**`APP_PEDE_REACEITE` continua falso até o app com o bloqueio estar na loja.** Publicar a v3 relevante antes disso deixaria os aparelhos com o app antigo sem pedir aceite, e a trava do gerador existe para isso.
+**`APP_PEDE_REACEITE` foi ligado em 2026-09-30, com a v3.** A trava existia para uma versão relevante não sair com app sem bloqueio instalado. O app ainda não estava na loja, só no TestFlight, e o próximo build já sai da `main` com o bloqueio; não havia instalação que ficasse sem pedir.
 
 ## 3. Alternativas descartadas
 
