@@ -35,6 +35,9 @@ type Server struct {
 	revokers map[string]socialauth.Revoker
 	// Troca o código do GitHub pelo bilhete. Nulo com o GitHub desligado.
 	github GitHubExchanger
+	// Lista de espera do iPhone (ADR 0022). Nula, as rotas não existem.
+	waitlist       *WaitlistConfig
+	waitlistMailer WaitlistMailer
 }
 
 // GitHubExchanger é a troca do código do GitHub (ADR 0019), trocada nos testes.

@@ -27,9 +27,19 @@ A conta do Google Play Console já existe e é de organização, verificada no C
 **A lista de espera, no backend:**
 
 - Tabela `waitlist_entries` (`email`, `locale`, `confirmed_at`, `created_at`, `updated_at` com trigger), no Postgres. Não fica no worker nem com terceiro, para o dado pessoal ficar no mesmo lugar e na mesma purga.
-- Confirmação dupla: link com token HMAC, e o não confirmado é purgado em 7 dias. A resposta é a mesma para e-mail novo e repetido, para a rota não denunciar quem está na lista.
-- Contra abuso: rate limit por IP e por e-mail, `limitBody`, e o campo-isca `website`, que robô preenche e gente não vê. Não usamos Turnstile nem captcha: seria script de terceiro, e só entra se o spam aparecer, com ADR própria.
-- Todo e-mail leva o link de saída, e a saída apaga a linha.
+- Confirmação dupla: link com token HMAC, e o não confirmado é purgado 7 dias depois da criação. A resposta é a mesma para e-mail novo, pendente e confirmado, para a rota não denunciar quem está na lista.
+- **A pendente recebe um e-mail só.** Pedir de novo não reenvia, a não ser que o SMTP tenha falhado. Com reenvio, quem mandasse o formulário todo dia faria chegar um e-mail por dia a um endereço que não é dele, e a linha nunca venceria. Quem volta depois de a pendente vencer se inscreve de novo, então o pior caso é um e-mail a cada 7 dias por endereço.
+- Contra abuso:
+  - Só vale formulário da própria landing: `Origin` igual à landing, ou `Sec-Fetch-Site: same-site`. A landing sai com `no-referrer`, e com isso o navegador manda `Origin: null`. Sem essa checagem, qualquer página postaria o formulário pelo navegador de cada visitante, um IP por visitante.
+  - Rate limit por IP, `limitBody`, e um teto global de 100 e-mails de confirmação por hora, contado no banco.
+  - O campo-isca `website`, que robô preenche e gente não vê.
+  - Sem Turnstile nem captcha: seria script de terceiro, e só entra se o spam aparecer, com ADR própria.
+- **O link do e-mail não muda nada no GET.** Filtro de e-mail corporativo abre todo link que recebe. Um GET que confirmasse inscreveria quem não pediu, e um que tirasse da lista tiraria quem pediu. `GET /api/v1/waitlist/{confirm,leave}?t=` mostra uma página com um botão, com CSP por hash e `Referrer-Policy: no-referrer`, porque o token está na URL. O botão faz o `POST` na mesma URL, que responde com `303` para a landing.
+- **O token é `id.HMAC(id, ação)`**, com a chave do JWT e um prefixo próprio. O e-mail nunca vai no link, porque a URL passa pelos registros da hospedagem, e eles não guardam e-mail. O token não vence sozinho: morre com a linha. Cada ação tem a sua assinatura, então o link de confirmar não tira ninguém da lista.
+- Todo e-mail leva o link de saída, também no `List-Unsubscribe`, e a saída apaga a linha.
+- Não mandamos `List-Unsubscribe-Post` (RFC 8058): o clique de saída num toque é um POST do servidor do provedor de e-mail, e o Bot Fight Mode da borda desafia servidor com JS, sem exceção (ADR 0013). A saída falharia calada. O cabeçalho volta com um caminho que não passe pelo desafio, e com DKIM assinando os dois cabeçalhos.
+- O e-mail de confirmação sai fora do pedido, como o do OTP, para o tempo de resposta não dizer quem já está na lista. Se o SMTP falha, a goroutine libera o reenvio. O erro vai para o log sem endereço de e-mail, porque o SMTP costuma repetir o destinatário na recusa.
+- `WAITLIST_LANDING_ORIGIN` e `WAITLIST_API_ORIGIN` ligam as rotas (`enable_waitlist` no Terraform). Sem as duas, as rotas não existem. Uma só, ou fora do formato `https://domínio`, e o servidor não sobe.
 - O e-mail confirmado fica até o lançamento no iPhone, sem prazo fixo. A política diz isso.
 - Um único aviso, quando o iPhone sair. O envio desse aviso fica para quando o gatilho disparar.
 
@@ -70,6 +80,12 @@ A conta do Google Play Console já existe e é de organização, verificada no C
 - **Sem AAB, sem teste ponta a ponta.** O Play Console só cria produto depois de receber um AAB com a permissão de billing, e `purchaseToken` só sai de um cliente real. Até lá, a verificação do Play é testada contra respostas montadas a partir da documentação.
 - A página `/account/delete/` e a seção 10 da política dizem a mesma coisa. Quem mudar uma muda a outra. O app Android precisa usar os mesmos rótulos, "Gerenciar conta → Excluir minha conta".
 - `LOGN_API_ORIGIN` na landing só depois da rota e da política no ar, nessa ordem.
+- **Limites aceitos da lista:**
+  - O token está na URL, então passa pelos registros da borda e do Cloud Run. Ele não traz dado pessoal e só confirma ou tira da lista aquela inscrição.
+  - Trocar a chave do JWT mata todo link já enviado, inclusive o de saída. Quem estiver confirmado sai por `contact@logn.sh`.
+  - Com `cpu_idle`, a goroutine do envio pode ficar sem CPU depois da resposta, como a do OTP. Se o envio morrer ali, a pendente fica sem e-mail até vencer.
+  - Navegador sem `Sec-Fetch-Site`, que ainda manda `Origin: null`, não consegue se inscrever.
+  - Antes de ligar, confira o formulário e os links do e-mail passando pela borda de verdade, com o Bot Fight Mode ligado.
 - **A lista pode ficar anos parada.** O prazo "até o lançamento" foi escolhido sabendo disso. Se o gatilho não disparar, apagar a lista é decisão a revisitar aqui.
 - O cliente Android, o push (FCM no Android, APNs no iOS quando houver conta), o `assetlinks.json` e o envio do aviso de lançamento ficam fora desta decisão.
 - ADR 0001 e a spec das trilhas pagas continuam valendo no que descrevem da arquitetura. A ordem de lançamento passa a ser esta.

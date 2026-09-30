@@ -71,8 +71,17 @@ func (s *Server) purgeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("expurgo ok: %d contas apagadas", purged)
 
+	// As inscrições pendentes da lista de espera vencem no mesmo passo diário (ADR 0022).
+	pending, err := s.repo.PurgePendingWaitlist(r.Context())
+	if err != nil {
+		log.Printf("expurgo da lista de espera falhou: erro=%v", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+	log.Printf("expurgo ok: %d inscrições pendentes apagadas", pending)
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"status": "ok", "purged": purged})
+	json.NewEncoder(w).Encode(map[string]any{"status": "ok", "purged": purged, "waitlist_purged": pending})
 }
 
 // licenseActionRequest é o corpo de revoke e appeal. `reason` só na revogação,

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="{{.Lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="dark light">
+<title>{{.T.Title}} — LogN</title>
+<style>{{.CSS}}</style>
+</head>
+<body>
+<main>
+  <p class="brand">LogN</p>
+  <h1>{{.T.Title}}</h1>
+  <p class="lead">{{.T.Lead}}</p>
+  <form method="post" action="{{.FormAction}}">
+    <button type="submit">{{.T.Button}}</button>
+  </form>
+</main>
+</body>
+</html>

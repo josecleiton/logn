@@ -64,7 +64,7 @@ func (s *Server) requestOTPHandler(w http.ResponseWriter, r *http.Request) {
 	// Send Email asynchronously
 	go func(email, purpose, otp, lang string) {
 		if err := s.mailer.SendOTP(email, purpose, otp, lang); err != nil {
-			log.Printf("otp não enviado: purpose=%s erro=%v", purpose, err)
+			log.Printf("otp não enviado: purpose=%s erro=%s", purpose, redactEmails(err))
 		}
 	}(email, payload.Purpose, code, lang)
 

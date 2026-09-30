@@ -28,6 +28,8 @@ type Deps struct {
 	GitHub GitHubExchanger
 	// Documento legal com marcador de rascunho responde 503 em vez da página.
 	LegalStrict bool
+	// Lista de espera do iPhone (ADR 0022). Nula, as rotas não existem.
+	Waitlist *WaitlistConfig
 }
 
 // New monta as rotas e o middleware em volta delas.
@@ -43,9 +45,11 @@ func New(d Deps) (http.Handler, error) {
 		social:         d.Social,
 		revokers:       d.Revokers,
 		github:         d.GitHub,
+		waitlist:       d.Waitlist,
 	}
 	if d.Mailer != nil {
 		server.licenseNotifier = d.Mailer
+		server.waitlistMailer = d.Mailer
 	}
 
 	// Rotas de autenticação passam por um limite por IP. Nenhuma tinha limite, e é
@@ -99,6 +103,7 @@ func New(d Deps) (http.Handler, error) {
 	mux.HandleFunc("POST /api/v1/internal/licenses/appeal", internal(server.appealLicenseHandler))
 
 	registerLegalRoutes(mux, legalStore{server.repo}, d.LegalStrict)
+	server.registerWaitlistRoutes(mux)
 
 	mux.HandleFunc("GET /api/v1/legal/current", server.currentLegalVersionsHandler)
 	// Pendência e aceite têm balde próprio, como as trilhas: toda abertura pergunta pelos

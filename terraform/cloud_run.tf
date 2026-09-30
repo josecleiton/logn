@@ -182,6 +182,20 @@ resource "google_cloud_run_v2_service" "logn" {
         }
       }
 
+      # Lista de espera do iPhone (ADR 0022). Os dois domínios públicos: a landing, para
+      # onde as rotas respondem com 303, e a API, para os links do e-mail. Desligada, as
+      # rotas não existem; uma variável sem a outra, o servidor não sobe.
+      dynamic "env" {
+        for_each = var.enable_waitlist && var.domain_name != "" ? {
+          WAITLIST_LANDING_ORIGIN = "https://${var.domain_name}"
+          WAITLIST_API_ORIGIN     = "https://${var.api_subdomain}.${var.domain_name}"
+        } : {}
+        content {
+          name  = env.key
+          value = env.value
+        }
+      }
+
       # Sign in with Apple (ADR 0017). Desligado, o servidor responde provider_disabled
       # para a Apple; as três vêm juntas, ou o servidor não sobe.
       dynamic "env" {

@@ -315,12 +315,14 @@ for (const { locale, strings } of catalogs) {
   }
 }
 
-// O formulário posta na API, e a CSP só deixa se ela estiver no `form-action`. A troca é
-// na linha da CSP e em nenhum outro lugar do arquivo.
+// O formulário posta na API, e a CSP só deixa se ela estiver no `form-action`. `'self'`
+// vai junto porque a API responde com 303 para a landing, e o navegador confere o
+// destino do redirect contra o `form-action` também. A troca é na linha da CSP e em
+// nenhum outro lugar do arquivo.
 const headers = readFileSync(join(ROOT, "src/_headers"), "utf8");
 const csp = /^(\s*Content-Security-Policy:.*)form-action 'none'(.*)$/m;
 if (!csp.test(headers)) fail("src/_headers: a CSP tem de ter `form-action 'none'` para o build trocar");
-writeFileSync(join(DIST, "_headers"), waitlist ? headers.replace(csp, `$1form-action ${api}$2`) : headers);
+writeFileSync(join(DIST, "_headers"), waitlist ? headers.replace(csp, `$1form-action 'self' ${api}$2`) : headers);
 writeFileSync(join(DIST, css.path), css.body);
 writeFileSync(join(DIST, js.path), js.body);
 mkdirSync(join(DIST, "assets/icons"), { recursive: true });

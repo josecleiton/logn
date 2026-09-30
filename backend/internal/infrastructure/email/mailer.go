@@ -180,6 +180,12 @@ func NewOTPData(email, code, purpose, lang string) OTPData {
 func OTPTemplate(purpose string) string { return otpTemplate(purpose) }
 
 func (m *Mailer) send(to, subject, templateName string, data interface{}) error {
+	return m.sendWithHeaders(to, subject, templateName, data, nil)
+}
+
+// sendWithHeaders é o send com cabeçalhos a mais. Quem chama escreve valores fixos ou
+// URLs montadas pelo servidor, nunca texto do pedido.
+func (m *Mailer) sendWithHeaders(to, subject, templateName string, data interface{}, headers map[string]string) error {
 	var body bytes.Buffer
 
 	if err := m.templates.ExecuteTemplate(&body, templateName, data); err != nil {
@@ -190,6 +196,9 @@ func (m *Mailer) send(to, subject, templateName string, data interface{}) error 
 	msg.SetHeader("From", m.from)
 	msg.SetHeader("To", to)
 	msg.SetHeader("Subject", subject)
+	for k, v := range headers {
+		msg.SetHeader(k, v)
+	}
 
 	// Embed logo via CID
 	msg.Embed("logo.jpg", gomail.SetCopyFunc(func(w io.Writer) error {

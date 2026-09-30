@@ -89,6 +89,7 @@ backend/test_match_sync
 !backend/schema/migrations/0058_identidade_github.sql
 !backend/schema/migrations/0059_aceite_com_mudancas.sql
 !backend/schema/migrations/0063_revogacao_manual.sql
+!backend/schema/migrations/0065_lista_de_espera.sql
 
 # Termos e política no modo do app, para ler sem rede. `just legal-bundle` gera a partir
 # do servidor, como a trilha empacotada.

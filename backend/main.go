@@ -100,6 +100,10 @@ func main() {
 		revokers[socialauth.ProviderGitHub] = gh
 		githubExchanger = gh
 	}
+	waitlist, err := httpapi.WaitlistConfigFromEnv(os.Getenv)
+	if err != nil {
+		log.Fatalf("Lista de espera mal configurada: %v", err)
+	}
 	deps := httpapi.Deps{
 		Repo:           repo,
 		Mailer:         email.NewMailer(),
@@ -112,6 +116,7 @@ func main() {
 		// rascunho responde 503, a não ser que LEGAL_ALLOW_DRAFT=true libere a página com a
 		// faixa de rascunho — o caso do TestFlight, enquanto o advogado revisa.
 		LegalStrict: os.Getenv("K_SERVICE") != "" && os.Getenv("LEGAL_ALLOW_DRAFT") != "true",
+		Waitlist:    waitlist,
 	}
 
 	if os.Getenv("PURGE_ONLY") == "true" {
@@ -120,7 +125,11 @@ func main() {
 		if err != nil {
 			log.Fatalf("Erro no expurgo depois de %d contas: %v", purged, err)
 		}
-		log.Printf("Expurgo concluído: %d contas apagadas. Encerrando.", purged)
+		pending, err := repo.PurgePendingWaitlist(context.Background())
+		if err != nil {
+			log.Fatalf("Erro no expurgo da lista de espera: %v", err)
+		}
+		log.Printf("Expurgo concluído: %d contas e %d inscrições pendentes apagadas. Encerrando.", purged, pending)
 		return
 	}
 

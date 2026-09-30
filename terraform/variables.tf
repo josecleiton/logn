@@ -188,3 +188,9 @@ variable "api_subdomain" {
   type        = string
   default     = "api"
 }
+
+variable "enable_waitlist" {
+  description = "Liga a lista de espera do iPhone (ADR 0022): as rotas /api/v1/waitlist respondem com 303 para a landing em domain_name. Só depois de a política de privacidade cobrir a lista."
+  type        = bool
+  default     = false
+}

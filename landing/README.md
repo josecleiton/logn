@@ -64,7 +64,8 @@ LOGN_API_ORIGIN=https://api.logn.sh just landing-deploy
 ```
 
 Com o domínio da API, a seção do fim ganha o formulário "Tem iPhone?", e o `form-action`
-da CSP passa a aceitar esse domínio e só ele. Sem a variável, o formulário não sai e a
+da CSP passa a aceitar esse domínio e a própria landing, para onde a API responde com
+303, e nada mais. Sem a variável, o formulário não sai e a
 CSP fica com `form-action 'none'`. **Só defina depois que a rota `POST
 /api/v1/waitlist` estiver no ar e a política de privacidade cobrir a lista.**
 
