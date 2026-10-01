@@ -47,21 +47,24 @@ just landing-legal-origin https://api.logn.sh   # → secret LEGAL_ORIGIN do Wor
 É o domínio público da API, nunca a URL `.run.app`: ela recusa `/legal` pela verificação
 de origem, e apareceria no endereço. Sem o secret, `/legal/*` responde 503 — falha fechada.
 
-O lançamento é no Google Play (ADR 0022). Quando a ficha estiver publicada, o deploy
-passa a levar o link:
+O lançamento é no Google Play (ADR 0022), e a ficha está publicada: `just landing-deploy`
+já passa o link (`LOGN_PLAY_STORE_URL`) e o domínio da lista de espera
+(`LOGN_API_ORIGIN`) por padrão, os dois públicos. Para trocar um, passe a variável; vazia,
+ela desliga o item:
 
 ```sh
-LOGN_PLAY_STORE_URL='https://play.google.com/store/apps/details?id=…' just landing-deploy
+LOGN_PLAY_STORE_URL= just landing-deploy    # volta a "em breve no Google Play"
 ```
 
-Sem a variável, a página diz "em breve no Google Play" e os botões levam ao fim da
+Sem o link, a página diz "em breve no Google Play" e os botões levam ao fim da
 página. `LOGN_APP_STORE_URL` põe o selo da App Store ao lado e fecha a lista de espera
 do iPhone; enquanto o app não está lá, fica vazio.
 
 ### Lista de espera do iPhone
 
 ```sh
-LOGN_API_ORIGIN=https://api.logn.sh just landing-deploy
+just landing-deploy                     # já aberta, com https://api.logn.sh
+LOGN_API_ORIGIN= just landing-deploy    # fecha
 ```
 
 Com o domínio da API, a seção do fim ganha o formulário "Tem iPhone?", e o `form-action`
