@@ -8,6 +8,11 @@ output "admin_service_account" {
   value       = google_service_account.admin.email
 }
 
+output "play_publisher_service_account" {
+  description = "Conta a convidar no Play Console para o `just android/play-internal` subir build ao teste interno."
+  value       = google_service_account.play_publisher.email
+}
+
 output "secret_ids" {
   description = "Nomes dos secrets que o Terraform criou — o valor sobe fora daqui, com `gcloud secrets versions add`."
   value = [

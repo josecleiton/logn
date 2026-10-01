@@ -142,6 +142,15 @@ release: release-preflight (generate "release")
     code=$(sed -n 's/^build=//p' version.properties)
     echo "Pronto: android/build/store/LogN.aab (versão $name, versionCode $code). Envie pelo Play Console."
 
+# Sobe o .aab do `release` ao teste interno do Play, com as notas de
+# android/release-notes.txt nas três línguas. `completed` publica para os testadores;
+# `draft` deixa como rascunho no Console. Precisa de estar em `play_publishers` no
+# Terraform e da conta logn-play-publisher convidada no Play Console.
+# Uso: just android/play-internal        ou        just android/play-internal draft
+play-internal status="completed":
+    python3 tools/play_upload.py check
+    python3 tools/play_upload.py upload {{ status }}
+
 # O que o `release` precisa e não se vê antes de minutos de build do Core: assinatura,
 # posthog-cli e as três POSTHOG_CLI_* (ADR 0024). Só confere; os valores não saem daqui.
 release-preflight:

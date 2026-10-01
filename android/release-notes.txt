@@ -1,0 +1,15 @@
+<pt-BR>
+• Trilhas pagas: o desconto de primeira compra aparece no preço, com o valor cheio riscado, e vale na compra.
+• O perfil não fica mais subindo e descendo depois de um arraste rápido para cima.
+• Mostrar ou esconder a senha no login e no cadastro.
+</pt-BR>
+<en-US>
+• Paid tracks: the first-purchase discount shows in the price, with the full price struck through, and applies at checkout.
+• The profile no longer keeps bouncing after a quick upward swipe.
+• Show or hide your password when signing in or signing up.
+</en-US>
+<es-419>
+• Pistas de pago: el descuento de primera compra aparece en el precio, con el valor completo tachado, y se aplica al comprar.
+• El perfil ya no sube y baja sin parar después de deslizarlo rápido hacia arriba.
+• Mostrar u ocultar la contraseña al iniciar sesión y al registrarte.
+</es-419>

@@ -38,6 +38,16 @@ variable "admin_members" {
   default     = []
 }
 
+variable "play_publishers" {
+  description = <<-EOT
+    Quem pode emitir token em nome da conta logn-play-publisher e subir build ao teste
+    interno do Play (`just android/play-internal`), no formato do IAM
+    ("user:voce@example.com"). Vazio, ninguém sobe.
+  EOT
+  type        = list(string)
+  default     = []
+}
+
 variable "github_deploy_repository" {
   description = "Repositório do GitHub (dono/nome) cujo workflow pode fazer deploy — o de conteúdo, privado (ADR 0015)."
   type        = string
