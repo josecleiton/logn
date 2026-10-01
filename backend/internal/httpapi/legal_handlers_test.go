@@ -390,3 +390,37 @@ func TestSignupAcceptanceRecordsTheHash(t *testing.T) {
 		t.Fatalf("cadastro gravou sha=%s source=%s", sha, source)
 	}
 }
+
+// O cadastro grava o app que aceitou, como o reaceite; app que não manda grava NULL.
+func TestSignupAcceptanceRecordsTheClient(t *testing.T) {
+	google := fakeVerifier{}
+	f := newSocialFixture(t, google)
+
+	clientOf := func(userID string) (app, platform *string) {
+		t.Helper()
+		if err := f.pool.QueryRow(context.Background(), `
+			SELECT app_version, platform FROM legal_acceptances WHERE user_id = $1 AND kind = 'terms'
+		`, userID).Scan(&app, &platform); err != nil {
+			t.Fatal(err)
+		}
+		return app, platform
+	}
+
+	addr := f.email("cadastro-client")
+	f.cleanupEmail(t, addr)
+	google["c"] = socialauth.Identity{Subject: "cadastro-client-" + f.tag, Email: addr, EmailVerified: true}
+	body := f.signupBody("c")
+	body["client"] = map[string]any{"app": "0.1.0", "platform": "android"}
+	app, platform := clientOf(sessionUser(t, f.post(t, body)))
+	if app == nil || *app != "0.1.0" || platform == nil || *platform != "android" {
+		t.Fatalf("cadastro gravou app=%v platform=%v", app, platform)
+	}
+
+	old := f.email("cadastro-sem-client")
+	f.cleanupEmail(t, old)
+	google["s"] = socialauth.Identity{Subject: "cadastro-sem-client-" + f.tag, Email: old, EmailVerified: true}
+	app, platform = clientOf(sessionUser(t, f.post(t, f.signupBody("s"))))
+	if app != nil || platform != nil {
+		t.Fatalf("app sem client gravou app=%v platform=%v", app, platform)
+	}
+}

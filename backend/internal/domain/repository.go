@@ -37,6 +37,13 @@ type LegalAcceptance struct {
 	Locale  string `json:"locale"`
 }
 
+// ClientInfo é o app que gravou o aceite: versão e plataforma, já validadas por quem
+// chama. Vazio grava NULL — app antigo, que não manda.
+type ClientInfo struct {
+	App      string
+	Platform string
+}
+
 type Repository struct {
 	db *pgxpool.Pool
 }
@@ -531,15 +538,15 @@ func (r *Repository) GetUserProgress(ctx context.Context, userID string) ([]User
 }
 
 // CreateUser cria a conta com a confirmação de idade, o país considerado nela (vazio
-// grava NULL) e os aceites, numa transação só.
-func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string, ageConfirmed bool, country string, acceptances []LegalAcceptance) (string, error) {
+// grava NULL) e os aceites, com o app que os gravou, numa transação só.
+func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string, ageConfirmed bool, country string, acceptances []LegalAcceptance, client ClientInfo) (string, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return "", err
 	}
 	defer tx.Rollback(ctx)
 
-	id, err := createUserTx(ctx, tx, email, passwordHash, ageConfirmed, country, acceptances)
+	id, err := createUserTx(ctx, tx, email, passwordHash, ageConfirmed, country, acceptances, client)
 	if err != nil {
 		return "", err
 	}
@@ -551,7 +558,7 @@ func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string,
 
 // createUserTx insere a conta e os aceites dentro da transação de quem chama. Hash
 // vazio grava NULL: é a conta que só entra por provedor externo.
-func createUserTx(ctx context.Context, tx pgx.Tx, email, passwordHash string, ageConfirmed bool, country string, acceptances []LegalAcceptance) (string, error) {
+func createUserTx(ctx context.Context, tx pgx.Tx, email, passwordHash string, ageConfirmed bool, country string, acceptances []LegalAcceptance, client ClientInfo) (string, error) {
 	var id string
 	query := `
 		INSERT INTO users (email, password_hash, age_confirmed_at, country)
@@ -566,11 +573,12 @@ func createUserTx(ctx context.Context, tx pgx.Tx, email, passwordHash string, ag
 	// reaceite (ADR 0020). Documento que não existe não grava aceite: é erro.
 	for _, acc := range acceptances {
 		tag, err := tx.Exec(ctx, `
-			INSERT INTO legal_acceptances (user_id, kind, version, locale, body_sha256, source)
-			SELECT $1, d.kind, d.version, d.locale, encode(sha256(convert_to(d.body_html, 'UTF8')), 'hex'), 'signup'
+			INSERT INTO legal_acceptances (user_id, kind, version, locale, body_sha256, app_version, platform, source)
+			SELECT $1, d.kind, d.version, d.locale, encode(sha256(convert_to(d.body_html, 'UTF8')), 'hex'),
+			       NULLIF($5, ''), NULLIF($6, ''), 'signup'
 			FROM legal_documents d
 			WHERE d.kind = $2 AND d.version = $3 AND d.locale = $4
-		`, id, acc.Kind, acc.Version, acc.Locale)
+		`, id, acc.Kind, acc.Version, acc.Locale, client.App, client.Platform)
 		if err != nil {
 			return "", err
 		}

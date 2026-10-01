@@ -1713,6 +1713,22 @@ pub struct SocialCredential {
     pub nonce: String,
 }
 
+/// O app que grava os aceites do cadastro, como no reaceite. Shell que ainda não disse a
+/// plataforma manda o client vazio, que o servidor grava como NULL: meio client (versão
+/// sem plataforma) ele recusa, e isso travaria o cadastro.
+///
+/// A versão segue o padrão do servidor (`^[0-9A-Za-z.+-]{1,32}$`); fora dele vai vazia,
+/// e só a plataforma é gravada. Um sufixo de build estranho não pode impedir o cadastro.
+fn signup_client(model: &Model) -> serde_json::Value {
+    if model.client_platform.is_empty() {
+        return serde_json::json!({});
+    }
+    let version = &model.client_app_version;
+    let readable = version.len() <= 32 && version.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '+' | '-'));
+    let app = if readable { version.as_str() } else { "" };
+    serde_json::json!({ "app": app, "platform": model.client_platform })
+}
+
 /// O corpo do `POST /api/v1/auth/social`. Sem idade e aceite, é a primeira tentativa;
 /// com eles, a criação da conta.
 fn social_login_body(model: &Model, cred: &SocialCredential, signup: Option<(bool, bool)>) -> Vec<u8> {
@@ -1729,6 +1745,7 @@ fn social_login_body(model: &Model, cred: &SocialCredential, signup: Option<(boo
         } else {
             serde_json::json!([])
         };
+        body["client"] = signup_client(model);
     }
     body.to_string().into_bytes()
 }
@@ -3681,6 +3698,7 @@ Event::FetchChallenges => {
                     "email": email, "password": password, "otp": otp,
                     "age_confirmed": age_confirmed, "country": model.legal_country,
                     "legal_acceptances": acceptances,
+                    "client": signup_client(model),
                 });
                 let request = HttpRequest {
                     method: "POST".to_string(),
@@ -8018,6 +8036,38 @@ mod tests {
             age_confirmed: true, legal_accepted: false,
         }, &mut model);
         assert_eq!(register_body(&mut cmd)["legal_acceptances"], serde_json::json!([]));
+    }
+
+    /// O cadastro diz que app gravou o aceite, como o reaceite. Sem plataforma do shell,
+    /// o client vai vazio: meio client o servidor recusaria, e o cadastro travaria.
+    #[test]
+    fn test_signup_bodies_carry_the_client() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.legal_versions = vec![("terms".into(), 1), ("privacy".into(), 1)];
+        let register = |model: &mut Model| {
+            let mut cmd = app.update(Event::Register {
+                email: "a@example.com".into(), password: "senha-forte".into(), otp: "123456".into(),
+                age_confirmed: true, legal_accepted: true,
+            }, model);
+            register_body(&mut cmd)["client"].clone()
+        };
+        assert_eq!(register(&mut model), serde_json::json!({}));
+
+        let _ = app.update(Event::SetClientInfo { app_version: "0.1.0".into(), platform: "android".into() }, &mut model);
+        model.is_authenticating = false;
+        assert_eq!(register(&mut model), serde_json::json!({ "app": "0.1.0", "platform": "android" }));
+
+        let cred = SocialCredential { provider: "google".into(), id_token: "t".into(), nonce: "n".into() };
+        let body: serde_json::Value = serde_json::from_slice(&social_login_body(&model, &cred, Some((true, true)))).unwrap();
+        assert_eq!(body["client"]["platform"], "android");
+        let first: serde_json::Value = serde_json::from_slice(&social_login_body(&model, &cred, None)).unwrap();
+        assert!(first.get("client").is_none(), "a primeira tentativa não é cadastro");
+
+        // Versão que o servidor recusaria vai vazia: a plataforma ainda é gravada.
+        let _ = app.update(Event::SetClientInfo { app_version: "0.1.0 (build_7)".into(), platform: "android".into() }, &mut model);
+        model.is_authenticating = false;
+        assert_eq!(register(&mut model), serde_json::json!({ "app": "", "platform": "android" }));
     }
 
     #[test]

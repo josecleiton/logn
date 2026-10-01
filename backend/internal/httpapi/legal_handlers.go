@@ -107,6 +107,25 @@ var appVersionPattern = regexp.MustCompile(`^[0-9A-Za-z.+-]{1,32}$`)
 
 var acceptPlatforms = []string{"ios", "android"}
 
+// SignupClient é o `client` do cadastro, o mesmo do reaceite. Opcional: app que ainda
+// não o manda grava NULL, como gravava antes.
+type SignupClient struct {
+	App      string `json:"app"`
+	Platform string `json:"platform"`
+}
+
+// info valida o client com a mesma lista fechada do reaceite. Vazio vale (app antigo);
+// valor fora da lista é pedido malformado, não NULL silencioso.
+func (c SignupClient) info() (domain.ClientInfo, bool) {
+	if c.App == "" && c.Platform == "" {
+		return domain.ClientInfo{}, true
+	}
+	if !slices.Contains(acceptPlatforms, c.Platform) || (c.App != "" && !appVersionPattern.MatchString(c.App)) {
+		return domain.ClientInfo{}, false
+	}
+	return domain.ClientInfo{App: c.App, Platform: c.Platform}, true
+}
+
 // acceptLegalHandler grava o novo aceite (ADR 0020). O pedido tem de aceitar tudo o
 // que está pendente, na versão vigente e com o hash do texto que o servidor serve: é
 // a prova de que o aceito é o que estava na tela. A hora é a do servidor.

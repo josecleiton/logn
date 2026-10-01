@@ -84,7 +84,7 @@ func (f *socialFixture) seedPasswordUser(t *testing.T, addr string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	id, err := f.s.repo.CreateUser(context.Background(), addr, hash, true, "BR", nil)
+	id, err := f.s.repo.CreateUser(context.Background(), addr, hash, true, "BR", nil, domain.ClientInfo{})
 	if err != nil {
 		t.Fatalf("usuário: %v", err)
 	}
@@ -197,6 +197,14 @@ func TestSocialSignupNeedsAgeAndTerms(t *testing.T) {
 	badCountry := f.signupBody("novo")
 	badCountry["country"] = "XYZ"
 	expect(t, f.post(t, badCountry), http.StatusBadRequest, codeInvalidCountry)
+
+	// O client é de lista fechada, como no reaceite: o que vira coluna não vem cru.
+	badPlatform := f.signupBody("novo")
+	badPlatform["client"] = map[string]any{"app": "1.0.0", "platform": "windows"}
+	expect(t, f.post(t, badPlatform), http.StatusBadRequest, codeInvalidRequest)
+	badApp := f.signupBody("novo")
+	badApp["client"] = map[string]any{"app": "1.0'; DROP", "platform": "android"}
+	expect(t, f.post(t, badApp), http.StatusBadRequest, codeInvalidRequest)
 
 	// Nenhuma das tentativas recusadas deixou conta para trás.
 	var n int
@@ -364,6 +372,87 @@ func TestPasswordlessAccountCanSetAPasswordByEmailCode(t *testing.T) {
 	// E o Google continua entrando na mesma conta.
 	if got := sessionUser(t, f.post(t, loginBody("t"))); got != userID {
 		t.Fatalf("login social depois da senha: %s, want %s", got, userID)
+	}
+}
+
+// O client inválido no cadastro por e-mail é recusado antes do OTP: recusar depois
+// gastaria um código válido, e o mesmo código ainda cria a conta com o client certo.
+func TestEmailSignupRefusesABadClientWithoutSpendingTheCode(t *testing.T) {
+	f := newSocialFixture(t, fakeVerifier{})
+	addr := f.email("cadastro-email-client")
+	f.cleanupEmail(t, addr)
+	const code = "654321"
+	if err := f.s.repo.SaveOTP(context.Background(), addr, code, domain.OTPPurposeVerifyEmail, time.Minute); err != nil {
+		t.Fatalf("código: %v", err)
+	}
+	t.Cleanup(func() { f.pool.Exec(context.Background(), `DELETE FROM otps WHERE email = $1`, addr) })
+
+	register := func(client map[string]any) *httptest.ResponseRecorder {
+		body, _ := json.Marshal(map[string]any{
+			"email": addr, "password": "senha-forte-123", "otp": code,
+			"age_confirmed": true, "country": "BR", "client": client,
+			"legal_acceptances": []map[string]any{
+				{"kind": "terms", "version": f.terms, "locale": "pt-BR"},
+				{"kind": "privacy", "version": f.privacy, "locale": "pt-BR"},
+			},
+		})
+		rec := httptest.NewRecorder()
+		f.s.registerHandler(rec, httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body)))
+		return rec
+	}
+
+	expect(t, register(map[string]any{"app": "0.1.0", "platform": "windows"}), http.StatusBadRequest, codeInvalidRequest)
+	// Versão sem plataforma é meio client: recusado.
+	expect(t, register(map[string]any{"app": "0.1.0"}), http.StatusBadRequest, codeInvalidRequest)
+	userID := sessionUser(t, register(map[string]any{"app": "0.1.0", "platform": "ios"}))
+
+	var platform string
+	if err := f.pool.QueryRow(context.Background(), `
+		SELECT platform FROM legal_acceptances WHERE user_id = $1 AND kind = 'privacy'
+	`, userID).Scan(&platform); err != nil || platform != "ios" {
+		t.Fatalf("cadastro por e-mail gravou platform=%q (%v)", platform, err)
+	}
+}
+
+// App antigo, sem client, ainda cadastra por e-mail; plataforma sem versão grava só a
+// plataforma.
+func TestEmailSignupWithoutOrWithPartialClient(t *testing.T) {
+	f := newSocialFixture(t, fakeVerifier{})
+	signup := func(name string, client map[string]any) (app, platform *string) {
+		t.Helper()
+		addr := f.email(name)
+		f.cleanupEmail(t, addr)
+		const code = "112233"
+		if err := f.s.repo.SaveOTP(context.Background(), addr, code, domain.OTPPurposeVerifyEmail, time.Minute); err != nil {
+			t.Fatalf("código: %v", err)
+		}
+		t.Cleanup(func() { f.pool.Exec(context.Background(), `DELETE FROM otps WHERE email = $1`, addr) })
+		fields := map[string]any{
+			"email": addr, "password": "senha-forte-123", "otp": code, "age_confirmed": true, "country": "BR",
+			"legal_acceptances": []map[string]any{
+				{"kind": "terms", "version": f.terms, "locale": "pt-BR"},
+				{"kind": "privacy", "version": f.privacy, "locale": "pt-BR"},
+			},
+		}
+		if client != nil {
+			fields["client"] = client
+		}
+		body, _ := json.Marshal(fields)
+		rec := httptest.NewRecorder()
+		f.s.registerHandler(rec, httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body)))
+		if err := f.pool.QueryRow(context.Background(), `
+			SELECT app_version, platform FROM legal_acceptances WHERE user_id = $1 AND kind = 'terms'
+		`, sessionUser(t, rec)).Scan(&app, &platform); err != nil {
+			t.Fatal(err)
+		}
+		return app, platform
+	}
+
+	if app, platform := signup("email-sem-client", nil); app != nil || platform != nil {
+		t.Fatalf("app antigo gravou app=%v platform=%v", app, platform)
+	}
+	if app, platform := signup("email-so-plataforma", map[string]any{"platform": "android"}); app != nil || platform == nil || *platform != "android" {
+		t.Fatalf("só plataforma gravou app=%v platform=%v", app, platform)
 	}
 }
 
