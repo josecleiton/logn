@@ -25,9 +25,22 @@ backend/logn-backend
 
 # Configs & Secrets
 .env
+.env.*
+!.env.example
 *.xcconfig
 !*.xcconfig.example
 contest/
+
+# Chaves e credenciais de loja, push e conta de serviço. A única que entra é a raiz
+# pública da Apple, que o storekit embute para verificar o JWS.
+*.p8
+*.p12
+*.pem
+!backend/internal/storekit/AppleRootCA-G3.pem
+google-services.json
+GoogleService-Info.plist
+*-sa.json
+*service-account*.json
 
 # Terraform — estado e variáveis reais nunca entram no git, só o esquema (*.tf), o
 # terraform.tfvars.example e o .terraform.lock.hcl (esse fixa versão de provider,
@@ -36,6 +49,8 @@ terraform/.terraform/
 terraform/*.tfstate
 terraform/*.tfstate.*
 terraform/terraform.tfvars
+terraform/*.auto.tfvars
+terraform/*.auto.tfvars.json
 terraform/generated_resources.tf
 crash.log
 

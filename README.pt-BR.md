@@ -20,8 +20,8 @@ o placar congela no fim. A sessão dura minutos, não uma tarde.
 
 ## Como funciona
 
-**Trilhas de assuntos** de programação competitiva, ligados como grafo e não
-como lista: um assunto pode abrir mais de um caminho, e caminhos podem voltar a se encontrar. Cada nó abre
+**Trilhas de assuntos** de programação, ligados como grafo e não como lista: um assunto
+pode abrir mais de um caminho, e caminhos podem voltar a se encontrar. Cada nó abre
 com XP acumulado, e o XP entra por resposta aceita. O currículo em si — os assuntos,
 enunciados e gabaritos — vive no repositório de conteúdo.
 
@@ -53,7 +53,7 @@ onde está o trabalho.
 
 ## Plataformas
 
-O lançamento é no **Android**, pelo Google Play ([ADR 0022](docs/architecture/decisions/0022-android-primeiro-no-lancamento.md)).
+O lançamento é no **Android**, pelo Google Play ([ADR 0022](docs/architecture/decisions/0022-android-primeiro-no-lancamento.pt-BR.md)).
 O cliente iOS usa o mesmo núcleo e chega à App Store depois; a lista de espera fica em
 [logn.sh](https://logn.sh).
 
@@ -86,5 +86,5 @@ redistribua, inclusive comercialmente.
 
 **O nome LogN, o símbolo e a identidade visual não estão nessa licença.** Um derivado é
 bem-vindo; ele só precisa de outro nome e outra cara. Detalhes em
-[TRADEMARKS.md](TRADEMARKS.md), e atribuições de terceiros — incluindo as fontes IBM
-Plex, que são OFL — em [NOTICE](NOTICE).
+[TRADEMARKS.pt-BR.md](TRADEMARKS.pt-BR.md), e atribuições de terceiros — incluindo as
+fontes IBM Plex, que são OFL — em [NOTICE.pt-BR](NOTICE.pt-BR).

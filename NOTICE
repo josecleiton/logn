@@ -1,51 +1,90 @@
 LogN
 Copyright 2026 José Cleiton Correia
 
-Este produto inclui software desenvolvido por José Cleiton Correia.
-Licenciado sob a Apache License, Version 2.0 — ver LICENSE.
+A Portuguese translation is in NOTICE.pt-BR. This English file prevails.
+
+This product includes software developed by José Cleiton Correia.
+Licensed under the Apache License, Version 2.0; see LICENSE.
 
 --------------------------------------------------------------------------------
-MARCA
+TRADEMARK
 --------------------------------------------------------------------------------
 
-O nome "LogN", o símbolo do balão, a paleta de cores e a identidade visual do
-aplicativo NÃO estão cobertos pela licença deste código. A seção 6 da Apache
-License 2.0 deixa isso explícito, e TRADEMARKS.md diz o que vale e o que não vale.
+The "LogN" name, the balloon symbol, the brand files and the app's visual identity
+as a trademark are NOT covered by the license of this code. Section 6 of the Apache
+License 2.0 makes that explicit, and TRADEMARKS.md lists the files and says what is
+and is not allowed.
 
 --------------------------------------------------------------------------------
-CONTEÚDO
+CONTENT
 --------------------------------------------------------------------------------
 
-Os desafios, enunciados, gabaritos e explicações da trilha — e o método de
-escrevê-los — não estão neste repositório e não são cobertos por esta licença.
+The track's challenges, statements, answer keys and explanations, and the method
+for writing them, are not in this repository and are not covered by this license.
 
-Parte dos problemas tem origem em exercícios de Farias.
+Some of the problems originate from exercises by Farias.
 
 --------------------------------------------------------------------------------
-SOFTWARE DE TERCEIROS
+THIRD-PARTY SOFTWARE
 --------------------------------------------------------------------------------
 
-IBM Plex Sans e IBM Plex Mono
-  Copyright 2017 IBM Corp.
-  SIL Open Font License 1.1
-  https://github.com/IBM/plex/blob/master/LICENSE.txt
-  Os arquivos .ttf distribuídos em ios/LogNiOS/LogNiOS/Resources/Fonts/ estão sob
-  a OFL, não sob a Apache 2.0.
+IBM Plex Sans and IBM Plex Mono
+  IBM Plex Sans: Copyright 2018 IBM Corp. IBM Plex Mono: Copyright 2017 IBM Corp.
+  Reserved Font Name "Plex".
+  SIL Open Font License 1.1; full text in
+  ios/LogNiOS/LogNiOS/Resources/Fonts/OFL.txt
+  The .ttf files in ios/LogNiOS/LogNiOS/Resources/Fonts/ and in
+  android/app/src/main/res/font/, and the copies the landing page serves under
+  /fonts/, are under the OFL, not the Apache 2.0. They are the original files,
+  unmodified.
+
+Swift serialization runtime (Serde/Bincode)
+  Copyright (c) Facebook, Inc. and its affiliates.
+  MIT License or Apache License 2.0, at your option
+  Comes from serde-reflection, through Redbadger's facet_generate (Apache License
+  2.0): https://github.com/redbadger/facet-generate
+  The files in ios/LogNCoreFFI/Sources/Serde/ are a copy of that runtime.
+
+boltffi
+  MIT License
+  https://github.com/boltffi/boltffi
+  Generates the FFI bridge (SharedCoreBoltFFI.swift, boltffi.h).
 
 Crux
-  Redbadger — Apache License 2.0
+  Redbadger, Apache License 2.0
   https://github.com/redbadger/crux
 
 PostHog iOS SDK
-  PostHog — MIT License
+  PostHog, MIT License
   https://github.com/PostHog/posthog-ios
 
 --------------------------------------------------------------------------------
-MARCAS DE TERCEIROS
+THIRD-PARTY MARKS
 --------------------------------------------------------------------------------
 
-Selo "Download on the App Store"
-  Apple Inc. Apple, o logotipo da Apple e App Store são marcas da Apple Inc.
-  Os arquivos em landing/src/assets/badges/ são a arte oficial da Apple, sem
-  alteração, e NÃO estão sob a Apache 2.0. O uso segue as App Store Marketing
+"Download on the App Store" badge
+  Apple Inc. Apple, the Apple logo and App Store are trademarks of Apple Inc.
+  landing/src/assets/badges/app-store-*.svg are Apple's official artwork,
+  unmodified, and are NOT under the Apache 2.0. Use follows the App Store Marketing
   Guidelines: https://developer.apple.com/app-store/marketing/guidelines/
+
+"Get it on Google Play" badge
+  Google LLC. Google Play and the Google Play logo are trademarks of Google LLC.
+  landing/src/assets/badges/google-play-*.png are Google's official artwork,
+  unmodified, and are NOT under the Apache 2.0. Use follows the Google Play brand
+  guidelines: https://partnermarketinghub.withgoogle.com/brands/google-play/
+
+Google "G" logo
+  Google LLC. Used on the "Sign in with Google" button, following the Google
+  Sign-In branding guidelines:
+  https://developers.google.com/identity/branding-guidelines
+  It is in ios/LogNiOS/LogNiOS/Assets.xcassets/GoogleIcon.imageset/ and
+  android/app/src/main/java/sh/logn/app/ui/components/ProviderIcons.kt, and is NOT
+  under the Apache 2.0.
+
+GitHub mark (Invertocat)
+  GitHub, Inc. Used on the "Sign in with GitHub" button, following
+  https://github.com/logos. It is in
+  ios/LogNiOS/LogNiOS/Assets.xcassets/GitHubIcon.imageset/ and in
+  android/app/src/main/java/sh/logn/app/ui/components/ProviderIcons.kt, and is NOT
+  under the Apache 2.0.

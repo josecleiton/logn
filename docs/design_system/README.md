@@ -1,178 +1,182 @@
 # Handoff: LogN — Design System v2
 
+**English** · [Português](README.pt-BR.md)
+
 ## Overview
-LogN é um app de micro-aprendizado de programação competitiva: sessões de ~3 minutos que
-reproduzem a gramática de um contest ICPC real (problemas por letra, balões por cor, vidas,
-placar que congela na última hora). Este pacote descreve o sistema visual completo — cor,
-tipografia, espaço, motion, componentes, quatro templates de questão e as telas-chave.
+LogN is a micro-learning app for competitive programming: ~3-minute sessions that
+reproduce the grammar of a real ICPC contest (problems by letter, balloons by color, lives,
+a scoreboard that freezes in the last hour). This package describes the complete visual system: color,
+typography, space, motion, components, four question templates and the key screens.
 
-Duas plataformas, paridade total de geometria/cor/copy: **Jetpack Compose** e **SwiftUI**.
+Two platforms, full parity of geometry/color/copy: **Jetpack Compose** and **SwiftUI**.
 
-> **Nomenclatura:** *Impecable* é a ferramenta de design em que o sistema foi produzido e
-> aparece como assinatura no cabeçalho do documento. O produto — e o namespace de código —
-> é **LogN**. Se existir um sistema de marca Impecable anterior que o LogN deva herdar
-> (logo, paleta institucional, tom de voz corporativo), ele **não** foi fornecido e não está
-> refletido aqui; tudo abaixo foi definido do zero para o LogN.
+> **Naming:** *Impecable* is the design tool the system was produced in, and it
+> appears as a signature in the document header. The product, and the code namespace,
+> is **LogN**. If there is an earlier Impecable brand system that LogN should inherit
+> (logo, corporate palette, corporate tone of voice), it was **not** provided and is not
+> reflected here; everything below was defined from scratch for LogN.
 
 ## About the Design Files
-Os arquivos `.dc.html` deste bundle são **referências de design criadas em HTML** —
-protótipos que mostram aparência e comportamento pretendidos. **Não são código de produção
-para copiar.** A tarefa é **recriar estes designs no ambiente do codebase alvo** (Compose /
-SwiftUI), usando os padrões e bibliotecas já estabelecidos lá. Se ainda não existe ambiente,
-escolha a arquitetura adequada e implemente.
+The handoff `.dc.html` files live in the design project, outside this repository: they
+depend on an editor runtime that does not belong to this project and is not licensed to be
+redistributed here. They are **design references built in HTML**:
+prototypes that show the intended look and behavior. **They are not production code
+to copy.** The task is to **recreate these designs in the target codebase's environment** (Compose /
+SwiftUI), using the patterns and libraries already established there. If no environment exists yet,
+choose the appropriate architecture and implement it.
 
-Os arquivos em `tokens/` são a exceção: esses **são** para entrar no codebase quase como estão.
+The files in `tokens/` are the exception: those **are** meant to go into the codebase nearly as they are.
 
 ## Fidelity
-**High-fidelity.** Cores, tipografia, espaçamento, estados e durações de animação são finais.
-Recrie pixel-a-pixel usando os componentes nativos de cada plataforma.
+**High-fidelity.** Colors, typography, spacing, states and animation durations are final.
+Recreate them pixel for pixel using each platform's native components.
 
 ---
 
-## Marca
+## Brand
 
-O nome mora dentro da notação: `O(log n)`. A marca faz esse `O` virar balão, e a cordinha
-do balão virar a curva logarítmica — sobe rápido, depois estabiliza. Duas leituras numa forma
-só: para quem compete é o balão do ICPC, para qualquer um é a curva de quem melhorou.
+The name lives inside the notation: `O(log n)`. The mark turns that `O` into a balloon, and the
+balloon's string into the logarithmic curve: it rises fast, then levels off. Two readings in one
+shape: for competitors it is the ICPC balloon, for anyone else it is the curve of someone who improved.
 
-### Símbolo
-Vetor em `brand/`, viewBox `0 0 96 122`. Quatro elementos, nesta ordem de z:
-1. **Corpo** — `M48 4 C66 4 80 20 80 41 C80 60 66 74 53 79 L48 83 L43 79 C30 74 16 60 16 41 C16 20 30 4 48 4 Z`
-2. **Brilho** — `M31 21 C27 27 25 33 25 40`, traço 5.5, cap redondo, branco @75%
-3. **Nó** — `M41 76 L55 76 L48 91 Z`
-4. **Cauda (curva log)** — `M48 90 C49 104 56 111 68 113 C78 115 84 115 90 116`, traço 5, cap redondo
+### Symbol
+Vector in `brand/`, viewBox `0 0 96 122`. Four elements, in this z-order:
+1. **Body** — `M48 4 C66 4 80 20 80 41 C80 60 66 74 53 79 L48 83 L43 79 C30 74 16 60 16 41 C16 20 30 4 48 4 Z`
+2. **Highlight** — `M31 21 C27 27 25 33 25 40`, stroke 5.5, round cap, white @75%
+3. **Knot** — `M41 76 L55 76 L48 91 Z`
+4. **Tail (log curve)** — `M48 90 C49 104 56 111 68 113 C78 115 84 115 90 116`, stroke 5, round cap
 
-| Versão | Arquivo | Quando |
+| Version | File | When |
 |---|---|---|
-| Accent | `logn-symbol-accent.svg` | padrão, sobre canvas ou surface |
-| Monocromático | `logn-symbol-currentcolor.svg` | herda `currentColor` — documento, impressão, parceiro |
-| Vazado | `logn-symbol-knockout.svg` | sobre o accent, em `onAccent` |
+| Accent | `logn-symbol-accent.svg` | default, on canvas or surface |
+| Monochrome | `logn-symbol-currentcolor.svg` | inherits `currentColor`: documents, print, partners |
+| Knockout | `logn-symbol-knockout.svg` | on accent, in `onAccent` |
 
 ### Lockups
-Não há SVG de lockup: monte compondo o símbolo com texto vivo em IBM Plex Sans SemiBold.
-- **Horizontal (uso diário — header, loja, e-mail):** símbolo + `LogN` a 44sp/600, tracking −0.035em,
-  gap de 14dp, alinhados pelo centro óptico. Altura do símbolo ≈ 1,27× a altura da caixa-alta.
-- **Assinatura longa (abertura, institucional, rodapé):** `(` + símbolo + `log n` + `)` em IBM Plex Mono,
-  parênteses em `textSecondary`, `log n` em `textPrimary`, símbolo no lugar exato do `O`.
-- **Símbolo isolado:** só onde a marca já é conhecida — ícone de app, favicon, avatar.
+There is no lockup SVG: build it by composing the symbol with live text in IBM Plex Sans SemiBold.
+- **Horizontal (everyday use: header, store, email):** symbol + `LogN` at 44sp/600, tracking −0.035em,
+  14dp gap, aligned on the optical center. Symbol height ≈ 1.27× the cap height.
+- **Long signature (splash, corporate, footer):** `(` + symbol + `log n` + `)` in IBM Plex Mono,
+  parentheses in `textSecondary`, `log n` in `textPrimary`, symbol in the exact place of the `O`.
+- **Symbol alone:** only where the brand is already known: app icon, favicon, avatar.
 
-### Slogan
-**Reduza a complexidade das suas soluções.**
+### Tagline
+**Reduza a complexidade das suas soluções.** ("Reduce the complexity of your solutions.")
 
-Em caixa-alta, IBM Plex Mono 10sp, `letter-spacing 0.1em`, `textSecondary`, sempre abaixo do
-lockup horizontal com 12dp de respiro. Aparece na tela de entrada e em peças institucionais —
-nunca no header do app, onde só o lockup cabe.
+Uppercase, IBM Plex Mono 10sp, `letter-spacing 0.1em`, `textSecondary`, always below the
+horizontal lockup with 12dp of clear space. It appears on the welcome screen and in corporate pieces,
+never in the app header, where only the lockup fits.
 
-Funciona em duas leituras sem piscar para o leitor: quem é da área lê complexidade de tempo
-— a grandeza que O(log n) mede; quem não é lê a promessa de simplificar. **Solução** é o
-objeto certo porque cobre o currículo inteiro: algoritmo, arquitetura e infra têm complexidade,
-"código" deixaria as duas últimas de fora.
+It works on two readings without winking at the reader: people in the field read time complexity,
+the quantity O(log n) measures; everyone else reads a promise to simplify. **Solution** is the
+right object because it covers the whole curriculum: algorithms, architecture and infra all have complexity,
+while "code" would leave the last two out.
 
-**Variante em inglês: "Reduce the complexity."**
-Não é tradução da linha em português — é a versão que funciona no idioma. Em inglês,
-*complexity* sem qualificador num contexto de engenharia já lê como time complexity, então
-o objeto fica implícito e a linha pode ser curta. Em português isso não acontece: "reduza a
-complexidade" pede o objeto, daí "das suas soluções". Usar cada uma no seu idioma, nunca
-traduzir uma na outra.
+**English variant: "Reduce the complexity."**
+It is not a translation of the Portuguese line; it is the version that works in that language. In English,
+*complexity* with no qualifier in an engineering context already reads as time complexity, so
+the object stays implicit and the line can be short. In Portuguese that does not happen: "reduza a
+complexidade" asks for an object, hence "das suas soluções". Use each one in its own language, never
+translate one into the other.
 
-Descartadas e por quê, para ninguém restaurar mais adiante:
-- *"Mastering technology bit-by-bit"* — percorrer um item de cada vez é O(n), exatamente a
-  curva que o nome promete evitar.
-- *"Reduzindo a complexidade da tecnologia"* — é a frase que toda consultoria de TI usa, e o
-  duplo sentido morre no clichê.
-- *"Reduza a complexidade"* sem objeto — em português, evocativa demais para a tela onde
-  alguém decide se baixa o app (o inglês não tem esse problema; ver acima).
-- *"Crack the complexity of everything you build"* — mais energia e mais perto do ICPC, mas
-  *crack* não é o verbo que anda com *complexity* em code review, e 44 caracteres estouram a
-  largura no iPhone SE.
+Rejected options and why, so nobody brings them back later:
+- *"Mastering technology bit-by-bit"*: going through one item at a time is O(n), exactly the
+  curve the name promises to avoid.
+- *"Reduzindo a complexidade da tecnologia"* ("Reducing the complexity of technology"): it is the line every IT consultancy uses, and the
+  double meaning dies in the cliché.
+- *"Reduza a complexidade"* with no object: in Portuguese, too evocative for the screen where
+  someone decides whether to download the app (English does not have this problem; see above).
+- *"Crack the complexity of everything you build"*: more energy and closer to ICPC, but
+  *crack* is not the verb that goes with *complexity* in code review, and 44 characters overflow the
+  width on the iPhone SE.
 
-### Escala e respiro
-Mínimo **16px**. Abaixo de 24px remova o brilho especular (só corpo, nó e cauda).
-Área de respiro em qualquer aplicação: a largura do corpo do balão em todos os lados.
-Ícone de app: símbolo a ~54% da largura do tile, centrado opticamente (o centro visual fica
-acima do geométrico por causa da cauda — desloque o símbolo ~4% para cima).
+### Scale and clear space
+Minimum **16px**. Below 24px, remove the specular highlight (body, knot and tail only).
+Clear space in any use: the width of the balloon body on every side.
+App icon: symbol at ~54% of the tile width, optically centered (the visual center sits
+above the geometric one because of the tail; shift the symbol ~4% up).
 
-### O que não fazer
-- Pintar com cor de balão — as treze são endereço de problema, não a marca
-- Girar — o balão sobe na vertical e a curva só lê no eixo certo
-- Distorcer — a proporção do corpo é 1 : 1,14
-- Escrever o `O` da assinatura com tipo — na assinatura o `O` é sempre o símbolo
+### Don'ts
+- Don't paint it in a balloon color: the thirteen are problem addresses, not the brand
+- Don't rotate it: the balloon rises vertically and the curve only reads on the right axis
+- Don't distort it: the body ratio is 1 : 1.14
+- Don't typeset the signature's `O`: in the signature the `O` is always the symbol
 
 ---
 
 ## Design Tokens
 
-### Superfície e linha
-| Token | Dark | Light | Uso |
+### Surface and line
+| Token | Dark | Light | Use |
 |---|---|---|---|
-| canvas | `#0B0C0D` | `#F6F6F4` | fundo da tela |
-| surface | `#111316` | `#FFFFFF` | cards, listas |
-| surfaceRaised | `#171A1E` | `#F0F1EE` | bottom sheet, header de tabela |
-| line | `#24282D` | `#E2E3DF` | divisor padrão |
-| lineStrong | `#343A41` | `#C6C8C2` | borda de card e de botão secundário |
-| lineDim | `#4C535B` | `#A9AFB5` | borda tracejada de dropzone vazia |
-| rowLine | `#16191C` | `#ECEDE9` | divisor interno de lista densa |
+| canvas | `#0B0C0D` | `#F6F6F4` | screen background |
+| surface | `#111316` | `#FFFFFF` | cards, lists |
+| surfaceRaised | `#171A1E` | `#F0F1EE` | bottom sheet, table header |
+| line | `#24282D` | `#E2E3DF` | default divider |
+| lineStrong | `#343A41` | `#C6C8C2` | card and secondary button border |
+| lineDim | `#4C535B` | `#A9AFB5` | dashed border of an empty dropzone |
+| rowLine | `#16191C` | `#ECEDE9` | inner divider in dense lists |
 
-### Conteúdo
-| Token | Dark | Light | Contraste |
+### Content
+| Token | Dark | Light | Contrast |
 |---|---|---|---|
 | textPrimary | `#EDEEEF` | `#14161A` | 15.8:1 / 15.4:1 |
 | textSecondary | `#99A0A7` | `#555B62` | 7.1:1 / 7.0:1 |
 | textMuted | `#7E858D` | `#656B72` | 5.0:1 / 4.8:1 |
-| textDim | `#5F656C` | `#7C838A` | **só forma e placeholder** — 3.6:1 no light, nunca em texto lido |
+| textDim | `#5F656C` | `#7C838A` | **shape and placeholder only**: 3.6:1 in light, never on text that is read |
 
-Número de linha em CodeBlock usa `textMuted`, não `lineDim` — é conteúdo lido.
+CodeBlock line numbers use `textMuted`, not `lineDim`: they are content that gets read.
 
-### Ação
-| Token | Dark | Light | Uso |
+### Action
+| Token | Dark | Light | Use |
 |---|---|---|---|
-| accent | `#FF7A45` | `#FF7A45` | **preenchimento e borda** — botão, balão ativo, seleção, aresta ativa |
-| accentInk | `#FF7A45` | `#A83C0B` | **texto e ícone** em accent |
-| onAccent | `#160B05` | `#160B05` | texto sobre o preenchimento accent |
-| buttonDisabled | `#1B1D20` | `#E6E7E3` | botão desabilitado |
+| accent | `#FF7A45` | `#FF7A45` | **fill and border**: button, active balloon, selection, active edge |
+| accentInk | `#FF7A45` | `#A83C0B` | **text and icon** in accent |
+| onAccent | `#160B05` | `#160B05` | text on the accent fill |
+| buttonDisabled | `#1B1D20` | `#E6E7E3` | disabled button |
 
-O acento governa tudo que é tocável e o progresso, e é a mesma cor nos dois temas **enquanto
-é preenchimento**. Como tinta de texto ele não alcança 4.5:1 sobre branco (fica em 2.4:1), então
-o light usa `accentInk` `#A83C0B`.
+The accent governs everything tappable and all progress, and it is the same color in both themes **as long as
+it is a fill**. As text ink it does not reach 4.5:1 on white (it lands at 2.4:1), so
+light uses `accentInk` `#A83C0B`.
 
-> **Regra de tinta — vale para accent, correct, wrong, warn e info.**
-> Fundo, borda e traço de forma usam o token base (`accent`, `correct`, …).
-> Qualquer glifo — label, sigla, número, eyebrow, ícone de linha — usa o token `…Ink`.
-> No dark base e tinta são idênticos, então a distinção só aparece no light: escrever o token
-> base num texto passa despercebido no dark e quebra o contraste no light.
-> Exceção: o coração da LifeBar e o balão preenchido são **forma**, não texto — usam o base.
+> **Ink rule: applies to accent, correct, wrong, warn and info.**
+> Background, border and shape strokes use the base token (`accent`, `correct`, …).
+> Any glyph (label, verdict code, number, eyebrow, line icon) uses the `…Ink` token.
+> In dark, base and ink are identical, so the distinction only shows in light: writing the base
+> token on text goes unnoticed in dark and breaks contrast in light.
+> Exception: the LifeBar heart and the filled balloon are **shape**, not text, so they use the base.
 
-### Veredito (exclusivo do juiz)
-Cada veredito tem três tokens: a **linha** (borda, barra lateral, ícone preenchido), a **tinta**
-(sigla, número, qualquer glifo) e o **tint** de fundo. No dark linha e tinta coincidem; no light
-a tinta escurece, porque a cor de linha não alcança 4.5:1 sobre o próprio tint em corpo pequeno.
+### Verdict (judge only)
+Each verdict has three tokens: the **line** (border, side bar, filled icon), the **ink**
+(verdict code, number, any glyph) and the background **tint**. In dark, line and ink match; in light
+the ink gets darker, because the line color does not reach 4.5:1 on its own tint at small sizes.
 
-| Linha | Dark | Light | | Tinta | Dark | Light | | Tint | Dark | Light |
+| Line | Dark | Light | | Ink | Dark | Light | | Tint | Dark | Light |
 |---|---|---|---|---|---|---|---|---|---|---|
 | correct | `#3DD68C` | `#0E8F52` | | correctInk | `#3DD68C` | `#0A6B3C` | | tintOk | `#0F2018` | `#E6F5EC` |
 | wrong | `#FF5C5C` | `#C93636` | | wrongInk | `#FF5C5C` | `#A82424` | | tintErr | `#231113` | `#FBEAEA` |
 | warn | `#F5C451` | `#8A5B00` | | warnInk | `#F5C451` | `#6E4800` | | tintWarn | `#221C0C` | `#FAF1DC` |
 | info | `#5AA9FF` | `#1660C4` | | infoInk | `#5AA9FF` | `#124F9E` | | tintInfo | `#0D1B2B` | `#E6EFFB` |
 
-**Regra dura:** verde e vermelho aparecem *apenas* como resultado de uma resposta, célula de
-placar, ou **ação destrutiva irreversível** (excluir conta, descartar progresso) — e nesse caso
-só dentro do bloco de confirmação, nunca no estado de repouso da tela. Nunca em navegação, nunca em estado neutro. `warn` é timer crítico e placar congelado;
-`info` é teoria, dica e submissão pós-congelamento.
+**Hard rule:** green and red appear *only* as the result of an answer, a scoreboard
+cell, or an **irreversible destructive action** (delete account, discard progress), and in that case
+only inside the confirmation block, never in the screen's resting state. Never in navigation, never in a neutral state. `warn` is the critical timer and the frozen scoreboard;
+`info` is theory, hints and post-freeze submissions.
 
-### Sintaxe de código
+### Code syntax
 | Token | Dark | Light |
 |---|---|---|
 | synKeyword | `#C792EA` | `#7A28C4` |
 | synFunction | `#82AAFF` | `#0A4FA8` |
-| número | usa `warn` | usa `warn` |
-| texto base | `textSecondary` | `textSecondary` |
-| número de linha | `textMuted` | `textMuted` |
+| number | uses `warn` | uses `warn` |
+| base text | `textSecondary` | `textSecondary` |
+| line number | `textMuted` | `textMuted` |
 
-### Balões A—M — identidade, não estado
-Terceira família de cor, e a única não-semântica. **Cada letra do contest carrega a mesma cor
-em toda parte**: header da questão, placar, relatório. Indica *endereço*, não estado.
+### Balloons A—M: identity, not state
+The third color family, and the only non-semantic one. **Each contest letter carries the same color
+everywhere**: question header, scoreboard, report. It indicates an *address*, not a state.
 
-| Letra | Dark | Light | | Letra | Dark | Light |
+| Letter | Dark | Light | | Letter | Dark | Light |
 |---|---|---|---|---|---|---|
 | A | `#E4572E` | `#C43F19` | | H | `#F4A261` | `#B26320` |
 | B | `#F5C451` | `#A67A00` | | I | `#9BC53D` | `#5F8410` |
@@ -182,22 +186,22 @@ em toda parte**: header da questão, placar, relatório. Indica *endereço*, nã
 | F | `#FF6FB5` | `#C2367E` | | M | `#00B894` | `#007A61` |
 | G | `#4ECDC4` | `#18867E` | | | | |
 
-Proibido: usar cor de balão para veredito, seleção ou navegação; reatribuir uma letra dentro
-do mesmo contest. Acesse sempre por `Balloon.of('C')`, nunca por hex literal.
+Forbidden: using a balloon color for a verdict, selection or navigation; reassigning a letter within
+the same contest. Always access it through `Balloon.of('C')`, never through a hex literal.
 
-### Sombra
-Único uso: bottom sheet, e **só para cima**.
+### Shadow
+Only use: the bottom sheet, and **only upward**.
 | Token | Dark | Light |
 |---|---|---|
 | shadowSoft | `rgba(0,0,0,0.60)` — `0 -10px 40px` | `rgba(20,22,26,0.10)` |
 | shadowSheet | `rgba(0,0,0,0.65)` — `0 -16px 48px` | `rgba(20,22,26,0.14)` |
 
-Cards e botões **não** usam sombra. Hierarquia vem de 1px de linha + um degrau de luminância.
+Cards and buttons do **not** use shadow. Hierarchy comes from a 1px line plus one step of luminance.
 
-### Tipografia
-IBM Plex Sans (interface) + IBM Plex Mono (código, números, rótulos de sistema).
+### Typography
+IBM Plex Sans (interface) + IBM Plex Mono (code, numbers, system labels).
 
-| Estilo | Família | Tamanho/Entrelinha | Peso | Tracking |
+| Style | Family | Size/Line height | Weight | Tracking |
 |---|---|---|---|---|
 | displayLarge | Plex Sans | 40 / 44 | 600 | −0.03em |
 | headlineMedium | Plex Sans | 24 / 30 | 600 | −0.02em |
@@ -207,416 +211,416 @@ IBM Plex Sans (interface) + IBM Plex Mono (código, números, rótulos de sistem
 | code | Plex Mono | 15 / 24 | 400 | 0 |
 | label | Plex Mono | 11 / 16 | 500 | +0.14em, UPPERCASE |
 
-Mínimos: 11sp para rótulo mono, 15sp para qualquer texto lido.
-Todo número que muda em tempo real usa **tabular-nums**.
+Minimums: 11sp for mono labels, 15sp for any text that is read.
+Every number that changes in real time uses **tabular-nums**.
 
-### Espaço, forma
-Escala 4dp: `4 · 8 · 12 · 16 · 24 · 32 · 48`.
-Margem lateral de tela **20dp**. Gap entre cards de lista **8dp**.
+### Space, shape
+4dp scale: `4 · 8 · 12 · 16 · 24 · 32 · 48`.
+Screen side margin **20dp**. Gap between list cards **8dp**.
 
-Raio: **2dp** blocos de código, chips e células de placar · **4dp** padrão (cards, botões,
-inputs) · **8dp** apenas cantos superiores do bottom sheet.
+Radius: **2dp** code blocks, chips and scoreboard cells · **4dp** default (cards, buttons,
+inputs) · **8dp** only on the top corners of the bottom sheet.
 
-### Alvo de toque
-Piso **nativo por plataforma**: 48dp Android, 44pt iOS.
-Exceção de produto: **56dp/pt em qualquer alvo durante partida** — um mis-tap custa uma vida.
-Linhas de código em SPOT_THE_BUG têm 34dp visíveis + folga invisível até o piso.
+### Touch target
+**Native per-platform** floor: 48dp Android, 44pt iOS.
+Product exception: **56dp/pt for any target during a match**, since a mis-tap costs a life.
+Code lines in SPOT_THE_BUG are 34dp visible + invisible padding up to the floor.
 
 ---
 
 ## Motion
 
-| Evento | Duração | Curva | Detalhe |
+| Event | Duration | Curve | Detail |
 |---|---|---|---|
-| Feedback de resposta | 120ms | linear | muda borda + tint da opção |
-| Shake de erro | 240ms | ease-out | ±5dp horizontal, 4 oscilações |
-| Bottom sheet enter | 280ms | emphasized decelerate | de baixo |
-| Troca de questão | 180ms | standard | slide + fade |
-| Balão preenche | 160ms | spring (pop 1.0→1.18→1.0) | ao receber AC |
+| Answer feedback | 120ms | linear | changes the option's border + tint |
+| Error shake | 240ms | ease-out | ±5dp horizontal, 4 oscillations |
+| Bottom sheet enter | 280ms | emphasized decelerate | from the bottom |
+| Question change | 180ms | standard | slide + fade |
+| Balloon fills | 160ms | spring (pop 1.0→1.18→1.0) | on receiving AC |
 
-Nenhuma animação acima de 300ms durante partida.
-`reduceMotion` / `UIAccessibility.isReduceMotionEnabled`: o shake vira flash de borda.
+No animation longer than 300ms during a match.
+`reduceMotion` / `UIAccessibility.isReduceMotionEnabled`: the shake becomes a border flash.
 
 **Haptic**
-| Plataforma | Acerto | Erro |
+| Platform | Correct | Wrong |
 |---|---|---|
 | Compose | `HapticFeedbackType.TextHandleMove` | `HapticFeedbackType.LongPress` |
 | SwiftUI | `.sensoryFeedback(.success, …)` | `.sensoryFeedback(.error, …)` |
 
 ---
 
-## Componentes
+## Components
 
 ### Button
-Altura **52dp**, largura total, raio 4dp. Um primário por tela — sempre o que avança a partida.
-| Variante | Fundo | Texto | Borda |
+Height **52dp**, full width, radius 4dp. One primary per screen, always the one that moves the match forward.
+| Variant | Background | Text | Border |
 |---|---|---|---|
 | primary | `accent` | `onAccent`, 15sp/600 | — |
 | primary:hover | `#FF9364` | | |
 | primary:pressed | translateY(1dp) | | |
-| secondary | transparente | `textPrimary`, 15sp/500 | 1dp `lineStrong` |
-| ghost | transparente | `textSecondary`, 15sp/500 | — |
+| secondary | transparent | `textPrimary`, 15sp/500 | 1dp `lineStrong` |
+| ghost | transparent | `textSecondary`, 15sp/500 | — |
 | disabled | `buttonDisabled` | `textDim` | — |
 
 ### OptionRow
-Altura mínima **56dp**, padding lateral 14dp, raio 4dp, gap 8dp entre linhas.
-Prefixo: letra da alternativa em Plex Mono 12sp, largura fixa 18dp.
-| Estado | Borda | Fundo | Sufixo |
+Minimum height **56dp**, side padding 14dp, radius 4dp, 8dp gap between rows.
+Prefix: the option letter in Plex Mono 12sp, fixed width 18dp.
+| State | Border | Background | Suffix |
 |---|---|---|---|
 | default | `lineStrong` | `surfaceRaised` | — |
 | selected | `accent` | accentTint | — |
 | correct | `correct` | `tintOk` | `AC` mono 11sp |
 | wrong | `wrong` | `tintErr` | `WA` mono 11sp + shake |
 
-Estado **nunca** depende só de cor: a sigla do juiz sempre acompanha.
+State **never** depends on color alone: the judge's verdict code always goes with it.
 
-### Balloon (primitiva)
-**A cabeça do balão de UI é exatamente o símbolo da marca** — mesmo corpo, mesmo brilho,
-mesmo nó. Só a cauda difere: no logo ela é a curva logarítmica; na UI é a cordinha ondulada.
-Desenhe a partir do mesmo path, não reconstrua com formas primitivas.
+### Balloon (primitive)
+**The head of the UI balloon is exactly the brand symbol**: same body, same highlight,
+same knot. Only the tail differs: in the logo it is the logarithmic curve; in the UI it is the wavy string.
+Draw it from the same path; do not rebuild it from primitive shapes.
 
-ViewBox de referência `0 0 96 150` (sem cauda: `0 0 96 95`). O corpo ocupa `x 16…80`,
-ou seja **66,7% da largura da viewBox** — dimensione por aí.
+Reference viewBox `0 0 96 150` (without tail: `0 0 96 95`). The body spans `x 16…80`,
+that is **66.7% of the viewBox width**; size it from there.
 
-| Elemento | Path | Traço |
+| Element | Path | Stroke |
 |---|---|---|
-| Corpo | `M48 4 C66 4 80 20 80 41 C80 60 66 74 53 79 L48 83 L43 79 C30 74 16 60 16 41 C16 20 30 4 48 4 Z` | preenchido; contorno 4 quando em aberto |
-| Brilho | `M31 21 C27 27 25 33 25 40` | 5.5, cap redondo, branco @72% |
-| Nó | `M41 76 L55 76 L48 91 Z` | preenchido |
-| Cordinha (UI) | `M48 90 C38 98 58 106 48 114 C38 122 58 130 48 138` | 4–5, cap redondo |
-| Cauda log (**só** logo) | `M48 90 C49 104 56 111 68 113 C78 115 84 115 90 116` | 5, cap redondo |
+| Body | `M48 4 C66 4 80 20 80 41 C80 60 66 74 53 79 L48 83 L43 79 C30 74 16 60 16 41 C16 20 30 4 48 4 Z` | filled; outline 4 when open |
+| Highlight | `M31 21 C27 27 25 33 25 40` | 5.5, round cap, white @72% |
+| Knot | `M41 76 L55 76 L48 91 Z` | filled |
+| String (UI) | `M48 90 C38 98 58 106 48 114 C38 122 58 130 48 138` | 4–5, round cap |
+| Log tail (logo **only**) | `M48 90 C49 104 56 111 68 113 C78 115 84 115 90 116` | 5, round cap |
 
-Tamanhos de corpo em uso: 29 (paleta), 17 (BalloonScore), 13 (match header e relatório),
-14 (header de questão), 10 (coluna do placar — **sem cordinha**).
+Body sizes in use: 29 (palette), 17 (BalloonScore), 13 (match header and report),
+14 (question header), 10 (scoreboard column, **no string**).
 
-**Estados:** preenchido = problema aceito, na cor da letra; contorno 4 em `lineStrong` com
-opacidade 0.55 = em aberto. O brilho só aparece em balão preenchido e sai abaixo de 12dp de
-corpo. A letra fica **sob** o balão em Plex Mono. Em fileiras densas (A—M no header e no placar) ela cai para 8—9sp, abaixo do mínimo de 11sp: ali é reforço visual, e o fallback acessível de verdade é o `contentDescription` (`"problema C, aceito"`), nunca o glifo.
+**States:** filled = problem accepted, in the letter's color; outline 4 in `lineStrong` at
+opacity 0.55 = open. The highlight only appears on a filled balloon and is dropped below a 12dp
+body. The letter sits **below** the balloon in Plex Mono. In dense rows (A—M in the header and on the scoreboard) it drops to 8—9sp, below the 11sp minimum: there it is visual reinforcement, and the real accessible fallback is the `contentDescription` (`"problema C, aceito"`, "problem C, accepted"), never the glyph.
 
-Em Compose use `Path` + `PathParser` (ou um `ImageVector` gerado do SVG em `brand/`);
-em SwiftUI, `Path` com os mesmos comandos, escalado por `GeometryReader`.
+In Compose use `Path` + `PathParser` (or an `ImageVector` generated from the SVG in `brand/`);
+in SwiftUI, `Path` with the same commands, scaled with `GeometryReader`.
 
 ### LifeBar
-3 corações 20sp. Cheio = `wrong`; vazio = `heartOff`. Contador mono `2 / 3` ao lado — fallback.
+3 hearts at 20sp. Full = `wrong`; empty = `heartOff`. Mono counter `2 / 3` beside them as the fallback.
 
 ### VerdictChip
-Altura 26dp, min-width 46dp, raio 2dp, Plex Mono 12sp/600, tracking +0.06em.
-Borda na cor da linha, texto no `…Ink`, fundo no tint correspondente.
-| Código | Rótulo | Tom | Nota exibida |
+Height 26dp, min-width 46dp, radius 2dp, Plex Mono 12sp/600, tracking +0.06em.
+Border in the line color, text in `…Ink`, background in the matching tint.
+| Code | Label | Tone | Note shown |
 |---|---|---|---|
-| `AC` | Accepted | correct | balão sobe |
-| `WA` | Wrong Answer | wrong | +20 min de penalidade |
-| `TLE` | Time Limit Exceeded | wrong | complexidade errada |
-| `MLE` | Memory Limit | wrong | estrutura pesada demais |
-| `RE` | Runtime Error | wrong | índice, overflow, divisão |
-| `CE` | Compile Error | warn | sem penalidade |
-| `PE` | Presentation Error | warn | formato da saída |
-| `…` | Judging | textMuted | na fila do juiz |
+| `AC` | Accepted | correct | balloon goes up |
+| `WA` | Wrong Answer | wrong | +20 min penalty |
+| `TLE` | Time Limit Exceeded | wrong | wrong complexity |
+| `MLE` | Memory Limit | wrong | data structure too heavy |
+| `RE` | Runtime Error | wrong | index, overflow, division |
+| `CE` | Compile Error | warn | no penalty |
+| `PE` | Presentation Error | warn | output format |
+| `…` | Judging | textMuted | in the judge queue |
 
-A sigla é a do juiz, **sem tradução**. O texto em português fica ao lado, nunca no lugar.
+The code is the judge's, **untranslated**. The Portuguese text goes beside it, never in its place.
 
 ### ContestClock
-Plex Mono, **tabular-nums** obrigatório.
-| Estado | Tamanho | Cor | Fundo |
+Plex Mono, **tabular-nums** required.
+| State | Size | Color | Background |
 |---|---|---|---|
-| normal | 38sp/500 | `textPrimary` | `canvas`, borda `line` |
-| congelado (última hora) | 38sp/500 | `warn` | `tintWarn`, borda `warn` |
-| questão crítica (<15s) | 28sp/600 | `wrong` | — |
+| normal | 38sp/500 | `textPrimary` | `canvas`, border `line` |
+| frozen (last hour) | 38sp/500 | `warn` | `tintWarn`, border `warn` |
+| critical question (<15s) | 28sp/600 | `wrong` | — |
 
-Rótulo acima em `label` (Plex Mono 10.5sp, tracking +0.16em).
+Label above in `label` (Plex Mono 10.5sp, tracking +0.16em).
 
 ### Tag
-Plex Mono 12sp, padding 8×12, raio 2dp. Default: borda `lineStrong`, texto `textSecondary`.
-Selecionada: borda + texto `accent`, fundo accentTint.
+Plex Mono 12sp, padding 8×12, radius 2dp. Default: border `lineStrong`, text `textSecondary`.
+Selected: border + text `accent`, background accentTint.
 
 ### DropZone
-Altura 38–46dp, raio 2dp, Plex Mono 13sp.
-Vazia: tracejado `lineDim`, texto `textDim`. Hover de arraste: tracejado `accent`, fundo accentTint.
-Preenchida: borda sólida `lineStrong`, fundo `surfaceRaised`, texto `textPrimary`.
+Height 38–46dp, radius 2dp, Plex Mono 13sp.
+Empty: dashed `lineDim`, text `textDim`. Drag hover: dashed `accent`, background accentTint.
+Filled: solid border `lineStrong`, background `surfaceRaised`, text `textPrimary`.
 
 ### CodeBlock
-Fundo `canvas`, borda `line`, raio 2dp. Plex Mono 13–15sp, entrelinha 24dp.
-Número de linha em `textMuted`, não selecionável, coluna fixa.
-Linha realçada: fundo tint + barra lateral 2dp na cor da **linha** (não da tinta).
-**Sem scroll horizontal** — linhas quebram preservando a indentação.
+Background `canvas`, border `line`, radius 2dp. Plex Mono 13–15sp, line height 24dp.
+Line numbers in `textMuted`, not selectable, fixed column.
+Highlighted line: tint background + 2dp side bar in the **line** color (not the ink).
+**No horizontal scroll**: lines wrap and keep their indentation.
 
 ### MatchHeader
-Altura 84dp, fixo no topo, fundo `canvas` (separa-se do conteúdo em `surface`).
-Linha 1: rótulo da sessão (label) · ContestClock · LifeBar.
-Linha 2: fileira de balões A—M, 11×14dp, gap 7dp, letra 8sp abaixo.
+Height 84dp, pinned to the top, background `canvas` (it separates from the content on `surface`).
+Row 1: session label (label) · ContestClock · LifeBar.
+Row 2: A—M balloon row, 11×14dp, 7dp gap, 8sp letter below.
 
 ---
 
-## Telas
+## Screens
 
-### 1 · Scoreboard (telão)
-O artefato mais reconhecível do ICPC e o único **não** phone-first — nasce projetado numa parede.
-No app aparece entre partidas, com scroll horizontal e a linha do usuário grudada na base.
+### 1 · Scoreboard (big screen)
+The most recognizable ICPC artifact and the only one that is **not** phone-first: it is born projected on a wall.
+In the app it shows up between matches, with horizontal scroll and the user's row stuck to the bottom.
 
-**Grid:** `52dp | minmax(190,1fr) | 56dp | 68dp | 13 × minmax(44,1fr)`, largura mínima 900dp.
-- **Header do contest** (altura auto, 16×20 padding, borda inferior `line`): nome do contest em
-  Plex Mono 13sp/600 tracking +0.12em · badge `CONGELADO` (borda+texto `warn`, fundo `tintWarn`,
-  raio 2dp) · relógio 24sp tabular alinhado à direita.
-- **Header de coluna** (40dp, fundo `surfaceRaised`): `#`, `EQUIPE`, `SLV`, `PEN` em label 10sp,
-  depois A—M com balão 10×11dp acima da letra 11sp/600.
-- **Linha** (52dp): rank mono 14sp/600 · nome 14sp/600 + universidade em label 10sp ·
-  solved 15sp/600 · penalty 13sp `textSecondary` · 13 células.
-- **Linha do usuário**: fundo accent @13% sobre canvas, borda sup/inf `accent`, nome e rank em accent.
-- **Célula** (38dp de altura, margem lateral 2dp, raio 2dp, borda 1dp): topo = símbolo 12sp/600,
-  base = minuto 9sp @75%.
+**Grid:** `52dp | minmax(190,1fr) | 56dp | 68dp | 13 × minmax(44,1fr)`, minimum width 900dp.
+- **Contest header** (auto height, 16×20 padding, bottom border `line`): contest name in
+  Plex Mono 13sp/600 tracking +0.12em · `CONGELADO` (FROZEN) badge (border+text `warn`, background `tintWarn`,
+  radius 2dp) · 24sp tabular clock aligned right.
+- **Column header** (40dp, background `surfaceRaised`): `#`, `EQUIPE` (TEAM), `SLV`, `PEN` in 10sp label,
+  then A—M with a 10×11dp balloon above an 11sp/600 letter.
+- **Row** (52dp): rank mono 14sp/600 · name 14sp/600 + university in 10sp label ·
+  solved 15sp/600 · penalty 13sp `textSecondary` · 13 cells.
+- **User's row**: accent @13% background over canvas, top/bottom border `accent`, name and rank in accent.
+- **Cell** (38dp tall, 2dp side margin, radius 2dp, 1dp border): top = 12sp/600 symbol,
+  bottom = 9sp minute @75%.
 
-| Estado da célula | Borda | Fundo | Topo | Base |
+| Cell state | Border | Background | Top | Bottom |
 |---|---|---|---|---|
-| aceito | `correct` | `tintOk` | `+` ou `+N` (tentativas erradas) | minuto do AC |
-| tentado sem AC | `wrong` | `tintErr` | `−N` | — |
-| pós-congelamento | `info` | `tintInfo` | `?` | `frz` |
-| não tentado | `line` | transparente | — | — |
+| accepted | `correct` | `tintOk` | `+` or `+N` (wrong attempts) | minute of the AC |
+| tried, no AC | `wrong` | `tintErr` | `−N` | — |
+| post-freeze | `info` | `tintInfo` | `?` | `frz` |
+| not tried | `line` | transparent | — | — |
 
-Legenda das quatro cores no rodapé, sempre visível. O congelamento não é enfeite: é a última
-hora em que ninguém sabe o resultado — a UI mostra **dúvida**, não esconde.
+Legend for the four colors in the footer, always visible. The freeze is not decoration: it is the last
+hour in which nobody knows the result, and the UI shows **doubt** instead of hiding it.
 
-### 2 · Skill tree — DAG de pré-requisitos
-O currículo **é um grafo dirigido acíclico**, e a tela mostra isso. Aresta não é conector
-decorativo: carrega direção, estado e grau de entrada. Um nó com duas arestas chegando precisa
-dos dois pré-requisitos, e o jogador entende por que está fechado sem ler texto.
+### 2 · Skill tree: prerequisite DAG
+The curriculum **is a directed acyclic graph**, and the screen shows that. An edge is not a decorative
+connector: it carries direction, state and in-degree. A node with two incoming edges needs
+both prerequisites, and the player understands why it is locked without reading any text.
 
-**Vértices são balões da marca.** Mesma primitiva de `Balloon`, tamanho por importância:
-56 para conquistado, 70 para o ativo, 54 para bloqueado. Preenchido na cor da família com brilho branco = conquistado (o brilho passa a ser obrigatório); miolo tint accent (accentTint) e ícone em `accentInk` = ativo; silhueta inteira preenchida em `lineStrong` (`line2`), sem contorno nem brilho, ícone em `textSecondary` = bloqueado.
+**Vertices are brand balloons.** Same `Balloon` primitive, sized by importance:
+56 for conquered, 70 for the active one, 54 for locked. Filled in the family color with a white highlight = conquered (the highlight becomes mandatory); accent tint center (accentTint) and icon in `accentInk` = active; whole silhouette filled in `lineStrong` (`line2`), with no outline or highlight, icon in `textSecondary` = locked.
 
-**Arestas são as cordinhas.** Curvas de Bézier que saem de dentro da etiqueta do nó de origem
-e chegam ao topo do balão de destino.
+**Edges are the strings.** Bézier curves that leave from inside the source node's tag
+and arrive at the top of the target balloon.
 
-| Estado da aresta | Traço | Cor |
+| Edge state | Stroke | Color |
 |---|---|---|
-| percorrida | 2.5, cap redondo, opacidade 0.8 | cor da família de origem |
-| ativa | 3, cap redondo | `accent` |
-| fechada | 2.5, `stroke-dasharray 4 6` | `lineDim` |
+| traversed | 2.5, round cap, opacity 0.8 | source family color |
+| active | 3, round cap | `accent` |
+| locked | 2.5, `stroke-dasharray 4 6` | `lineDim` |
 
-**NodeTag** — o rótulo nunca flutua solto sobre o mapa. Chip ancorado logo abaixo do balão,
-centrado no eixo do nó (`translateX(-50%)`): fundo `canvas`, borda 1dp `line`, raio 2dp,
-padding 4×10, texto 12.5sp/600. A aresta de saída nasce ~3dp **dentro** do chip, então a
-cordinha lê como se atravessasse a etiqueta.
-| Estado | Borda | Fundo | Texto |
+**NodeTag**: the label never floats loose over the map. A chip anchored just below the balloon,
+centered on the node's axis (`translateX(-50%)`): background `canvas`, 1dp border `line`, radius 2dp,
+padding 4×10, text 12.5sp/600. The outgoing edge starts ~3dp **inside** the chip, so the
+string reads as if it ran through the tag.
+| State | Border | Background | Text |
 |---|---|---|---|
-| conquistado | `line` | `canvas` | `textPrimary` |
-| ativo | `accent` | accentTint | `textPrimary` + 2ª linha `INFLANDO · 2/5` em **`accentInk`** mono 9.5sp |
-| bloqueado | `line` | `canvas` | `textSecondary` |
+| conquered | `line` | `canvas` | `textPrimary` |
+| active | `accent` | accentTint | `textPrimary` + 2nd line `INFLANDO · 2/5` (INFLATING) in **`accentInk`** mono 9.5sp |
+| locked | `line` | `canvas` | `textSecondary` |
 
-**Badge de grau de entrada** — círculo 18dp no canto superior direito do balão, fundo `canvas`,
-borda `lineDim`, número em mono 9sp. Só aparece quando o grau de entrada é ≥ 2.
+**In-degree badge**: an 18dp circle at the balloon's top-right corner, background `canvas`,
+border `lineDim`, number in mono 9sp. It only appears when the in-degree is ≥ 2.
 
-**Header:** contagem de balões (`7 balões no ar`) 20sp/600 + XP total em accent mono.
-**Rodapé:** legenda `CORDINHA TRACEJADA = ARESTA FECHADA` em label.
+**Header:** balloon count (`7 balões no ar`, "7 balloons up") 20sp/600 + total XP in accent mono.
+**Footer:** legend `CORDINHA TRACEJADA = ARESTA FECHADA` (DASHED STRING = LOCKED EDGE) in label.
 
-**Sheet do nó** (toque em qualquer vértice): balão + nome + estado; depois **Vem de** e
-**Destrava** lado a lado listando a vizinhança do grafo com ícone e nome; métricas
-(lições, melhor tempo, XP); CTA. Para nó bloqueado, o sheet lista as arestas de entrada uma a
-uma com seu estado, mais o limiar de XP como terceiro requisito.
+**Node sheet** (tap on any vertex): balloon + name + state; then **Vem de** (Comes from) and
+**Destrava** (Unlocks) side by side, listing the node's graph neighborhood with icon and name; metrics
+(lessons, best time, XP); CTA. For a locked node, the sheet lists the incoming edges one
+by one with their state, plus the XP threshold as a third requirement.
 
-> **Layout:** as posições de nó são **autoradas**, não calculadas em runtime — um layout de grafo
-> automático produz resultados instáveis a cada build. Guarde `x`/`y` por nó no mesmo JSON do
-> currículo. Acima de ~12 nós visíveis, decida entre scroll vertical com arestas curtas (o que
-> está desenhado) ou canvas com pan/zoom.
+> **Layout:** node positions are **authored**, not computed at runtime: an automatic graph
+> layout produces unstable results on every build. Store `x`/`y` per node in the same JSON as the
+> curriculum. Above ~12 visible nodes, choose between vertical scroll with short edges (what
+> is drawn here) or a canvas with pan/zoom.
 
-### 3 · Trap sheet (bottom sheet em partida)
-Conteúdo atrás a 45% de opacidade, sem blur. Sheet: fundo `surfaceRaised`, borda superior
-`lineStrong`, raio 8dp só nos cantos superiores, `shadowSheet`. Handle 36×3dp `lineStrong`.
-Conteúdo: label `TRAP CLÁSSICA` em `wrong` + nome da trap em `textMuted` · título 17sp/600 ·
-explicação 14sp `textSecondary` · dois botões 48dp (secundário "Ler explicação" com nota
-`pausa o timer`; primário "Pular").
+### 3 · Trap sheet (bottom sheet during a match)
+Content behind at 45% opacity, no blur. Sheet: background `surfaceRaised`, top border
+`lineStrong`, 8dp radius on the top corners only, `shadowSheet`. Handle 36×3dp `lineStrong`.
+Content: label `TRAP CLÁSSICA` (CLASSIC TRAP) in `wrong` + trap name in `textMuted` · title 17sp/600 ·
+explanation 14sp `textSecondary` · two 48dp buttons (secondary "Ler explicação" (Read explanation) with the note
+`pausa o timer` (pauses the timer); primary "Pular" (Skip)).
 
 ### 4 · Post-match report
-Header: `CONTEST ENCERRADO` em label · número 40sp/600 + `/ 13 aceitos · 512 pen` em mono 15sp ·
-fileira de balões A—M.
-Corpo: `REVISÃO · N ERROS` em label, depois um card por erro (fundo `surface`, borda `line`,
-raio 4dp, padding 14): nome do problema 15sp/600 + VerdictChip à direita · `sua resposta: X`
-em mono 12sp `textMuted` · explicação 13sp `textSecondary`.
-CTA "Entendi".
+Header: `CONTEST ENCERRADO` (CONTEST OVER) in label · number 40sp/600 + `/ 13 aceitos · 512 pen` in mono 15sp ·
+A—M balloon row.
+Body: `REVISÃO · N ERROS` (REVIEW · N ERRORS) in label, then one card per error (background `surface`, border `line`,
+radius 4dp, padding 14): problem name 15sp/600 + VerdictChip on the right · `sua resposta: X` (your answer: X)
+in mono 12sp `textMuted` · explanation 13sp `textSecondary`.
+CTA "Entendi" (Got it).
 
-### 5 · Hub de perfil
-Sem tab bar. Entrada: avatar circular **40dp** no canto direito da NavigationBar da Skill Tree,
-com badge `warn` de 11dp quando `pending_sync_count > 0`. O perfil sobe como **sheet** sobre a
-árvore (raio 8dp nos cantos superiores, `surfaceRaised`, `shadowSheet`), com a árvore visível
-atrás a 18% — o jogador não perde o lugar.
+### 5 · Profile hub
+No tab bar. Entry point: a **40dp** circular avatar at the right corner of the Skill Tree's NavigationBar,
+with an 11dp `warn` badge when `pending_sync_count > 0`. The profile rises as a **sheet** over the
+tree (8dp radius on the top corners, `surfaceRaised`, `shadowSheet`), with the tree visible
+behind at 18%, so the player does not lose their place.
 
-**Header:** avatar 52dp (inicial em `accentInk` sobre accent @18%, borda accent) + e-mail em
-Plex Mono 13sp + linha de status com ponto colorido: `correct` `TUDO SINCRONIZADO` ou
-`warn` `N EVENTOS NA FILA`. Visitante troca o e-mail por um chip `MODO VISITANTE`.
+**Header:** 52dp avatar (initial in `accentInk` on accent @18%, accent border) + email in
+Plex Mono 13sp + a status line with a colored dot: `correct` `TUDO SINCRONIZADO` (ALL SYNCED) or
+`warn` `N EVENTOS NA FILA` (N EVENTS QUEUED). A guest gets a `MODO VISITANTE` (GUEST MODE) chip in place of the email.
 
-**Nível é o herói:** número 44sp/600 + label `NÍVEL` em mono, ao lado de uma barra de progresso
-até o próximo nível com `620 XP / 800` e `180 XP para o nível 5`.
-Cálculo no core: `nivel = floor(xp / 200) + 1`. Nunca no cliente.
+**Level is the hero:** number 44sp/600 + `NÍVEL` (LEVEL) label in mono, next to a progress bar
+to the next level with `620 XP / 800` and `180 XP para o nível 5` (180 XP to level 5).
+Computed in the core: `nivel = floor(xp / 200) + 1`. Never in the client.
 
-**Stats:** grid de três células (`XP TOTAL`, `BUGS`, `DRY RUNS`), e a soma em mono abaixo:
-`47 desafios concluídos · 7 balões no ar`.
+**Stats:** a three-cell grid (`XP TOTAL`, `BUGS`, `DRY RUNS`), with the totals in mono below:
+`47 desafios concluídos · 7 balões no ar` (47 challenges completed · 7 balloons up).
 
-#### Divergências da spec técnica — deliberadas
-Estes três pontos são restrição de implementação que vira má experiência se copiada literal.
-A arquitetura (core em Rust, Keychain, `offline_events.json`) fica intacta; o que muda é o fluxo.
+#### Deviations from the technical spec: deliberate
+These three points are implementation constraints that turn into bad UX if copied literally.
+The architecture (Rust core, Keychain, `offline_events.json`) stays intact; what changes is the flow.
 
-| Spec | O que ship |
+| Spec | What ships |
 |---|---|
-| Alerta de confirmação em **todo** logout | **Sem alerta quando `pending_sync_count == 0`.** Sair está sincronizado é reversível: entrar de novo devolve tudo. Alerta ali é fricção sem prêmio e treina o usuário a confirmar sem ler — o que destrói o valor do alerta que *importa*. Mostra tela de saída com **desfazer**. |
-| `"Se sair agora, você perderá esse XP permanentemente"` | **Nunca ofereça a escolha entre sair e perder progresso.** O sheet crítico traz `Sincronizar e sair` como primário, `Continuar conectado` como secundário, e `Sair e descartar 180 XP` em terceiro — texto, não botão. A perda deixa de ser o caminho padrão. |
-| `Excluir conta` ao lado de `Sair` | A App Store exige que seja **encontrável**, não proeminente. Vizinho do logout, num sheet que o jogador abre para ver XP, é convite a acidente irreversível. Move para **Gerenciar conta** (um toque a mais), junto com trocar e-mail, trocar senha e **baixar meus dados** — que a mesma diretriz de privacidade recomenda. |
+| Confirmation alert on **every** logout | **No alert when `pending_sync_count == 0`.** Signing out while synced is reversible: signing back in restores everything. An alert there is friction with no payoff and trains the user to confirm without reading, which destroys the value of the alert that *matters*. Show a signed-out screen with **undo**. |
+| `"Se sair agora, você perderá esse XP permanentemente"` ("If you sign out now, you will lose this XP permanently") | **Never offer the choice between signing out and losing progress.** The critical sheet has `Sincronizar e sair` (Sync and sign out) as primary, `Continuar conectado` (Stay signed in) as secondary, and `Sair e descartar 180 XP` (Sign out and discard 180 XP) third, as text, not a button. Loss stops being the default path. |
+| `Excluir conta` (Delete account) next to `Sair` (Sign out) | The App Store requires it to be **findable**, not prominent. Next to logout, in a sheet the player opens to check XP, it invites an irreversible accident. Move it to **Gerenciar conta** (Manage account), one more tap away, together with change email, change password and **download my data**, which the same privacy guideline recommends. |
 
-**Sheet crítico** (`pending_sync_count > 0`): borda superior `warn`, label
-`12 EVENTOS NA FILA · 180 XP`, título que **nomeia a perda** em vez de perguntar "tem certeza".
-O botão destrutivo repete verbo e número, nunca um "OK" genérico.
+**Critical sheet** (`pending_sync_count > 0`): top border `warn`, label
+`12 EVENTOS NA FILA · 180 XP` (12 EVENTS QUEUED · 180 XP), a title that **names the loss** instead of asking "are you sure".
+The destructive button repeats the verb and the number, never a generic "OK".
 
-**Gerenciar conta:** tela empilhada (não sheet). Lista de ações neutras; o bloco de exclusão
-fica no rodapé, em `tintErr` com borda `wrong`, label `IRREVERSÍVEL`, e exige senha + digitar
-a palavra `EXCLUIR`. Dispara o endpoint de purga no backend Go.
+**Manage account:** a pushed screen (not a sheet). A list of neutral actions; the deletion block
+sits at the bottom, in `tintErr` with a `wrong` border, label `IRREVERSÍVEL` (IRREVERSIBLE), and requires the password + typing
+the word `EXCLUIR` (DELETE). It calls the purge endpoint on the Go backend.
 
-**Visitante** (`is_guest == true`): oculta Sair e Gerenciar conta. No lugar, um card em accent
-que nomeia o risco ("Seu progresso vive só neste aparelho") e o ganho ("Criar conta herda os
-620 XP, os 7 balões e os 47 desafios"), com CTA primário para `RegisterView` e um
-`Já tenho conta` secundário.
+**Guest** (`is_guest == true`): hides Sign out and Manage account. In their place, an accent card
+that names the risk ("Seu progresso vive só neste aparelho", "Your progress lives only on this device") and the gain ("Criar conta herda os
+620 XP, os 7 balões e os 47 desafios", "Creating an account keeps the 620 XP, the 7 balloons and the 47 challenges"), with a primary CTA to `RegisterView` and a
+secondary `Já tenho conta` (I already have an account).
 
 ### 6 · Standings (phone)
-Abas Global / Sede (aba ativa: borda inferior 2dp `accent`, 14sp/600).
-Linha 44dp: rank mono 13sp largura 26dp · nome 15sp/500 + universidade em label 10sp ·
-`solved · penalty` mono 14sp tabular à direita. Divisor `rowLine`.
-Linha do usuário fixa na base, mesmo tratamento accent do scoreboard.
-Bottom nav 3 itens (TRILHAS / ARENA / PLACAR) em label; ativo em accent com borda superior 2dp.
+Global / Sede (Site) tabs (active tab: 2dp bottom border `accent`, 14sp/600).
+44dp row: rank mono 13sp width 26dp · name 15sp/500 + university in 10sp label ·
+`solved · penalty` mono 14sp tabular on the right. Divider `rowLine`.
+The user's row is pinned to the bottom, with the same accent treatment as the scoreboard.
+Bottom nav with 3 items (TRILHAS / ARENA / PLACAR, i.e. TRACKS / ARENA / SCOREBOARD) in label; active one in accent with a 2dp top border.
 
 ---
 
-## Templates de questão
-Todo `template_type` usa o mesmo casco: **header fixo → corpo rolável → CTA ancorado**.
-Nenhum abre teclado nativo.
+## Question templates
+Every `template_type` uses the same shell: **fixed header → scrollable body → anchored CTA**.
+None of them opens the native keyboard.
 
-Header de todos: balão colorido 14×16dp + `PROBLEM <letra>` em label, à direita ContestClock ou LifeBar.
+Header for all: colored 14×16dp balloon + `PROBLEM <letra>` in label, with ContestClock or LifeBar on the right.
 
 ### FILL_IN_THE_BLANK
-Enunciado 19sp/600 · CodeBlock com uma lacuna inline (min-width 74dp, altura 30dp, tracejado
-`accent`, raio 2dp) · label `ARRASTE O BLOCO` · 3 chips mono 13sp arrastáveis.
-CTA desabilitado até preencher.
+Prompt 19sp/600 · CodeBlock with one inline blank (min-width 74dp, height 30dp, dashed
+`accent`, radius 2dp) · label `ARRASTE O BLOCO` (DRAG THE BLOCK) · 3 draggable mono 13sp chips.
+CTA disabled until the blank is filled.
 
 ### SPOT_THE_BUG
-Enunciado 19sp/600 · CodeBlock com linhas tocáveis (34dp cada + folga invisível, divisor `rowLine`).
-Linha selecionada: fundo accentTint, barra lateral 2dp `accent`, número em accent.
-CTA nomeia a escolha: "Confirmar linha 3".
+Prompt 19sp/600 · CodeBlock with tappable lines (34dp each + invisible padding, divider `rowLine`).
+Selected line: background accentTint, 2dp side bar `accent`, number in accent.
+The CTA names the choice: "Confirmar linha 3" (Confirm line 3).
 
 ### COMPLEXITY_MATCH
-Enunciado 19sp/600 · duas linhas rotuladas `TEMPO` / `ESPAÇO` (label 11sp, coluna fixa 60dp)
-com DropZone 46dp · divisor 1dp · banco de 4 chips mono 13sp.
+Prompt 19sp/600 · two rows labeled `TEMPO` / `ESPAÇO` (TIME / SPACE) (11sp label, fixed 60dp column)
+with a 46dp DropZone · 1dp divider · bank of 4 mono 13sp chips.
 
 ### TRADEOFF_MATCH
-Design: canvas `LogN Trade-off Match`, proposta A. Enunciado 19sp/600 · CodeBlock opcional ·
-duas casas rotuladas `BENEFÍCIO` / `DESVANTAGEM` (label 11sp, acima do texto), largura total,
-min 56dp · divisor 1dp · opções como linhas de largura total (min 56dp, letra mono 12sp de
-prefixo, texto 15sp que quebra linha).
-As opções são frases, não `O(n)`, e por isso não usam o chip mono do COMPLEXITY_MATCH.
-Toque, não arraste: a opção vai para a próxima casa vazia, benefício antes de desvantagem, e a
-casa da vez tem o rótulo em `accentInk` e o tracejado em `accent`. Opção já usada fica
-esmaecida (`textDim`, borda `line`) e não responde. Tocar na casa preenchida a esvazia.
-CTA "Confirmar trade-off", desabilitado até as duas casas.
+Design: canvas `LogN Trade-off Match`, proposal A. Prompt 19sp/600 · optional CodeBlock ·
+two slots labeled `BENEFÍCIO` / `DESVANTAGEM` (BENEFIT / DRAWBACK) (11sp label, above the text), full width,
+min 56dp · 1dp divider · options as full-width rows (min 56dp, mono 12sp letter as a
+prefix, 15sp text that wraps).
+The options are sentences, not `O(n)`, so they do not use the COMPLEXITY_MATCH mono chip.
+Tap, don't drag: the option goes to the next empty slot, benefit before drawback, and the
+current slot has its label in `accentInk` and its dashes in `accent`. An option already used is
+dimmed (`textDim`, border `line`) and does not respond. Tapping a filled slot empties it.
+CTA "Confirmar trade-off" (Confirm trade-off), disabled until both slots are filled.
 
 ### TAG_THE_PATTERN
-Cartão de enunciado no formato da folha impressa: borda `line`, fundo `surface`, raio 2dp;
-topo com `TIME LIMIT 1S` / `MEM 256MB` em mono 10sp separados por divisor; nome do problema
-15sp/600; texto 15sp `textSecondary`.
-Pergunta 17sp/600 · label `SELECIONE ATÉ 2` · grade de tags multi-seleção.
-CTA conta a seleção: "Confirmar 2 tags".
+Prompt card in the format of the printed problem sheet: border `line`, background `surface`, radius 2dp;
+top with `TIME LIMIT 1S` / `MEM 256MB` in mono 10sp separated by a divider; problem name
+15sp/600; text 15sp `textSecondary`.
+Question 17sp/600 · label `SELECIONE ATÉ 2` (SELECT UP TO 2) · multi-select tag grid.
+The CTA counts the selection: "Confirmar 2 tags" (Confirm 2 tags).
 
 ---
 
 ## State Management
-Por partida:
-- `problems: List<Problem>` — cada um com `letter: Char`, `templateType`, payload, resposta correta
+Per match:
+- `problems: List<Problem>`: each with `letter: Char`, `templateType`, payload, correct answer
 - `currentIndex: Int`
-- `verdicts: Map<Char, Verdict>` — dirige a cor do balão e a célula do placar
+- `verdicts: Map<Char, Verdict>`: drives the balloon color and the scoreboard cell
 - `lives: Int` (0–3) · `penaltyMinutes: Int` · `attempts: Map<Char, Int>`
-- `questionTimer: Duration` (regressivo, dispara estado crítico aos 15s)
-- `contestClock: Duration` · `isFrozen: Boolean` (última hora)
-- `selection` por template: índice, linha, mapa de dropzone, ou set de tags
-- `trapSheet: Trap?` — não-nulo pausa `questionTimer`
-- `syncPending: Boolean` — exibe chip `SYNC PENDENTE` no header
+- `questionTimer: Duration` (counts down, triggers the critical state at 15s)
+- `contestClock: Duration` · `isFrozen: Boolean` (last hour)
+- `selection` per template: index, line, dropzone map, or tag set
+- `trapSheet: Trap?`: non-null pauses `questionTimer`
+- `syncPending: Boolean`: shows the `SYNC PENDENTE` (SYNC PENDING) chip in the header
 
-Transições: submeter → veredito em 120ms → se AC, balão preenche (160ms) e avança em 180ms;
-se WA, shake 240ms, `lives--`, penalidade +20min, e abre trap sheet se houver trap mapeada.
+Transitions: submit → verdict in 120ms → on AC, the balloon fills (160ms) and advances in 180ms;
+on WA, 240ms shake, `lives--`, +20min penalty, and the trap sheet opens if a trap is mapped.
 
-## Estados obrigatórios (todo componente)
+## Required states (every component)
 `enabled · pressed · disabled · focused · selected · correct · wrong · locked`
-- **loading**: skeleton com linha `line`, **sem spinner**
-- **offline**: chip mono `SYNC PENDENTE` em `warn` no header
-- **empty**: nunca uma ilustração; uma frase em `textSecondary` e o CTA que resolve
+- **loading**: skeleton with `line` rows, **no spinner**
+- **offline**: mono `SYNC PENDENTE` chip in `warn` in the header
+- **empty**: never an illustration; one sentence in `textSecondary` and the CTA that resolves it
 
-## Acessibilidade
-- Piso de toque nativo (48dp / 44pt); 56 em partida
-- Veredito nunca só por cor — a sigla do juiz sempre acompanha
-- Balão nunca só por cor — a letra fica sob o balão e no `contentDescription`
-- Célula do placar lê "problema C, aceito, 2 tentativas, 88 minutos"
-- Contraste mínimo 4.5:1 em texto lido; 3:1 nas cores de balão (formas, não texto)
-- Font scale até 200% (Android) / Dynamic Type até AX3 (iOS) sem truncar enunciado
-- `reduceMotion`: shake vira flash de borda
+## Accessibility
+- Native touch floor (48dp / 44pt); 56 during a match
+- A verdict is never conveyed by color alone: the judge's code always goes with it
+- A balloon is never conveyed by color alone: the letter sits below the balloon and in the `contentDescription`
+- A scoreboard cell reads "problema C, aceito, 2 tentativas, 88 minutos" ("problem C, accepted, 2 attempts, 88 minutes")
+- Minimum contrast 4.5:1 on text that is read; 3:1 for balloon colors (shapes, not text)
+- Font scale up to 200% (Android) / Dynamic Type up to AX3 (iOS) without truncating the prompt
+- `reduceMotion`: the shake becomes a border flash
 
-## Voz e copy
-- Termos técnicos em inglês, sem tradução: `binary search`, `trap`, `contest`, `freeze`
-- É sempre "problema C", nunca "questão 3"
-- Interface em português; rótulos de sistema em inglês monoespaçado
-- Erro explica a causa, nunca julga: "Guloso falha aqui", não "Você errou feio"
-- Sem exclamação, sem emoji, sem parabenização genérica
+## Voice and copy
+- Technical terms stay in English, untranslated: `binary search`, `trap`, `contest`, `freeze`
+- It is always "problema C" (problem C), never "questão 3" (question 3)
+- Interface in Portuguese; system labels in monospaced English
+- An error explains the cause and never judges: "Guloso falha aqui" ("Greedy fails here"), not "Você errou feio" ("You really blew it")
+- No exclamation marks, no emoji, no generic congratulations
 
-## Paridade entre plataformas
-Geometria, cor e copy são **idênticas**. Só isto segue convenção nativa:
-| Elemento | Compose | SwiftUI |
+## Cross-platform parity
+Geometry, color and copy are **identical**. Only these follow native conventions:
+| Element | Compose | SwiftUI |
 |---|---|---|
 | Trap sheet | `ModalBottomSheet` | `.sheet` + `.presentationDetents` |
 | Drag & drop | `detectDragGestures` + DragTarget | `.draggable` / `.dropDestination` |
 | Haptic | `HapticFeedbackType` | `.sensoryFeedback` |
 | Shake | `Animatable` + keyframes | `.phaseAnimator` / `KeyframeAnimator` |
-| Escala de texto | `sp` + fontScale 200% | Dynamic Type até AX3 |
-| Piso de toque | 48dp | 44pt |
-| Navegação raiz | `NavigationBar` 3 itens | `TabView` `.tabBar`, mesmos 3 |
+| Text scaling | `sp` + fontScale 200% | Dynamic Type up to AX3 |
+| Touch floor | 48dp | 44pt |
+| Root navigation | `NavigationBar` 3 items | `TabView` `.tabBar`, same 3 |
 
-## Iconografia
+## Iconography
 
-Set próprio em `brand/icons/` — 12 SVGs, viewBox `0 0 24 24`, `fill="none"`,
-`stroke="currentColor"`, traço 2, caps e joins redondos. Desenhados a partir da geometria de
-cada técnica: two pointers converge, binary search bissecciona, sliding window emoldura uma
-faixa, sorting são barras crescentes.
+Custom set in `brand/icons/`: 12 SVGs, viewBox `0 0 24 24`, `fill="none"`,
+`stroke="currentColor"`, stroke 2, round caps and joins. Drawn from the geometry of
+each technique: two pointers converge, binary search bisects, sliding window frames a
+band, sorting is ascending bars.
 
-**Não usar SF Symbols nem Material Icons para assunto algorítmico** — não existem nas duas
-plataformas e não descrevem a técnica. Ícones de sistema (voltar, fechar, compartilhar) seguem
-o nativo de cada plataforma normalmente.
+**Do not use SF Symbols or Material Icons for algorithm topics**: they do not exist on both
+platforms and they do not describe the technique. System icons (back, close, share) follow
+each platform's native set as usual.
 
-Cada assunto pertence a uma família, e a família define a cor — quatro cores emprestadas da
-paleta de balões:
+Each topic belongs to a family, and the family sets the color: four colors borrowed from the
+balloon palette:
 
-| Família | Cor | Assuntos |
+| Family | Color | Topics |
 |---|---|---|
-| fundamentos | balão **H** `#F4A261` / light `#B26320` | adhoc, arrays, strings |
-| busca e ordenação | balão **C** `#3DB2FF` / light `#0B6FBF` | two-pointers, binary-search, sliding-window, sorting |
-| estruturas | balão **E** `#C77DFF` / light `#8A3FD1` | trees, graphs |
-| otimização | balão **M** `#00B894` / light `#007A61` | dp, greedy |
+| fundamentals | balloon **H** `#F4A261` / light `#B26320` | adhoc, arrays, strings |
+| search and sorting | balloon **C** `#3DB2FF` / light `#0B6FBF` | two-pointers, binary-search, sliding-window, sorting |
+| structures | balloon **E** `#C77DFF` / light `#8A3FD1` | trees, graphs |
+| optimization | balloon **M** `#00B894` / light `#007A61` | dp, greedy |
 | boss | `accent` | challenge |
 
-Cor de família **não** é cor de problema: são usos distintos da mesma paleta. O acento fica
-reservado ao nó ativo e ao boss — nenhum assunto o usa.
+A family color is **not** a problem color: they are distinct uses of the same palette. The accent stays
+reserved for the active node and the boss; no topic uses it.
 
-> **A paleta de balões é certificada para 3:1 como forma, não 4.5:1 como texto.** Use-a em
-> preenchimento, traço de ícone e aresta. Em legendas e listas, a família entra como um ponto
-> colorido de 9dp antes do rótulo, e o rótulo em `textSecondary` — cor vira forma, o texto
-> continua legível.
+> **The balloon palette is certified for 3:1 as shape, not 4.5:1 as text.** Use it for
+> fills, icon strokes and edges. In legends and lists, the family appears as a 9dp colored
+> dot before the label, with the label in `textSecondary`: the color becomes shape and the text
+> stays legible.
 
 ## Assets
-Símbolo da marca em `brand/` (3 SVGs) e 12 ícones de assunto em `brand/icons/`. Fora isso, nenhuma imagem: tudo é tipografia, forma e cor.
-**Fontes:** IBM Plex Sans (Regular/Medium/SemiBold) e IBM Plex Mono (Regular/Medium) —
-SIL Open Font License, baixar em <https://github.com/IBM/plex> e empacotar no app
-(`res/font/` no Android, target membership + `UIAppFonts` no iOS). Não usar via CDN.
+Brand symbol in `brand/` (3 SVGs) and 12 topic icons in `brand/icons/`. Beyond that, no images: everything is typography, shape and color.
+**Fonts:** IBM Plex Sans (Regular/Medium/SemiBold) and IBM Plex Mono (Regular/Medium),
+SIL Open Font License, download from <https://github.com/IBM/plex> and bundle them in the app
+(`res/font/` on Android, target membership + `UIAppFonts` on iOS). Do not load them from a CDN.
 
 ## Files
-| Arquivo | O que é |
+| File | What it is |
 |---|---|
-| `brand/logn-symbol-*.svg` | Símbolo em accent, currentColor e vazado. **Assets de produção.** |
-| `brand/icons/*.svg` | 12 ícones de assunto, currentColor. **Assets de produção.** |
-| `tokens/LognColor.kt` | Cores dark/light + paleta de balões. **Colar no codebase.** |
-| `tokens/LognTheme.kt` | Typography, Shapes, Space, `LognTheme` composable. **Colar no codebase.** |
-| `tokens/LognDesignSystem.swift` | Equivalente SwiftUI: cores, balões, fontes, raios, espaço. **Colar no codebase.** |
-| `LogN Design System v2.dc.html` | **Referência visual — fonte única da verdade.** Marca, tokens, componentes, iconografia, arestas, 4 templates, telas-chave, scoreboard. Abre no navegador; tem toggle dark/light e seletor de acento. |
-| `support.js` | Runtime necessário para abrir os `.dc.html`. Não é código de produção. |
+| `brand/logn-symbol-*.svg` | Symbol in accent, currentColor and knockout. **Production assets.** |
+| `brand/icons/*.svg` | 12 topic icons, currentColor. **Production assets.** |
+| `tokens/LognColor.kt` | Dark/light colors + balloon palette. **Paste into the codebase.** |
+| `tokens/LognTheme.kt` | Typography, Shapes, Space, `LognTheme` composable. **Paste into the codebase.** |
+| `tokens/LognDesignSystem.swift` | SwiftUI equivalent: colors, balloons, fonts, radii, space. **Paste into the codebase.** |
+| `LogN Design System v2.dc.html` | **Visual reference, the single source of truth.** Brand, tokens, components, iconography, edges, 4 templates, key screens, scoreboard. Opens in the browser; has a dark/light toggle and an accent picker. |
+| `support.js` | Runtime needed to open the `.dc.html` files. Not production code. |
 
-Abra o v2 no navegador e mantenha ao lado durante a implementação — é a fonte da verdade
-para qualquer medida não listada aqui.
+Open v2 in the browser and keep it open beside you during implementation: it is the source of truth
+for any measurement not listed here.

@@ -178,16 +178,23 @@ PRD: [`specs/logn_instituicao_spec.md`](specs/logn_instituicao_spec.md).
 
 ## O repositório ainda é privado
 
-Ele está pronto para ser público — Apache 2.0, `TRADEMARKS.md`, `NOTICE`, conteúdo
-separado, gitleaks limpo. Falta só virar a chave.
+A segunda varredura (outubro de 2026) passou pela árvore, por todo blob do histórico e
+pelos `refs/pull/*` atrás de segredo, conteúdo (regra 8), licença e segurança.
 
-A varredura pela regra 8 do AGENTS.md (setembro de 2026) passou pela árvore e por todo
-blob do histórico, inclusive os `refs/pull/*` do GitHub, contra as três trilhas. Nome
-real de nó não aparece em lugar nenhum; as trilhas pagas não têm vestígio. Sobrou, em
-commits antigos do Core, um fixture de teste com trechos parafraseados de dois desafios
-da trilha gratuita, que o servidor já entrega aberta a qualquer instalação. Não vale
-reescrever o histórico por isso.
+- **Segredo:** nenhum, nem no histórico.
+- **Licença:** `NOTICE` completo (IBM Plex com `OFL.txt`, runtime Serde, boltffi, selos
+  e logotipos de terceiros); o runtime do editor de design saiu do repositório.
+- **Conteúdo:** a árvore ainda tinha gabarito da trilha gratuita nos testes do Core
+  (`match_engine.rs`, `app.rs`); trocado por desafio inventado. O histórico tem esses
+  gabaritos nas versões antigas e, em mensagem de commit, o e-mail real de uma pessoa
+  e a história dela.
 
-Se um dia valer: o GitHub guarda os `refs/pull/*`, que ninguém apaga, e eles seguram os
-commits antigos. Reescrever com `git filter-repo` só limpa de verdade publicado num
-repositório novo, não abrindo este.
+Por isso a abertura não vira a chave deste repositório: o GitHub guarda os
+`refs/pull/*`, que ninguém apaga, e eles seguram os commits antigos. O histórico é
+reescrito com `git filter-repo` (mensagens, gabaritos antigos, autor no endereço
+noreply) e publicado num repositório novo; este fica privado, com outro nome. O
+Workload Identity de `terraform/github_deploy.tf` é preso ao id do repositório e precisa
+do id novo.
+
+Antes de abrir: os limites de abuso da revisão de segurança (`/sync`, OTP de
+recuperação, IPv6 e login por conta, teto global de envio de OTP).

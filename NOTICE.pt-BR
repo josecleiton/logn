@@ -1,0 +1,88 @@
+LogN
+Copyright 2026 José Cleiton Correia
+
+Tradução do NOTICE. A versão em inglês, NOTICE, é a que vale se as duas divergirem.
+
+Este produto inclui software desenvolvido por José Cleiton Correia.
+Licenciado sob a Apache License, Version 2.0 — ver LICENSE.
+
+--------------------------------------------------------------------------------
+MARCA
+--------------------------------------------------------------------------------
+
+O nome "LogN", o símbolo do balão, os arquivos de marca e a identidade visual do
+aplicativo como marca NÃO estão cobertos pela licença deste código. A seção 6 da
+Apache License 2.0 deixa isso explícito, e TRADEMARKS.pt-BR.md lista os arquivos e
+diz o que vale e o que não vale.
+
+--------------------------------------------------------------------------------
+CONTEÚDO
+--------------------------------------------------------------------------------
+
+Os desafios, enunciados, gabaritos e explicações da trilha — e o método de
+escrevê-los — não estão neste repositório e não são cobertos por esta licença.
+
+Parte dos problemas tem origem em exercícios de Farias.
+
+--------------------------------------------------------------------------------
+SOFTWARE DE TERCEIROS
+--------------------------------------------------------------------------------
+
+IBM Plex Sans e IBM Plex Mono
+  IBM Plex Sans: Copyright 2018 IBM Corp. IBM Plex Mono: Copyright 2017 IBM Corp.
+  Reserved Font Name "Plex".
+  SIL Open Font License 1.1 — texto completo em
+  ios/LogNiOS/LogNiOS/Resources/Fonts/OFL.txt
+  Os arquivos .ttf em ios/LogNiOS/LogNiOS/Resources/Fonts/ e em
+  android/app/src/main/res/font/, e as cópias que a landing serve em /fonts/, estão
+  sob a OFL, não sob a Apache 2.0. São os arquivos originais, sem alteração.
+
+Runtime Swift de serialização (Serde/Bincode)
+  Copyright (c) Facebook, Inc. and its affiliates.
+  MIT License ou Apache License 2.0, à escolha
+  Vem do serde-reflection, pelo facet_generate da Redbadger (Apache License 2.0):
+  https://github.com/redbadger/facet-generate
+  Os arquivos em ios/LogNCoreFFI/Sources/Serde/ são cópia desse runtime.
+
+boltffi
+  MIT License
+  https://github.com/boltffi/boltffi
+  Gera a ponte FFI (SharedCoreBoltFFI.swift, boltffi.h).
+
+Crux
+  Redbadger — Apache License 2.0
+  https://github.com/redbadger/crux
+
+PostHog iOS SDK
+  PostHog — MIT License
+  https://github.com/PostHog/posthog-ios
+
+--------------------------------------------------------------------------------
+MARCAS DE TERCEIROS
+--------------------------------------------------------------------------------
+
+Selo "Download on the App Store"
+  Apple Inc. Apple, o logotipo da Apple e App Store são marcas da Apple Inc.
+  Os arquivos landing/src/assets/badges/app-store-*.svg são a arte oficial da
+  Apple, sem alteração, e NÃO estão sob a Apache 2.0. O uso segue as App Store
+  Marketing Guidelines: https://developer.apple.com/app-store/marketing/guidelines/
+
+Selo "Disponível no Google Play"
+  Google LLC. Google Play e o logotipo do Google Play são marcas da Google LLC.
+  landing/src/assets/badges/google-play-*.png são a arte oficial do Google, sem
+  alteração, e NÃO estão sob a Apache 2.0. O uso segue as diretrizes de marca do
+  Google Play: https://partnermarketinghub.withgoogle.com/brands/google-play/
+
+Logotipo "G" do Google
+  Google LLC. Usado no botão "Entrar com o Google", conforme as diretrizes de marca
+  do Login do Google: https://developers.google.com/identity/branding-guidelines
+  Está em ios/LogNiOS/LogNiOS/Assets.xcassets/GoogleIcon.imageset/ e
+  android/app/src/main/java/sh/logn/app/ui/components/ProviderIcons.kt, e NÃO está
+  sob a Apache 2.0.
+
+Marca do GitHub (Invertocat)
+  GitHub, Inc. Usada no botão "Entrar com o GitHub", conforme
+  https://github.com/logos. Está em
+  ios/LogNiOS/LogNiOS/Assets.xcassets/GitHubIcon.imageset/ e em
+  android/app/src/main/java/sh/logn/app/ui/components/ProviderIcons.kt, e NÃO está
+  sob a Apache 2.0.

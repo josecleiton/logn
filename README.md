@@ -21,8 +21,8 @@ not an afternoon.
 
 ## How it works
 
-**Tracks of topics** in programming, linked as a graph, not a list:
-more than one path can leave a node and meet again further on. Each node opens with
+**Tracks of topics** in programming, linked as a graph, not a list: a topic can open
+more than one path, and paths can meet again further on. Each node opens with
 accumulated XP, and XP comes from accepted answers. The curriculum itself (topics,
 statements and answer keys) lives in the content repository.
 
@@ -87,5 +87,5 @@ redistribute it, commercially too.
 
 **The LogN name, the symbol and the visual identity are not under that license.** A
 derivative is welcome; it just needs another name and another look. Details in
-[TRADEMARKS.md](TRADEMARKS.md) (in Portuguese), and third-party attributions, including
+[TRADEMARKS.md](TRADEMARKS.md), and third-party attributions, including
 the IBM Plex fonts, which are OFL, in [NOTICE](NOTICE).

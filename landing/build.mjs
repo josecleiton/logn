@@ -334,6 +334,8 @@ for (const store of live) {
   for (const { tag } of LOCALES) copyFileSync(join(ROOT, "src", store.badge(tag)), join(DIST, store.badge(tag)));
 }
 for (const font of FONTS) copyFileSync(join(FONTS_DIR, font), join(DIST, "fonts", font));
+// A OFL pede a licença junto de cada cópia das fontes, e o site é uma.
+copyFileSync(join(FONTS_DIR, "OFL.txt"), join(DIST, "fonts", "OFL.txt"));
 
 // O Digital Asset Links do app Android: liga `logn.sh` ao pacote assinado pelo Play App
 // Signing (a impressão do certificado público, que vem em todo APK da loja). O Google o

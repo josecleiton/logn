@@ -1,100 +1,102 @@
-# ADR 0022: Android primeiro no lançamento público, e iPhone por lista de espera
+# ADR 0022: Android first for the public launch, and iPhone through a waitlist
 
-## 1. Visão Geral
+**English** · [Português](0022-android-primeiro-no-lancamento.pt-BR.md)
 
-O plano até aqui era lançar no iPhone e trazer o Android depois (ADR 0001, spec das trilhas pagas). A spec pôs "Android e Play Billing" fora do escopo, e a compra, a landing e os documentos legais foram escritos só para App Store.
+## 1. Overview
 
-Esse plano pressupunha a conta paga do Apple Developer Program, que custa US$ 99 por ano, e essa conta nunca foi criada. Sem ela não há TestFlight, App Store, Sign in with Apple nem APNs. Compra só existe no `.storekit` local, e a assinatura do Xcode vence a cada 7 dias. Documentos que dizem que o app "estava no TestFlight" (ADRs 0008, 0013 e 0020) descrevem uma distribuição que não aconteceu: o app só rodou no aparelho do dono, pelo Xcode.
+The plan so far was to launch on iPhone and bring Android later (ADR 0001, paid tracks spec). The spec put "Android and Play Billing" out of scope, and purchasing, the landing page and the legal documents were written for the App Store only.
 
-A conta do Google Play Console já existe e é de organização, verificada no CNPJ que aparece nos termos. Por ser de organização, não se aplica a regra de teste fechado com 12 testadores por 14 dias, que vale para conta pessoal nova. A taxa é única, de US$ 25.
+That plan assumed the paid Apple Developer Program account, which costs US$ 99 per year, and that account was never created. Without it there is no TestFlight, App Store, Sign in with Apple or APNs. Purchases exist only in the local `.storekit`, and the Xcode signature expires every 7 days. Documents that say the app "was on TestFlight" (ADRs 0008, 0013 and 0020) describe a distribution that never happened: the app only ever ran on the owner's device, through Xcode.
 
-## 2. Decisão
+The Google Play Console account already exists and is an organization account. Because it is an organization account, the closed-testing rule of 12 testers for 14 days, which applies to new personal accounts, does not apply. The fee is a one-time US$ 25.
 
-**O lançamento público é no Google Play.** O motivo é custo: não pagar US$ 99 por ano para validar a ideia. O iOS continua no repositório e roda no aparelho do dono. O código de Apple (StoreKit, Sign in with Apple, a validação do JWS) fica como está, sem uso em produção, e nada dele é apagado.
+## 2. Decision
 
-**A conta da Apple entra quando um de dois gatilhos disparar**, o que vier primeiro:
+**The public launch is on Google Play.** The reason is cost: not paying US$ 99 per year to validate the idea. iOS stays in the repository and runs on the owner's device. The Apple code (StoreKit, Sign in with Apple, JWS validation) stays as it is, unused in production, and none of it is deleted.
 
-- 100 inscrições **confirmadas** na lista de espera do iPhone;
-- receita do Android que cubra US$ 99 por ano.
+**The Apple account comes in when one of two triggers fires**, whichever comes first:
 
-**A landing** (`landing/README.md`):
+- 100 **confirmed** sign-ups on the iPhone waitlist;
+- Android revenue that covers US$ 99 per year.
 
-- Os botões apontam para o Google Play (`LOGN_PLAY_STORE_URL`). A App Store é opcional (`LOGN_APP_STORE_URL`) e está desligada. Cada selo só entra quando a loja tem link.
-- O texto diz "Android · grátis · iPhone a caminho".
-- **Lista de espera só do iPhone**, porque o Android vai sair antes. É um `<form>` sem JS que posta em `POST /api/v1/waitlist`, e o backend responde com `303` para `/waitlist/{thanks,confirmed,left,error}/`. O `form-action` da CSP aceita o domínio da API e nenhum outro. O formulário só sai com `LOGN_API_ORIGIN`, e isso só se define depois que a rota existir e a política cobrir a lista.
-- `/account/delete/` é a URL de exclusão que a ficha do Google Play exige em "Segurança dos dados". Uma URL serve para todas as línguas, e a página tem o seletor. Ela repete a seção 10 da política: pelo app, na hora; sem o app, por `contact@logn.sh` a partir do e-mail cadastrado.
+**The landing page** (`landing/README.md`):
 
-**A lista de espera, no backend:**
+- The buttons point to Google Play (`LOGN_PLAY_STORE_URL`). The App Store is optional (`LOGN_APP_STORE_URL`) and turned off. Each badge only appears when the store has a link.
+- The copy says "Android · free · iPhone coming soon".
+- **Waitlist for iPhone only**, because Android ships first. It is a `<form>` without JS that posts to `POST /api/v1/waitlist`, and the backend replies with `303` to `/waitlist/{thanks,confirmed,left,error}/`. The CSP `form-action` allows the API domain and no other. The form only appears with `LOGN_API_ORIGIN`, and that is only set after the route exists and the privacy policy covers the list.
+- `/account/delete/` is the deletion URL the Google Play listing requires under "Data safety". One URL serves every language, and the page has the language selector. It repeats section 10 of the policy: through the app, immediately; without the app, through `contact@logn.sh` from the registered e-mail address.
 
-- Tabela `waitlist_entries` (`email`, `locale`, `confirmed_at`, `created_at`, `updated_at` com trigger), no Postgres. Não fica no worker nem com terceiro, para o dado pessoal ficar no mesmo lugar e na mesma purga.
-- Confirmação dupla: link com token HMAC, e o não confirmado é purgado 7 dias depois da criação. A resposta é a mesma para e-mail novo, pendente e confirmado, para a rota não denunciar quem está na lista.
-- **A pendente recebe um e-mail só.** Pedir de novo não reenvia, a não ser que o SMTP tenha falhado. Com reenvio, quem mandasse o formulário todo dia faria chegar um e-mail por dia a um endereço que não é dele, e a linha nunca venceria. Quem volta depois de a pendente vencer se inscreve de novo, então o pior caso é um e-mail a cada 7 dias por endereço.
-- Contra abuso:
-  - Só vale formulário da própria landing: `Origin` igual à landing, ou `Sec-Fetch-Site: same-site`. A landing sai com `no-referrer`, e com isso o navegador manda `Origin: null`. Sem essa checagem, qualquer página postaria o formulário pelo navegador de cada visitante, um IP por visitante.
-  - Rate limit por IP, `limitBody`, e um teto global de 100 e-mails de confirmação por hora, contado no banco.
-  - O campo-isca `website`, que robô preenche e gente não vê.
-  - Sem Turnstile nem captcha: seria script de terceiro, e só entra se o spam aparecer, com ADR própria.
-- **O link do e-mail não muda nada no GET.** Filtro de e-mail corporativo abre todo link que recebe. Um GET que confirmasse inscreveria quem não pediu, e um que tirasse da lista tiraria quem pediu. `GET /api/v1/waitlist/{confirm,leave}?t=` mostra uma página com um botão, com CSP por hash e `Referrer-Policy: no-referrer`, porque o token está na URL. O botão faz o `POST` na mesma URL, que responde com `303` para a landing.
-- **O token é `id.HMAC(id, ação)`**, com a chave do JWT e um prefixo próprio. O e-mail nunca vai no link, porque a URL passa pelos registros da hospedagem, e eles não guardam e-mail. O token não vence sozinho: morre com a linha. Cada ação tem a sua assinatura, então o link de confirmar não tira ninguém da lista.
-- Todo e-mail leva o link de saída, também no `List-Unsubscribe`, e a saída apaga a linha.
-- Não mandamos `List-Unsubscribe-Post` (RFC 8058): o clique de saída num toque é um POST do servidor do provedor de e-mail, e o Bot Fight Mode da borda desafia servidor com JS, sem exceção (ADR 0013). A saída falharia calada. O cabeçalho volta com um caminho que não passe pelo desafio, e com DKIM assinando os dois cabeçalhos.
-- O e-mail de confirmação sai fora do pedido, como o do OTP, para o tempo de resposta não dizer quem já está na lista. Se o SMTP falha, a goroutine libera o reenvio. O erro vai para o log sem endereço de e-mail, porque o SMTP costuma repetir o destinatário na recusa.
-- `WAITLIST_LANDING_ORIGIN` e `WAITLIST_API_ORIGIN` ligam as rotas (`enable_waitlist` no Terraform). Sem as duas, as rotas não existem. Uma só, ou fora do formato `https://domínio`, e o servidor não sobe.
-- O e-mail confirmado fica até o lançamento no iPhone, sem prazo fixo. A política diz isso.
-- Um único aviso, quando o iPhone sair. O envio desse aviso fica para quando o gatilho disparar.
+**The waitlist, in the backend:**
 
-**A compra pelo Google Play**, ao lado da App Store:
+- Table `waitlist_entries` (`email`, `locale`, `confirmed_at`, `created_at`, `updated_at` with trigger), in Postgres. It does not live in the worker or with a third party, so personal data stays in the same place and under the same purge.
+- Double opt-in: a link with an HMAC token, and unconfirmed entries are purged 7 days after creation. The response is the same for a new, pending and confirmed e-mail, so the route does not reveal who is on the list.
+- **A pending entry receives one e-mail only.** Asking again does not resend, unless SMTP failed. With resending, someone submitting the form every day would deliver one e-mail per day to an address that is not theirs, and the row would never expire. Someone who comes back after the pending entry expires signs up again, so the worst case is one e-mail every 7 days per address.
+- Against abuse:
+  - Only a form from the landing page itself is accepted: `Origin` equal to the landing page, or `Sec-Fetch-Site: same-site`. The landing page is served with `no-referrer`, which makes the browser send `Origin: null`. Without this check, any page could post the form through each visitor's browser, one IP per visitor.
+  - Per-IP rate limit, `limitBody`, and a global cap of 100 confirmation e-mails per hour, counted in the database.
+  - The `website` honeypot field, which bots fill in and people do not see.
+  - No Turnstile or captcha: it would be a third-party script, and it only comes in if spam shows up, with its own ADR.
+- **The e-mail link changes nothing on GET.** Corporate e-mail filters open every link they receive. A GET that confirmed would sign up people who did not ask, and one that removed from the list would remove people who did. `GET /api/v1/waitlist/{confirm,leave}?t=` shows a page with a button, with hash-based CSP and `Referrer-Policy: no-referrer`, because the token is in the URL. The button sends the `POST` to the same URL, which replies with `303` to the landing page.
+- **The token is `id.HMAC(id, action)`**, with the JWT key and its own prefix. The e-mail address never goes in the link, because the URL passes through the hosting logs, and those do not store e-mail addresses. The token does not expire on its own: it dies with the row. Each action has its own signature, so the confirm link does not remove anyone from the list.
+- Every e-mail carries the leave link, also in `List-Unsubscribe`, and leaving deletes the row.
+- We do not send `List-Unsubscribe-Post` (RFC 8058): one-click unsubscribe is a POST from the mail provider's server, and the edge's Bot Fight Mode challenges servers with JS, with no exceptions (ADR 0013). Unsubscribing would fail silently. The header comes back with a path that does not go through the challenge, and with DKIM signing both headers.
+- The confirmation e-mail is sent outside the request, like the OTP one, so response time does not tell who is already on the list. If SMTP fails, the goroutine allows a resend. The error is logged without the e-mail address, because SMTP often repeats the recipient in the rejection.
+- `WAITLIST_LANDING_ORIGIN` and `WAITLIST_API_ORIGIN` turn the routes on (`enable_waitlist` in Terraform). Without both, the routes do not exist. Only one, or either one outside the `https://domain` format, and the server does not start.
+- A confirmed e-mail is kept until the iPhone launch, with no fixed deadline. The policy says so.
+- A single notice, when the iPhone version ships. Sending that notice is deferred until the trigger fires.
 
-- **Um id de produto nas duas lojas.** Os ids atuais são válidos no Play. Uma migração nova renomeia `tracks.app_store_product_id` para `store_product_id`, e `logn-conteudo` acompanha.
-- **`entitlements` ganha `provider`**, e o índice de dono ativo passa a `(provider, original_transaction_id)`. O CHECK de `environment` em `store_transactions` passa a aceitar os ambientes do Play. As outras tabelas de compra e de revogação já aceitam `google_play` (migrações 0050 e 0063).
-- **`original_transaction_id` do Play é o SHA-256 hex do `purchaseToken`.** O token não tem tamanho máximo documentado, e o `orderId` não vem em compra de testador de licença. O token cru vai para `raw_payload` e para a chamada à API.
-- **Verificação no servidor, pela Google Play Developer API**:
-  - `purchaseState` tem de ser comprado; pendente não libera.
-  - `obfuscatedAccountId` tem de ser o `user_id`, com a mesma regra do `appAccountToken` na ADR 0013 (na restauração, só de conta que não existe mais).
-  - O servidor faz o acknowledge logo depois de gravar a licença. Sem acknowledge em 3 dias, o Play estorna sozinho.
-- **Compra de testador de licença libera a trilha**, como a de Sandbox na ADR 0013. A diferença é que só as contas que cadastramos no Play Console conseguem fazê-la.
-- **Credencial sem chave.** A conta de serviço do Cloud Run é convidada no Play Console, com permissão só de ver dados financeiros e gerenciar pedidos. O token vem do servidor de metadados, com o escopo `androidpublisher`, e a chamada é REST por `net/http`, sem SDK, como na ADR 0016. Não entra segredo novo nem dependência nova.
-- **A compra chega pela mesma rota.** `POST /api/v1/purchases` e `/restore` aceitam `{"jws"}`, como sempre, ou `{"provider":"google_play","product_id","purchase_token"}`. Antes de qualquer pedido à loja, o produto é conferido no banco (`IsPaidProduct`) e o token passa por um formato fechado, porque os dois entram no caminho da URL da API. Há dois códigos novos: `purchase_pending` (409), para compra ainda não paga, e `store_unavailable` (503), para o Play desligado. Falha da loja ou do acknowledge responde 502, e o app manda de novo: gravar a licença é idempotente.
-- **Reembolso por consulta diária.** Um job do Cloud Scheduler chama `POST /api/v1/internal/play/voided`, que lê a Voided Purchases API (29 dias para trás) e revoga pelo mesmo caminho de `revoked_transactions`. Anulação por fraude ou estorno (`voidedReason` 5, 6 e 7) vira `fraud`; o resto vira `refund`. A rota confere emissor, audiência e a conta que assinou. A conta é a do Scheduler, a mesma da purga: quem chama as duas é o mesmo job, e as duas só leem a loja e revogam, sem nada a devolver a quem chamou.
-- **O provedor passa a morar na licença** (`entitlements.provider`, 0066). `GrantEntitlement` usa o da compra, e a revogação manual lê o provedor da licença em vez do registro da compra. Isso fecha a pendência da ADR 0021. `RevokeTransaction` e `ReinstateRefund` só mexem na licença da mesma loja.
+**Purchases through Google Play**, alongside the App Store:
 
-**Login no Android:**
+- **One product id in both stores.** The current ids are valid on Play. A new migration renames `tracks.app_store_product_id` to `store_product_id`, and `logn-conteudo` follows.
+- **`entitlements` gains `provider`**, and the active-owner index becomes `(provider, original_transaction_id)`. The `environment` CHECK in `store_transactions` starts accepting the Play environments. The other purchase and revocation tables already accept `google_play` (migrations 0050 and 0063).
+- **Play's `original_transaction_id` is the hex SHA-256 of the `purchaseToken`.** The token has no documented maximum length, and `orderId` is not present on license tester purchases. The raw token goes to `raw_payload` and to the API call.
+- **Server-side verification, through the Google Play Developer API**:
+  - `purchaseState` must be purchased; pending does not unlock.
+  - `obfuscatedAccountId` must be the `user_id`, with the same rule as `appAccountToken` in ADR 0013 (on restore, only from an account that no longer exists).
+  - The server acknowledges right after recording the entitlement. Without an acknowledgement within 3 days, Play refunds on its own.
+- **A license tester purchase unlocks the track**, like a Sandbox one in ADR 0013. The difference is that only the accounts we register in the Play Console can make it.
+- **Keyless credential.** The Cloud Run service account is invited into the Play Console, with permission only to view financial data and manage orders. The token comes from the metadata server, with the `androidpublisher` scope, and the call is REST over `net/http`, with no SDK, as in ADR 0016. No new secret and no new dependency.
+- **The purchase arrives through the same route.** `POST /api/v1/purchases` and `/restore` accept `{"jws"}`, as always, or `{"provider":"google_play","product_id","purchase_token"}`. Before any request to the store, the product is checked in the database (`IsPaidProduct`) and the token goes through a closed format, because both go into the API URL path. There are two new codes: `purchase_pending` (409), for a purchase not yet paid, and `store_unavailable` (503), for Play turned off. A store or acknowledgement failure returns 502, and the app sends again: recording the entitlement is idempotent.
+- **Refunds through a daily poll.** A Cloud Scheduler job calls `POST /api/v1/internal/play/voided`, which reads the Voided Purchases API (29 days back) and revokes through the same `revoked_transactions` path. A void for fraud or chargeback (`voidedReason` 5, 6 and 7) becomes `fraud`; the rest becomes `refund`. The route checks issuer, audience and the signing account. The account is the Scheduler's, the same as the purge's: the same job calls both, and both only read the store and revoke, with nothing to return to the caller.
+- **The provider now lives on the entitlement** (`entitlements.provider`, 0066). `GrantEntitlement` uses the purchase's provider, and manual revocation reads the provider from the entitlement instead of the purchase record. This closes the open item from ADR 0021. `RevokeTransaction` and `ReinstateRefund` only touch the entitlement from the same store.
 
-- Google pelo Credential Manager. O ID token volta com `aud` = client web (o `serverClientId`) e `azp` = client Android. Aceitar só a audiência web deixaria passar token pedido por qualquer client do projeto, então o backend aceita **pares** `(aud, azp)`: `(iOS, iOS)` com `GOOGLE_IOS_CLIENT_ID`, e `(web, Android)` com `GOOGLE_WEB_CLIENT_ID` e `GOOGLE_ANDROID_CLIENT_IDS`, que vêm juntos, senão o servidor não sobe. É um client Android por chave que assina o app: a de debug, a de upload (`~/.android/keystores/logn-upload.jks`, fora do repositório) e a do Play App Signing, que o Google gera e o Play Console mostra depois do primeiro upload. Todos ficam sob o mesmo client web, e o `azp` tem de ser um deles. Cada audiência passa pela validação inteira; nada do token é lido antes de a assinatura conferir. `azp` ausente só vale no par do iOS.
-- GitHub funciona como está.
-- Sem "Entrar com Apple": no Android ele exige um Services ID, que exige a conta paga. O segredo `logn-apple-signin-key` continua no Terraform, reservado.
+**Sign-in on Android:**
 
-**Documentos legais:** a v4 é substituída no lugar (`gen_documentos_legais.py --substitui`), porque só o dono a aceitou. O texto fica neutro de loja, com Google como processador do pagamento, o reembolso pelo Google Play e a seção da lista de espera.
+- Google through Credential Manager. The ID token comes back with `aud` = web client (the `serverClientId`) and `azp` = Android client. Accepting only the web audience would let through a token requested by any client in the project, so the backend accepts **pairs** `(aud, azp)`: `(iOS, iOS)` with `GOOGLE_IOS_CLIENT_ID`, and `(web, Android)` with `GOOGLE_WEB_CLIENT_ID` and `GOOGLE_ANDROID_CLIENT_IDS`, which come together, or the server does not start. There is one Android client per key that signs the app: the debug key, the upload key (`~/.android/keystores/logn-upload.jks`, outside the repository) and the Play App Signing key, which Google generates and the Play Console shows after the first upload. All of them sit under the same web client, and `azp` must be one of them. Each audience goes through full validation; nothing in the token is read before the signature checks out. A missing `azp` is only accepted for the iOS pair.
+- GitHub works as it is.
+- No "Sign in with Apple": on Android it requires a Services ID, which requires the paid account. The `logn-apple-signin-key` secret stays in Terraform, reserved.
 
-## 3. Alternativas descartadas
+**Legal documents:** v4 is replaced in place (`gen_documentos_legais.py --substitui`), because only the owner has accepted it. The text becomes store-neutral, with Google as the payment processor, refunds through Google Play, and the waitlist section.
 
-- **Pagar a conta Apple e lançar nas duas lojas.** Recusado pelo custo antes de a ideia se provar.
-- **Lista de espera das duas plataformas.** O Android sai antes, e a lista seria do dia do lançamento.
-- **Lista no worker (D1/KV) ou em serviço de terceiro.** Tiraria dado pessoal do Postgres, da purga e da política atual.
-- **`fetch` com JS no formulário.** Abriria o `connect-src` e manteria um script por uma coisa que o HTML resolve.
-- **Notificações em tempo real do Play (RTDN) por Pub/Sub.** Seria uma rota pública nova, com tópico e assinatura, para ganhar menos de 24 h numa revogação de trilha.
-- **Chave JSON de conta de serviço.** Seria um segredo a mais, no limite do plano gratuito, quando a conta do Cloud Run já basta.
-- **Coluna `play_product_id` separada.** Os dois catálogos são nossos, e um id só dispensa o mapa.
+## 3. Rejected alternatives
 
-## 4. Consequências
+- **Pay for the Apple account and launch in both stores.** Rejected on cost before the idea proves itself.
+- **Waitlist for both platforms.** Android ships first, and the list would only matter for launch day.
+- **List in the worker (D1/KV) or in a third-party service.** It would take personal data out of Postgres, out of the purge and out of the current policy.
+- **`fetch` with JS in the form.** It would open `connect-src` and keep a script around for something HTML already handles.
+- **Play Real-time Developer Notifications (RTDN) through Pub/Sub.** It would be a new public route, with a topic and a subscription, to gain less than 24 h on a track revocation.
+- **Service account JSON key.** It would be one more secret, at the free tier limit, when the Cloud Run account is already enough.
+- **Separate `play_product_id` column.** Both catalogs are ours, and a single id removes the need for a mapping.
 
-- **A loja diz de que produto é a compra.** O id do produto vai no caminho da consulta, e a loja recusa token de outro produto. Mas a documentação não promete isso, e um token de item barato do mesmo app não pode abrir uma trilha. Quando a resposta traz `productId`, ele tem de ser o pedido, e a quantidade tem de ser um.
-- **Reconhecimento que falhou não vira estorno calado.** A licença é gravada antes do reconhecimento. Se ele falha e o app não manda de novo, o job diário das anuladas reconhece as compras dos últimos 4 dias que ainda estão sem reconhecimento. Reconhecimento que falhou mas chegou à loja vale como feito.
-- **Erro nosso não é compra inválida.** Só a resposta do token que não vale (410, ou 400 e 404 com o motivo do token) vira `purchase_invalid`. Pacote errado, conta sem permissão ou API desligada respondem 502, e o app tenta de novo. Erro da API vai para o log sem a URL, que leva o token.
-- **Compra de código promocional resgatado na loja** chega sem conta dentro, e só entra pela restauração. O cliente Android tem de chamar a restauração ao abrir.
-- **Limites do job das anuladas:** se ele ficar mais de 29 dias sem rodar, os reembolsos anteriores se perdem, porque a API guarda 30 dias. Mais de 20 mil anuladas na janela fazem o job falhar em toda rodada. Falta um alerta de falha do Scheduler.
-- **Ordem do deploy da 0066:** ela renomeia `app_store_product_id`, e a revisão antiga do Cloud Run lê o nome antigo. Entre a migração e a troca de tráfego, `/tracks` e `/purchases` respondem 500. Sem usuários, isso é aceito. `gen_conteudo.py` e `tracks.json` de `logn-conteudo` mudam junto, ou o `content-check` e a próxima migração de conteúdo quebram.
-- **O cliente Android depende da Play Billing Library** (`com.android.billingclient:billing`, 9.1.0 no esqueleto de `android/`). É a primeira dependência dele, e não é opcional. O Play Console decide pela versão dela se o app pode vender, e a permissão `BILLING` escrita à mão, sem a biblioteca, conta como a API AIDL antiga e é recusada (o piso é a 8.0). Ela sobe de versão junto com o que o Console exigir.
-- **O Core ainda manda só `{"jws"}`.** `SubmitPurchase` em `app.rs` tem de ganhar a forma do Play quando o cliente Android existir, e o Core precisa mapear `purchase_pending` e `store_unavailable` para `StatusKey`.
-- **Sem AAB, sem teste ponta a ponta.** O Play Console só cria produto depois de receber um AAB com a permissão de billing, e `purchaseToken` só sai de um cliente real. Até lá, a verificação do Play é testada contra respostas montadas a partir da documentação.
-- A página `/account/delete/` e a seção 10 da política dizem a mesma coisa. Quem mudar uma muda a outra. O app Android precisa usar os mesmos rótulos, "Gerenciar conta → Excluir minha conta".
-- `LOGN_API_ORIGIN` na landing só depois da rota e da política no ar, nessa ordem.
-- **Limites aceitos da lista:**
-  - O token está na URL, então passa pelos registros da borda e do Cloud Run. Ele não traz dado pessoal e só confirma ou tira da lista aquela inscrição.
-  - Trocar a chave do JWT mata todo link já enviado, inclusive o de saída. Quem estiver confirmado sai por `contact@logn.sh`.
-  - Com `cpu_idle`, a goroutine do envio pode ficar sem CPU depois da resposta, como a do OTP. Se o envio morrer ali, a pendente fica sem e-mail até vencer.
-  - Navegador sem `Sec-Fetch-Site`, que ainda manda `Origin: null`, não consegue se inscrever.
-  - Antes de ligar, confira o formulário e os links do e-mail passando pela borda de verdade, com o Bot Fight Mode ligado.
-- **A lista pode ficar anos parada.** O prazo "até o lançamento" foi escolhido sabendo disso. Se o gatilho não disparar, apagar a lista é decisão a revisitar aqui.
-- O cliente Android, o push (FCM no Android, APNs no iOS quando houver conta), o `assetlinks.json` e o envio do aviso de lançamento ficam fora desta decisão.
-- ADR 0001 e a spec das trilhas pagas continuam valendo no que descrevem da arquitetura. A ordem de lançamento passa a ser esta.
+## 4. Consequences
+
+- **The store says which product the purchase is for.** The product id goes in the query path, and the store rejects a token from another product. But the documentation does not promise this, and a token for a cheap item from the same app must not unlock a track. When the response carries `productId`, it must be the one requested, and the quantity must be one.
+- **A failed acknowledgement does not become a silent refund.** The entitlement is recorded before the acknowledgement. If it fails and the app does not send again, the daily voided job acknowledges purchases from the last 4 days that are still unacknowledged. An acknowledgement that failed but reached the store counts as done.
+- **Our error is not an invalid purchase.** Only the response for a token that is not valid (410, or 400 and 404 with the token reason) becomes `purchase_invalid`. Wrong package, account without permission or API turned off return 502, and the app retries. API errors are logged without the URL, which carries the token.
+- **A purchase from a promo code redeemed in the store** arrives with no account inside, and only comes in through restore. The Android client must call restore on launch.
+- **Limits of the voided job:** if it goes more than 29 days without running, earlier refunds are lost, because the API keeps 30 days. More than 20 thousand voided purchases in the window make the job fail on every run. A Scheduler failure alert is missing.
+- **Deploy order for 0066:** it renames `app_store_product_id`, and the old Cloud Run revision reads the old name. Between the migration and the traffic switch, `/tracks` and `/purchases` return 500. With no users, this is accepted. `gen_conteudo.py` and `tracks.json` in `logn-conteudo` change together, or `content-check` and the next content migration break.
+- **The Android client depends on the Play Billing Library** (`com.android.billingclient:billing`, 9.1.0 in the `android/` skeleton). It is its first dependency, and it is not optional. The Play Console decides from its version whether the app can sell, and a hand-written `BILLING` permission, without the library, counts as the old AIDL API and is rejected (the floor is 8.0). It moves up in version with whatever the Console requires.
+- **The Core still sends only `{"jws"}`.** `SubmitPurchase` in `app.rs` has to gain the Play shape once the Android client exists, and the Core needs to map `purchase_pending` and `store_unavailable` to `StatusKey`.
+- **No AAB, no end-to-end test.** The Play Console only creates products after receiving an AAB with the billing permission, and a `purchaseToken` only comes from a real client. Until then, Play verification is tested against responses built from the documentation.
+- The `/account/delete/` page and section 10 of the policy say the same thing. Whoever changes one changes the other. The Android app must use the same labels, "Gerenciar conta → Excluir minha conta" (Manage account → Delete my account).
+- `LOGN_API_ORIGIN` on the landing page only after the route and the policy are live, in that order.
+- **Accepted limits of the list:**
+  - The token is in the URL, so it passes through the edge and Cloud Run logs. It carries no personal data and only confirms or removes that one sign-up.
+  - Rotating the JWT key kills every link already sent, including the leave link. Anyone confirmed leaves through `contact@logn.sh`.
+  - With `cpu_idle`, the sending goroutine may get no CPU after the response, like the OTP one. If sending dies there, the pending entry has no e-mail until it expires.
+  - A browser without `Sec-Fetch-Site` that still sends `Origin: null` cannot sign up.
+  - Before turning it on, check the form and the e-mail links going through the real edge, with Bot Fight Mode on.
+- **The list may sit idle for years.** The "until launch" retention was chosen knowing that. If the trigger never fires, deleting the list is a decision to revisit here.
+- The Android client, push (FCM on Android, APNs on iOS once there is an account), `assetlinks.json` and sending the launch notice are outside this decision.
+- ADR 0001 and the paid tracks spec remain valid for what they describe of the architecture. The launch order is now this one.
