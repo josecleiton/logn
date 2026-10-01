@@ -32,11 +32,10 @@ func setupTestDB(t *testing.T) *pgxpool.Pool {
 	//
 	// Isto era um `TRUNCATE ... challenges CASCADE`: rodar a suíte apagava o seed do
 	// banco de desenvolvimento, as migrações não repunham (já constavam aplicadas) e
-	// a próxima partida abria sem problema nenhum.
-	_, err = conn.Exec(context.Background(), "TRUNCATE TABLE game_events, user_sync_state CASCADE")
-	if err != nil {
-		t.Fatalf("Failed to truncate tables: %v", err)
-	}
+	// a próxima partida abria sem problema nenhum. Depois sobrou um TRUNCATE de
+	// `game_events` e `user_sync_state`, que apagava o histórico de sync de toda conta
+	// local e dava deadlock com o pacote httpapi rodando em paralelo. Os testes de sync
+	// agora usam um usuário só deles e apagam só o que escreveram.
 	if _, err = conn.Exec(context.Background(),
 		"DELETE FROM challenges WHERE id LIKE 'test_%'"); err != nil {
 		t.Fatalf("Failed to clear test challenges: %v", err)
@@ -133,7 +132,15 @@ func TestRepository_InsertSyncEvents(t *testing.T) {
 	repo := NewRepository(conn)
 	ctx := context.Background()
 
-	userID := "user_123"
+	// Usuários só deste teste: a cadeia começa no gênese sem apagar a de ninguém.
+	userID := testUUID(t)
+	other := testUUID(t)
+	t.Cleanup(func() {
+		for _, id := range []string{userID, other} {
+			conn.Exec(ctx, `DELETE FROM game_events WHERE user_id = $1`, id)
+			conn.Exec(ctx, `DELETE FROM user_sync_state WHERE user_id = $1`, id)
+		}
+	})
 
 	// 1. Testa GetUserLastHash com usuário novo
 	lastHash, err := repo.GetUserLastHash(ctx, userID)
@@ -190,7 +197,6 @@ func TestRepository_InsertSyncEvents(t *testing.T) {
 
 	// 5. O mesmo id de evento em outro usuário não colide. O cliente gera ids a
 	// partir do timestamp, e com a chave global um jogador travava o sync do outro.
-	other := "user_456"
 	otherGenesis, _ := repo.GetUserLastHash(ctx, other)
 	twin := event1
 	twin.CurrentHash = ComputeHash(twin, otherGenesis)

@@ -31,19 +31,10 @@ func setupTestDB(t *testing.T) *pgxpool.Pool {
 		t.Fatalf("Failed to connect to test db: %v", err)
 	}
 
-	// Os desafios ficam: a suíte não tem nada a ver com eles, e apagá-los deixava o
-	// banco de desenvolvimento sem seed até alguém reparar que a partida abre vazia.
-	_, err = conn.Exec(context.Background(), "TRUNCATE TABLE game_events, user_sync_state CASCADE")
-	if err != nil {
-		t.Fatalf("Failed to truncate tables: %v", err)
-	}
-
+	// Nada de TRUNCATE: este é o banco de desenvolvimento, e os pacotes rodam em
+	// paralelo. Cada teste escreve com um usuário só dele e apaga só o que escreveu.
 	return conn
 }
-
-// syncUserID é um usuário de verdade: `game_events.user_id` é UUID e o handler tira
-// o dono do token, não do corpo do pedido.
-const syncUserID = "11111111-2222-3333-4444-555555555555"
 
 // bearer devolve um `Authorization` válido para o usuário do teste.
 func bearer(t *testing.T, userID string) string {
@@ -111,17 +102,24 @@ func TestSyncHandler(t *testing.T) {
 
 	repo := domain.NewRepository(conn)
 	server := &Server{repo: repo}
+	// Um usuário de verdade e só deste teste: o handler tira o dono do token, e uma
+	// cadeia compartilhada com outro teste (ou outra execução) mudaria o topo dela.
+	syncUserID := newTestUUID(t)
 	auth := bearer(t, syncUserID)
 
 	// O token só vale para conta que existe e não pediu exclusão (ac84a44): sem a linha
 	// em users, o sync respondia 401 e o teste falhava desde então.
 	ctx := context.Background()
 	if _, err := conn.Exec(ctx,
-		`INSERT INTO users (id, email) VALUES ($1, 'sync-test@logn.test') ON CONFLICT (id) DO NOTHING`,
-		syncUserID); err != nil {
+		`INSERT INTO users (id, email) VALUES ($1, $2)`,
+		syncUserID, "sync-"+syncUserID+"@example.com"); err != nil {
 		t.Fatalf("criando o usuário do teste: %v", err)
 	}
-	t.Cleanup(func() { conn.Exec(ctx, `DELETE FROM users WHERE id = $1`, syncUserID) })
+	t.Cleanup(func() {
+		conn.Exec(ctx, `DELETE FROM game_events WHERE user_id = $1`, syncUserID)
+		conn.Exec(ctx, `DELETE FROM user_sync_state WHERE user_id = $1`, syncUserID)
+		conn.Exec(ctx, `DELETE FROM users WHERE id = $1`, syncUserID)
+	})
 
 	// 0. Sem token não passa. O corpo do pedido dizia de quem era a cadeia e o
 	// servidor obedecia: dava para escrever eventos na conta de qualquer um.

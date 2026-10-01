@@ -19,10 +19,9 @@ db-down:
 run-backend: db-up
     cd backend && go run .
 
-# Roda todos os testes do Backend. Um pacote por vez: todos usam o mesmo banco de teste,
-# e o TRUNCATE de um pacote em paralelo com a escrita de outro dá deadlock e falha solta.
+# Roda todos os testes do Backend
 test-backend:
-    cd backend && go test -p 1 -v ./...
+    cd backend && go test -v ./...
 
 # Aplica as migrações no banco de Produção e encerra sem subir o servidor HTTP.
 # Uso: DATABASE_URL="postgres://admin..." just migrate-prod
