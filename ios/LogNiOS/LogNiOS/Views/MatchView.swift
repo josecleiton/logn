@@ -301,7 +301,12 @@ struct MatchView: View {
                     onRemove: { core.dispatch(event: .matchSetAnswer(answer: "")) }
                 )
 
-                chipBank(mv.currentOptions.filter { $0 != mv.answerString })
+                chipBank(
+                    mv.currentOptions.filter { $0 != mv.answerString },
+                    targets: [ChipTarget(name: Str.Arena.place_in_blank_accessibility) {
+                        core.dispatch(event: .matchSetAnswer(answer: $0))
+                    }]
+                )
             }
 
         case "COMPLEXITY_MATCH":
@@ -332,7 +337,17 @@ struct MatchView: View {
                     .foregroundColor(LognDark.line)
                     .padding(.vertical, 8)
 
-                chipBank(mv.currentOptions.filter { $0 != mv.dropTime && $0 != mv.dropSpace })
+                chipBank(
+                    mv.currentOptions.filter { $0 != mv.dropTime && $0 != mv.dropSpace },
+                    targets: [
+                        ChipTarget(name: Str.Arena.place_in_slot_accessibility(Str.Arena.time_axis)) {
+                            core.dispatch(event: .matchSetDropTime(value: $0))
+                        },
+                        ChipTarget(name: Str.Arena.place_in_slot_accessibility(Str.Arena.space_axis)) {
+                            core.dispatch(event: .matchSetDropSpace(value: $0))
+                        },
+                    ]
+                )
             }
 
         case "TRADEOFF_MATCH":
@@ -390,9 +405,9 @@ struct MatchView: View {
         }
     }
 
-    private func chipBank(_ options: [String]) -> some View {
+    private func chipBank(_ options: [String], targets: [ChipTarget]) -> some View {
         FlowLayout(spacing: 8) {
-            ForEach(options, id: \.self) { DraggableChip(text: $0) }
+            ForEach(options, id: \.self) { DraggableChip(text: $0, targets: targets) }
         }
     }
 
@@ -1046,9 +1061,19 @@ struct TagChip: View {
     }
 }
 
+/// Um lugar onde o bloco pode cair, para o leitor de tela.
+struct ChipTarget {
+    let name: String
+    let place: (String) -> Void
+}
+
 /// Bloco arrastável do banco de opções.
+///
+/// Arrastar não funciona com o VoiceOver. Cada destino vira uma ação nomeada no bloco
+/// ("Colocar na lacuna"), que o rotor oferece e a tela não mostra.
 struct DraggableChip: View {
     let text: String
+    let targets: [ChipTarget]
 
     var body: some View {
         Text(text)
@@ -1061,6 +1086,11 @@ struct DraggableChip: View {
             .cornerRadius(Radius.xs)
             .overlay(RoundedRectangle(cornerRadius: Radius.xs).stroke(LognDark.lineStrong, lineWidth: 1))
             .onDrag { NSItemProvider(object: text as NSString) }
+            .accessibilityActions {
+                ForEach(targets.indices, id: \.self) { i in
+                    Button(targets[i].name) { targets[i].place(text) }
+                }
+            }
     }
 }
 

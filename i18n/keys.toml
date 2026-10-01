@@ -148,6 +148,9 @@ gap_to_fill = {}
 drop_here = {}
 drop_here_accessibility = {}
 filled_accessibility = { placeholders = [{ name = "value", type = "text" }] }
+# A ação do leitor de tela em cada bloco, no lugar do arrasto: não aparece na tela.
+place_in_blank_accessibility = {}
+place_in_slot_accessibility = { placeholders = [{ name = "slot", type = "text" }] }
 # TRADEOFF_MATCH: as duas casas, o que a casa vazia diz e o que o leitor de tela lê.
 benefit_slot = {}
 drawback_slot = {}

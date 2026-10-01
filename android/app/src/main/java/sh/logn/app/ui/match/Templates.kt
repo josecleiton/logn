@@ -45,9 +45,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -150,11 +152,24 @@ private fun ChipFace(
     }
 }
 
-/** O banco de opções: chips da largura do texto, quebrando linha. */
+/** Um lugar onde o chip pode cair, para o leitor de tela. */
+class ChipTarget(
+    val name: String,
+    val place: (String) -> Unit,
+)
+
+/**
+ * O banco de opções: chips da largura do texto, quebrando linha.
+ *
+ * O toque põe o chip na próxima casa vazia. Para o TalkBack, cada casa também vira uma
+ * ação nomeada no chip ("Colocar em TEMPO"), que não aparece na tela: com duas casas, o
+ * toque sozinho não deixa escolher qual.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ChipBank(
     options: List<String>,
+    targets: List<ChipTarget>,
     onTap: (String) -> Unit,
 ) {
     val drag = LocalChipDrag.current
@@ -165,7 +180,15 @@ fun ChipBank(
                 option,
                 Modifier
                     .onGloballyPositioned { origin = it.boundsInRoot().topLeft }
-                    .clickable(role = Role.Button) { onTap(option) }
+                    .semantics {
+                        customActions =
+                            targets.map { target ->
+                                CustomAccessibilityAction(target.name) {
+                                    target.place(option)
+                                    true
+                                }
+                            }
+                    }.clickable(role = Role.Button) { onTap(option) }
                     .pointerInput(option) {
                         detectDragGesturesAfterLongPress(
                             onDragStart = { drag.start(option, origin + it) },

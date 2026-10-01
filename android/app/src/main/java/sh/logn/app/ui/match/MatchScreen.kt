@@ -309,7 +309,8 @@ private fun TemplateBody(mv: MatchViewModel) {
                     color = LognDark.textMuted,
                 )
                 DropZone(mv.answerString, { dispatch(Event.MatchSetAnswer(it)) }, { dispatch(Event.MatchSetAnswer("")) })
-                ChipBank(mv.currentOptions.filter { it != mv.answerString }) { dispatch(Event.MatchSetAnswer(it)) }
+                val blank = ChipTarget(Str.Arena.place_in_blank_accessibility(context)) { dispatch(Event.MatchSetAnswer(it)) }
+                ChipBank(mv.currentOptions.filter { it != mv.answerString }, listOf(blank)) { dispatch(Event.MatchSetAnswer(it)) }
             }
         COMPLEXITY_MATCH ->
             Column(verticalArrangement = Arrangement.spacedBy(Space.md)) {
@@ -329,7 +330,16 @@ private fun TemplateBody(mv: MatchViewModel) {
                         .background(LognDark.line),
                 )
                 // Tocar põe o chip na próxima casa vazia: primeiro tempo, depois espaço.
-                ChipBank(mv.currentOptions.filter { it != mv.dropTime && it != mv.dropSpace }) { option ->
+                val axes =
+                    listOf(
+                        ChipTarget(Str.Arena.place_in_slot_accessibility(context, Str.Arena.time_axis(context))) {
+                            dispatch(Event.MatchSetDropTime(it))
+                        },
+                        ChipTarget(Str.Arena.place_in_slot_accessibility(context, Str.Arena.space_axis(context))) {
+                            dispatch(Event.MatchSetDropSpace(it))
+                        },
+                    )
+                ChipBank(mv.currentOptions.filter { it != mv.dropTime && it != mv.dropSpace }, axes) { option ->
                     dispatch(if (mv.dropTime.isEmpty()) Event.MatchSetDropTime(option) else Event.MatchSetDropSpace(option))
                 }
             }
