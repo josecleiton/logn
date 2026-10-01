@@ -312,6 +312,13 @@ pub enum StatusKey {
     PurchasePending,
     /// `store_unavailable`: o servidor não fala com a loja agora. Tentar de novo depois.
     StoreUnavailable,
+    /// `login_locked`: senha errada demais para este e-mail. Trava só o login por senha;
+    /// o login social e a troca de senha pelo código continuam abertos, e o app não
+    /// trava botão.
+    LoginLocked,
+    /// `otp_locked`: código errado demais para este e-mail. Nenhum código novo sai até a
+    /// janela do servidor vencer (um dia), e esperar um minuto não resolve.
+    CodeLocked,
 }
 
 /// Uma das verificações que a abertura roda antes de soltar o jogador no app.

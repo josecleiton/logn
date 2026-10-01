@@ -3,6 +3,7 @@ package httpapi
 import (
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"strings"
 	"sync"
@@ -12,8 +13,10 @@ import (
 // Tetos de corpo por rota. Não havia nenhum: cabiam 32 MB (o limite do Cloud Run) numa
 // senha que ia inteira para o Argon2, ou num sync que virava uma transação só.
 //
-// O sync sobe a fila offline inteira de uma vez, então o teto dele é folgado: cada
-// evento tem uns 300 bytes, e 8 MB passam de vinte mil.
+// O sync sobe a fila offline em lotes de até domain.MaxSyncEvents eventos, cada um com
+// `payload_json` de até domain.MaxEventPayloadSize. O pior lote legal fica perto de
+// 1,3 MB; o teto tem folga para o JSON escapado. Eram 8 MB, que com cem pedidos em
+// paralelo passavam da memória da instância.
 //
 // A notificação da App Store traz transação e renovação assinadas, cada uma com a
 // cadeia de três certificados: fica na casa das dezenas de KB. O teto é folgado de
@@ -23,7 +26,7 @@ import (
 // a 12 bytes cada (`😀`).
 const (
 	authBodyLimit                 = 16 << 10
-	syncBodyLimit                 = 8 << 20
+	syncBodyLimit                 = 2 << 20
 	appStoreNotificationBodyLimit = 256 << 10
 	licenseActionBodyLimit        = 32 << 10
 )
@@ -86,15 +89,39 @@ func (rl *rateLimiter) sweep() {
 	}
 }
 
+// allowIP conta o pedido no balde do IP de quem o fez.
+func (rl *rateLimiter) allowIP(r *http.Request) bool {
+	return rl.allow(rateKey(requestIP(r)))
+}
+
 func (rl *rateLimiter) wrap(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !rl.allow(requestIP(r)) {
+		if !rl.allowIP(r) {
 			w.Header().Set("Retry-After", "60")
 			writeError(w, http.StatusTooManyRequests, codeRateLimited)
 			return
 		}
 		next(w, r)
 	}
+}
+
+// rateKey é o balde de um IP. IPv4 é o endereço; IPv6 é o /64, que é o que um provedor
+// entrega a um assinante só. Contar o endereço inteiro dava a quem tem um /64 um balde
+// novo a cada um dos 2^64 endereços dele.
+func rateKey(ip string) string {
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		return ip
+	}
+	addr = addr.Unmap()
+	if addr.Is4() {
+		return addr.String()
+	}
+	prefix, err := addr.Prefix(64)
+	if err != nil {
+		return ip
+	}
+	return prefix.String()
 }
 
 // requestIP é a chave do rate limit. Atrás do proxy, o IP do jogador que a verificação

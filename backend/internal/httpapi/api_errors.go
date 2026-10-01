@@ -27,6 +27,14 @@ const (
 	codeEmailTaken              = "email_taken"
 	codeRebaseRequired          = "rebase_required"
 	codeSyncRejected            = "sync_rejected"
+	// Sync com mais eventos que domain.MaxSyncEvents. O app manda em lotes menores.
+	codeSyncTooLarge = "sync_too_large"
+	// Senha errada demais para o e-mail na janela (domain.LoginMaxAttempts). Trava só o
+	// login por senha; o resto das rotas de conta segue aberto.
+	codeLoginLocked = "login_locked"
+	// Código errado demais para o e-mail e propósito na janela
+	// (domain.OTPMaxFailuresPerWindow): nenhum código novo sai até ela vencer.
+	codeOTPLocked = "otp_locked"
 	codeOTPResendTooSoon        = "otp_resend_too_soon"
 	codeRateLimited             = "rate_limited"
 	codeOriginNotVerified       = "origin_not_verified"

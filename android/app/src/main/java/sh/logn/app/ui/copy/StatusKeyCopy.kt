@@ -36,6 +36,8 @@ fun StatusKey.copy(context: Context): String? =
         StatusKey.SIGNINTOSYNC -> Str.Status.sign_in_to_sync(context)
         StatusKey.TREEUNAVAILABLE -> Str.Dashboard.tree_unavailable(context)
         StatusKey.RATELIMITED -> Str.Status.rate_limited(context)
+        StatusKey.LOGINLOCKED -> Str.Status.login_locked(context)
+        StatusKey.CODELOCKED -> Str.Status.code_locked(context)
         StatusKey.INVALIDEMAIL -> Str.Status.invalid_email(context)
         StatusKey.PASSWORDTOOSHORT -> Str.Status.password_too_short(context)
         StatusKey.PASSWORDTOOLONG -> Str.Status.password_too_long(context)

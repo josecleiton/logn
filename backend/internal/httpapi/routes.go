@@ -67,7 +67,13 @@ func New(d Deps) (http.Handler, error) {
 	mux.HandleFunc("GET /health", server.healthHandler)
 	mux.HandleFunc("GET /ready", server.readyHandler)
 	mux.HandleFunc("GET /ping", server.pingHandler)
-	mux.HandleFunc("POST /api/v1/sync", limitBody(syncBodyLimit, server.syncHandler))
+	// O sync não tinha limite nenhum além do corpo. O app manda um pedido por lote da
+	// fila e outro a cada resposta; trinta por minuto por conta sobem seis mil eventos,
+	// e o balde por IP folga para uma sala inteira atrás do mesmo NAT.
+	server.syncUserLimiter = newRateLimiter(30, time.Minute)
+	syncIPLimiter := newRateLimiter(300, time.Minute)
+	server.otpSendLimiter = newRateLimiter(otpSendPerSource, otpSendWindow)
+	mux.HandleFunc("POST /api/v1/sync", syncIPLimiter.wrap(limitBody(syncBodyLimit, server.syncHandler)))
 	mux.HandleFunc("GET /api/v1/challenges", server.challengesHandler)
 	mux.HandleFunc("POST /api/v1/auth/login", auth(server.loginHandler))
 	mux.HandleFunc("POST /api/v1/auth/social", auth(server.socialLoginHandler))

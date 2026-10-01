@@ -8,6 +8,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/josecleiton/logn/backend/internal/domain"
@@ -107,6 +108,21 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	var user *domain.User
 	email, err := domain.NormalizeEmail(req.Email)
 	if err == nil {
+		// Antes do Argon2 e antes de saber se a conta existe: a contagem é por e-mail
+		// digitado, e o 429 sai igual para conta que existe e para a que não existe.
+		// Código próprio, e não `rate_limited`: o app trava só o login por senha, e o
+		// login social e a troca de senha pelo código continuam abertos.
+		allowed, noteErr := s.repo.NoteLoginAttempt(ctx, email, rateKey(requestIP(r)))
+		if noteErr != nil {
+			log.Printf("login: tentativa não contada: erro=%v", noteErr)
+			writeError(w, http.StatusInternalServerError, codeInternal)
+			return
+		}
+		if !allowed {
+			w.Header().Set("Retry-After", strconv.Itoa(int(domain.LoginAttemptWindow.Seconds())))
+			writeError(w, http.StatusTooManyRequests, codeLoginLocked)
+			return
+		}
 		user, err = s.repo.GetUserByEmail(ctx, email)
 	}
 
@@ -123,6 +139,11 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil || user.PasswordHash == "" || compareErr != nil || !match {
 		writeError(w, http.StatusUnauthorized, codeInvalidCredentials)
 		return
+	}
+
+	// Senha certa: as tentativas erradas de antes não contam mais contra a conta.
+	if err := s.repo.ClearLoginAttempts(ctx, email); err != nil {
+		log.Printf("login: contagem não zerada: user=%s erro=%v", user.ID, err)
 	}
 
 	// Hash de parâmetros antigos é refeito agora, enquanto a senha está na mão.
@@ -387,6 +408,11 @@ func (s *Server) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if restored {
 		log.Printf("exclusão cancelada pela troca de senha: user=%s", userID)
+	}
+	// Quem provou pelo código que é dono do e-mail volta a entrar por senha na hora:
+	// sem isto, um login travado por chute alheio seguia travado com a senha nova.
+	if err := s.repo.ClearLoginAttempts(ctx, email); err != nil {
+		log.Printf("troca de senha: contagem de login não zerada: user=%s erro=%v", userID, err)
 	}
 
 	s.issueSession(ctx, w, userID, email, restored)

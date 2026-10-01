@@ -1,8 +1,41 @@
 package domain
 
 import (
+	"errors"
+	"strings"
 	"testing"
 )
+
+// Sync sem teto enchia o banco e derrubava a instância com uma conta grátis.
+func TestCheckSyncShapeRecusaOQuePassaDoTeto(t *testing.T) {
+	ok := GameEvent{ID: "match_1", EventType: "MATCH_ANSWER", PayloadJSON: `{"is_correct":true}`}
+
+	if err := CheckSyncShape(SyncPayload{Events: []GameEvent{ok, {ID: "match_1_end", EventType: "MATCH_END", PayloadJSON: `{"solved":1}`}}}); err != nil {
+		t.Fatalf("sync do Core devia passar: %v", err)
+	}
+
+	many := make([]GameEvent, MaxSyncEvents+1)
+	for i := range many {
+		many[i] = ok
+	}
+	if err := CheckSyncShape(SyncPayload{Events: many}); !errors.Is(err, ErrSyncTooLarge) {
+		t.Fatalf("acima de MaxSyncEvents: esperava ErrSyncTooLarge, veio %v", err)
+	}
+	if err := CheckSyncShape(SyncPayload{Events: many[:MaxSyncEvents]}); err != nil {
+		t.Fatalf("no teto devia passar: %v", err)
+	}
+
+	for name, e := range map[string]GameEvent{
+		"tipo que o Core não escreve": {ID: "x", EventType: "GRANT_XP", PayloadJSON: "{}"},
+		"payload acima do teto":       {ID: "x", EventType: "MATCH_ANSWER", PayloadJSON: strings.Repeat("a", MaxEventPayloadSize+1)},
+		"id vazio":                    {ID: "", EventType: "MATCH_ANSWER", PayloadJSON: "{}"},
+		"id acima do teto":            {ID: strings.Repeat("i", MaxEventIDLength+1), EventType: "MATCH_ANSWER", PayloadJSON: "{}"},
+	} {
+		if err := CheckSyncShape(SyncPayload{Events: []GameEvent{e}}); err == nil {
+			t.Errorf("%s: devia ser recusado", name)
+		}
+	}
+}
 
 func TestValidateSync(t *testing.T) {
 	// 1. Setup a valid event manually hashed identically to Rust

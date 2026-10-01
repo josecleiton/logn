@@ -58,6 +58,8 @@ social_provider_disabled = "This sign-in option is down right now. Use your emai
 provider_reauth_required = "This account also signs in with Apple. To delete it, confirm with Apple."
 purchase_pending = "The payment hasn't cleared yet. The track opens by itself once the store confirms."
 store_unavailable = "Couldn't reach the store right now. Try again in a moment."
+login_locked = "Too many wrong passwords for this email. Wait a few minutes or reset your password by email."
+code_locked = "Too many wrong codes for this email. A new code can only be sent tomorrow."
 wait_seconds = "Wait %{seconds} s"
 sample_standings = "Sample data. The ranking isn't live yet: teams, positions and numbers are made up."
 
