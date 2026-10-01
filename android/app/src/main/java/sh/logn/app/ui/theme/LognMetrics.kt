@@ -434,6 +434,57 @@ object StoreMetrics {
     const val DIMMED_ALPHA = 0.45f
 }
 
+/** Ranking (tela 6) e telão (tela 1). As colunas do telão são as mesmas no cabeçalho e no corpo. */
+object StandingsMetrics {
+    val headerTop = 18.dp
+    val titleBottom = 14.dp
+    val tabIndicator = 2.dp
+    val rowPaddingV = 14.dp
+    val rowGap = 14.dp
+    val rankWidth = 26.dp
+    val barGap = 18.dp
+    val frozenPaddingV = 5.dp
+    val headerHeight = 40.dp
+    val rowHeight = 52.dp
+    val cellHeight = 38.dp
+    val rank = 52.dp
+    val team = 150.dp
+    val solved = 56.dp
+    val penalty = 68.dp
+    val cell = 44.dp
+    val headerBalloon = 15.dp
+    val gap3 = 3.dp
+    val legendPaddingV = 14.dp
+    val legendGap = 20.dp
+    val swatchWidth = 22.dp
+    val swatchHeight = 14.dp
+    const val NOTICE_SIZE = 12.5f
+    const val TITLE_SIZE = 22f
+    const val TITLE_TRACKING = -0.02f
+    const val TAB_SIZE = 14f
+    const val RANK_SIZE = 13f
+    const val HANDLE_SIZE = 15f
+    const val SUB_SIZE = 11f
+    const val SCORE_SIZE = 14f
+    const val CONTEST_SIZE = 13f
+    const val CONTEST_TRACKING = 0.12f
+    const val FROZEN_SIZE = 11f
+    const val FROZEN_TRACKING = 0.1f
+    const val CLOCK_SIZE = 24f
+    const val CLOCK_TRACKING = -0.01f
+    const val HEADER_SIZE = 10f
+    const val HEADER_TRACKING = 0.12f
+    const val UNIVERSITY_TRACKING = 0.08f
+    const val LETTER_SIZE = 11f
+    const val RANK_CELL_SIZE = 14f
+    const val TEAM_SIZE = 14f
+    const val SOLVED_SIZE = 15f
+    const val PENALTY_SIZE = 13f
+    const val CELL_TOP_SIZE = 12f
+    const val CELL_BOTTOM_SIZE = 9f
+    const val CELL_BOTTOM_ALPHA = 0.75f
+}
+
 object RootMetrics {
     /** A faixa dos termos, acima da barra de abas (96 no iOS). */
     val bannerAboveTabs = 96.dp

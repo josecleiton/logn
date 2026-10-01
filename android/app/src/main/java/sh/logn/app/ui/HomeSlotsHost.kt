@@ -12,6 +12,8 @@ import sh.logn.app.ui.home.HomeRoute
 import sh.logn.app.ui.home.HomeSlots
 import sh.logn.app.ui.match.MatchScreen
 import sh.logn.app.ui.profile.ProfileHub
+import sh.logn.app.ui.standings.ScoreboardScreen
+import sh.logn.app.ui.standings.StandingsScreen
 import sh.logn.app.ui.store.CatalogScreen
 import sh.logn.app.ui.store.LockedNodeSheet
 import sh.logn.app.ui.store.RestoreResultSheet
@@ -42,9 +44,10 @@ fun rememberHomeSlots(view: ViewModel): HomeSlots {
                         }
                     }
                 HomeRoute.Catalog -> CatalogRoute(view, onBack) { id -> dispatch(Event.SelectTrack(id)) }
-                HomeRoute.Scoreboard -> Unit
+                HomeRoute.Scoreboard -> ScoreboardScreen(view, onClose = onBack)
             }
         },
+        standings = { openScoreboard -> StandingsScreen(view, openScoreboard) },
         profile = { onDismiss ->
             ProfileHub(view, onDismiss, onRestore = store::restore) {
                 if (view.restoreResult.active) RestoreResultSheet(view)
