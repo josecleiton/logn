@@ -1,0 +1,18 @@
+root = true
+
+[*.{kt,kts}]
+indent_size = 4
+# Compose encadeia modificador e argumento nomeado; 140 quebrava linha que lê melhor inteira.
+max_line_length = 160
+ktlint_code_style = ktlint_official
+# Composable é substantivo com maiúscula (`SplashScreen`), por convenção do Compose.
+ktlint_function_naming_ignore_when_annotated_with = Composable
+# `when` exaustivo sobre efeito ou variante: uma linha por caso lê melhor que blocos.
+ktlint_standard_when-entry-bracing = disabled
+ktlint_standard_blank-line-between-when-conditions = disabled
+# Cadeia curta (`assets.open(…).bufferedReader().use {}`) lê melhor numa linha; a longa
+# a gente quebra à mão, como o resto do código faz.
+ktlint_standard_chain-method-continuation = disabled
+
+[android/generated/**]
+ktlint = disabled

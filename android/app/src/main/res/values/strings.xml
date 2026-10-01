@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Nome da marca, igual em toda língua. -->
-    <string name="app_name" translatable="false">LogN</string>
-</resources>

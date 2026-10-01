@@ -43,7 +43,7 @@ struct Args {
 
     /// Package the generated Core types live in, so the Kotlin mappers can
     /// import the enums they extend. Must match `Language::Kotlin.package_name()`
-    /// in `shared/src/bin/codegen.rs`.
+    /// in `shared_core/src/bin/codegen.rs`.
     #[arg(long, default_value = "sh.logn.core")]
     core_package: String,
 }

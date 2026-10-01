@@ -26,6 +26,7 @@ type SocialLoginRequest struct {
 	AgeConfirmed     bool                     `json:"age_confirmed"`
 	Country          string                   `json:"country"`
 	LegalAcceptances []domain.LegalAcceptance `json:"legal_acceptances"`
+	Client           SignupClient             `json:"client"`
 }
 
 // verifySocial confere o token com o verificador do provedor e responde o erro, se
@@ -237,8 +238,13 @@ func (s *Server) socialSignup(w http.ResponseWriter, r *http.Request, req Social
 		writeError(w, http.StatusBadRequest, codeLegalAcceptanceRequired)
 		return
 	}
+	client, ok := req.Client.info()
+	if !ok {
+		writeError(w, http.StatusBadRequest, codeInvalidRequest)
+		return
+	}
 
-	userID, err := s.repo.CreateSocialUser(ctx, email, req.Provider, id.Subject, req.AgeConfirmed, country, acceptances)
+	userID, err := s.repo.CreateSocialUser(ctx, email, req.Provider, id.Subject, req.AgeConfirmed, country, acceptances, client)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		// Outro pedido criou a conta ou ligou a identidade no meio. O app tenta de

@@ -199,7 +199,10 @@ final class StoreKitManager: ObservableObject {
         let pending = queued
         queued.removeAll()
         for item in pending {
-            core.dispatch(event: .submitPurchase(jws: item.jws, transactionId: item.id, productId: item.productID, restore: item.restore))
+            // `provider` vazio é a App Store: a prova é o JWS (ADR 0022).
+            core.dispatch(event: .submitPurchase(
+                jws: item.jws, transactionId: item.id, productId: item.productID, restore: item.restore,
+                provider: "", purchaseToken: ""))
         }
     }
 

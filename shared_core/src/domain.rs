@@ -307,6 +307,11 @@ pub enum StatusKey {
     /// `provider_reauth_required`: excluir a conta pede a confirmação pela Apple, não a
     /// senha (ADR 0017).
     ProviderReauthRequired,
+    /// `purchase_pending`: o Google Play aceitou a compra, mas o pagamento ainda não caiu
+    /// (boleto, dinheiro). A trilha abre quando cair.
+    PurchasePending,
+    /// `store_unavailable`: o servidor não fala com a loja agora. Tentar de novo depois.
+    StoreUnavailable,
 }
 
 /// Uma das verificações que a abertura roda antes de soltar o jogador no app.

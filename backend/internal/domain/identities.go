@@ -49,14 +49,14 @@ func (r *Repository) LinkIdentity(ctx context.Context, provider, subject, userID
 // CreateSocialUser cria a conta sem senha, com idade, país e aceites, e a liga à
 // identidade externa, numa transação só. Conta sem identidade seria uma conta em que
 // ninguém consegue entrar.
-func (r *Repository) CreateSocialUser(ctx context.Context, email, provider, subject string, ageConfirmed bool, country string, acceptances []LegalAcceptance) (string, error) {
+func (r *Repository) CreateSocialUser(ctx context.Context, email, provider, subject string, ageConfirmed bool, country string, acceptances []LegalAcceptance, client ClientInfo) (string, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return "", err
 	}
 	defer tx.Rollback(ctx)
 
-	id, err := createUserTx(ctx, tx, email, "", ageConfirmed, country, acceptances)
+	id, err := createUserTx(ctx, tx, email, "", ageConfirmed, country, acceptances, client)
 	if err != nil {
 		return "", err
 	}

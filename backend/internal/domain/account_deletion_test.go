@@ -14,7 +14,7 @@ func newDeletionTestUser(t *testing.T, repo *Repository) (userID, email string) 
 	ctx := context.Background()
 	email = fmt.Sprintf("deletion-%d@logn.test", time.Now().UnixNano())
 
-	id, err := repo.CreateUser(ctx, email, "hash", true, "BR", []LegalAcceptance{{Kind: "terms", Version: 1, Locale: "pt-BR"}})
+	id, err := repo.CreateUser(ctx, email, "hash", true, "BR", []LegalAcceptance{{Kind: "terms", Version: 1, Locale: "pt-BR"}}, ClientInfo{})
 	if err != nil {
 		t.Fatalf("CreateUser: %v", err)
 	}

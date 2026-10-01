@@ -232,6 +232,8 @@ type RegisterRequest struct {
 	// idade padrão.
 	Country          string                   `json:"country"`
 	LegalAcceptances []domain.LegalAcceptance `json:"legal_acceptances"`
+	// O app que grava os aceites, como no reaceite.
+	Client SignupClient `json:"client"`
 }
 
 func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
@@ -286,6 +288,11 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, codeLegalAcceptanceRequired)
 		return
 	}
+	client, ok := req.Client.info()
+	if !ok {
+		writeError(w, http.StatusBadRequest, codeInvalidRequest)
+		return
+	}
 
 	valid, err := s.repo.ConsumeOTP(ctx, email, req.OTP, domain.OTPPurposeVerifyEmail)
 	if err != nil || !valid {
@@ -299,7 +306,7 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := s.repo.CreateUser(ctx, email, hashedPassword, req.AgeConfirmed, country, acceptances)
+	userID, err := s.repo.CreateUser(ctx, email, hashedPassword, req.AgeConfirmed, country, acceptances, client)
 	if err != nil {
 		// E-mail já cadastrado, inclusive o de uma conta na carência de exclusão. A
 		// mensagem não muda para esse caso: dizer "entre para recuperar" contaria a

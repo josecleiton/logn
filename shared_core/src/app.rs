@@ -63,8 +63,26 @@ pub enum Event {
     /// de ele confirmar o shell pode finalizar a transação na loja (spec, seção 5).
     /// `restore` é o "Restaurar compras": a transação já foi finalizada antes.
     /// `product_id` diz de que trilha é a compra, para a tela do passo a passo (F3).
-    SubmitPurchase { jws: String, transaction_id: String, product_id: String, restore: bool },
-    PurchaseSubmitted { jws: String, transaction_id: String, product_id: String, restore: bool, result: HttpResult },
+    ///
+    /// `provider` é a loja (ADR 0022): vazio é a App Store, que prova a compra pelo `jws`;
+    /// `google_play` prova pelo `purchase_token`, e o `transaction_id` é o próprio token.
+    SubmitPurchase {
+        jws: String,
+        transaction_id: String,
+        product_id: String,
+        restore: bool,
+        provider: String,
+        purchase_token: String,
+    },
+    PurchaseSubmitted {
+        jws: String,
+        transaction_id: String,
+        product_id: String,
+        restore: bool,
+        provider: String,
+        purchase_token: String,
+        result: HttpResult,
+    },
     /// O shell finalizou a transação na loja.
     PurchaseFinished { transaction_id: String },
     /// Fechou a tela do passo a passo da compra. Antes de pronta, a compra segue em
@@ -577,6 +595,9 @@ pub struct Model {
     pub purchase_intent: String,
     /// Compras que bateram em 401 e esperam o refresh.
     pub purchase_retries: Vec<Event>,
+    /// Trilhas cuja licença já levou um 401 e foi pedida de novo depois do refresh. O
+    /// segundo 401 é falha: sem isso, um servidor que recusa sempre girava refresh sem fim.
+    pub license_retried: Vec<String>,
     /// De quem é o índice de trilhas já lido do aparelho.
     pub track_index_loaded_for: String,
     pub restore: RestoreProgress,
@@ -1381,6 +1402,19 @@ fn fail_purchase(model: &mut Model, track_id: &str, reason: StatusKey) {
     }
 }
 
+/// Põe o pedido de licença na fila do refresh, uma vez por trilha, e renova a sessão.
+/// A fila é a das compras: a restauração pede várias licenças de uma vez.
+fn retry_license_after_refresh(app: &LogNApp, model: &mut Model, track_id: String) -> Command<Effect, Event> {
+    let queued = model
+        .purchase_retries
+        .iter()
+        .any(|e| matches!(e, Event::FetchLicense { track_id: queued } if *queued == track_id));
+    if !queued {
+        model.purchase_retries.push(Event::FetchLicense { track_id });
+    }
+    app.update(Event::AttemptRefresh, model)
+}
+
 /// Muda o passo da compra na tela, se ela é desta trilha.
 fn advance_purchase(model: &mut Model, track_id: &str, stage: crate::domain::PurchaseStage) {
     if let Some(flow) = model.purchase_flow.as_mut() {
@@ -1501,6 +1535,9 @@ const DEFAULT_MIN_AGE: u32 = 13;
 /// Chave, no armazenamento do aparelho, da escolha "Análise de uso". O shell lê a
 /// mesma chave ao iniciar o PostHog, antes de o Core existir.
 const ANALYTICS_DISABLED_KEY: &str = "analytics_disabled";
+
+/// A loja do Android, como o servidor a nomeia (`domain.ProviderGooglePlay`).
+const PROVIDER_GOOGLE_PLAY: &str = "google_play";
 
 /// Preferências do aparelho que a abertura relê (`RestorePreferences`).
 const SELECTED_TRACK_KEY: &str = "selected_track";
@@ -1676,6 +1713,22 @@ pub struct SocialCredential {
     pub nonce: String,
 }
 
+/// O app que grava os aceites do cadastro, como no reaceite. Shell que ainda não disse a
+/// plataforma manda o client vazio, que o servidor grava como NULL: meio client (versão
+/// sem plataforma) ele recusa, e isso travaria o cadastro.
+///
+/// A versão segue o padrão do servidor (`^[0-9A-Za-z.+-]{1,32}$`); fora dele vai vazia,
+/// e só a plataforma é gravada. Um sufixo de build estranho não pode impedir o cadastro.
+fn signup_client(model: &Model) -> serde_json::Value {
+    if model.client_platform.is_empty() {
+        return serde_json::json!({});
+    }
+    let version = &model.client_app_version;
+    let readable = version.len() <= 32 && version.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '+' | '-'));
+    let app = if readable { version.as_str() } else { "" };
+    serde_json::json!({ "app": app, "platform": model.client_platform })
+}
+
 /// O corpo do `POST /api/v1/auth/social`. Sem idade e aceite, é a primeira tentativa;
 /// com eles, a criação da conta.
 fn social_login_body(model: &Model, cred: &SocialCredential, signup: Option<(bool, bool)>) -> Vec<u8> {
@@ -1692,6 +1745,7 @@ fn social_login_body(model: &Model, cred: &SocialCredential, signup: Option<(boo
         } else {
             serde_json::json!([])
         };
+        body["client"] = signup_client(model);
     }
     body.to_string().into_bytes()
 }
@@ -1942,6 +1996,7 @@ impl LogNApp {
         // depois do login.
         fail_purchase(model, "", StatusKey::SessionExpired);
         model.purchase_retries.clear();
+        model.license_retried.clear();
         // A sessão caiu no meio da entrada: o login volta a ser tocável já, sem esperar
         // o prazo da entrada.
         model.entering_session = false;
@@ -2290,6 +2345,19 @@ impl App for LogNApp {
             // Token rotacionado no disco: renova o prazo guardado e segue para saber
             // de quem é a sessão. O e-mail fica onde está — quem o escreve é o login.
             Event::RotatedTokenStored(_) => {
+                // O cofre já tem o token novo (ou recusou, e não há o que esperar).
+                model.refresh_in_flight = false;
+                // Quem pediu refresh nessa janela foi dispensado em `TokenRead` e não volta
+                // a passar por `RefreshCompleted`: o "retomando sessão" dele e a linha da
+                // abertura que ele reabriu fecham aqui, como o refresh que já voltou.
+                if model.status_key == StatusKey::ResumingSession {
+                    model.status_key = StatusKey::Silent;
+                }
+                if model.boot.active && model.boot.session_running() {
+                    model.boot.session = Some(boot_line(BootCheck::Session, BootVerdict::Ok, BootDetail::TokenRenewed, 0));
+                    model.boot.sync = None;
+                    model.boot.awaiting_offline_choice = false;
+                }
                 Command::request_from_shell(KeyValueOperation::Set {
                     key: "session_expires_at".to_string(),
                     value: model.session_expires_at.to_string().into_bytes(),
@@ -2423,6 +2491,7 @@ impl App for LogNApp {
                 model.purchase_flow = None;
                 model.purchase_intent.clear();
                 model.purchase_retries.clear();
+                model.license_retried.clear();
                 model.restore = RestoreProgress::default();
                 model.track_index_loaded_for.clear();
                 // Quem conta que a saída deu certo é a tela de despedida. Deixar texto
@@ -2679,6 +2748,12 @@ impl App for LogNApp {
                                 // Evento próprio, não `TokenStored`: aquele grava o
                                 // `account_email` do modelo, que no refresh ainda está
                                 // vazio — passar por ele apagava do cofre quem é a sessão.
+                                //
+                                // O refresh segue "no ar" até o token novo estar no cofre: o
+                                // shell roda cada operação de cofre por conta própria, e um 401
+                                // que chegasse agora leria o token velho, já rodado. Para o
+                                // servidor isso é reuso, e reuso derruba todas as sessões.
+                                model.refresh_in_flight = true;
                                 return Command::request_from_shell(KeyValueOperation::Set {
                                     key: "refresh_token".to_string(),
                                     value: data.refresh_token.into_bytes(),
@@ -3011,7 +3086,7 @@ Event::FetchChallenges => {
                 render::render()
             }
 
-            Event::SubmitPurchase { jws, transaction_id, product_id, restore } => {
+            Event::SubmitPurchase { jws, transaction_id, product_id, restore, provider, purchase_token } => {
                 if model.access_token.is_none() || model.is_guest {
                     model.status_key = StatusKey::PurchaseNeedsAccount;
                     return render::render();
@@ -3026,18 +3101,32 @@ Event::FetchChallenges => {
                     let track_id = track_for_product(model, &product_id);
                     model.purchase_flow = Some((track_id, crate::domain::PurchaseStage::Validating, StatusKey::Silent));
                 }
+                // Cada loja prova a compra do seu jeito; o servidor escolhe pelo `provider`.
+                let body = if provider == PROVIDER_GOOGLE_PLAY {
+                    serde_json::json!({ "provider": provider, "product_id": product_id, "purchase_token": purchase_token })
+                } else {
+                    serde_json::json!({ "jws": jws })
+                };
                 let request = HttpRequest {
                     method: "POST".to_string(),
                     url: if restore { "/api/v1/purchases/restore" } else { "/api/v1/purchases" }.to_string(),
                     headers: auth_headers(&model.access_token, &model.locale),
-                    body: serde_json::to_vec(&serde_json::json!({ "jws": jws })).unwrap_or_default(),
+                    body: serde_json::to_vec(&body).unwrap_or_default(),
                 };
                 Command::request_from_shell(request)
-                    .then_send(move |result| Event::PurchaseSubmitted { jws, transaction_id, product_id, restore, result })
+                    .then_send(move |result| Event::PurchaseSubmitted {
+                        jws,
+                        transaction_id,
+                        product_id,
+                        restore,
+                        provider,
+                        purchase_token,
+                        result,
+                    })
                     .and(render::render())
             }
 
-            Event::PurchaseSubmitted { jws, transaction_id, product_id, restore, result } => {
+            Event::PurchaseSubmitted { jws, transaction_id, product_id, restore, provider, purchase_token, result } => {
                 model.purchase_in_flight = false;
                 if restore && !matches!(&result, HttpResult::Ok(r) if r.status == 401) {
                     model.restore.done += 1;
@@ -3075,27 +3164,41 @@ Event::FetchChallenges => {
                         fail_purchase(model, "", StatusKey::TrackDownloadFailed);
                     }
                     HttpResult::Ok(response) if response.status == 401 => {
-                        model.purchase_retries.push(Event::SubmitPurchase { jws, transaction_id, product_id, restore });
+                        model.purchase_retries.push(Event::SubmitPurchase {
+                            jws,
+                            transaction_id,
+                            product_id,
+                            restore,
+                            provider,
+                            purchase_token,
+                        });
                         return self.update(Event::AttemptRefresh, model);
                     }
                     HttpResult::Ok(response) => {
-                        model.status_key = match api_code(&response.body).as_deref() {
+                        let code = api_code(&response.body);
+                        // Pagamento pendente no Google Play (boleto, dinheiro): a compra
+                        // existe, só não foi paga. Não é recusa nem conta alheia, e a
+                        // loja entrega de novo quando o pagamento cair.
+                        let pending = code.as_deref() == Some("purchase_pending");
+                        model.status_key = match code.as_deref() {
                             Some("purchase_owned_by_other_account") => StatusKey::PurchaseOwnedByOtherAccount,
                             Some("purchase_account_mismatch") => StatusKey::PurchaseAccountMismatch,
                             Some("purchase_revoked") => StatusKey::PurchaseRevoked,
+                            Some("purchase_pending") => StatusKey::PurchasePending,
+                            Some("store_unavailable") => StatusKey::StoreUnavailable,
                             _ => StatusKey::PurchaseFailed,
                         };
-                        if restore && response.status == 409 {
+                        if restore && response.status == 409 && !pending {
                             model.restore.other_account += 1;
                         }
                         // Recusa definitiva (403, 409, e o 400 de produto desconhecido ou
                         // transação inválida): o servidor já decidiu, e deixar a transação
                         // aberta faria a loja entregá-la de novo a cada abertura, para
                         // sempre. Não consumível volta por "Restaurar compras" se for o caso.
-                        // Erro do servidor fica aberto e tenta de novo.
-                        let permanent = matches!(response.status, 403 | 409)
+                        // Erro do servidor, e o pendente, ficam abertos e tentam de novo.
+                        let permanent = (matches!(response.status, 403 | 409) && !pending)
                             || (response.status == 400
-                                && matches!(api_code(&response.body).as_deref(), Some("unknown_product" | "purchase_invalid")));
+                                && matches!(code.as_deref(), Some("unknown_product" | "purchase_invalid")));
                         if !restore && permanent {
                             model.purchases_to_finish.push(transaction_id);
                         }
@@ -3230,12 +3333,18 @@ Event::FetchChallenges => {
 
             Event::FetchLicense { track_id } => {
                 // O id vira caminho da URL: só a forma de um UUID passa.
-                if model.access_token.is_none()
-                    || model.device_id.is_empty()
-                    || !track_id.chars().all(|c| c.is_ascii_hexdigit() || c == '-')
-                {
+                if model.device_id.is_empty() || !track_id.chars().all(|c| c.is_ascii_hexdigit() || c == '-') {
                     fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
                     return render::render();
+                }
+                // Abriu sem rede e a rede voltou: a sessão vale, só o token ainda não foi
+                // renovado. Recusar aqui deixava o "Baixar" mudo até fechar o app.
+                if model.access_token.is_none() {
+                    if !model.session_offline {
+                        fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
+                        return render::render();
+                    }
+                    return retry_license_after_refresh(self, model, track_id);
                 }
                 let mut headers = auth_headers(&model.access_token, &model.locale);
                 headers.push(crux_http::protocol::HttpHeader {
@@ -3265,6 +3374,7 @@ Event::FetchChallenges => {
                 };
                 match response.status {
                     200 => {
+                        model.license_retried.retain(|t| *t != track_id);
                         let Ok(license) = serde_json::from_slice::<crate::domain::TrackLicense>(&response.body) else {
                             fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
                             return render::render();
@@ -3318,6 +3428,11 @@ Event::FetchChallenges => {
                             }
                         }
                         forget_track(model, &track_id).and(render::render())
+                    }
+                    // O token venceu com o app aberto: renova e pede de novo, uma vez.
+                    401 if !model.license_retried.contains(&track_id) => {
+                        model.license_retried.push(track_id.clone());
+                        retry_license_after_refresh(self, model, track_id)
                     }
                     _ => {
                         fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
@@ -3583,6 +3698,7 @@ Event::FetchChallenges => {
                     "email": email, "password": password, "otp": otp,
                     "age_confirmed": age_confirmed, "country": model.legal_country,
                     "legal_acceptances": acceptances,
+                    "client": signup_client(model),
                 });
                 let request = HttpRequest {
                     method: "POST".to_string(),
@@ -7922,6 +8038,38 @@ mod tests {
         assert_eq!(register_body(&mut cmd)["legal_acceptances"], serde_json::json!([]));
     }
 
+    /// O cadastro diz que app gravou o aceite, como o reaceite. Sem plataforma do shell,
+    /// o client vai vazio: meio client o servidor recusaria, e o cadastro travaria.
+    #[test]
+    fn test_signup_bodies_carry_the_client() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.legal_versions = vec![("terms".into(), 1), ("privacy".into(), 1)];
+        let register = |model: &mut Model| {
+            let mut cmd = app.update(Event::Register {
+                email: "a@example.com".into(), password: "senha-forte".into(), otp: "123456".into(),
+                age_confirmed: true, legal_accepted: true,
+            }, model);
+            register_body(&mut cmd)["client"].clone()
+        };
+        assert_eq!(register(&mut model), serde_json::json!({}));
+
+        let _ = app.update(Event::SetClientInfo { app_version: "0.1.0".into(), platform: "android".into() }, &mut model);
+        model.is_authenticating = false;
+        assert_eq!(register(&mut model), serde_json::json!({ "app": "0.1.0", "platform": "android" }));
+
+        let cred = SocialCredential { provider: "google".into(), id_token: "t".into(), nonce: "n".into() };
+        let body: serde_json::Value = serde_json::from_slice(&social_login_body(&model, &cred, Some((true, true)))).unwrap();
+        assert_eq!(body["client"]["platform"], "android");
+        let first: serde_json::Value = serde_json::from_slice(&social_login_body(&model, &cred, None)).unwrap();
+        assert!(first.get("client").is_none(), "a primeira tentativa não é cadastro");
+
+        // Versão que o servidor recusaria vai vazia: a plataforma ainda é gravada.
+        let _ = app.update(Event::SetClientInfo { app_version: "0.1.0 (build_7)".into(), platform: "android".into() }, &mut model);
+        model.is_authenticating = false;
+        assert_eq!(register(&mut model), serde_json::json!({ "app": "", "platform": "android" }));
+    }
+
     #[test]
     fn test_served_locale_falls_back_to_portuguese() {
         assert_eq!(served_locale("pt-BR"), "pt-BR");
@@ -8319,6 +8467,8 @@ mod tests {
                 transaction_id: "tx1".into(),
                 product_id: "com.example.logn.track.t".into(),
                 restore: false,
+                provider: String::new(),
+                purchase_token: String::new(),
             },
             &mut model,
         );
@@ -8335,6 +8485,8 @@ mod tests {
                 transaction_id: "tx1".into(),
                 product_id: "com.example.logn.track.t".into(),
                 restore: false,
+                provider: String::new(),
+                purchase_token: String::new(),
                 result: http(200, serde_json::json!({ "track_id": TRACK })),
             },
             &mut model,
@@ -8354,7 +8506,13 @@ mod tests {
     fn test_a_refused_purchase_stops_coming_back_and_a_failed_one_retries() {
         let (app, mut model) = paid_model();
         let submitted = |tx: &str, restore: bool, result: HttpResult| Event::PurchaseSubmitted {
-            jws: "signed".into(), transaction_id: tx.into(), product_id: "com.example.logn.track.t".into(), restore, result,
+            jws: "signed".into(),
+            transaction_id: tx.into(),
+            product_id: "com.example.logn.track.t".into(),
+            restore,
+            provider: String::new(),
+            purchase_token: String::new(),
+            result,
         };
 
         let _ = app.update(submitted("tx1", false, http(409, serde_json::json!({ "code": "purchase_owned_by_other_account" }))), &mut model);
@@ -8507,27 +8665,15 @@ mod tests {
         let stage = |m: &Model| LogNApp::default().view(m).purchase_flow.stage;
 
         // Reentregue pela loja na abertura, sem o jogador pedir: segue em silêncio.
-        let _ = app.update(
-            Event::SubmitPurchase { jws: "j".into(), transaction_id: "tx0".into(), product_id: "com.example.logn.track.t".into(), restore: false },
-            &mut model,
-        );
+        let _ = app.update(apple_submit("tx0", false), &mut model);
         assert_eq!(stage(&model), PurchaseStage::Idle);
 
         let _ = app.update(Event::PurchaseIntent { product_id: "com.example.logn.track.t".into() }, &mut model);
-        let _ = app.update(
-            Event::SubmitPurchase { jws: "j".into(), transaction_id: "tx1".into(), product_id: "com.example.logn.track.t".into(), restore: false },
-            &mut model,
-        );
+        let _ = app.update(apple_submit("tx1", false), &mut model);
         assert_eq!(stage(&model), PurchaseStage::Validating);
         assert_eq!(app.view(&model).purchase_flow.track_id, TRACK);
 
-        let _ = app.update(
-            Event::PurchaseSubmitted {
-                jws: "j".into(), transaction_id: "tx1".into(), product_id: "com.example.logn.track.t".into(), restore: false,
-                result: http(200, serde_json::json!({ "track_id": TRACK })),
-            },
-            &mut model,
-        );
+        let _ = app.update(apple_submitted("tx1", false, http(200, serde_json::json!({ "track_id": TRACK }))), &mut model);
         assert_eq!(stage(&model), PurchaseStage::Licensing);
         let _ = app.update(
             Event::LicenseFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: http(200, serde_json::to_value(test_license()).unwrap()) },
@@ -8550,19 +8696,114 @@ mod tests {
 
         // Recusa: o passo a passo para, com o motivo.
         let _ = app.update(Event::PurchaseIntent { product_id: "com.example.logn.track.t".into() }, &mut model);
-        let _ = app.update(
-            Event::SubmitPurchase { jws: "j".into(), transaction_id: "tx2".into(), product_id: "com.example.logn.track.t".into(), restore: false },
-            &mut model,
-        );
-        let _ = app.update(
-            Event::PurchaseSubmitted {
-                jws: "j".into(), transaction_id: "tx2".into(), product_id: "com.example.logn.track.t".into(), restore: false,
-                result: http(403, serde_json::json!({ "code": "purchase_revoked" })),
-            },
-            &mut model,
-        );
+        let _ = app.update(apple_submit("tx2", false), &mut model);
+        let _ = app.update(apple_submitted("tx2", false, http(403, serde_json::json!({ "code": "purchase_revoked" }))), &mut model);
         let flow = app.view(&model).purchase_flow;
         assert_eq!((flow.stage, flow.failure), (PurchaseStage::Failed, StatusKey::PurchaseRevoked));
+    }
+
+    /// A compra da App Store como o iOS a manda: prova no `jws`, sem `provider`.
+    fn apple_submit(tx: &str, restore: bool) -> Event {
+        Event::SubmitPurchase {
+            jws: "j".into(),
+            transaction_id: tx.into(),
+            product_id: "com.example.logn.track.t".into(),
+            restore,
+            provider: String::new(),
+            purchase_token: String::new(),
+        }
+    }
+
+    fn apple_submitted(tx: &str, restore: bool, result: HttpResult) -> Event {
+        Event::PurchaseSubmitted {
+            jws: "j".into(),
+            transaction_id: tx.into(),
+            product_id: "com.example.logn.track.t".into(),
+            restore,
+            provider: String::new(),
+            purchase_token: String::new(),
+            result,
+        }
+    }
+
+    /// A compra do Google Play como o Android a manda: o token é a prova e o id.
+    fn play_submit(token: &str, restore: bool) -> Event {
+        Event::SubmitPurchase {
+            jws: String::new(),
+            transaction_id: token.into(),
+            product_id: "com.example.logn.track.t".into(),
+            restore,
+            provider: PROVIDER_GOOGLE_PLAY.into(),
+            purchase_token: token.into(),
+        }
+    }
+
+    fn play_submitted(token: &str, restore: bool, result: HttpResult) -> Event {
+        Event::PurchaseSubmitted {
+            jws: String::new(),
+            transaction_id: token.into(),
+            product_id: "com.example.logn.track.t".into(),
+            restore,
+            provider: PROVIDER_GOOGLE_PLAY.into(),
+            purchase_token: token.into(),
+            result,
+        }
+    }
+
+    #[test]
+    fn test_a_play_purchase_sends_the_token_and_the_product() {
+        let (app, mut model) = paid_model();
+        let mut cmd = app.update(play_submit("tok-1", false), &mut model);
+        let sent = http_requests(&mut cmd);
+        assert_eq!(sent[0].url, "/api/v1/purchases");
+        let body = serde_json::from_slice::<serde_json::Value>(&sent[0].body).unwrap();
+        assert_eq!(body["provider"], "google_play");
+        assert_eq!(body["product_id"], "com.example.logn.track.t");
+        assert_eq!(body["purchase_token"], "tok-1");
+        assert!(body.get("jws").is_none(), "a prova do Play é o token, não um JWS");
+
+        let _ = app.update(play_submitted("tok-1", false, http(200, serde_json::json!({ "track_id": TRACK }))), &mut model);
+        assert_eq!(model.purchases_to_finish, vec!["tok-1".to_string()]);
+        assert_eq!(model.status_key, StatusKey::PurchaseConfirmed);
+    }
+
+    #[test]
+    fn test_a_pending_play_payment_stays_open_and_is_not_another_account() {
+        let (app, mut model) = paid_model();
+        let _ = app.update(Event::PurchaseIntent { product_id: "com.example.logn.track.t".into() }, &mut model);
+        let _ = app.update(play_submit("tok-2", false), &mut model);
+        let _ = app.update(play_submitted("tok-2", false, http(409, serde_json::json!({ "code": "purchase_pending" }))), &mut model);
+        assert_eq!(model.status_key, StatusKey::PurchasePending);
+        assert!(model.purchases_to_finish.is_empty(), "pendente não é recusa: a loja entrega de novo quando pagar");
+        let flow = app.view(&model).purchase_flow;
+        assert_eq!(flow.failure, StatusKey::PurchasePending);
+
+        // Na restauração, o pendente não conta como compra de outra conta.
+        let _ = app.update(Event::RestoreStarted { count: 1 }, &mut model);
+        let _ = app.update(play_submitted("tok-2", true, http(409, serde_json::json!({ "code": "purchase_pending" }))), &mut model);
+        assert_eq!(model.restore.other_account, 0);
+    }
+
+    #[test]
+    fn test_store_unavailable_keeps_the_purchase_for_a_retry() {
+        let (app, mut model) = paid_model();
+        let _ = app.update(play_submit("tok-3", false), &mut model);
+        let _ = app.update(play_submitted("tok-3", false, http(503, serde_json::json!({ "code": "store_unavailable" }))), &mut model);
+        assert_eq!(model.status_key, StatusKey::StoreUnavailable);
+        assert!(model.purchases_to_finish.is_empty());
+    }
+
+    #[test]
+    fn test_a_play_purchase_retried_after_401_keeps_its_token() {
+        let (app, mut model) = paid_model();
+        let _ = app.update(play_submit("tok-4", false), &mut model);
+        let _ = app.update(play_submitted("tok-4", false, http(401, serde_json::json!({}))), &mut model);
+        match model.purchase_retries.first() {
+            Some(Event::SubmitPurchase { provider, purchase_token, .. }) => {
+                assert_eq!((provider.as_str(), purchase_token.as_str()), ("google_play", "tok-4"));
+            }
+            other => panic!("esperava a compra do Play na fila de repetição, veio {other:?}"),
+        }
     }
 
     /// A rede cai depois da cobrança: a tela para com o motivo, em vez de "Aguarde" para
@@ -8601,7 +8842,12 @@ mod tests {
     fn test_concurrent_401s_refresh_once_and_retry_all() {
         let (app, mut model) = paid_model();
         let submitted = |tx: &str| Event::PurchaseSubmitted {
-            jws: "j".into(), transaction_id: tx.into(), product_id: String::new(), restore: true,
+            jws: "j".into(),
+            transaction_id: tx.into(),
+            product_id: String::new(),
+            restore: true,
+            provider: String::new(),
+            purchase_token: String::new(),
             result: http(401, serde_json::json!({ "code": "unauthenticated" })),
         };
         let _ = app.update(submitted("tx1"), &mut model);
@@ -8617,6 +8863,60 @@ mod tests {
         let mut cmd = app.update(Event::AccountEmailRead(kv_empty()), &mut model);
         let resent = http_requests(&mut cmd).iter().filter(|r| r.url == "/api/v1/purchases/restore").count();
         assert_eq!(resent, 2, "as duas compras voltam a ser mandadas");
+    }
+
+    /// O refresh voltou com token rodado, mas o cofre ainda não gravou: um 401 atrasado
+    /// nessa janela leria o token velho, e mandá-lo é reuso, que derruba a conta.
+    #[test]
+    fn test_a_late_401_does_not_refresh_before_the_rotated_token_is_stored() {
+        let (app, mut model) = paid_model();
+        let _ = app.update(Event::TokenRead(kv_bytes(b"velho".to_vec())), &mut model);
+        let _ = app.update(
+            Event::RefreshCompleted(http(200, serde_json::json!({
+                "access_token": "acc", "refresh_token": "rodado", "user_id": USER_A,
+                "refresh_expires_at": 1_792_600_000i64,
+            }))),
+            &mut model,
+        );
+        assert!(model.refresh_in_flight, "segue no ar até o cofre gravar");
+
+        // O 401 de um pedido que saiu antes: entra na fila e pede refresh.
+        let _ = app.update(
+            Event::LicenseFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: http(401, serde_json::json!({})) },
+            &mut model,
+        );
+        let mut cmd = app.update(Event::TokenRead(kv_bytes(b"velho".to_vec())), &mut model);
+        assert!(http_requests(&mut cmd).is_empty(), "o token velho não sai enquanto o novo não está no cofre");
+
+        let stored = KeyValueResult::Ok { response: KeyValueResponse::Set { previous: crux_kv::Value::None } };
+        let mut cmd = app.update(Event::RotatedTokenStored(stored), &mut model);
+        assert!(!model.refresh_in_flight);
+        assert_ne!(model.status_key, StatusKey::ResumingSession, "o pedido dispensado não deixa o status preso");
+        let _ = drain(&mut cmd);
+        let mut cmd = app.update(Event::AttemptRefreshDone, &mut model);
+        let _ = drain(&mut cmd);
+        let mut cmd = app.update(Event::AccountEmailRead(kv_empty()), &mut model);
+        assert!(
+            http_requests(&mut cmd).iter().any(|r| r.url == format!("/api/v1/tracks/{TRACK}/license")),
+            "o pedido da fila sai com o token novo"
+        );
+    }
+
+    /// Tentar de novo a abertura dentro da janela não manda o token velho e não deixa a
+    /// splash esperando o watchdog: a linha da sessão fecha quando o cofre grava.
+    #[test]
+    fn test_a_boot_retry_inside_the_rotation_window_closes_when_the_token_is_stored() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let _ = app.update(Event::Tick { now: 1_790_000_000 }, &mut model);
+        boot_online(&app, &mut model, USER_A);
+        let mut cmd = app.update(Event::StartBoot, &mut model);
+        assert!(!kv_ops(&mut cmd).iter().any(|op| matches!(op, KeyValueOperation::Get { key } if key == "refresh_token")));
+        assert!(model.boot.session_running());
+
+        let stored = KeyValueResult::Ok { response: KeyValueResponse::Set { previous: crux_kv::Value::None } };
+        let _ = app.update(Event::RotatedTokenStored(stored), &mut model);
+        assert!(!model.boot.session_running(), "a linha da sessão fechou");
     }
 
     #[test]
@@ -8648,7 +8948,13 @@ mod tests {
         with_catalog(&mut model);
         let _ = app.update(Event::RestoreStarted { count: 2 }, &mut model);
         let submitted = |tx: &str, result: HttpResult| Event::PurchaseSubmitted {
-            jws: "j".into(), transaction_id: tx.into(), product_id: String::new(), restore: true, result,
+            jws: "j".into(),
+            transaction_id: tx.into(),
+            product_id: String::new(),
+            restore: true,
+            provider: String::new(),
+            purchase_token: String::new(),
+            result,
         };
         let _ = app.update(submitted("tx1", http(200, serde_json::json!({ "track_id": TRACK }))), &mut model);
         assert!(!app.view(&model).restore_result.finished);
@@ -8703,7 +9009,14 @@ mod tests {
         model.access_token = None;
         model.is_guest = true;
         let mut cmd = app.update(
-            Event::SubmitPurchase { jws: "signed".into(), transaction_id: "tx1".into(), product_id: String::new(), restore: false },
+            Event::SubmitPurchase {
+                jws: "signed".into(),
+                transaction_id: "tx1".into(),
+                product_id: String::new(),
+                restore: false,
+                provider: String::new(),
+                purchase_token: String::new(),
+            },
             &mut model,
         );
         assert!(http_requests(&mut cmd).is_empty());
@@ -8748,6 +9061,76 @@ mod tests {
         };
         let text = String::from_utf8(value).unwrap();
         assert!(!text.contains("ch_t03") && !text.contains(&test_license().key_hex), "{text}");
+    }
+
+    fn reads_refresh_token(kv: &[KeyValueOperation]) -> bool {
+        kv.iter().any(|op| matches!(op, KeyValueOperation::Get { key } if key == "refresh_token"))
+    }
+
+    #[test]
+    fn test_download_on_an_offline_session_waits_for_the_refresh() {
+        let (app, mut model) = paid_model();
+        model.access_token = None;
+        model.session_offline = true;
+        for _ in 0..2 {
+            let mut cmd = app.update(Event::FetchLicense { track_id: TRACK.into() }, &mut model);
+            let (kv, sent) = drain(&mut cmd);
+            assert!(sent.is_empty(), "sem token, a licença não sai: {sent:?}");
+            assert!(reads_refresh_token(&kv), "renova a sessão");
+        }
+        let queued = model.purchase_retries.iter().filter(|e| matches!(e, Event::FetchLicense { .. })).count();
+        assert_eq!(queued, 1, "dois toques, um pedido na fila");
+    }
+
+    #[test]
+    fn test_a_license_refused_for_the_token_is_asked_again_after_the_refresh() {
+        let (app, mut model) = paid_model();
+        let mut cmd = app.update(
+            Event::LicenseFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: http(401, serde_json::json!({})) },
+            &mut model,
+        );
+        assert!(reads_refresh_token(&drain(&mut cmd).0));
+        assert!(model.purchase_retries.iter().any(|e| matches!(e, Event::FetchLicense { track_id } if track_id == TRACK)));
+
+        // O refresh terminou: a fila sai, e a licença é pedida de novo.
+        let mut cmd = app.update(Event::AccountEmailRead(kv_empty()), &mut model);
+        let (_, sent) = drain(&mut cmd);
+        assert!(sent.iter().any(|r| r.url == format!("/api/v1/tracks/{TRACK}/license")), "{sent:?}");
+        assert!(model.purchase_retries.is_empty());
+    }
+
+    #[test]
+    fn test_a_second_401_on_the_license_fails_instead_of_refreshing_again() {
+        let (app, mut model) = paid_model();
+        let refused = |model: &mut Model| {
+            let mut cmd = app.update(
+                Event::LicenseFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: http(401, serde_json::json!({})) },
+                model,
+            );
+            reads_refresh_token(&drain(&mut cmd).0)
+        };
+        assert!(refused(&mut model), "o primeiro renova");
+        let _ = app.update(Event::AccountEmailRead(kv_empty()), &mut model);
+        assert!(!refused(&mut model), "o segundo não gira outro refresh");
+        assert!(model.purchase_retries.is_empty());
+
+        // Uma licença que chega limpa a marca: o token que vencer depois tem a sua vez.
+        let _ = app.update(
+            Event::LicenseFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: http(200, serde_json::to_value(test_license()).unwrap()) },
+            &mut model,
+        );
+        assert!(refused(&mut model));
+    }
+
+    #[test]
+    fn test_download_without_a_session_does_not_queue() {
+        let (app, mut model) = paid_model();
+        model.access_token = None;
+        model.session_offline = false;
+        let mut cmd = app.update(Event::FetchLicense { track_id: TRACK.into() }, &mut model);
+        let (kv, sent) = drain(&mut cmd);
+        assert!(sent.is_empty() && !reads_refresh_token(&kv));
+        assert!(model.purchase_retries.is_empty());
     }
 
     #[test]

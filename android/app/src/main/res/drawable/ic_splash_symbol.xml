@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- O símbolo do LogN (brand/logn-symbol, viewBox 96×122) no quadro de 108 dp do ícone
+     adaptativo: altura de cerca de 54% do quadro, um pouco acima do centro, como no DS
+     ("Escala e respiro"). Serve à splash do sistema e ao ícone do launcher. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.48"
+        android:scaleY="0.48"
+        android:translateX="30.96"
+        android:translateY="22.7">
+        <path
+            android:fillColor="@color/logn_accent"
+            android:pathData="M48 4 C66 4 80 20 80 41 C80 60 66 74 53 79 L48 83 L43 79 C30 74 16 60 16 41 C16 20 30 4 48 4 Z" />
+        <path
+            android:strokeColor="#B8FFFFFF"
+            android:strokeWidth="5.5"
+            android:strokeLineCap="round"
+            android:pathData="M31 21 C27 27 25 33 25 40" />
+        <path
+            android:fillColor="@color/logn_accent"
+            android:pathData="M41 76 L55 76 L48 91 Z" />
+        <path
+            android:strokeColor="@color/logn_accent"
+            android:strokeWidth="5"
+            android:strokeLineCap="round"
+            android:pathData="M48 90 C49 104 56 111 68 113 C78 115 84 115 90 116" />
+    </group>
+</vector>

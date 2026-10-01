@@ -63,6 +63,8 @@ social_sign_in_failed = {}
 social_email_unverified = {}
 social_provider_disabled = {}
 provider_reauth_required = {}
+purchase_pending = {}
+store_unavailable = {}
 wait_seconds ={ placeholders = [{ name = "seconds", type = "int" }] }
 sample_standings = {}
 # Sair da partida. O Core decide se pergunta; a cópia mora aqui.
@@ -146,6 +148,9 @@ gap_to_fill = {}
 drop_here = {}
 drop_here_accessibility = {}
 filled_accessibility = { placeholders = [{ name = "value", type = "text" }] }
+# A ação do leitor de tela em cada bloco, no lugar do arrasto: não aparece na tela.
+place_in_blank_accessibility = {}
+place_in_slot_accessibility = { placeholders = [{ name = "slot", type = "text" }] }
 # TRADEOFF_MATCH: as duas casas, o que a casa vazia diz e o que o leitor de tela lê.
 benefit_slot = {}
 drawback_slot = {}
@@ -194,6 +199,9 @@ accepted = {}
 failed = {}
 frozen = {}
 untried = {}
+# Estado do balão no cabeçalho da partida, lido pelo leitor de tela.
+solving = {}
+open = {}
 
 [groups.hud.keys]
 lives = { plural = true, placeholders = [{ name = "count", type = "int" }] }
@@ -476,6 +484,8 @@ offline_soon_body = { placeholders = [{ name = "day", type = "text" }, { name = 
 offline_today_body = { placeholders = [{ name = "track", type = "text" }] }
 offline_rule = {}
 revoked_refund = { placeholders = [{ name = "track", type = "text" }, { name = "xp", type = "int" }] }
+# As variantes `_play` são as mesmas frases no Android, com o Google Play no lugar da Apple.
+revoked_refund_play = { placeholders = [{ name = "track", type = "text" }, { name = "xp", type = "int" }] }
 revoked_other = { placeholders = [{ name = "track", type = "text" }, { name = "xp", type = "int" }] }
 buy_again = { placeholders = [{ name = "price", type = "text" }] }
 buy_again_no_price = {}
@@ -506,6 +516,7 @@ back = { placeholders = [{ name = "track", type = "text" }] }
 validating_label = {}
 validating_title = {}
 validating_body = {}
+validating_body_play = {}
 downloading_label = {}
 downloading_title = { placeholders = [{ name = "track", type = "text" }] }
 downloading_body = {}
@@ -515,6 +526,7 @@ ready_body = {}
 failed_label = {}
 failed_title = {}
 log_store = {}
+log_store_play = {}
 log_store_ok = {}
 log_transaction = {}
 log_transaction_ok = {}
@@ -531,6 +543,7 @@ close = {}
 [groups.guest_purchase.keys]
 title = {}
 body = {}
+body_play = {}
 create = {}
 login = {}
 note = {}
@@ -558,9 +571,11 @@ back = { placeholders = [{ name = "track", type = "text" }] }
 [groups.restore.keys]
 title = {}
 running = {}
+running_play = {}
 count = { placeholders = [{ name = "restored", type = "int" }, { name = "total", type = "int" }] }
 names = { placeholders = [{ name = "names", type = "text" }] }
 nothing = {}
+nothing_play = {}
 other = { plural = true, placeholders = [{ name = "count", type = "int" }] }
 ok = {}
 

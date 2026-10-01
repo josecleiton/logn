@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- O que sai de android/generated/ não se corrige à mão: corrige-se o gerador. -->
+<lint>
+    <issue id="UnusedResources">
+        <ignore path="**/generated/**" />
+    </issue>
+    <issue id="all">
+        <ignore path="**/generated/typegen/**" />
+        <ignore path="**/generated/boltffi/**" />
+    </issue>
+    <!-- O texto é do catálogo (i18n/), revisado lá: plural é `plural = true` na chave, e
+         reticências são escolha de redação de cada língua. -->
+    <issue id="PluralsCandidate">
+        <ignore path="**/generated/localization/**" />
+    </issue>
+    <issue id="TypographyEllipsis">
+        <ignore path="**/generated/localization/**" />
+    </issue>
+</lint>

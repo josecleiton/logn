@@ -111,6 +111,13 @@ struct LogNiOSApp: App {
                     resetLink = nil
                 }
             }
+            // O pedido de cadastro do visitante vale até a conta abrir. Sem isto ele
+            // ficava ligado, e o próximo logout caía no cadastro em vez da despedida.
+            .onChange(of: core.viewModel.hasSession) { hasSession in
+                if hasSession {
+                    core.wantsRegistration = false
+                }
+            }
             // Quem já estava logado não vê token chegar, então a tela de redefinição
             // ficava aberta depois de salvar. O Core avisa que a senha trocou.
             .onChange(of: core.viewModel.passwordResetDone) { done in

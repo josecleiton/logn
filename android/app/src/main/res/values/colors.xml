@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Só o que o sistema desenha antes do Compose (splash, ícone). As cores do app ficam em
+     ui/theme/LognColor.kt. -->
+<resources>
+    <color name="logn_canvas">#0B0C0D</color>
+    <color name="logn_accent">#FF7A45</color>
+</resources>
