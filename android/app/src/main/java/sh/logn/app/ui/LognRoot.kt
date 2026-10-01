@@ -19,7 +19,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import sh.logn.app.core.PlayStore
+import sh.logn.app.core.requestPlayReview
 import sh.logn.app.ui.auth.LoginScreen
 import sh.logn.app.ui.auth.RegisterScreen
 import sh.logn.app.ui.auth.ResetPasswordScreen
@@ -45,6 +47,7 @@ import sh.logn.core.LogN.Event
 import sh.logn.core.LogN.PurchaseStage
 import sh.logn.core.LogN.ViewModel
 import sh.logn.coreshell.Core
+import sh.logn.coreshell.ShellSignal
 
 /** A tela que o `ViewModel` pede, na ordem de LogNiOSApp.swift. Sem NavHost. */
 private enum class RootScreen { Splash, TermsUpdate, App, DeletionNotice, Registration, LogoutNotice, Login }
@@ -76,6 +79,20 @@ fun LognRoot(
     // O pedido de cadastro do visitante vale até a conta abrir; depois, o próximo logout
     // cairia no cadastro em vez da despedida.
     LaunchedEffect(view.hasSession) { if (view.hasSession) ShellState.wantsRegistration = false }
+    // O Core pede a avaliação depois de dominar um nó marco. A espera deixa a animação do
+    // relatório terminar antes de o cartão do Play subir, como no iOS.
+    val activity = LocalActivity.current
+    LaunchedEffect(core, activity) {
+        if (activity == null) return@LaunchedEffect
+        core.signals.collect { signal ->
+            when (signal) {
+                ShellSignal.RequestReview -> {
+                    delay(REVIEW_DELAY_MILLIS)
+                    requestPlayReview(activity)
+                }
+            }
+        }
+    }
     LaunchedEffect(view.passwordResetDone) {
         if (view.passwordResetDone) {
             ShellState.resetLink = null
@@ -184,3 +201,4 @@ private fun AuthFlow(
 }
 
 private const val FADE_MILLIS = 250
+private const val REVIEW_DELAY_MILLIS = 600L

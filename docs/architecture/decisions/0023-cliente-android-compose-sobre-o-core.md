@@ -150,6 +150,7 @@ ADR, na tabela abaixo, quando entrar no código.
 | security-crypto | 1.1.0 | `EncryptedSharedPreferences` | Keystore à mão com AES-GCM; a biblioteca foi descontinuada sem substituta em Jetpack, e sair dela é a próxima ADR que mexer em armazenamento |
 | posthog-android | 3.58.3 | telemetria e erros | Firebase Crashlytics e Sentry: um segundo destino de dado pessoal para declarar |
 | billing-ktx | 9.1.0 | compra de trilha (já no esqueleto, ADR 0022) | — |
+| review-ktx (Play) | 2.0.2 | `Effect.StoreReview`: a avaliação dentro do app, o par do `requestReview` do iOS | abrir a página do app no Play, que tira o jogador do app e não respeita a cota do Google |
 | credentials, credentials-play-services-auth | 1.5.0 | login com Google pelo Credential Manager, o caminho que o Google mantém | Google Sign-In (`play-services-auth`), descontinuado; OAuth com PKCE numa Custom Tab como no iOS, que pediria um client Android com esquema próprio e a troca do código no aparelho |
 | googleid | 1.1.1 | a opção "Continuar com o Google" e o ID token do Credential Manager | — |
 | browser | 1.8.0 | Custom Tab do login com GitHub | WebView embutido, que o GitHub recusa para OAuth e que exporia a senha do GitHub ao app |

@@ -143,6 +143,7 @@ dependencies {
     implementation(libs.security.crypto)
     implementation(libs.posthog.android)
     implementation(libs.billing.ktx)
+    implementation(libs.play.review.ktx)
     implementation(libs.credentials)
     implementation(libs.credentials.play.services)
     implementation(libs.googleid)
