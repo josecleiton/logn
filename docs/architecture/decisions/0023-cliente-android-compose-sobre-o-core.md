@@ -117,9 +117,24 @@ servidor buscada por OkHttp em `shouldInterceptRequest`, que é o único jeito d
 cabeçalhos `X-LogN-Legal-*`; ela vai ao WebView com os cabeçalhos dela, CSP inclusive.
 Resposta diferente de 200, ou falha de rede, cai na cópia dos assets.
 
-**Ainda por vir, e já decidido.** Play Billing com a restauração na abertura; Play
-In-App Review para o `StoreReview`. Cada um entra nesta ADR, na tabela abaixo, quando
-entrar no código.
+**Compra no Google Play.** O Core ganhou, no `SubmitPurchase` e no `PurchaseSubmitted`,
+o `provider` e o `purchase_token`. Com `google_play`, o corpo é `{provider, product_id,
+purchase_token}`, que o servidor já aceita (ADR 0022); vazio é a App Store, como sempre.
+`purchase_pending` (boleto, dinheiro) e `store_unavailable` ganharam `StatusKey` próprio e
+não fecham a compra: o Play entrega de novo quando o pagamento cair.
+
+O shell (`PlayStore`) compra com o id da conta no `obfuscatedAccountId`, manda ao Core o
+que o Play aprovou, e não reconhece nada no aparelho: quem reconhece é o servidor, depois
+de gravar a licença. Na abertura e a cada login, o que foi pago e não reconhecido volta ao
+servidor, como o `Transaction.unfinished` do iOS, com duas travas que o iOS não precisa,
+porque lá fechar a transação a tira da fila da loja:
+
+- compra marcada com outra conta LogN não sai do aparelho;
+- o que o Core já fechou para uma conta fica guardado como SHA-256 de conta e token, e
+  não volta.
+
+**Ainda por vir, e já decidido.** Play In-App Review para o `StoreReview`. Entra nesta
+ADR, na tabela abaixo, quando entrar no código.
 
 ## 3. Dependências
 

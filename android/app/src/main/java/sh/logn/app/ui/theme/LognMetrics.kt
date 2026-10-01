@@ -399,6 +399,41 @@ object ProfileMetrics {
     const val DESC_LINE = 19f
 }
 
+/** Catálogo, trilha e compra (LogN Trilhas, LogN Validade Offline). */
+object StoreMetrics {
+    val side = 22.dp
+    val gridGap = 10.dp
+    val cardPadding = 14.dp
+    val cardMinHeight = 132.dp
+    val principalBalloon = 30.dp
+    val cardBalloon = 22.dp
+    val rowPaddingV = 9.dp
+    val indexWidth = 28.dp
+    val logRow = 22.dp
+    val logMark = 18.dp
+    val chipPaddingH = 6.dp
+    val gap3 = 3.dp
+    const val SMALL_SIZE = 10f
+    const val SMALL_TRACKING = 0.1f
+    const val EYEBROW_TRACKING = 0.12f
+    const val FREE_TRACKING = 0.08f
+    const val META_SIZE = 10.5f
+    const val PRINCIPAL_NAME_SIZE = 16f
+    const val CARD_NAME_SIZE = 14f
+    const val TITLE_SIZE = 26f
+    const val TITLE_TRACKING = -0.02f
+    const val DESC_SIZE = 14.5f
+    const val DESC_LINE = 21f
+    const val NOTE_SIZE = 13.5f
+    const val NOTE_LINE = 19f
+    const val BODY_SIZE = 14f
+    const val BODY_LINE = 20f
+    const val RULE_SIZE = 12.5f
+    const val LOG_SIZE = 12f
+    const val SHEET_TITLE_SIZE = 20f
+    const val DIMMED_ALPHA = 0.45f
+}
+
 object RootMetrics {
     /** A faixa dos termos, acima da barra de abas (96 no iOS). */
     val bannerAboveTabs = 96.dp

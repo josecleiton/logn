@@ -53,6 +53,8 @@ fun StatusKey.copy(context: Context): String? =
         StatusKey.SOCIALEMAILUNVERIFIED -> Str.Status.social_email_unverified(context)
         StatusKey.SOCIALPROVIDERDISABLED -> Str.Status.social_provider_disabled(context)
         StatusKey.PROVIDERREAUTHREQUIRED -> Str.Status.provider_reauth_required(context)
+        StatusKey.PURCHASEPENDING -> Str.Status.purchase_pending(context)
+        StatusKey.STOREUNAVAILABLE -> Str.Status.store_unavailable(context)
     }
 
 /** Estado em andamento: a tela mostra em tom neutro, não no vermelho de erro. */

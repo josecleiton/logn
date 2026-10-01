@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import sh.logn.app.core.DeviceKeyValueStore
 import sh.logn.app.core.OkHttpPort
+import sh.logn.app.core.PlayStore
 import sh.logn.app.core.PostHogTelemetry
 import sh.logn.core.LogN.Event
 import sh.logn.coreshell.Core
@@ -24,21 +25,28 @@ class LognApplication : Application() {
     lateinit var core: Core
         private set
 
+    /** A loja: começa com o app, não com a tela de compra (spec, seção 5). */
+    lateinit var store: PlayStore
+        private set
+
     override fun onCreate() {
         super.onCreate()
         val telemetry = PostHogTelemetry(this)
         // Com a escolha do interruptor "Análise de uso" guardada no aparelho.
         telemetry.start(analyticsEnabled = analyticsEnabled())
 
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         core =
             Core(
-                scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+                scope = scope,
                 http = OkHttpPort(BuildConfig.API_BASE_URL),
                 store = DeviceKeyValueStore(this),
                 telemetry = telemetry,
                 onBridgeFailure = { Log.e(TAG, "Core bridge returned no bytes on $it") },
             )
         startCore()
+        // A compra que ficou sem confirmar volta na abertura, antes de qualquer tela.
+        store = PlayStore(this, scope).also { it.attach(core) }
     }
 
     /** A mesma sequência de abertura de CoreWrapper.swift, na mesma ordem. */

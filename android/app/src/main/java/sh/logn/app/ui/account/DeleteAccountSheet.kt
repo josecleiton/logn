@@ -1,6 +1,7 @@
 package sh.logn.app.ui.account
 
 import android.app.Activity
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -50,6 +51,7 @@ fun DeleteAccountSheet(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    val activity = LocalActivity.current
     val dispatch = LocalDispatch.current
     val scope = ShellState.scope
     var password by remember { mutableStateOf("") }
@@ -59,11 +61,11 @@ fun DeleteAccountSheet(
     val canDelete = password.isNotEmpty() && confirmed
 
     fun withProvider(block: suspend (Activity) -> Unit) {
-        val activity = context as? Activity ?: return
+        val host = activity ?: return
         providerBusy = true
         scope.launch {
             try {
-                block(activity)
+                block(host)
                 onDismiss()
             } catch (_: SocialAuthFailure.Cancelled) {
                 // Desistiu na janela do provedor: a conta fica.

@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
         )
         setContent {
             LognTheme {
-                LognRoot(core)
+                LognRoot(core, (application as LognApplication).store)
             }
         }
         if (savedInstanceState == null) handleIntent(intent)

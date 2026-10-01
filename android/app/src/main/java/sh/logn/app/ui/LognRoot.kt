@@ -1,5 +1,6 @@
 package sh.logn.app.ui
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -18,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import sh.logn.app.core.PlayStore
 import sh.logn.app.ui.auth.LoginScreen
 import sh.logn.app.ui.auth.RegisterScreen
 import sh.logn.app.ui.auth.ResetPasswordScreen
@@ -31,6 +33,8 @@ import sh.logn.app.ui.notice.AccountRestoredCard
 import sh.logn.app.ui.notice.DeletionNoticeScreen
 import sh.logn.app.ui.notice.LogoutNoticeScreen
 import sh.logn.app.ui.splash.SplashScreen
+import sh.logn.app.ui.store.GuestPurchaseSheet
+import sh.logn.app.ui.store.PurchaseProgressScreen
 import sh.logn.app.ui.terms.TermsNoticeBanner
 import sh.logn.app.ui.terms.TermsUpdateScreen
 import sh.logn.app.ui.terms.identity
@@ -38,6 +42,7 @@ import sh.logn.app.ui.theme.LocalReduceMotion
 import sh.logn.app.ui.theme.LognDark
 import sh.logn.app.ui.theme.RootMetrics
 import sh.logn.core.LogN.Event
+import sh.logn.core.LogN.PurchaseStage
 import sh.logn.core.LogN.ViewModel
 import sh.logn.coreshell.Core
 
@@ -57,7 +62,10 @@ private fun ViewModel.rootScreen(wantsRegistration: Boolean): RootScreen =
     }
 
 @Composable
-fun LognRoot(core: Core) {
+fun LognRoot(
+    core: Core,
+    store: PlayStore,
+) {
     val view by core.view.collectAsStateWithLifecycle()
     val reduceMotion = LocalReduceMotion.current
     var legal by rememberSaveable { mutableStateOf<LegalKind?>(null) }
@@ -75,7 +83,11 @@ fun LognRoot(core: Core) {
         }
     }
 
-    CompositionLocalProvider(LocalDispatch provides core::update, LocalReadView provides { core.view.value }) {
+    CompositionLocalProvider(
+        LocalDispatch provides core::update,
+        LocalReadView provides { core.view.value },
+        LocalStore provides store,
+    ) {
         Box(Modifier.fillMaxSize().background(LognDark.canvas)) {
             // A splash sai em fade: sem duração mínima, uma abertura rápida vira um piscar.
             Crossfade(
@@ -116,8 +128,18 @@ fun LognRoot(core: Core) {
 /** O jogo, com os avisos que ficam por cima dele. */
 @Composable
 private fun AppHost(view: ViewModel) {
+    val store = LocalStore.current
+    val activity = LocalActivity.current
+    // A compra que o visitante pediu segue sozinha quando a conta abre.
+    LaunchedEffect(view.hasAccessToken, view.isGuest) {
+        if (view.hasAccessToken && !view.isGuest && activity != null) store.continuePending(activity)
+    }
     Box(Modifier.fillMaxSize().background(LognDark.canvas)) {
         HomeScreen(view, rememberHomeSlots(view))
+        // O passo a passo fica por cima de tudo enquanto houver compra, e não disputa com
+        // o onboarding: duas capas de tela cheia não abrem juntas.
+        if (view.purchaseFlow.stage != PurchaseStage.IDLE && !view.showOnboarding) PurchaseProgressScreen(view)
+        store.guestPrompt?.let { GuestPurchaseSheet(view, it) }
         // A exclusão pedida foi cancelada por este login.
         if (view.accountRestoredNotice) AccountRestoredCard(Modifier.align(Alignment.BottomCenter))
         // Só mudanças não relevantes: a faixa, uma vez, acima da barra de abas.

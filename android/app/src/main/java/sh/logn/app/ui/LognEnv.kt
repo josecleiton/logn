@@ -1,6 +1,7 @@
 package sh.logn.app.ui
 
 import androidx.compose.runtime.staticCompositionLocalOf
+import sh.logn.app.core.PlayStore
 import sh.logn.core.LogN.Event
 import sh.logn.core.LogN.ViewModel
 
@@ -17,3 +18,6 @@ val LocalDispatch = staticCompositionLocalOf<(Event) -> Unit> { error("LocalDisp
  * É o `core.viewModel` que o iOS lê depois de `dispatch`.
  */
 val LocalReadView = staticCompositionLocalOf<() -> ViewModel> { error("LocalReadView sem Core") }
+
+/** A loja do aparelho (Google Play), para as telas de compra. */
+val LocalStore = staticCompositionLocalOf<PlayStore> { error("LocalStore sem loja") }

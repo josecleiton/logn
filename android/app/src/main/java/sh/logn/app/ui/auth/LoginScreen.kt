@@ -1,6 +1,7 @@
 package sh.logn.app.ui.auth
 
 import android.app.Activity
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -131,6 +132,7 @@ private fun LoginForm(
     onReset: (email: String) -> Unit,
 ) {
     val context = LocalContext.current
+    val activity = LocalActivity.current
     val dispatch = LocalDispatch.current
     val scope = ShellState.scope
     var email by rememberSaveable { mutableStateOf("") }
@@ -162,10 +164,10 @@ private fun LoginForm(
         }
 
     fun social(block: suspend (Activity) -> Unit) {
-        val activity = context as? Activity ?: return
+        val host = activity ?: return
         scope.launch {
             try {
-                block(activity)
+                block(host)
             } catch (_: SocialAuthFailure.Cancelled) {
                 // Fechou a janela do provedor: nada a dizer.
             } catch (_: SocialAuthFailure) {
