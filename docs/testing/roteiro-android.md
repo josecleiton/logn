@@ -4,7 +4,7 @@ O par do `roteiro-simulador-ios.md`: como percorrer o LogN num telefone Android 
 por USB, com o backend local, só por linha de comando. Cada tela se confere lado a lado
 com o simulador iOS, que é a referência (ADR 0023).
 
-Cresce uma seção por fase do cliente. Hoje cobre a abertura.
+Uma seção por fase do cliente, da abertura ao build de release.
 
 ---
 
@@ -170,3 +170,129 @@ docker exec logn-db-1 psql -U logn_user -d logn_db -Atc \
 ```
 
 - "Não concordo" abre a folha com sair e excluir a conta.
+
+---
+
+## 5 · Abas, mapa e nó
+
+Pontos fixos no aparelho de teste: abas em `y = 2280` (Trilhas 180, Arena 540, Placar
+900), avatar do perfil em `965 220`, seletor de trilha na seta ao lado do nome.
+
+- Conta nova: o onboarding vem antes do mapa, uma vez.
+- Mapa: nó concluído com o balão cheio e a contagem em verde; o nó em andamento em
+  "INFLANDO · n/m RESOLVIDOS" com a borda acesa; arestas fechadas tracejadas, e a legenda
+  "cordinha tracejada" no pé.
+- Tocar num nó abre a folha com as três estatísticas na mesma altura e o botão de jogar.
+- Sem rede: a faixa amarela sob o cabeçalho, com o ícone visível mesmo quando a frase quebra.
+
+---
+
+## 6 · Partida
+
+Os seis formatos se conferem contra o simulador com o mesmo nó aberto nos dois.
+
+```bash
+# Arrasto longo de um chip (encaixar linha, ordenar): segurar, mover, soltar.
+adb shell input motionevent DOWN 300 1700
+sleep 0.6
+adb shell input motionevent MOVE 500 1200
+adb shell input motionevent UP 500 1200
+```
+
+- Tocar num chip e depois na lacuna também encaixa (o caminho de quem não arrasta).
+- O relógio para com o app em segundo plano e volta de onde estava.
+- Estourar o tempo: veredito TLE com a letra do desafio que estava em jogo, não da
+  seguinte.
+- Errar: o veredito treme (sem tremor com animação reduzida) e o relatório traz o cartão
+  de revisão do erro.
+- Sair no meio: a folha de confirmação; confirmado, volta ao mapa e não reabre a partida.
+
+---
+
+## 7 · Perfil, conta e saída
+
+- O avatar abre o perfil: nível, barra de XP, as três estatísticas, "Armazenamento",
+  "Restaurar compras", "Sair da conta", "Gerenciar conta", análise de uso e os documentos.
+- Sair com fila pendente: o aviso crítico antes; sair limpo: a tela de despedida com
+  "Desfazer".
+- Gerenciar conta → excluir: só com a palavra de confirmação digitada.
+
+---
+
+## 8 · Catálogo, trilha paga e compra
+
+Para ver uma trilha paga sem comprar, dê à conta de teste acesso de revisora, ou um
+direito, **só no banco local**:
+
+```bash
+docker exec logn-db-1 psql -U logn_user -d logn_db -c \
+  "insert into entitlements (user_id, track_id, original_transaction_id, status, provider)
+   select id, '<uuid da trilha>', 'local-android-test', 'active', 'google_play'
+   from users where email = 'android1@example.com'"
+```
+
+- Catálogo: a principal no topo com "PRINCIPAL · GRÁTIS", as pagas em grade com o selo
+  ("COMPRADA", preço ou "VER").
+- Página da trilha comprada: "vale até …" (a janela offline) e "Continuar · Nó n".
+- Comprar sem produto criado no Play Console: "Esta trilha não está à venda agora". A
+  compra de verdade só se testa com o produto ativo e o app vindo do Play (teste interno).
+- Visitante que toca em comprar: a folha que pede conta, e a compra segue sozinha quando
+  a conta abre.
+
+---
+
+## 9 · Placar e telão
+
+- Aba Placar: "Global" e a sede do jogador, sublinhado de 2 dp na ativa; a linha do
+  jogador grudada no pé, tingida, com a borda de acento em cima e embaixo.
+- A tarja azul de dados de exemplo enquanto o ranking não tem servidor.
+- "Ver o telão completo": rank e equipe ficam fixos e SLV, PEN e A–M rolam juntos.
+  Arraste longe da borda direita, senão o Android lê o gesto de voltar:
+
+```bash
+adb shell input swipe 850 900 300 900 400
+```
+
+- A legenda das quatro cores sempre visível, em duas linhas, sem cortar texto.
+- Fora de partida não há relógio na barra; o voltar do sistema fecha o telão.
+
+---
+
+## 10 · Armazenamento e sem rede
+
+O pacote de uma trilha paga mora em `filesDir/TrackPackages`, com o nome em hash:
+
+```bash
+adb shell run-as sh.logn.app ls -la files/TrackPackages
+```
+
+- Com um direito ativo, a abertura com rede baixa o pacote sozinha. "Armazenamento"
+  mostra o tamanho e a lixeira.
+- Apagar: o arquivo some, a linha vira "Não baixada · Baixar". "Baixar" traz de volta.
+- Sem rede (`adb reverse --remove tcp:8080`): o selo "SEM REDE", e a trilha comprada abre
+  e joga a partir do pacote.
+- Abrir sem rede, apagar, religar a rede (`just android/reverse`) e tocar em "Baixar": o
+  Core renova o token antes de pedir a licença, e o pacote volta.
+
+Cuidado ao repetir o teste por toque cego: depois da abertura com rede o pacote já voltou,
+e o mesmo ponto da tela é a lixeira, não o "Baixar".
+
+---
+
+## 11 · Build de release
+
+O release recusa `API_BASE_URL` sem `https://`, então ele fala com o servidor do `.env`.
+Para não sujar a análise de uso, desligue a telemetria no build de teste. A assinatura
+difere da de debug: desinstale antes, e reinstale o debug depois.
+
+```bash
+just android/generate release
+(cd android && ./gradlew :app:assembleRelease -Plogn.TELEMETRY_KEY=)
+adb uninstall sh.logn.app
+adb install android/app/build/outputs/apk/release/app-release.apk
+```
+
+- Abre até o login com "CORE PRONTO" no pé: a ponte JNI sobreviveu ao R8.
+- "Termos de uso" abre o documento.
+- `adb logcat -b crash` vazio.
+- Volte: `adb uninstall sh.logn.app && just android/generate && just android/install`.
