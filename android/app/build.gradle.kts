@@ -45,10 +45,9 @@ android {
         // Tem de ser o min_sdk de shared_core/boltffi.toml.
         minSdk = 26
         targetSdk = 37
-        // Cada upload no Play Console gasta um número: o de cima tem de ser maior que o
-        // último enviado, mesmo que ele tenha sido recusado.
-        versionCode = 3
-        versionName = "0.1.0"
+        // De ../../version.properties, via settings.gradle.kts: o mesmo par do iOS.
+        versionCode = (rootProject.extra["lognVersionCode"] as String).toInt()
+        versionName = rootProject.extra["lognVersionName"] as String
         // Tem de ser architectures de shared_core/boltffi.toml.
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

@@ -30,6 +30,9 @@ targets:
       # build quebraria com ela. Vazio no .env, o app sai sem entitlement e sem o botão;
       # com o time pago, LOGN_CODE_SIGN_ENTITLEMENTS = LogNiOS/LogNiOS.entitlements.
       CODE_SIGN_ENTITLEMENTS: $(LOGN_CODE_SIGN_ENTITLEMENTS)
+      # O mesmo par do Info.plist, para o Xcode mostrar no painel do alvo o que embarca.
+      MARKETING_VERSION: ${LOGN_VERSION_NAME}
+      CURRENT_PROJECT_VERSION: ${LOGN_VERSION_BUILD}
       INFOPLIST_KEY_CFBundleDisplayName: LogN
       INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.educational-games"
       INFOPLIST_KEY_LSApplicationSecondaryCategoryType: "public.app-category.education"
@@ -37,6 +40,13 @@ targets:
       path: LogNiOS/Info.plist
       properties:
         CFBundleDisplayName: LogN
+        # De ../../version.properties, pelas variáveis que o `just xcode` exporta antes
+        # do XcodeGen. Sem estas duas ele escreve os defaults, 1.0 e 1. `${...}` aqui é
+        # interpolação do XcodeGen e deixa um número literal na plist, que o `just
+        # version-check` consegue conferir; `$(MARKETING_VERSION)` seria resolvido só no
+        # build, e um xcodebuild de fora poderia sobrescrever.
+        CFBundleShortVersionString: ${LOGN_VERSION_NAME}
+        CFBundleVersion: ${LOGN_VERSION_BUILD}
         UIAppFonts:
           - IBMPlexSans-Regular.ttf
           - IBMPlexSans-Medium.ttf

@@ -211,8 +211,40 @@ build-ios-ffi: codegen
     xcodebuild -create-xcframework -library shared_core/target/aarch64-apple-ios/release/libshared_core.a -headers shared_core/target/headers -library shared_core/target/universal-sim/libshared_core.a -headers shared_core/target/headers -output ios/LogNCoreFFI/LogNCoreFFI.xcframework
 
 # Gera o projeto Xcode (.xcodeproj) usando o XcodeGen
-xcode: sync-env build-ios-ffi i18n
+xcode: sync-env build-ios-ffi i18n xcodegen
+
+# Só o XcodeGen, sem recompilar o Core. A versão vem de version.properties: o
+# project.yml não lê arquivo, só variável de ambiente, e é aqui que as duas se ligam.
+# Sem default: versão vazia vira CFBundleShortVersionString vazio, que a App Store
+# recusa na submissão e nada percebe antes.
+xcodegen:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    LOGN_VERSION_NAME=$(sed -nE 's/^name=(.*)$/\1/p' version.properties)
+    LOGN_VERSION_BUILD=$(sed -nE 's/^build=(.*)$/\1/p' version.properties)
+    if [ -z "$LOGN_VERSION_NAME" ] || [ -z "$LOGN_VERSION_BUILD" ]; then
+    	echo "version.properties não tem name= e build=" >&2
+    	exit 1
+    fi
+    export LOGN_VERSION_NAME LOGN_VERSION_BUILD
     cd ios/LogNiOS && xcodegen generate
+
+# Falha se o Info.plist do iOS não diz a versão de version.properties: um projeto gerado
+# antes de um bump, ou alguém que trocou o literal por `$(MARKETING_VERSION)`. O Android
+# lê o arquivo a cada build e não precisa de conferência.
+version-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    name=$(sed -nE 's/^name=(.*)$/\1/p' version.properties)
+    build=$(sed -nE 's/^build=(.*)$/\1/p' version.properties)
+    plist=ios/LogNiOS/LogNiOS/Info.plist
+    got_name=$(plutil -extract CFBundleShortVersionString raw "$plist" 2>/dev/null || echo '<ausente>')
+    got_build=$(plutil -extract CFBundleVersion raw "$plist" 2>/dev/null || echo '<ausente>')
+    if [ "$got_name" != "$name" ] || [ "$got_build" != "$build" ]; then
+    	echo "✗ $plist diz $got_name ($got_build), version.properties diz $name ($build) — rode just xcodegen" >&2
+    	exit 1
+    fi
+    echo "✓ iOS e Android em $name ($build)"
 
 # Abre o projeto no Xcode
 open-ios: xcode
@@ -267,6 +299,7 @@ release-ios:
     env -u LEGAL_BUNDLE_ALLOW_DRAFT SEED_BUNDLE_BASE_URL="$base" python3 tools/seed_bundle.py --release
     env -u LEGAL_BUNDLE_ALLOW_DRAFT LEGAL_BUNDLE_BASE_URL="$base" python3 tools/legal_bundle.py
     {{ just_executable() }} xcode
+    {{ just_executable() }} version-check
     rm -rf ios/build/store
     xcodebuild -project ios/LogNiOS/LogNiOS.xcodeproj -scheme LogNiOS \
     	-configuration Release -destination 'generic/platform=iOS' \
