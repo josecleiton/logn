@@ -787,6 +787,7 @@ func (r *Repository) purgeAccount(ctx context.Context, userID string) (bool, err
 		{"DELETE FROM game_events WHERE user_id = $1", userID},
 		{"DELETE FROM user_sync_state WHERE user_id = $1", userID},
 		{"DELETE FROM otps WHERE email = $1", email},
+		{"DELETE FROM login_failures WHERE email_hmac = $1", loginKey(email)},
 	} {
 		if _, err := tx.Exec(ctx, q.sql, q.arg); err != nil {
 			return false, err

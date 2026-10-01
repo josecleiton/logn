@@ -4159,6 +4159,13 @@ indirect public enum StatusKey: Hashable, Equatable {
     case purchasePending
     /// `store_unavailable`: o servidor não fala com a loja agora. Tentar de novo depois.
     case storeUnavailable
+    /// `login_locked`: senha errada demais para este e-mail. Trava só o login por senha;
+    /// o login social e a troca de senha pelo código continuam abertos, e o app não
+    /// trava botão.
+    case loginLocked
+    /// `otp_locked`: código errado demais para este e-mail. Nenhum código novo sai até a
+    /// janela do servidor vencer (um dia), e esperar um minuto não resolve.
+    case codeLocked
 
     public func serialize<S: Serializer>(serializer: S) throws {
         try serializer.increase_container_depth()
@@ -4249,6 +4256,10 @@ indirect public enum StatusKey: Hashable, Equatable {
             try serializer.serialize_variant_index(value: 41)
         case .storeUnavailable:
             try serializer.serialize_variant_index(value: 42)
+        case .loginLocked:
+            try serializer.serialize_variant_index(value: 43)
+        case .codeLocked:
+            try serializer.serialize_variant_index(value: 44)
         }
         try serializer.decrease_container_depth()
     }
@@ -4392,6 +4403,12 @@ indirect public enum StatusKey: Hashable, Equatable {
         case 42:
             try deserializer.decrease_container_depth()
             return .storeUnavailable
+        case 43:
+            try deserializer.decrease_container_depth()
+            return .loginLocked
+        case 44:
+            try deserializer.decrease_container_depth()
+            return .codeLocked
         default: throw DeserializationError.invalidInput(issue: "Unknown variant index for StatusKey: \(index)")
         }
     }

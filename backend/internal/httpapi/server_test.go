@@ -133,7 +133,7 @@ func TestSyncHandler(t *testing.T) {
 	// 1. Valid Sync Post
 	event1 := domain.GameEvent{
 		ID:           "api_evt_1",
-		EventType:    "SOLVE",
+		EventType:    "MATCH_ANSWER",
 		PayloadJSON:  "{}",
 		Timestamp:    1600000000,
 		PreviousHash: "0000000000000000000000000000000000000000000000000000000000000000",
@@ -173,7 +173,7 @@ func TestSyncHandler(t *testing.T) {
 	// 2. Conflict Sync Post (Rebase required)
 	event2 := domain.GameEvent{
 		ID:           "api_evt_2",
-		EventType:    "SOLVE",
+		EventType:    "MATCH_ANSWER",
 		PayloadJSON:  "{}",
 		Timestamp:    1600000001,
 		PreviousHash: "0000000000000000000000000000000000000000000000000000000000000000", // Wrong previous hash

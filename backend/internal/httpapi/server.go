@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/josecleiton/logn/backend/internal/domain"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/cloudauth"
@@ -41,7 +42,25 @@ type Server struct {
 	// Lista de espera do iPhone (ADR 0022). Nula, as rotas não existem.
 	waitlist       *WaitlistConfig
 	waitlistMailer WaitlistMailer
+	// Sync por conta, além do limite por IP da rota. Nulo nos testes que chamam o
+	// handler direto.
+	syncUserLimiter *rateLimiter
+	// Envio de código por IP, por hora (otpSendPerSource). Nulo nos testes que chamam o
+	// handler direto.
+	otpSendLimiter *rateLimiter
 }
+
+// syncSlots limita quantos syncs decodificam e gravam ao mesmo tempo. O corpo vira
+// memória só depois de pegar a vaga, e o pico fica em vagas × syncBodyLimit (mais a
+// cópia do decode), qualquer que seja o tráfego: a instância tem 256 MiB.
+var syncSlots = make(chan struct{}, 8)
+
+// syncSlotWait é quanto um sync espera pela vaga antes de ouvir 429 (variável só para o
+// teste), e syncBodyReadTimeout, quanto o corpo tem para chegar depois dela. O lote do
+// app tem menos de 100 KB.
+var syncSlotWait = 5 * time.Second
+
+const syncBodyReadTimeout = 10 * time.Second
 
 // GitHubExchanger é a troca do código do GitHub (ADR 0019), trocada nos testes.
 type GitHubExchanger interface {
@@ -116,10 +135,46 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if s.syncUserLimiter != nil && !s.syncUserLimiter.allow(userID) {
+		w.Header().Set("Retry-After", "60")
+		writeError(w, http.StatusTooManyRequests, codeRateLimited)
+		return
+	}
+
+	// A espera pela vaga tem fim: fila sem fim só empilha conexões. E quem pega a vaga
+	// tem pouco tempo para mandar o corpo: o `ReadTimeout` do servidor é de 30 s, e um
+	// corpo pingado devagar segurava a vaga esse tempo todo, oito vezes, para todo mundo.
+	wait := time.NewTimer(syncSlotWait)
+	defer wait.Stop()
+	select {
+	case syncSlots <- struct{}{}:
+		defer func() { <-syncSlots }()
+	case <-wait.C:
+		w.Header().Set("Retry-After", "5")
+		writeError(w, http.StatusTooManyRequests, codeRateLimited)
+		return
+	case <-r.Context().Done():
+		return
+	}
+	// Todo writer no caminho tem de deixar o ResponseController chegar à conexão
+	// (`Unwrap`, como o do gzip). Sem isso o prazo some calado, e o corpo pingado volta
+	// a segurar a vaga pelos 30 s do `ReadTimeout`.
+	if err := http.NewResponseController(w).SetReadDeadline(time.Now().Add(syncBodyReadTimeout)); err != nil {
+		log.Printf("sync sem prazo de leitura do corpo: erro=%v", err)
+	}
 
 	var payload domain.SyncPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		writeError(w, http.StatusBadRequest, codeInvalidRequest)
+		return
+	}
+	if err := domain.CheckSyncShape(payload); err != nil {
+		log.Printf("sync recusado: user=%s eventos=%d motivo=%v", userID, len(payload.Events), err)
+		if errors.Is(err, domain.ErrSyncTooLarge) {
+			writeError(w, http.StatusRequestEntityTooLarge, codeSyncTooLarge)
+			return
+		}
+		writeError(w, http.StatusForbidden, codeSyncRejected)
 		return
 	}
 

@@ -5,9 +5,19 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/josecleiton/logn/backend/internal/domain"
 	"github.com/josecleiton/logn/backend/internal/locale"
+)
+
+// otpSendWindow e otpSendPerSource são o balde de envio de código por IP. Vinte por hora
+// folgam para uma sala de aula cadastrando atrás do mesmo NAT, e um IP sozinho fica
+// longe do teto global (domain.OTPHourlySendCap).
+const (
+	otpSendWindow    = time.Hour
+	otpSendPerSource = 20
 )
 
 type RequestOTPPayload struct {
@@ -42,6 +52,15 @@ func (s *Server) requestOTPHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Envio por balde de IP, por hora, na frente do teto global. Sem ele, um IP só
+	// enchia o teto global em minutos e fechava cadastro e recuperação para todo mundo.
+	// O código é o do reenvio: trava só o envio, e o código que já chegou vale.
+	if s.otpSendLimiter != nil && !s.otpSendLimiter.allowIP(r) {
+		w.Header().Set("Retry-After", strconv.Itoa(int(otpSendWindow.Seconds())))
+		writeError(w, http.StatusTooManyRequests, codeOTPResendTooSoon)
+		return
+	}
+
 	code := domain.GenerateOTP()
 
 	if err := s.repo.SaveOTP(r.Context(), email, code, payload.Purpose, domain.OTPValidity); err != nil {
@@ -49,6 +68,18 @@ func (s *Server) requestOTPHandler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Retry-After", "60")
 			// Código distinto do limite por IP: este trava só o reenvio, e quem já
 			// recebeu um código ainda pode digitá-lo.
+			writeError(w, http.StatusTooManyRequests, codeOTPResendTooSoon)
+			return
+		}
+		var locked *domain.OTPLockedError
+		if errors.As(err, &locked) {
+			w.Header().Set("Retry-After", strconv.Itoa(int(locked.RetryAfter.Seconds())+1))
+			writeError(w, http.StatusTooManyRequests, codeOTPLocked)
+			return
+		}
+		if errors.Is(err, domain.ErrOTPSendCapReached) {
+			log.Printf("otp: teto de %d envios por hora atingido", domain.OTPHourlySendCap)
+			w.Header().Set("Retry-After", "300")
 			writeError(w, http.StatusTooManyRequests, codeOTPResendTooSoon)
 			return
 		}

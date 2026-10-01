@@ -56,6 +56,8 @@ social_provider_disabled = "Este inicio de sesión no está disponible ahora. En
 provider_reauth_required = "Esta cuenta también entra con Apple. Para eliminarla, confirma con Apple."
 purchase_pending = "El pago todavía no se acreditó. La pista se abre sola cuando la tienda confirme."
 store_unavailable = "No pude hablar con la tienda ahora. Inténtalo de nuevo en un momento."
+login_locked = "Demasiadas contraseñas incorrectas para este correo. Espera unos minutos o restablece la contraseña por correo."
+code_locked = "Demasiados códigos incorrectos para este correo. Un código nuevo solo podrá enviarse mañana."
 wait_seconds = "Espera %{seconds} s"
 sample_standings = "Datos de ejemplo. La tabla de posiciones aún no está activa: equipos, puestos y números son ficticios."
 

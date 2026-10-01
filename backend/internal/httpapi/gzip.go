@@ -105,6 +105,11 @@ func (g *gzipResponseWriter) flushRaw() error {
 	return err
 }
 
+// Unwrap entrega o writer de baixo ao http.ResponseController. Sem ele, o prazo de
+// leitura que o sync põe no corpo virava ErrNotSupported em todo pedido com
+// `Accept-Encoding: gzip`, que é todo pedido do app.
+func (g *gzipResponseWriter) Unwrap() http.ResponseWriter { return g.ResponseWriter }
+
 func (g *gzipResponseWriter) finish() {
 	switch {
 	case g.gz != nil:

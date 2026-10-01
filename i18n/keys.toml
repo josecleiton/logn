@@ -65,6 +65,8 @@ social_provider_disabled = {}
 provider_reauth_required = {}
 purchase_pending = {}
 store_unavailable = {}
+login_locked = {}
+code_locked = {}
 wait_seconds ={ placeholders = [{ name = "seconds", type = "int" }] }
 sample_standings = {}
 # Sair da partida. O Core decide se pergunta; a cópia mora aqui.

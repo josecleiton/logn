@@ -83,8 +83,19 @@ func (s *Server) purgeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("expurgo ok: %d inscrições pendentes apagadas", pending)
 
+	// As contagens de tentativa de login vencidas saem no mesmo passo.
+	attempts, err := s.repo.PurgeLoginAttempts(r.Context())
+	if err != nil {
+		log.Printf("expurgo das tentativas de login falhou: erro=%v", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+	log.Printf("expurgo ok: %d contagens de login apagadas", attempts)
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"status": "ok", "purged": purged, "waitlist_purged": pending})
+	json.NewEncoder(w).Encode(map[string]any{
+		"status": "ok", "purged": purged, "waitlist_purged": pending, "login_attempts_purged": attempts,
+	})
 }
 
 // playVoidedWindow é quanto para trás a consulta das compras anuladas olha. A API guarda

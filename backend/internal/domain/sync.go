@@ -35,6 +35,48 @@ type SyncPayload struct {
 	Events []GameEvent `json:"events"`
 }
 
+// Teto de um sync. Sem ele, um corpo de 8 MB virava uma transação só com milhares de
+// eventos, cada um com cinco consultas, e `payload_json` sem tamanho ia inteiro para o
+// JSONB: uma conta grátis enchia o banco ou derrubava a instância.
+//
+// O app manda a fila em lotes de SyncBatchSize (`SYNC_BATCH` no Core), abaixo do teto.
+// Um evento de verdade tem uns 300 bytes, e o `payload_json` dele menos de 200.
+const (
+	MaxSyncEvents       = 500
+	MaxEventPayloadSize = 2 << 10
+	MaxEventIDLength    = 128
+)
+
+// syncEventTypes são os eventos que o Core escreve. Tipo fora da lista não tem quem o
+// leia, e só servia para guardar o que o cliente quisesse.
+var syncEventTypes = map[string]bool{
+	"MATCH_ANSWER": true,
+	"MATCH_END":    true,
+}
+
+// ErrSyncTooLarge é o sync acima de MaxSyncEvents.
+var ErrSyncTooLarge = errors.New("too many events in one sync")
+
+// CheckSyncShape recusa o sync que passa do teto ou traz evento que o Core não escreve.
+// Roda antes da cadeia: é barato, e o caro vem depois.
+func CheckSyncShape(payload SyncPayload) error {
+	if len(payload.Events) > MaxSyncEvents {
+		return ErrSyncTooLarge
+	}
+	for _, e := range payload.Events {
+		if !syncEventTypes[e.EventType] {
+			return fmt.Errorf("event %q: unknown type", e.ID)
+		}
+		if e.ID == "" || len(e.ID) > MaxEventIDLength {
+			return fmt.Errorf("event id of %d bytes", len(e.ID))
+		}
+		if len(e.PayloadJSON) > MaxEventPayloadSize {
+			return fmt.Errorf("event %q: payload of %d bytes", e.ID, len(e.PayloadJSON))
+		}
+	}
+	return nil
+}
+
 // ComputeHash replica a lógica do Mini-Git Client-Side para validação e rebase
 func ComputeHash(event GameEvent, previousHash string) string {
 	payloadForHash := fmt.Sprintf("%s%s%s%s", previousHash, event.ID, event.EventType, event.PayloadJSON)

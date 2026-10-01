@@ -58,6 +58,8 @@ social_provider_disabled = "Este login está fora do ar agora. Entre com e-mail 
 provider_reauth_required = "Esta conta também entra pela Apple. Para excluir, confirme com a Apple."
 purchase_pending = "O pagamento ainda não caiu. A trilha abre sozinha quando a loja confirmar."
 store_unavailable = "Não consegui falar com a loja agora. Tente de novo em instantes."
+login_locked = "Muitas senhas erradas para este e-mail. Espere alguns minutos ou redefina a senha pelo e-mail."
+code_locked = "Muitos códigos errados para este e-mail. Um código novo só sai amanhã."
 wait_seconds = "Aguarde %{seconds} s"
 sample_standings = "Dados de exemplo. O ranking ainda não está no ar: times, posições e números são fictícios."
 

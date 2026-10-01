@@ -151,7 +151,7 @@ func (s *Server) joinWaitlistHandler(limiter *rateLimiter) http.HandlerFunc {
 			s.waitlistRedirect(w, r, lang, waitlistError)
 			return
 		}
-		if !limiter.allow(requestIP(r)) {
+		if !limiter.allowIP(r) {
 			s.waitlistRedirect(w, r, lang, waitlistError)
 			return
 		}
@@ -202,7 +202,7 @@ func (s *Server) joinWaitlistHandler(limiter *rateLimiter) http.HandlerFunc {
 // vai para a página de erro da landing.
 func (s *Server) waitlistPageHandler(limiter *rateLimiter, action string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !limiter.allow(requestIP(r)) {
+		if !limiter.allowIP(r) {
 			s.waitlistRedirect(w, r, locale.Default, waitlistError)
 			return
 		}
@@ -233,7 +233,7 @@ func (s *Server) waitlistPageHandler(limiter *rateLimiter, action string) http.H
 // waitlistActionHandler faz o que o botão pede.
 func (s *Server) waitlistActionHandler(limiter *rateLimiter, action string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !limiter.allow(requestIP(r)) {
+		if !limiter.allowIP(r) {
 			s.waitlistRedirect(w, r, locale.Default, waitlistError)
 			return
 		}

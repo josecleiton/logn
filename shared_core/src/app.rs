@@ -496,6 +496,10 @@ fn arriving_from_login(model: &Model) -> bool {
 /// Dono da fila de quem joga sem conta.
 const GUEST_QUEUE_OWNER: &str = "guest";
 
+/// Eventos por pedido de sync. O servidor recusa acima de 500 (`MaxSyncEvents`); o lote
+/// fica bem abaixo para caber no teto de corpo com folga.
+const SYNC_BATCH: usize = 200;
+
 /// Onde a fila de `owner` mora no aparelho.
 ///
 /// Era uma chave só, `offline_events`, e ela não dizia de quem era: entrar com outra
@@ -2110,6 +2114,14 @@ impl App for LogNApp {
                             model.is_authenticating = false;
                         }
                     }
+                    // Senha errada demais para o e-mail (`login_locked`): não trava os
+                    // botões, porque o login social e a troca de senha pelo código
+                    // continuam abertos. O limite por IP (`rate_limited`) trava tudo.
+                    HttpResult::Ok(response) if response.status == 429
+                        && api_code(&response.body).as_deref() == Some("login_locked") => {
+                        model.status_key = StatusKey::LoginLocked;
+                        model.is_authenticating = false;
+                    }
                     HttpResult::Ok(response) if response.status == 429 => {
                         return rate_limited(model, &response, false);
                     }
@@ -3626,6 +3638,13 @@ Event::FetchChallenges => {
                     // chegou continua valendo. O limite por IP (`rate_limited`) barra
                     // todas as rotas de conta, e trava tudo. Servidor antigo, sem código,
                     // fica como era: só o envio.
+                    // Código errado demais para o e-mail (`otp_locked`): o servidor não
+                    // manda código novo por um dia. Contagem de um dia no botão não
+                    // ajuda ninguém; a mensagem diz o que houve.
+                    HttpResult::Ok(response) if response.status == 429
+                        && api_code(&response.body).as_deref() == Some("otp_locked") => {
+                        model.status_key = StatusKey::CodeLocked;
+                    }
                     HttpResult::Ok(response) if response.status == 429 => {
                         let resend_only = api_code(&response.body).as_deref() != Some("rate_limited");
                         return rate_limited(model, &response, resend_only);
@@ -4105,12 +4124,17 @@ Event::FetchChallenges => {
                 model.is_syncing = true;
                 model.status = "Syncing".to_string();
                 model.status_key = StatusKey::Syncing;
-                model.sync_sent_ids = model.pending_events.iter().map(|e| e.id.clone()).collect();
+                // A fila sobe em lotes: o servidor recusa sync acima de 500 eventos, e
+                // quem jogou muito tempo sem rede passaria disso. A resposta de um lote
+                // dispara o seguinte, e o resto da fila já está encadeado a partir do
+                // último enviado.
+                let batch: Vec<GameEvent> = model.pending_events.iter().take(SYNC_BATCH).cloned().collect();
+                model.sync_sent_ids = batch.iter().map(|e| e.id.clone()).collect();
                 model.sync_owner = model.queue_owner.clone();
 
                 let payload = SyncPayload {
                     user_id: model.user_id.clone(),
-                    events: model.pending_events.clone(),
+                    events: batch,
                 };
                 
                 let body_bytes = serde_json::to_vec(&payload).unwrap_or_default();
@@ -7276,6 +7300,54 @@ mod tests {
         assert_eq!(payload.events[0].previous_hash, first.current_hash);
     }
 
+    /// A fila longa sobe em lotes de SYNC_BATCH. Mandada inteira, ela passava do teto de
+    /// eventos do servidor e não subia nunca mais.
+    #[test]
+    fn test_a_long_queue_goes_up_in_batches() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        model.access_token = Some("tok".into());
+        model.user_id = USER_A.into();
+        model.queue_owner = USER_A.into();
+        model.queue_loaded = true;
+        let mut previous = GameEvent::GENESIS.to_string();
+        for i in 0..(SYNC_BATCH * 2 + 50) {
+            let event = answer(&format!("a{i}"), &previous);
+            previous = event.current_hash.clone();
+            model.pending_events.push(event);
+        }
+        model.last_hash = previous.clone();
+
+        let sent_body = |effects: &[Effect]| -> SyncPayload {
+            let body = effects.iter().find_map(|e| match e {
+                Effect::Http(r) if r.operation.url == "/api/v1/sync" => Some(r.operation.body.clone()),
+                _ => None,
+            }).expect("um pedido de sync");
+            serde_json::from_slice(&body).unwrap()
+        };
+
+        let mut cmd = app.update(Event::SyncNow, &mut model);
+        let first = sent_body(&cmd.effects().collect::<Vec<_>>());
+        assert_eq!(first.events.len(), SYNC_BATCH);
+        assert_eq!(first.events[0].id, "a0");
+
+        let top = first.events.last().unwrap().current_hash.clone();
+        let mut cmd = app.update(Event::SyncCompleted(http(200, serde_json::json!({ "new_top": top }))), &mut model);
+        let second = sent_body(&cmd.effects().collect::<Vec<_>>());
+        assert_eq!(second.events.len(), SYNC_BATCH);
+        assert_eq!(second.events[0].previous_hash, top, "o lote seguinte continua de onde o servidor parou");
+
+        let top = second.events.last().unwrap().current_hash.clone();
+        let mut cmd = app.update(Event::SyncCompleted(http(200, serde_json::json!({ "new_top": top }))), &mut model);
+        let third = sent_body(&cmd.effects().collect::<Vec<_>>());
+        assert_eq!(third.events.len(), 50);
+
+        let top = third.events.last().unwrap().current_hash.clone();
+        let _ = app.update(Event::SyncCompleted(http(200, serde_json::json!({ "new_top": top }))), &mut model);
+        assert!(model.pending_events.is_empty());
+        assert_eq!(model.last_hash, previous);
+    }
+
     /// Se a fila trocou de dono com o sync no ar, os enviados saem da fila do dono que
     /// os mandou, no disco — senão ela os mandava de novo quando ele voltasse.
     #[test]
@@ -7967,6 +8039,27 @@ mod tests {
         let clock = resolve_now(&mut cmd, 1_000);
         let _ = app.update(clock, &mut model);
         assert_eq!(app.view(&model).auth_cooldown_seconds, 30, "limite por IP trava tudo");
+    }
+
+    /// Os bloqueios por e-mail não travam botão: o de login deixa o login social e o
+    /// código abertos, e o de código dura um dia, que contagem nenhuma ajuda a esperar.
+    #[test]
+    fn test_per_email_locks_say_what_happened_without_freezing_the_buttons() {
+        let app = LogNApp::default();
+
+        let mut model = Model::default();
+        model.is_authenticating = true;
+        let _ = app.update(Event::LoginCompleted(api_error(429, "login_locked")), &mut model);
+        assert_eq!(model.status_key, StatusKey::LoginLocked);
+        assert!(!model.is_authenticating);
+        assert_eq!(app.view(&model).auth_cooldown_seconds, 0, "login travado não trava o resto da conta");
+        assert_eq!(app.view(&model).resend_cooldown_seconds, 0);
+
+        let mut model = Model::default();
+        let _ = app.update(Event::OTPRequested(api_error(429, "otp_locked")), &mut model);
+        assert_eq!(model.status_key, StatusKey::CodeLocked);
+        assert_eq!(app.view(&model).auth_cooldown_seconds, 0);
+        assert_eq!(app.view(&model).resend_cooldown_seconds, 0);
     }
 
     /// O 409 de termos chega em JSON com código; o de texto é o servidor antigo.
