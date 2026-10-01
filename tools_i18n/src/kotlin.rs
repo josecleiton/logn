@@ -36,6 +36,14 @@ const BANNER: &str = "// Generated from i18n/ by `just android/i18n`. Do not edi
 
 pub fn emit(catalog: &Catalog, out: &Path, package: &str, core_package: &str) -> Result<()> {
     for locale in &catalog.locales {
+        let language = base_language(&locale.tag).unwrap_or(&locale.tag);
+        anyhow::ensure!(
+            LANGUAGES_WHERE_TWO_IS_OTHER.contains(&language),
+            "{}: `pluralQuantity` lê o 0 como {ZERO_AS_PLURAL}, e não sei se {ZERO_AS_PLURAL} é `other` nesta língua",
+            locale.tag
+        );
+    }
+    for locale in &catalog.locales {
         // The source language is the default any unsupported locale falls back to.
         let mut directories = vec![if locale.tag == catalog.source_language {
             "values".to_owned()
@@ -244,6 +252,13 @@ fn strings_file(catalog: &Catalog, package: &str, core_package: &str) -> String 
         out.push_str(import);
     }
     out.push('\n');
+    push!(
+        out,
+        "/**\n * Zero reads as plural (\"0 balões\"), as on iOS. CLDR puts 0 in `one` in Portuguese,\n \
+         * and Android ignores a `zero` form the language does not have, so 0 is asked for as\n \
+         * {ZERO_AS_PLURAL}, which is `other` in every language of the catalog.\n */\n\
+         internal fun pluralQuantity(count: Int): Int = if (count == 0) {ZERO_AS_PLURAL} else count\n\n"
+    );
     out.push_str(
         "/** Every user-facing string in the app, resolved against the string resources. */\n",
     );
@@ -284,7 +299,7 @@ fn strings_file(catalog: &Catalog, package: &str, core_package: &str) -> String 
                 push!(
                     out,
                     "        fun {}(context: Context{parameters}): String =\n            \
-                     context.resources.getQuantityString(R.plurals.{name}, {count}{arguments})\n",
+                     context.resources.getQuantityString(R.plurals.{name}, pluralQuantity({count}){arguments})\n",
                     member_name(&key.name)
                 );
             } else {
@@ -464,6 +479,14 @@ fn base_language(tag: &str) -> Option<&str> {
     tag.split_once('-').map(|(language, _)| language)
 }
 
+/// The quantity a count of 0 is asked for with. Android picks the form by the language's
+/// CLDR rule, which has no `zero` in Portuguese and puts 0 in `one`.
+const ZERO_AS_PLURAL: u32 = 2;
+
+/// Languages where [`ZERO_AS_PLURAL`] falls in `other`. A language outside the list (one
+/// with a `two` form, say) has to be checked before it joins the catalog.
+const LANGUAGES_WHERE_TWO_IS_OTHER: [&str; 5] = ["en", "es", "pt", "fr", "it"];
+
 /// Languages whose CLDR plural rules have a `many` category (the "1 milhão de" form).
 /// The catalog writes `one` and `other`, which is all Apple asks for; Android's lint
 /// fails a `<plurals>` missing a category the language has.
@@ -518,6 +541,20 @@ mod tests {
         assert_eq!(with_many("pt-BR", &forms)[2].1, "%d balões");
         let en: Vec<_> = with_many("en", &forms).into_iter().map(|(k, _)| k).collect();
         assert_eq!(en, ["one", "other"]);
+    }
+
+    #[test]
+    fn zero_is_asked_for_as_plural() {
+        let file = strings_file(&status_catalog(), "sh.logn.app", "sh.logn.core");
+        assert!(file.contains("internal fun pluralQuantity(count: Int): Int = if (count == 0) 2 else count"));
+    }
+
+    #[test]
+    fn a_language_where_two_is_not_other_is_refused() {
+        let mut catalog = status_catalog();
+        catalog.locales.push(Locale { tag: "ar".to_owned(), messages: std::collections::BTreeMap::new() });
+        let error = emit(&catalog, Path::new("/nonexistent"), "sh.logn.app", "sh.logn.core").unwrap_err();
+        assert!(error.to_string().contains("ar"), "{error}");
     }
 
     #[test]

@@ -315,7 +315,7 @@ fn localization(message: &Message, key: &Key) -> Value {
             "stringUnit": string_unit(text, key),
         }),
         Message::Plural(forms) => {
-            let variations: Map<String, Value> = forms
+            let mut variations: Map<String, Value> = forms
                 .iter()
                 .map(|(category, text)| {
                     (
@@ -324,6 +324,13 @@ fn localization(message: &Message, key: &Key) -> Value {
                     )
                 })
                 .collect();
+            // Zero lê no plural: "0 balões", não "0 balão". O CLDR do português põe o 0 em
+            // `one`; a variação `zero` o iOS usa para 0 em qualquer língua.
+            if !forms.contains_key("zero")
+                && let Some(other) = forms.get("other")
+            {
+                variations.insert("zero".to_owned(), json!({ "stringUnit": string_unit(other, key) }));
+            }
 
             json!({ "variations": { "plural": Value::Object(variations) } })
         }
@@ -631,6 +638,11 @@ mod tests {
         assert_eq!(
             entry["variations"]["plural"]["other"]["stringUnit"]["value"],
             "%1$lld lines"
+        );
+        assert_eq!(
+            entry["variations"]["plural"]["zero"]["stringUnit"]["value"],
+            "%1$lld lines",
+            "zero lê no plural"
         );
     }
 }
