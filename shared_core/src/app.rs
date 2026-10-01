@@ -595,6 +595,9 @@ pub struct Model {
     pub purchase_intent: String,
     /// Compras que bateram em 401 e esperam o refresh.
     pub purchase_retries: Vec<Event>,
+    /// Trilhas cuja licença já levou um 401 e foi pedida de novo depois do refresh. O
+    /// segundo 401 é falha: sem isso, um servidor que recusa sempre girava refresh sem fim.
+    pub license_retried: Vec<String>,
     /// De quem é o índice de trilhas já lido do aparelho.
     pub track_index_loaded_for: String,
     pub restore: RestoreProgress,
@@ -1399,6 +1402,19 @@ fn fail_purchase(model: &mut Model, track_id: &str, reason: StatusKey) {
     }
 }
 
+/// Põe o pedido de licença na fila do refresh, uma vez por trilha, e renova a sessão.
+/// A fila é a das compras: a restauração pede várias licenças de uma vez.
+fn retry_license_after_refresh(app: &LogNApp, model: &mut Model, track_id: String) -> Command<Effect, Event> {
+    let queued = model
+        .purchase_retries
+        .iter()
+        .any(|e| matches!(e, Event::FetchLicense { track_id: queued } if *queued == track_id));
+    if !queued {
+        model.purchase_retries.push(Event::FetchLicense { track_id });
+    }
+    app.update(Event::AttemptRefresh, model)
+}
+
 /// Muda o passo da compra na tela, se ela é desta trilha.
 fn advance_purchase(model: &mut Model, track_id: &str, stage: crate::domain::PurchaseStage) {
     if let Some(flow) = model.purchase_flow.as_mut() {
@@ -1963,6 +1979,7 @@ impl LogNApp {
         // depois do login.
         fail_purchase(model, "", StatusKey::SessionExpired);
         model.purchase_retries.clear();
+        model.license_retried.clear();
         // A sessão caiu no meio da entrada: o login volta a ser tocável já, sem esperar
         // o prazo da entrada.
         model.entering_session = false;
@@ -2444,6 +2461,7 @@ impl App for LogNApp {
                 model.purchase_flow = None;
                 model.purchase_intent.clear();
                 model.purchase_retries.clear();
+                model.license_retried.clear();
                 model.restore = RestoreProgress::default();
                 model.track_index_loaded_for.clear();
                 // Quem conta que a saída deu certo é a tela de despedida. Deixar texto
@@ -3279,12 +3297,18 @@ Event::FetchChallenges => {
 
             Event::FetchLicense { track_id } => {
                 // O id vira caminho da URL: só a forma de um UUID passa.
-                if model.access_token.is_none()
-                    || model.device_id.is_empty()
-                    || !track_id.chars().all(|c| c.is_ascii_hexdigit() || c == '-')
-                {
+                if model.device_id.is_empty() || !track_id.chars().all(|c| c.is_ascii_hexdigit() || c == '-') {
                     fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
                     return render::render();
+                }
+                // Abriu sem rede e a rede voltou: a sessão vale, só o token ainda não foi
+                // renovado. Recusar aqui deixava o "Baixar" mudo até fechar o app.
+                if model.access_token.is_none() {
+                    if !model.session_offline {
+                        fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
+                        return render::render();
+                    }
+                    return retry_license_after_refresh(self, model, track_id);
                 }
                 let mut headers = auth_headers(&model.access_token, &model.locale);
                 headers.push(crux_http::protocol::HttpHeader {
@@ -3314,6 +3338,7 @@ Event::FetchChallenges => {
                 };
                 match response.status {
                     200 => {
+                        model.license_retried.retain(|t| *t != track_id);
                         let Ok(license) = serde_json::from_slice::<crate::domain::TrackLicense>(&response.body) else {
                             fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
                             return render::render();
@@ -3367,6 +3392,11 @@ Event::FetchChallenges => {
                             }
                         }
                         forget_track(model, &track_id).and(render::render())
+                    }
+                    // O token venceu com o app aberto: renova e pede de novo, uma vez.
+                    401 if !model.license_retried.contains(&track_id) => {
+                        model.license_retried.push(track_id.clone());
+                        retry_license_after_refresh(self, model, track_id)
                     }
                     _ => {
                         fail_purchase(model, &track_id, StatusKey::TrackDownloadFailed);
@@ -8908,6 +8938,76 @@ mod tests {
         };
         let text = String::from_utf8(value).unwrap();
         assert!(!text.contains("ch_t03") && !text.contains(&test_license().key_hex), "{text}");
+    }
+
+    fn reads_refresh_token(kv: &[KeyValueOperation]) -> bool {
+        kv.iter().any(|op| matches!(op, KeyValueOperation::Get { key } if key == "refresh_token"))
+    }
+
+    #[test]
+    fn test_download_on_an_offline_session_waits_for_the_refresh() {
+        let (app, mut model) = paid_model();
+        model.access_token = None;
+        model.session_offline = true;
+        for _ in 0..2 {
+            let mut cmd = app.update(Event::FetchLicense { track_id: TRACK.into() }, &mut model);
+            let (kv, sent) = drain(&mut cmd);
+            assert!(sent.is_empty(), "sem token, a licença não sai: {sent:?}");
+            assert!(reads_refresh_token(&kv), "renova a sessão");
+        }
+        let queued = model.purchase_retries.iter().filter(|e| matches!(e, Event::FetchLicense { .. })).count();
+        assert_eq!(queued, 1, "dois toques, um pedido na fila");
+    }
+
+    #[test]
+    fn test_a_license_refused_for_the_token_is_asked_again_after_the_refresh() {
+        let (app, mut model) = paid_model();
+        let mut cmd = app.update(
+            Event::LicenseFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: http(401, serde_json::json!({})) },
+            &mut model,
+        );
+        assert!(reads_refresh_token(&drain(&mut cmd).0));
+        assert!(model.purchase_retries.iter().any(|e| matches!(e, Event::FetchLicense { track_id } if track_id == TRACK)));
+
+        // O refresh terminou: a fila sai, e a licença é pedida de novo.
+        let mut cmd = app.update(Event::AccountEmailRead(kv_empty()), &mut model);
+        let (_, sent) = drain(&mut cmd);
+        assert!(sent.iter().any(|r| r.url == format!("/api/v1/tracks/{TRACK}/license")), "{sent:?}");
+        assert!(model.purchase_retries.is_empty());
+    }
+
+    #[test]
+    fn test_a_second_401_on_the_license_fails_instead_of_refreshing_again() {
+        let (app, mut model) = paid_model();
+        let refused = |model: &mut Model| {
+            let mut cmd = app.update(
+                Event::LicenseFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: http(401, serde_json::json!({})) },
+                model,
+            );
+            reads_refresh_token(&drain(&mut cmd).0)
+        };
+        assert!(refused(&mut model), "o primeiro renova");
+        let _ = app.update(Event::AccountEmailRead(kv_empty()), &mut model);
+        assert!(!refused(&mut model), "o segundo não gira outro refresh");
+        assert!(model.purchase_retries.is_empty());
+
+        // Uma licença que chega limpa a marca: o token que vencer depois tem a sua vez.
+        let _ = app.update(
+            Event::LicenseFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: http(200, serde_json::to_value(test_license()).unwrap()) },
+            &mut model,
+        );
+        assert!(refused(&mut model));
+    }
+
+    #[test]
+    fn test_download_without_a_session_does_not_queue() {
+        let (app, mut model) = paid_model();
+        model.access_token = None;
+        model.session_offline = false;
+        let mut cmd = app.update(Event::FetchLicense { track_id: TRACK.into() }, &mut model);
+        let (kv, sent) = drain(&mut cmd);
+        assert!(sent.is_empty() && !reads_refresh_token(&kv));
+        assert!(model.purchase_retries.is_empty());
     }
 
     #[test]
