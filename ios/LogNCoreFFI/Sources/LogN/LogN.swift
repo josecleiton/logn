@@ -981,8 +981,11 @@ indirect public enum Event: Hashable, Equatable {
     /// de ele confirmar o shell pode finalizar a transação na loja (spec, seção 5).
     /// `restore` é o "Restaurar compras": a transação já foi finalizada antes.
     /// `product_id` diz de que trilha é a compra, para a tela do passo a passo (F3).
-    case submitPurchase(jws: String, transactionId: String, productId: String, restore: Bool)
-    case purchaseSubmitted(jws: String, transactionId: String, productId: String, restore: Bool, result: HttpResult)
+    /// 
+    /// `provider` é a loja (ADR 0022): vazio é a App Store, que prova a compra pelo `jws`;
+    /// `google_play` prova pelo `purchase_token`, e o `transaction_id` é o próprio token.
+    case submitPurchase(jws: String, transactionId: String, productId: String, restore: Bool, provider: String, purchaseToken: String)
+    case purchaseSubmitted(jws: String, transactionId: String, productId: String, restore: Bool, provider: String, purchaseToken: String, result: HttpResult)
     /// O shell finalizou a transação na loja.
     case purchaseFinished(transactionId: String)
     /// Fechou a tela do passo a passo da compra. Antes de pronta, a compra segue em
@@ -1255,18 +1258,22 @@ indirect public enum Event: Hashable, Equatable {
         case .tracksFetched(let x):
             try serializer.serialize_variant_index(value: 30)
             try x.serialize(serializer: serializer)
-        case .submitPurchase(let jws, let transactionId, let productId, let restore):
+        case .submitPurchase(let jws, let transactionId, let productId, let restore, let provider, let purchaseToken):
             try serializer.serialize_variant_index(value: 31)
             try serializer.serialize_str(value: jws)
             try serializer.serialize_str(value: transactionId)
             try serializer.serialize_str(value: productId)
             try serializer.serialize_bool(value: restore)
-        case .purchaseSubmitted(let jws, let transactionId, let productId, let restore, let result):
+            try serializer.serialize_str(value: provider)
+            try serializer.serialize_str(value: purchaseToken)
+        case .purchaseSubmitted(let jws, let transactionId, let productId, let restore, let provider, let purchaseToken, let result):
             try serializer.serialize_variant_index(value: 32)
             try serializer.serialize_str(value: jws)
             try serializer.serialize_str(value: transactionId)
             try serializer.serialize_str(value: productId)
             try serializer.serialize_bool(value: restore)
+            try serializer.serialize_str(value: provider)
+            try serializer.serialize_str(value: purchaseToken)
             try result.serialize(serializer: serializer)
         case .purchaseFinished(let transactionId):
             try serializer.serialize_variant_index(value: 33)
@@ -1714,16 +1721,20 @@ indirect public enum Event: Hashable, Equatable {
             let transactionId = try deserializer.deserialize_str()
             let productId = try deserializer.deserialize_str()
             let restore = try deserializer.deserialize_bool()
+            let provider = try deserializer.deserialize_str()
+            let purchaseToken = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
-            return .submitPurchase(jws: jws, transactionId: transactionId, productId: productId, restore: restore)
+            return .submitPurchase(jws: jws, transactionId: transactionId, productId: productId, restore: restore, provider: provider, purchaseToken: purchaseToken)
         case 32:
             let jws = try deserializer.deserialize_str()
             let transactionId = try deserializer.deserialize_str()
             let productId = try deserializer.deserialize_str()
             let restore = try deserializer.deserialize_bool()
+            let provider = try deserializer.deserialize_str()
+            let purchaseToken = try deserializer.deserialize_str()
             let result = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
-            return .purchaseSubmitted(jws: jws, transactionId: transactionId, productId: productId, restore: restore, result: result)
+            return .purchaseSubmitted(jws: jws, transactionId: transactionId, productId: productId, restore: restore, provider: provider, purchaseToken: purchaseToken, result: result)
         case 33:
             let transactionId = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
@@ -4143,6 +4154,11 @@ indirect public enum StatusKey: Hashable, Equatable {
     /// `provider_reauth_required`: excluir a conta pede a confirmação pela Apple, não a
     /// senha (ADR 0017).
     case providerReauthRequired
+    /// `purchase_pending`: o Google Play aceitou a compra, mas o pagamento ainda não caiu
+    /// (boleto, dinheiro). A trilha abre quando cair.
+    case purchasePending
+    /// `store_unavailable`: o servidor não fala com a loja agora. Tentar de novo depois.
+    case storeUnavailable
 
     public func serialize<S: Serializer>(serializer: S) throws {
         try serializer.increase_container_depth()
@@ -4229,6 +4245,10 @@ indirect public enum StatusKey: Hashable, Equatable {
             try serializer.serialize_variant_index(value: 39)
         case .providerReauthRequired:
             try serializer.serialize_variant_index(value: 40)
+        case .purchasePending:
+            try serializer.serialize_variant_index(value: 41)
+        case .storeUnavailable:
+            try serializer.serialize_variant_index(value: 42)
         }
         try serializer.decrease_container_depth()
     }
@@ -4366,6 +4386,12 @@ indirect public enum StatusKey: Hashable, Equatable {
         case 40:
             try deserializer.decrease_container_depth()
             return .providerReauthRequired
+        case 41:
+            try deserializer.decrease_container_depth()
+            return .purchasePending
+        case 42:
+            try deserializer.decrease_container_depth()
+            return .storeUnavailable
         default: throw DeserializationError.invalidInput(issue: "Unknown variant index for StatusKey: \(index)")
         }
     }

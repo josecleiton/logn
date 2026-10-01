@@ -63,8 +63,26 @@ pub enum Event {
     /// de ele confirmar o shell pode finalizar a transação na loja (spec, seção 5).
     /// `restore` é o "Restaurar compras": a transação já foi finalizada antes.
     /// `product_id` diz de que trilha é a compra, para a tela do passo a passo (F3).
-    SubmitPurchase { jws: String, transaction_id: String, product_id: String, restore: bool },
-    PurchaseSubmitted { jws: String, transaction_id: String, product_id: String, restore: bool, result: HttpResult },
+    ///
+    /// `provider` é a loja (ADR 0022): vazio é a App Store, que prova a compra pelo `jws`;
+    /// `google_play` prova pelo `purchase_token`, e o `transaction_id` é o próprio token.
+    SubmitPurchase {
+        jws: String,
+        transaction_id: String,
+        product_id: String,
+        restore: bool,
+        provider: String,
+        purchase_token: String,
+    },
+    PurchaseSubmitted {
+        jws: String,
+        transaction_id: String,
+        product_id: String,
+        restore: bool,
+        provider: String,
+        purchase_token: String,
+        result: HttpResult,
+    },
     /// O shell finalizou a transação na loja.
     PurchaseFinished { transaction_id: String },
     /// Fechou a tela do passo a passo da compra. Antes de pronta, a compra segue em
@@ -1501,6 +1519,9 @@ const DEFAULT_MIN_AGE: u32 = 13;
 /// Chave, no armazenamento do aparelho, da escolha "Análise de uso". O shell lê a
 /// mesma chave ao iniciar o PostHog, antes de o Core existir.
 const ANALYTICS_DISABLED_KEY: &str = "analytics_disabled";
+
+/// A loja do Android, como o servidor a nomeia (`domain.ProviderGooglePlay`).
+const PROVIDER_GOOGLE_PLAY: &str = "google_play";
 
 /// Preferências do aparelho que a abertura relê (`RestorePreferences`).
 const SELECTED_TRACK_KEY: &str = "selected_track";
@@ -3011,7 +3032,7 @@ Event::FetchChallenges => {
                 render::render()
             }
 
-            Event::SubmitPurchase { jws, transaction_id, product_id, restore } => {
+            Event::SubmitPurchase { jws, transaction_id, product_id, restore, provider, purchase_token } => {
                 if model.access_token.is_none() || model.is_guest {
                     model.status_key = StatusKey::PurchaseNeedsAccount;
                     return render::render();
@@ -3026,18 +3047,32 @@ Event::FetchChallenges => {
                     let track_id = track_for_product(model, &product_id);
                     model.purchase_flow = Some((track_id, crate::domain::PurchaseStage::Validating, StatusKey::Silent));
                 }
+                // Cada loja prova a compra do seu jeito; o servidor escolhe pelo `provider`.
+                let body = if provider == PROVIDER_GOOGLE_PLAY {
+                    serde_json::json!({ "provider": provider, "product_id": product_id, "purchase_token": purchase_token })
+                } else {
+                    serde_json::json!({ "jws": jws })
+                };
                 let request = HttpRequest {
                     method: "POST".to_string(),
                     url: if restore { "/api/v1/purchases/restore" } else { "/api/v1/purchases" }.to_string(),
                     headers: auth_headers(&model.access_token, &model.locale),
-                    body: serde_json::to_vec(&serde_json::json!({ "jws": jws })).unwrap_or_default(),
+                    body: serde_json::to_vec(&body).unwrap_or_default(),
                 };
                 Command::request_from_shell(request)
-                    .then_send(move |result| Event::PurchaseSubmitted { jws, transaction_id, product_id, restore, result })
+                    .then_send(move |result| Event::PurchaseSubmitted {
+                        jws,
+                        transaction_id,
+                        product_id,
+                        restore,
+                        provider,
+                        purchase_token,
+                        result,
+                    })
                     .and(render::render())
             }
 
-            Event::PurchaseSubmitted { jws, transaction_id, product_id, restore, result } => {
+            Event::PurchaseSubmitted { jws, transaction_id, product_id, restore, provider, purchase_token, result } => {
                 model.purchase_in_flight = false;
                 if restore && !matches!(&result, HttpResult::Ok(r) if r.status == 401) {
                     model.restore.done += 1;
@@ -3075,27 +3110,41 @@ Event::FetchChallenges => {
                         fail_purchase(model, "", StatusKey::TrackDownloadFailed);
                     }
                     HttpResult::Ok(response) if response.status == 401 => {
-                        model.purchase_retries.push(Event::SubmitPurchase { jws, transaction_id, product_id, restore });
+                        model.purchase_retries.push(Event::SubmitPurchase {
+                            jws,
+                            transaction_id,
+                            product_id,
+                            restore,
+                            provider,
+                            purchase_token,
+                        });
                         return self.update(Event::AttemptRefresh, model);
                     }
                     HttpResult::Ok(response) => {
-                        model.status_key = match api_code(&response.body).as_deref() {
+                        let code = api_code(&response.body);
+                        // Pagamento pendente no Google Play (boleto, dinheiro): a compra
+                        // existe, só não foi paga. Não é recusa nem conta alheia, e a
+                        // loja entrega de novo quando o pagamento cair.
+                        let pending = code.as_deref() == Some("purchase_pending");
+                        model.status_key = match code.as_deref() {
                             Some("purchase_owned_by_other_account") => StatusKey::PurchaseOwnedByOtherAccount,
                             Some("purchase_account_mismatch") => StatusKey::PurchaseAccountMismatch,
                             Some("purchase_revoked") => StatusKey::PurchaseRevoked,
+                            Some("purchase_pending") => StatusKey::PurchasePending,
+                            Some("store_unavailable") => StatusKey::StoreUnavailable,
                             _ => StatusKey::PurchaseFailed,
                         };
-                        if restore && response.status == 409 {
+                        if restore && response.status == 409 && !pending {
                             model.restore.other_account += 1;
                         }
                         // Recusa definitiva (403, 409, e o 400 de produto desconhecido ou
                         // transação inválida): o servidor já decidiu, e deixar a transação
                         // aberta faria a loja entregá-la de novo a cada abertura, para
                         // sempre. Não consumível volta por "Restaurar compras" se for o caso.
-                        // Erro do servidor fica aberto e tenta de novo.
-                        let permanent = matches!(response.status, 403 | 409)
+                        // Erro do servidor, e o pendente, ficam abertos e tentam de novo.
+                        let permanent = (matches!(response.status, 403 | 409) && !pending)
                             || (response.status == 400
-                                && matches!(api_code(&response.body).as_deref(), Some("unknown_product" | "purchase_invalid")));
+                                && matches!(code.as_deref(), Some("unknown_product" | "purchase_invalid")));
                         if !restore && permanent {
                             model.purchases_to_finish.push(transaction_id);
                         }
@@ -8319,6 +8368,8 @@ mod tests {
                 transaction_id: "tx1".into(),
                 product_id: "com.example.logn.track.t".into(),
                 restore: false,
+                provider: String::new(),
+                purchase_token: String::new(),
             },
             &mut model,
         );
@@ -8335,6 +8386,8 @@ mod tests {
                 transaction_id: "tx1".into(),
                 product_id: "com.example.logn.track.t".into(),
                 restore: false,
+                provider: String::new(),
+                purchase_token: String::new(),
                 result: http(200, serde_json::json!({ "track_id": TRACK })),
             },
             &mut model,
@@ -8354,7 +8407,13 @@ mod tests {
     fn test_a_refused_purchase_stops_coming_back_and_a_failed_one_retries() {
         let (app, mut model) = paid_model();
         let submitted = |tx: &str, restore: bool, result: HttpResult| Event::PurchaseSubmitted {
-            jws: "signed".into(), transaction_id: tx.into(), product_id: "com.example.logn.track.t".into(), restore, result,
+            jws: "signed".into(),
+            transaction_id: tx.into(),
+            product_id: "com.example.logn.track.t".into(),
+            restore,
+            provider: String::new(),
+            purchase_token: String::new(),
+            result,
         };
 
         let _ = app.update(submitted("tx1", false, http(409, serde_json::json!({ "code": "purchase_owned_by_other_account" }))), &mut model);
@@ -8507,27 +8566,15 @@ mod tests {
         let stage = |m: &Model| LogNApp::default().view(m).purchase_flow.stage;
 
         // Reentregue pela loja na abertura, sem o jogador pedir: segue em silêncio.
-        let _ = app.update(
-            Event::SubmitPurchase { jws: "j".into(), transaction_id: "tx0".into(), product_id: "com.example.logn.track.t".into(), restore: false },
-            &mut model,
-        );
+        let _ = app.update(apple_submit("tx0", false), &mut model);
         assert_eq!(stage(&model), PurchaseStage::Idle);
 
         let _ = app.update(Event::PurchaseIntent { product_id: "com.example.logn.track.t".into() }, &mut model);
-        let _ = app.update(
-            Event::SubmitPurchase { jws: "j".into(), transaction_id: "tx1".into(), product_id: "com.example.logn.track.t".into(), restore: false },
-            &mut model,
-        );
+        let _ = app.update(apple_submit("tx1", false), &mut model);
         assert_eq!(stage(&model), PurchaseStage::Validating);
         assert_eq!(app.view(&model).purchase_flow.track_id, TRACK);
 
-        let _ = app.update(
-            Event::PurchaseSubmitted {
-                jws: "j".into(), transaction_id: "tx1".into(), product_id: "com.example.logn.track.t".into(), restore: false,
-                result: http(200, serde_json::json!({ "track_id": TRACK })),
-            },
-            &mut model,
-        );
+        let _ = app.update(apple_submitted("tx1", false, http(200, serde_json::json!({ "track_id": TRACK }))), &mut model);
         assert_eq!(stage(&model), PurchaseStage::Licensing);
         let _ = app.update(
             Event::LicenseFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: http(200, serde_json::to_value(test_license()).unwrap()) },
@@ -8550,19 +8597,114 @@ mod tests {
 
         // Recusa: o passo a passo para, com o motivo.
         let _ = app.update(Event::PurchaseIntent { product_id: "com.example.logn.track.t".into() }, &mut model);
-        let _ = app.update(
-            Event::SubmitPurchase { jws: "j".into(), transaction_id: "tx2".into(), product_id: "com.example.logn.track.t".into(), restore: false },
-            &mut model,
-        );
-        let _ = app.update(
-            Event::PurchaseSubmitted {
-                jws: "j".into(), transaction_id: "tx2".into(), product_id: "com.example.logn.track.t".into(), restore: false,
-                result: http(403, serde_json::json!({ "code": "purchase_revoked" })),
-            },
-            &mut model,
-        );
+        let _ = app.update(apple_submit("tx2", false), &mut model);
+        let _ = app.update(apple_submitted("tx2", false, http(403, serde_json::json!({ "code": "purchase_revoked" }))), &mut model);
         let flow = app.view(&model).purchase_flow;
         assert_eq!((flow.stage, flow.failure), (PurchaseStage::Failed, StatusKey::PurchaseRevoked));
+    }
+
+    /// A compra da App Store como o iOS a manda: prova no `jws`, sem `provider`.
+    fn apple_submit(tx: &str, restore: bool) -> Event {
+        Event::SubmitPurchase {
+            jws: "j".into(),
+            transaction_id: tx.into(),
+            product_id: "com.example.logn.track.t".into(),
+            restore,
+            provider: String::new(),
+            purchase_token: String::new(),
+        }
+    }
+
+    fn apple_submitted(tx: &str, restore: bool, result: HttpResult) -> Event {
+        Event::PurchaseSubmitted {
+            jws: "j".into(),
+            transaction_id: tx.into(),
+            product_id: "com.example.logn.track.t".into(),
+            restore,
+            provider: String::new(),
+            purchase_token: String::new(),
+            result,
+        }
+    }
+
+    /// A compra do Google Play como o Android a manda: o token é a prova e o id.
+    fn play_submit(token: &str, restore: bool) -> Event {
+        Event::SubmitPurchase {
+            jws: String::new(),
+            transaction_id: token.into(),
+            product_id: "com.example.logn.track.t".into(),
+            restore,
+            provider: PROVIDER_GOOGLE_PLAY.into(),
+            purchase_token: token.into(),
+        }
+    }
+
+    fn play_submitted(token: &str, restore: bool, result: HttpResult) -> Event {
+        Event::PurchaseSubmitted {
+            jws: String::new(),
+            transaction_id: token.into(),
+            product_id: "com.example.logn.track.t".into(),
+            restore,
+            provider: PROVIDER_GOOGLE_PLAY.into(),
+            purchase_token: token.into(),
+            result,
+        }
+    }
+
+    #[test]
+    fn test_a_play_purchase_sends_the_token_and_the_product() {
+        let (app, mut model) = paid_model();
+        let mut cmd = app.update(play_submit("tok-1", false), &mut model);
+        let sent = http_requests(&mut cmd);
+        assert_eq!(sent[0].url, "/api/v1/purchases");
+        let body = serde_json::from_slice::<serde_json::Value>(&sent[0].body).unwrap();
+        assert_eq!(body["provider"], "google_play");
+        assert_eq!(body["product_id"], "com.example.logn.track.t");
+        assert_eq!(body["purchase_token"], "tok-1");
+        assert!(body.get("jws").is_none(), "a prova do Play é o token, não um JWS");
+
+        let _ = app.update(play_submitted("tok-1", false, http(200, serde_json::json!({ "track_id": TRACK }))), &mut model);
+        assert_eq!(model.purchases_to_finish, vec!["tok-1".to_string()]);
+        assert_eq!(model.status_key, StatusKey::PurchaseConfirmed);
+    }
+
+    #[test]
+    fn test_a_pending_play_payment_stays_open_and_is_not_another_account() {
+        let (app, mut model) = paid_model();
+        let _ = app.update(Event::PurchaseIntent { product_id: "com.example.logn.track.t".into() }, &mut model);
+        let _ = app.update(play_submit("tok-2", false), &mut model);
+        let _ = app.update(play_submitted("tok-2", false, http(409, serde_json::json!({ "code": "purchase_pending" }))), &mut model);
+        assert_eq!(model.status_key, StatusKey::PurchasePending);
+        assert!(model.purchases_to_finish.is_empty(), "pendente não é recusa: a loja entrega de novo quando pagar");
+        let flow = app.view(&model).purchase_flow;
+        assert_eq!(flow.failure, StatusKey::PurchasePending);
+
+        // Na restauração, o pendente não conta como compra de outra conta.
+        let _ = app.update(Event::RestoreStarted { count: 1 }, &mut model);
+        let _ = app.update(play_submitted("tok-2", true, http(409, serde_json::json!({ "code": "purchase_pending" }))), &mut model);
+        assert_eq!(model.restore.other_account, 0);
+    }
+
+    #[test]
+    fn test_store_unavailable_keeps_the_purchase_for_a_retry() {
+        let (app, mut model) = paid_model();
+        let _ = app.update(play_submit("tok-3", false), &mut model);
+        let _ = app.update(play_submitted("tok-3", false, http(503, serde_json::json!({ "code": "store_unavailable" }))), &mut model);
+        assert_eq!(model.status_key, StatusKey::StoreUnavailable);
+        assert!(model.purchases_to_finish.is_empty());
+    }
+
+    #[test]
+    fn test_a_play_purchase_retried_after_401_keeps_its_token() {
+        let (app, mut model) = paid_model();
+        let _ = app.update(play_submit("tok-4", false), &mut model);
+        let _ = app.update(play_submitted("tok-4", false, http(401, serde_json::json!({}))), &mut model);
+        match model.purchase_retries.first() {
+            Some(Event::SubmitPurchase { provider, purchase_token, .. }) => {
+                assert_eq!((provider.as_str(), purchase_token.as_str()), ("google_play", "tok-4"));
+            }
+            other => panic!("esperava a compra do Play na fila de repetição, veio {other:?}"),
+        }
     }
 
     /// A rede cai depois da cobrança: a tela para com o motivo, em vez de "Aguarde" para
@@ -8601,7 +8743,12 @@ mod tests {
     fn test_concurrent_401s_refresh_once_and_retry_all() {
         let (app, mut model) = paid_model();
         let submitted = |tx: &str| Event::PurchaseSubmitted {
-            jws: "j".into(), transaction_id: tx.into(), product_id: String::new(), restore: true,
+            jws: "j".into(),
+            transaction_id: tx.into(),
+            product_id: String::new(),
+            restore: true,
+            provider: String::new(),
+            purchase_token: String::new(),
             result: http(401, serde_json::json!({ "code": "unauthenticated" })),
         };
         let _ = app.update(submitted("tx1"), &mut model);
@@ -8648,7 +8795,13 @@ mod tests {
         with_catalog(&mut model);
         let _ = app.update(Event::RestoreStarted { count: 2 }, &mut model);
         let submitted = |tx: &str, result: HttpResult| Event::PurchaseSubmitted {
-            jws: "j".into(), transaction_id: tx.into(), product_id: String::new(), restore: true, result,
+            jws: "j".into(),
+            transaction_id: tx.into(),
+            product_id: String::new(),
+            restore: true,
+            provider: String::new(),
+            purchase_token: String::new(),
+            result,
         };
         let _ = app.update(submitted("tx1", http(200, serde_json::json!({ "track_id": TRACK }))), &mut model);
         assert!(!app.view(&model).restore_result.finished);
@@ -8703,7 +8856,14 @@ mod tests {
         model.access_token = None;
         model.is_guest = true;
         let mut cmd = app.update(
-            Event::SubmitPurchase { jws: "signed".into(), transaction_id: "tx1".into(), product_id: String::new(), restore: false },
+            Event::SubmitPurchase {
+                jws: "signed".into(),
+                transaction_id: "tx1".into(),
+                product_id: String::new(),
+                restore: false,
+                provider: String::new(),
+                purchase_token: String::new(),
+            },
             &mut model,
         );
         assert!(http_requests(&mut cmd).is_empty());

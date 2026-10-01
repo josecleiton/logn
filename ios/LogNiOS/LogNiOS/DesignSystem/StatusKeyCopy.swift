@@ -54,6 +54,8 @@ extension LogN.StatusKey {
         case .socialEmailUnverified:       return Str.Status.social_email_unverified
         case .socialProviderDisabled:      return Str.Status.social_provider_disabled
         case .providerReauthRequired:      return Str.Status.provider_reauth_required
+        case .purchasePending:             return Str.Status.purchase_pending
+        case .storeUnavailable:            return Str.Status.store_unavailable
         }
     }
 
