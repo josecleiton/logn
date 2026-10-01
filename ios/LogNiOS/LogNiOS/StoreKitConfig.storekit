@@ -49,7 +49,7 @@
           "locale" : "es_ES"
         }
       ],
-      "productID" : "sh.logn.app.track.ia",
+      "productID" : "sh.logn.app.track.ai",
       "referenceName" : "AI Track",
       "type" : "NonConsumable"
     }
