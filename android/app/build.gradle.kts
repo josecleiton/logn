@@ -111,7 +111,7 @@ android {
 
 // Release só com a API de produção por HTTPS e o `.so` de release: o debug do Core não
 // sai para a loja.
-val verifyReleaseConfig by tasks.registering {
+val verifyReleaseConfig = tasks.register("verifyReleaseConfig") {
     val base = cfg("API_BASE_URL")
     val profile = rootProject.file("generated/PROFILE")
     doLast {
