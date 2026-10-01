@@ -455,6 +455,8 @@ pending = {}
 store_unavailable = {}
 product_missing = {}
 needs_account = {}
+# O preço que a loja confirmou na hora da compra não é o que a tela mostrava.
+price_changed = {}
 
 # Catálogo de trilhas (LogN Trilhas, 1b) e o botão que o abre.
 [groups.catalog.keys]
@@ -472,6 +474,11 @@ today = {}
 connect = {}
 offline = {}
 open_accessibility = { placeholders = [{ name = "name", type = "text" }, { name = "state", type = "text" }] }
+# O desconto de primeira compra da loja. `percent` chega formatado ("30%"): o catálogo não
+# escapa um `%` literal, e cada língua põe o sinal onde quer.
+discount = { placeholders = [{ name = "percent", type = "text" }] }
+first_purchase = {}
+discount_accessibility = { placeholders = [{ name = "price", type = "text" }, { name = "percent", type = "text" }, { name = "full", type = "text" }] }
 
 # Detalhe da trilha (1d, V3) e os estados da comprada.
 [groups.track.keys]

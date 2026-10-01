@@ -39,6 +39,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import sh.logn.app.core.StorePrice
 import sh.logn.app.ui.LocalDispatch
 import sh.logn.app.ui.LocalStore
 import sh.logn.app.ui.components.ButtonVariant
@@ -53,6 +54,7 @@ import sh.logn.app.ui.theme.Radius
 import sh.logn.app.ui.theme.Space
 import sh.logn.app.ui.theme.StoreMetrics
 import sh.logn.app.ui.theme.Stroke
+import sh.logn.app.ui.track.DiscountLine
 import sh.logn.app.ui.track.OfflineDaysBar
 import sh.logn.app.ui.track.TrackBalloon
 import sh.logn.app.ui.track.TrackChip
@@ -173,7 +175,7 @@ private fun PrincipalCard(
 @Composable
 private fun TrackCard(
     track: TrackView,
-    price: String?,
+    price: StorePrice?,
     modifier: Modifier,
     onClick: () -> Unit,
 ) {
@@ -181,7 +183,7 @@ private fun TrackCard(
     val chip = TrackChipStyle.of(context, track, price)
     val warn = track.owned && (track.offline == OfflineState.SOON || track.offline == OfflineState.TODAY)
     val dimmed = track.isExpired || track.revoked
-    val label = Str.Catalog.open_accessibility(context, track.name, chip.text)
+    val label = Str.Catalog.open_accessibility(context, track.name, chip.spoken)
     val shape = RoundedCornerShape(Radius.sm)
     Column(
         modifier
@@ -423,7 +425,7 @@ private fun NodeList(track: TrackView) {
 @Composable
 private fun Footer(
     track: TrackView,
-    price: String?,
+    price: StorePrice?,
     openTrack: (String) -> Unit,
 ) {
     val context = LocalContext.current
@@ -439,10 +441,12 @@ private fun Footer(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         store.problem?.let { Text(sh.logn.app.core.PlayStore.copy(context, it), style = LognFont.bodyMedium, color = LognDark.textSecondary) }
+        // Só onde o rodapé vende: quem tem a trilha vê "Continuar".
+        if (price != null && (track.revoked || !track.owned)) DiscountLine(price)
         when {
             track.revoked ->
                 LognButton(
-                    price?.let { Str.Track.buy_again(context, it) } ?: Str.Track.buy_again_no_price(context),
+                    price?.let { Str.Track.buy_again(context, it.formatted) } ?: Str.Track.buy_again_no_price(context),
                     ButtonVariant.Primary,
                     loading = store.isPurchasing,
                 ) { activity?.let { store.buy(it, track.productId) } }
@@ -455,7 +459,7 @@ private fun Footer(
                 Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
                     LognButton(Str.Track.play_sample(context), ButtonVariant.Secondary, Modifier.weight(1f)) { openTrack(track.id) }
                     LognButton(
-                        price?.let { Str.Track.buy(context, it) } ?: Str.Track.buy_no_price(context),
+                        price?.let { Str.Track.buy(context, it.formatted) } ?: Str.Track.buy_no_price(context),
                         ButtonVariant.Primary,
                         Modifier.weight(1f),
                         enabled = track.productId.isNotEmpty(),

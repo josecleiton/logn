@@ -420,6 +420,7 @@ cancelled = "Purchase cancelled."
 pending = "Purchase awaiting approval. The track unlocks once the store confirms."
 store_unavailable = "Couldn't reach the App Store. Try again."
 product_missing = "This track isn't for sale right now."
+price_changed = "The price changed. Check the new amount and tap again."
 needs_account = "To buy, create an account or sign in. The purchase stays with the account and comes back on another device."
 
 [storage]
@@ -447,6 +448,9 @@ today = "TODAY"
 connect = "CONNECT"
 offline = "OFFLINE"
 open_accessibility = "%{name}, %{state}"
+discount = "−%{percent}"
+first_purchase = "on your first purchase"
+discount_accessibility = "%{price}, %{percent} off your first purchase, full price %{full}"
 
 [track]
 meta = "%{nodes} NODES · BY %{author} · %{languages}"

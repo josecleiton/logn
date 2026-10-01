@@ -41,6 +41,7 @@ import sh.logn.app.ui.theme.Radius
 import sh.logn.app.ui.theme.Space
 import sh.logn.app.ui.theme.StoreMetrics
 import sh.logn.app.ui.theme.Stroke
+import sh.logn.app.ui.track.DiscountLine
 import sh.logn.app.ui.track.TrackBalloon
 import sh.logn.core.LogN.Event
 import sh.logn.core.LogN.PurchaseFlowView
@@ -204,15 +205,16 @@ fun GuestPurchaseSheet(
             verticalArrangement = Arrangement.spacedBy(Space.md),
         ) {
             if (track != null) {
+                val price = store.prices[track.productId]
                 Row(horizontalArrangement = Arrangement.spacedBy(Space.md), verticalAlignment = Alignment.CenterVertically) {
                     TrackBalloon(track, HomeMetrics.trackBalloon)
-                    val price = store.prices[track.productId]
                     Text(
-                        track.name.uppercase() + (price?.let { " · $it" } ?: ""),
+                        track.name.uppercase() + (price?.let { " · ${it.formatted}" } ?: ""),
                         style = LognFont.mono(StoreMetrics.META_SIZE, tracking = StoreMetrics.EYEBROW_TRACKING),
                         color = LognDark.textMuted,
                     )
                 }
+                price?.let { DiscountLine(it) }
             }
             Text(
                 Str.Guest_purchase.title(context),
@@ -275,9 +277,10 @@ fun LockedNodeSheet(
                 Text(Str.Locked.rest(context, track.closedNodeCount.toInt()), style = style, color = LognDark.textSecondary)
             }
             store.problem?.let { Text(PlayStore.copy(context, it), style = LognFont.bodyMedium, color = LognDark.textSecondary) }
+            price?.let { DiscountLine(it) }
             // A folha fecha antes da compra: a tela do passo a passo abre da raiz.
             LognButton(
-                price?.let { Str.Locked.unlock(context, track.name, it) } ?: Str.Locked.unlock_no_price(context, track.name),
+                price?.let { Str.Locked.unlock(context, track.name, it.formatted) } ?: Str.Locked.unlock_no_price(context, track.name),
                 ButtonVariant.Primary,
                 enabled = track.productId.isNotEmpty(),
                 loading = store.isPurchasing,
@@ -329,8 +332,10 @@ fun SampleOfferCard(
             }
             Text(Str.Offer.tail(context), style = LognFont.sans(StoreMetrics.NOTE_SIZE), color = LognDark.textSecondary)
         }
+        store.problem?.let { Text(PlayStore.copy(context, it), style = LognFont.bodyMedium, color = LognDark.textSecondary) }
+        price?.let { DiscountLine(it) }
         LognButton(
-            price?.let { Str.Offer.continue_buy(context, name, it) } ?: Str.Offer.continue_buy_no_price(context, name),
+            price?.let { Str.Offer.continue_buy(context, name, it.formatted) } ?: Str.Offer.continue_buy_no_price(context, name),
             ButtonVariant.Primary,
             enabled = track != null,
             loading = store.isPurchasing,

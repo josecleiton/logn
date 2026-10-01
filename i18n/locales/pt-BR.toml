@@ -420,6 +420,7 @@ cancelled = "Compra cancelada."
 pending = "Compra aguardando aprovação. A trilha libera quando a loja confirmar."
 store_unavailable = "Não consegui falar com a App Store. Tente de novo."
 product_missing = "Esta trilha não está à venda agora."
+price_changed = "O preço mudou. Confira o valor novo e toque de novo."
 needs_account = "Para comprar, crie uma conta ou entre. A compra fica na conta, e volta em outro aparelho."
 
 [storage]
@@ -447,6 +448,9 @@ today = "HOJE"
 connect = "CONECTE"
 offline = "SEM REDE"
 open_accessibility = "%{name}, %{state}"
+discount = "−%{percent}"
+first_purchase = "na primeira compra"
+discount_accessibility = "%{price}, %{percent} de desconto na primeira compra, preço cheio %{full}"
 
 [track]
 meta = "%{nodes} NÓS · POR %{author} · %{languages}"

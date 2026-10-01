@@ -15,6 +15,9 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import sh.logn.app.ui.theme.LognDark
@@ -47,6 +50,20 @@ fun FullScreenSheet(
 }
 
 /**
+ * O que sobra de um arremesso para cima depois de o conteúdo rolar morre aqui, antes de
+ * chegar à folha. No Material3 1.4 a folha aberta, com conteúdo perto da altura da tela
+ * (o perfil), recebia essa sobra e não parava mais de quicar: a animação de assentar
+ * brigava com a medida da folha, sobe e desce sem fim. Para baixo nada muda: arrastar e
+ * arremessar para fechar continuam chegando à folha.
+ */
+private object SwallowUpwardFling : NestedScrollConnection {
+    override suspend fun onPostFling(
+        consumed: Velocity,
+        available: Velocity,
+    ): Velocity = if (available.y < 0f) Velocity(0f, available.y) else Velocity.Zero
+}
+
+/**
  * A folha de baixo, com a altura do conteúdo: confirmações e escolhas curtas. É o
  * `presentationDetents` de iOS.
  */
@@ -70,7 +87,14 @@ fun BottomSheet(
         shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = Radius.md, topEnd = Radius.md),
         dragHandle = null,
     ) {
-        Box(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).navigationBarsPadding().padding(bottom = Radius.md)) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .nestedScroll(SwallowUpwardFling)
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+                .padding(bottom = Radius.md),
+        ) {
             content()
         }
     }

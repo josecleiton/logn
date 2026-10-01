@@ -49,7 +49,7 @@ class PlayStore(
     private val scope: CoroutineScope,
 ) {
     /** O que a loja respondeu e o Core não sabe. A cópia sai do catálogo. */
-    enum class Problem { Cancelled, Pending, StoreUnavailable, ProductMissing, NeedsAccount, OwnedElsewhere }
+    enum class Problem { Cancelled, Pending, StoreUnavailable, ProductMissing, NeedsAccount, OwnedElsewhere, PriceChanged }
 
     var isPurchasing by mutableStateOf(false)
         private set
@@ -57,7 +57,7 @@ class PlayStore(
         private set
 
     /** O preço de cada produto na moeda da loja do jogador. Nunca um valor fixo no app. */
-    val prices = mutableStateMapOf<String, String>()
+    val prices = mutableStateMapOf<String, StorePrice>()
 
     /** O visitante pediu uma compra: a folha "a compra fica na sua conta" abre com ela. */
     var guestPrompt by mutableStateOf<String?>(null)
@@ -66,6 +66,16 @@ class PlayStore(
     private var pendingAfterSignUp: String? = null
     private val queued = mutableListOf<Submission>()
     private val details = mutableMapOf<String, ProductDetails>()
+
+    /** O token do desconto que a conta pode usar em cada produto, para a compra pedir esse preço. */
+    private val offerTokens = mutableMapOf<String, String>()
+
+    /**
+     * A ordem das consultas à loja. Uma resposta que chega depois de outra mais nova (a da
+     * tela que abriu antes da compra) não apaga o que a compra acabou de ver.
+     */
+    private var queries = 0L
+    private val answeredBy = mutableMapOf<String, Long>()
 
     /** O produto da última compra pedida, para o `ITEM_ALREADY_OWNED` saber qual reenviar. */
     private var requested: String? = null
@@ -140,17 +150,45 @@ class PlayStore(
         scope.launch { purchase(activity, product) }
     }
 
+    /**
+     * Pergunta de novo a cada tela que vende, mesmo com preço guardado: o desconto de primeira
+     * compra some quando é usado, e o botão não pode seguir mostrando o preço velho.
+     */
     fun loadPrices(productIds: List<String>) {
-        val missing = productIds.filter { it.isNotEmpty() && it !in prices }
-        if (missing.isEmpty()) return
+        val ids = productIds.filter { it.isNotEmpty() }.distinct()
+        if (ids.isEmpty()) return
         scope.launch {
             if (!connect()) return@launch
-            for (d in queryDetails(missing)) {
-                details[d.productId] = d
-                d.oneTimePurchaseOfferDetails?.formattedPrice?.let { prices[d.productId] = it }
-            }
+            val query = ++queries
+            for (d in queryDetails(ids)) remember(d, query)
         }
     }
+
+    /** Guarda o produto, o preço que a conta vê e o token do desconto, se houver. */
+    private fun remember(
+        product: ProductDetails,
+        query: Long,
+    ) {
+        val id = product.productId
+        if (query < (answeredBy[id] ?: 0L)) return
+        answeredBy[id] = query
+        details[id] = product
+        val quote = quote(product.oneTimePurchaseOfferDetails?.offer(), product.oneTimePurchaseOfferDetailsList.orEmpty().map { it.offer() })
+        if (quote == null) prices.remove(id) else prices[id] = quote.price
+        val token = quote?.offerToken
+        if (token == null) offerTokens.remove(id) else offerTokens[id] = token
+    }
+
+    private fun ProductDetails.OneTimePurchaseOfferDetails.offer() =
+        StoreOffer(
+            purchaseOptionId = purchaseOptionId,
+            priceMicros = priceAmountMicros,
+            formatted = formattedPrice,
+            currency = priceCurrencyCode,
+            percent = discountDisplayInfo?.percentageDiscount,
+            token = offerToken,
+            plain = rentalDetails == null && preorderDetails == null,
+        )
 
     /** Comprar de qualquer tela: o visitante vê primeiro a folha da conta. */
     fun buy(
@@ -198,9 +236,21 @@ class PlayStore(
             isPurchasing = false
             return
         }
-        val product = details[productId] ?: queryDetails(listOf(productId)).firstOrNull()
+        // A elegibilidade do desconto muda (outra compra, outro aparelho): o produto vem
+        // fresco da loja. O guardado não serve, porque o token dele pode ser de um desconto
+        // que a conta já usou.
+        val shown = prices[productId]
+        val query = ++queries
+        val product = queryDetails(listOf(productId)).firstOrNull()
         if (product == null) {
-            problem = Problem.ProductMissing
+            problem = if (productId in details) Problem.StoreUnavailable else Problem.ProductMissing
+            isPurchasing = false
+            return
+        }
+        remember(product, query)
+        // O jogador tocou num preço. Se a loja agora diz outro, ele vê o novo antes de pagar.
+        if (shown != null && prices[productId] != shown) {
+            problem = Problem.PriceChanged
             isPurchasing = false
             return
         }
@@ -208,7 +258,14 @@ class PlayStore(
             BillingFlowParams
                 .newBuilder()
                 .setProductDetailsParamsList(
-                    listOf(BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(product).build()),
+                    listOf(
+                        BillingFlowParams.ProductDetailsParams
+                            .newBuilder()
+                            .setProductDetails(product)
+                            // Sem token o Play cobra a opção backwards compatible, preço cheio.
+                            .apply { offerTokens[productId]?.let { setOfferToken(it) } }
+                            .build(),
+                    ),
                 ).setObfuscatedAccountId(view.accountUserId)
                 .build()
         val result = billing.launchBillingFlow(activity, params)
@@ -377,6 +434,7 @@ class PlayStore(
                 Problem.ProductMissing -> Str.Paywall.product_missing(context)
                 Problem.NeedsAccount -> Str.Paywall.needs_account(context)
                 Problem.OwnedElsewhere -> Str.Status.purchase_owned_by_other_account(context)
+                Problem.PriceChanged -> Str.Paywall.price_changed(context)
             }
 
         private const val SETTLED_FILE = "logn_play"

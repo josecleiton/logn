@@ -418,6 +418,7 @@ cancelled = "Compra cancelada."
 pending = "Compra pendiente de aprobación. La pista se desbloquea cuando la tienda confirme."
 store_unavailable = "No se pudo conectar con la App Store. Inténtalo de nuevo."
 product_missing = "Esta pista no está a la venta ahora."
+price_changed = "El precio cambió. Revisa el nuevo valor y toca de nuevo."
 needs_account = "Para comprar, crea una cuenta o inicia sesión. La compra queda en la cuenta y vuelve en otro dispositivo."
 
 [storage]
@@ -445,6 +446,9 @@ today = "HOY"
 connect = "CONÉCTATE"
 offline = "SIN CONEXIÓN"
 open_accessibility = "%{name}, %{state}"
+discount = "−%{percent}"
+first_purchase = "en tu primera compra"
+discount_accessibility = "%{price}, %{percent} de descuento en tu primera compra, precio completo %{full}"
 
 [track]
 meta = "%{nodes} NODOS · POR %{author} · %{languages}"
