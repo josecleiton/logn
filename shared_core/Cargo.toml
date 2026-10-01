@@ -23,7 +23,7 @@ codegen = [
 [dependencies]
 facet = { version = "=0.46.5", features = ["chrono"] }
 facet-generate-attrs = "0.18"
-boltffi = "0.30.1"
+boltffi = "0.31.0"
 crux_core = "0.20.0"
 crux_http = { version = "0.20.0", features = ["facet_typegen"] }
 crux_macros = "0.10.1"
@@ -43,3 +43,9 @@ crux_time = { version = "0.18.0", features = ["facet_typegen"] }
 
 [dev-dependencies]
 crux_core = { version = "0.20", features = ["testing"] }
+
+# Nome de função e linha do Core no crash nativo (ADR 0024). Sem isto o release sai sem
+# debug info do nosso código, e PostHog não tem com o que simbolizar o `.so` nem o dSYM.
+# O app não cresce: o AGP e o archive do Xcode fazem strip do que vai para a loja.
+[profile.release]
+debug = "line-tables-only"

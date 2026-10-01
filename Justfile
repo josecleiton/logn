@@ -158,8 +158,9 @@ test-core:
 sync-env:
     @echo "// Generated auto-magically from .env by Justfile" > ios/LogNiOS/Local.xcconfig
     @# Segredo do servidor (`*_SECRET`) não vai para o build do app: config de build aparece
-    @# em log do xcodebuild, e um `${...}` no Info.plist o embarcaria (ADR 0019).
-    @sed -e 's/#.*//g' -e '/^$/d' -e '/^[A-Z0-9_]*_SECRET=/d' -e 's/\/\//\/\$()\//g' .env >> ios/LogNiOS/Local.xcconfig
+    @# em log do xcodebuild, e um `${...}` no Info.plist o embarcaria (ADR 0019). A chave
+    @# pessoal do posthog-cli (`POSTHOG_CLI_*`, ADR 0024) também não.
+    @sed -e 's/#.*//g' -e '/^$/d' -e '/^[A-Z0-9_]*_SECRET=/d' -e '/^POSTHOG_CLI_[A-Z_]*=/d' -e 's/\/\//\/\$()\//g' .env >> ios/LogNiOS/Local.xcconfig
     @echo "Local.xcconfig synced from .env!"
 
 # Empacota a trilha atual (nós + desafios) dentro do app, para a primeira abertura sem

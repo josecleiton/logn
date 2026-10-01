@@ -295,8 +295,12 @@ Para um teste sem sujar a análise de uso, desligue a telemetria no build à mã
 
 O build de loja é `just android/release`: confere conteúdo e documentos legais, empacota a
 trilha e os documentos da produção nos assets e gera `android/build/store/LogN.aab`,
-assinado, com o mapeamento do R8 e os símbolos do `.so`. Suba o `versionCode` antes de
-cada envio: o Play recusa um repetido.
+assinado, com o mapeamento do R8 e os símbolos do `.so`. Suba o `build` de
+`version.properties` antes de cada envio: o Play recusa um `versionCode` repetido. A
+mesma receita sobe o mapeamento e o `.so` sem strip a PostHog (ADR 0024), e por isso
+pede o `posthog-cli` e as três `POSTHOG_CLI_*` no `.env`; no log do Gradle,
+`uploadPostHogProguardMappingsRelease` e `uploadPostHogNativeSymbolsRelease` têm de
+rodar, não `SKIPPED`. O `install-device` não sobe nada.
 
 - Abre até o login com "CORE PRONTO" no pé: a ponte JNI sobreviveu ao R8.
 - "Termos de uso" abre o documento.

@@ -14,7 +14,10 @@ okhttp = "5.4.0"
 # Descontinuada em Jetpack sem substituta para SharedPreferences cifradas; a ADR diz
 # quando sair dela.
 securityCrypto = "1.1.0"
-posthog = "3.58.3"
+# 3.60 ou mais: captura de crash nativo (ADR 0024).
+posthog = "3.71.4"
+# Sobe o mapping do R8 e os símbolos do `.so` no release (ADR 0024).
+posthogPlugin = "1.7.0"
 billing = "9.1.0"
 playReview = "2.0.2"
 credentials = "1.5.0"
@@ -58,3 +61,4 @@ androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+posthog-android = { id = "com.posthog.android", version.ref = "posthogPlugin" }

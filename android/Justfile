@@ -82,34 +82,87 @@ install-device device="": (generate "release")
 # A trilha e os documentos legais que viajam no app saem da API de produção (API_BASE_URL
 # do .env), nunca do banco local, com as mesmas portas do iOS: conteúdo e documentos sem
 # pendência nem rascunho, toda língua publicada inteira. O .aab leva o mapeamento do R8 e
-# os símbolos do .so, para o Play ler os crashes. O versionCode é o do build.gradle.kts:
-# o Play recusa um repetido, então suba-o antes de cada envio.
+# os símbolos do .so, para o Play ler os crashes. O versionCode é o `build` de
+# version.properties: o Play recusa um repetido, então suba-o antes de cada envio.
+#
+# O mesmo mapeamento e o .so sem strip sobem a PostHog, para o Error Tracking (ADR 0024):
+# precisa do posthog-cli e de POSTHOG_CLI_HOST, POSTHOG_CLI_PROJECT_ID e
+# POSTHOG_CLI_API_KEY no .env. Sem eles, o release para: crash de versão sem símbolo
+# fica ilegível para sempre.
 #
 # Saída: android/build/store/LogN.aab. Envie pelo Play Console (teste interno primeiro).
 # Para o seu celular, o caminho é o `install-device`.
 #
 # Build de loja, o `release-ios` do Android: o .aab para o Play Console, sem enviar.
-release: (generate "release")
+release: release-preflight (generate "release")
     #!/usr/bin/env bash
     set -euo pipefail
-    if [ ! -f android/keystore.properties ]; then
-    	echo "Falta android/keystore.properties: sem ela o .aab sai sem assinatura." >&2
-    	exit 1
-    fi
-    base=$(sed -n 's/^API_BASE_URL=//p' .env | tr -d '"' | tail -1)
+    envval() { sed -n "s/^$1=//p" .env | tr -d "\"'\r" | sed 's/[[:space:]]*$//' | tail -1; }
+    # O .so tem de chegar ao Gradle com build ID e linha do Core: sem um dos dois o
+    # posthog-cli o pula sem erro, e o release sairia verde sem símbolo nenhum.
+    readelf=$(ls {{ ndk }}/toolchains/llvm/prebuilt/*/bin/llvm-readelf | head -1)
+    # Saída numa variável antes do grep: o `grep -q` fecha o pipe cedo, o readelf morre de
+    # SIGPIPE, e o pipefail tomaria isso por falha.
+    for so in android/generated/boltffi/jniLibs/*/libshared_core.so; do
+    	notes=$("$readelf" -n "$so")
+    	sections=$("$readelf" -S "$so")
+    	if ! grep -q "Build ID" <<<"$notes" || ! grep -q "\.debug_line" <<<"$sections"; then
+    		echo "$so sem build ID ou sem .debug_line: confira shared_core/boltffi.toml e o [profile.release]." >&2
+    		exit 1
+    	fi
+    done
+    base=$(envval API_BASE_URL)
     if [ -z "$base" ]; then echo "API_BASE_URL vazio no .env" >&2; exit 1; fi
     echo "Conteúdo e documentos legais de $base"
     {{ just_executable() }} --justfile Justfile --working-directory . content-check release
     {{ just_executable() }} --justfile Justfile --working-directory . legal-check release
     env -u LEGAL_BUNDLE_ALLOW_DRAFT SEED_BUNDLE_BASE_URL="$base" SEED_BUNDLE_OUT=android/app/src/main/assets/trail-seed.json python3 tools/seed_bundle.py --release
     env -u LEGAL_BUNDLE_ALLOW_DRAFT LEGAL_BUNDLE_BASE_URL="$base" LEGAL_BUNDLE_OUT=android/app/src/main/assets/legal python3 tools/legal_bundle.py
-    (cd android && ./gradlew :app:bundleRelease)
+    # A chave vai só a este Gradle, nunca a um export, e nunca ao echo. Sem daemon e sem
+    # configuration cache: os dois guardariam o ambiente da chamada, e o cache o grava em
+    # disco e o reusaria depois de a chave ser trocada.
+    ph_host=$(envval POSTHOG_CLI_HOST)
+    ph_project=$(envval POSTHOG_CLI_PROJECT_ID)
+    ph_key=$(envval POSTHOG_CLI_API_KEY)
+    mkdir -p android/build
+    log=android/build/gradle-release.log
+    (cd android && env POSTHOG_CLI_HOST="$ph_host" POSTHOG_CLI_PROJECT_ID="$ph_project" POSTHOG_CLI_API_KEY="$ph_key" \
+    	./gradlew --no-daemon --no-configuration-cache --console=plain -Plogn.posthogUpload :app:bundleRelease) | tee "$log"
+    # Rodou ou já tinha subido o mesmo (UP-TO-DATE). SKIPPED é upload que não aconteceu.
+    for task in uploadPostHogProguardMappingsRelease uploadPostHogNativeSymbolsRelease; do
+    	if ! grep -qE "^> Task :app:$task( UP-TO-DATE)?\$" "$log"; then
+    		echo "$task não rodou (veja $log): os símbolos desta versão não subiram a PostHog." >&2
+    		exit 1
+    	fi
+    done
     rm -rf android/build/store
     mkdir -p android/build/store
     cp android/app/build/outputs/bundle/release/app-release.aab android/build/store/LogN.aab
-    name=$(sed -n 's/^ *versionName = "\(.*\)".*/\1/p' android/app/build.gradle.kts)
-    code=$(sed -n 's/^ *versionCode = \([0-9]*\).*/\1/p' android/app/build.gradle.kts)
+    name=$(sed -n 's/^name=//p' version.properties)
+    code=$(sed -n 's/^build=//p' version.properties)
     echo "Pronto: android/build/store/LogN.aab (versão $name, versionCode $code). Envie pelo Play Console."
+
+# O que o `release` precisa e não se vê antes de minutos de build do Core: assinatura,
+# posthog-cli e as três POSTHOG_CLI_* (ADR 0024). Só confere; os valores não saem daqui.
+release-preflight:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -f android/keystore.properties ]; then
+    	echo "Falta android/keystore.properties: sem ela o .aab sai sem assinatura." >&2
+    	exit 1
+    fi
+    if [ ! -f .env ]; then echo "Falta o .env na raiz." >&2; exit 1; fi
+    if ! command -v posthog-cli >/dev/null; then
+    	echo "Falta o posthog-cli (brew install posthog/tap/posthog-cli): sem ele os símbolos não sobem." >&2
+    	exit 1
+    fi
+    for key in POSTHOG_CLI_HOST POSTHOG_CLI_PROJECT_ID POSTHOG_CLI_API_KEY; do
+    	value=$(sed -n "s/^$key=//p" .env | tr -d "\"'\r" | sed 's/[[:space:]]*$//' | tail -1)
+    	if [ -z "$value" ] || [[ "$value" == *SuaChaveAqui* ]]; then
+    		echo "$key vazio no .env: sem ele os símbolos não sobem a PostHog." >&2
+    		exit 1
+    	fi
+    done
 
 # Abre como visitante, o `-LogNStartAsGuest` de iOS. Só em debug.
 guest: reverse

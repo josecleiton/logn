@@ -46,6 +46,9 @@ class PostHogTelemetry(
                 // O crash do app vai para o Error Tracking, como em iOS e como a política
                 // de privacidade descreve; independe do interruptor.
                 errorTrackingConfig.autoCapture = true
+                // O crash do Core (Rust, no `.so`) não passa pela JVM. No Android 12 ou mais
+                // o SDK lê o tombstone do sistema na abertura seguinte (ADR 0024).
+                errorTrackingConfig.captureNativeCrashes = true
                 onFeatureFlags = PostHogOnFeatureFlags { android.os.Handler(android.os.Looper.getMainLooper()).post(FeatureFlags::refreshed) }
             }
         PostHogAndroid.setup(context, config)

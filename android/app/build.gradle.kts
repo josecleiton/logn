@@ -1,8 +1,10 @@
+import com.posthog.android.PostHogCliExecTask
 import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.posthog.android)
 }
 
 // A assinatura de release lê `android/keystore.properties`, fora do git (regra 9): o
@@ -120,6 +122,18 @@ val verifyReleaseConfig by tasks.registering {
     }
 }
 tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn(verifyReleaseConfig) }
+
+// Símbolos para o Error Tracking (ADR 0024): o mapping do R8 e o `.so` do Core sobem a
+// PostHog só quando `just android/release` pede, com `-Plogn.posthogUpload`. Sem isso o
+// plugin subiria em todo build com R8, e o `install-device` não tem credencial nem é
+// versão de loja. A credencial chega pelo ambiente (POSTHOG_CLI_*), nunca por aqui, e a
+// receita roda sem configuration cache: o ambiente de uma task `Exec` vai para ele.
+val posthogUpload = providers.gradleProperty("logn.posthogUpload").map { it != "false" }.getOrElse(false)
+posthog {
+    uploadNativeSymbols.set(posthogUpload)
+    includeNativeSymbolSources.set(true)
+}
+tasks.withType<PostHogCliExecTask>().configureEach { enabled = posthogUpload }
 
 composeCompiler {
     stabilityConfigurationFiles.add(rootProject.layout.projectDirectory.file("compose-stability.conf"))

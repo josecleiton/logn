@@ -37,6 +37,16 @@ desktop_loader = "none"
 [targets.android.pack]
 output = "../android/generated/boltffi/jniLibs"
 
+# PostHog só simboliza `.so` com build ID GNU (ADR 0024), e o clang do NDK chamado direto
+# não põe um. É o que casa o frame do tombstone com os símbolos que subiram.
+[targets.android.link]
+extra_args = ["-Wl,--build-id=sha1"]
+
+# Recusa o pack se o perfil perder a debug info. O zip que ele escreve em
+# generated/boltffi/symbols não é usado: o plugin de PostHog lê o .so do merge do Gradle.
+[targets.android.debug_symbols]
+enabled = true
+
 [targets.android.header]
 output = "../android/generated/boltffi/include"
 
