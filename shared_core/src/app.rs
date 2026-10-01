@@ -2328,6 +2328,19 @@ impl App for LogNApp {
             // Token rotacionado no disco: renova o prazo guardado e segue para saber
             // de quem é a sessão. O e-mail fica onde está — quem o escreve é o login.
             Event::RotatedTokenStored(_) => {
+                // O cofre já tem o token novo (ou recusou, e não há o que esperar).
+                model.refresh_in_flight = false;
+                // Quem pediu refresh nessa janela foi dispensado em `TokenRead` e não volta
+                // a passar por `RefreshCompleted`: o "retomando sessão" dele e a linha da
+                // abertura que ele reabriu fecham aqui, como o refresh que já voltou.
+                if model.status_key == StatusKey::ResumingSession {
+                    model.status_key = StatusKey::Silent;
+                }
+                if model.boot.active && model.boot.session_running() {
+                    model.boot.session = Some(boot_line(BootCheck::Session, BootVerdict::Ok, BootDetail::TokenRenewed, 0));
+                    model.boot.sync = None;
+                    model.boot.awaiting_offline_choice = false;
+                }
                 Command::request_from_shell(KeyValueOperation::Set {
                     key: "session_expires_at".to_string(),
                     value: model.session_expires_at.to_string().into_bytes(),
@@ -2718,6 +2731,12 @@ impl App for LogNApp {
                                 // Evento próprio, não `TokenStored`: aquele grava o
                                 // `account_email` do modelo, que no refresh ainda está
                                 // vazio — passar por ele apagava do cofre quem é a sessão.
+                                //
+                                // O refresh segue "no ar" até o token novo estar no cofre: o
+                                // shell roda cada operação de cofre por conta própria, e um 401
+                                // que chegasse agora leria o token velho, já rodado. Para o
+                                // servidor isso é reuso, e reuso derruba todas as sessões.
+                                model.refresh_in_flight = true;
                                 return Command::request_from_shell(KeyValueOperation::Set {
                                     key: "refresh_token".to_string(),
                                     value: data.refresh_token.into_bytes(),
@@ -8794,6 +8813,60 @@ mod tests {
         let mut cmd = app.update(Event::AccountEmailRead(kv_empty()), &mut model);
         let resent = http_requests(&mut cmd).iter().filter(|r| r.url == "/api/v1/purchases/restore").count();
         assert_eq!(resent, 2, "as duas compras voltam a ser mandadas");
+    }
+
+    /// O refresh voltou com token rodado, mas o cofre ainda não gravou: um 401 atrasado
+    /// nessa janela leria o token velho, e mandá-lo é reuso, que derruba a conta.
+    #[test]
+    fn test_a_late_401_does_not_refresh_before_the_rotated_token_is_stored() {
+        let (app, mut model) = paid_model();
+        let _ = app.update(Event::TokenRead(kv_bytes(b"velho".to_vec())), &mut model);
+        let _ = app.update(
+            Event::RefreshCompleted(http(200, serde_json::json!({
+                "access_token": "acc", "refresh_token": "rodado", "user_id": USER_A,
+                "refresh_expires_at": 1_792_600_000i64,
+            }))),
+            &mut model,
+        );
+        assert!(model.refresh_in_flight, "segue no ar até o cofre gravar");
+
+        // O 401 de um pedido que saiu antes: entra na fila e pede refresh.
+        let _ = app.update(
+            Event::LicenseFetched { user_id: USER_A.into(), track_id: TRACK.into(), result: http(401, serde_json::json!({})) },
+            &mut model,
+        );
+        let mut cmd = app.update(Event::TokenRead(kv_bytes(b"velho".to_vec())), &mut model);
+        assert!(http_requests(&mut cmd).is_empty(), "o token velho não sai enquanto o novo não está no cofre");
+
+        let stored = KeyValueResult::Ok { response: KeyValueResponse::Set { previous: crux_kv::Value::None } };
+        let mut cmd = app.update(Event::RotatedTokenStored(stored), &mut model);
+        assert!(!model.refresh_in_flight);
+        assert_ne!(model.status_key, StatusKey::ResumingSession, "o pedido dispensado não deixa o status preso");
+        let _ = drain(&mut cmd);
+        let mut cmd = app.update(Event::AttemptRefreshDone, &mut model);
+        let _ = drain(&mut cmd);
+        let mut cmd = app.update(Event::AccountEmailRead(kv_empty()), &mut model);
+        assert!(
+            http_requests(&mut cmd).iter().any(|r| r.url == format!("/api/v1/tracks/{TRACK}/license")),
+            "o pedido da fila sai com o token novo"
+        );
+    }
+
+    /// Tentar de novo a abertura dentro da janela não manda o token velho e não deixa a
+    /// splash esperando o watchdog: a linha da sessão fecha quando o cofre grava.
+    #[test]
+    fn test_a_boot_retry_inside_the_rotation_window_closes_when_the_token_is_stored() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let _ = app.update(Event::Tick { now: 1_790_000_000 }, &mut model);
+        boot_online(&app, &mut model, USER_A);
+        let mut cmd = app.update(Event::StartBoot, &mut model);
+        assert!(!kv_ops(&mut cmd).iter().any(|op| matches!(op, KeyValueOperation::Get { key } if key == "refresh_token")));
+        assert!(model.boot.session_running());
+
+        let stored = KeyValueResult::Ok { response: KeyValueResponse::Set { previous: crux_kv::Value::None } };
+        let _ = app.update(Event::RotatedTokenStored(stored), &mut model);
+        assert!(!model.boot.session_running(), "a linha da sessão fechou");
     }
 
     #[test]
