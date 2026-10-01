@@ -345,7 +345,7 @@ struct DeleteAccountSheet: View {
                 .font(.plexSansSemiBold(14))
                 .foregroundColor(LognDark.wrongInk)
 
-            SecureField(Str.Login.password_prompt, text: $password)
+            PasswordField(Str.Login.password_prompt, text: $password)
                 .font(.plexMono(14))
                 .padding(.horizontal, 14)
                 .frame(height: 52)

@@ -313,6 +313,10 @@ google_signup_reason = "To create your account with Google, confirm your age and
 google_signup_continue = "Create account"
 google_signup_cancel = "Not now"
 
+[field]
+show_password = "Show password"
+hide_password = "Hide password"
+
 [register]
 age_confirmation = "I am %{age} years old or older."
 terms_confirmation = "I have read and accept the Terms of Use and the Privacy Policy."

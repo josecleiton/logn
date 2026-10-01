@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -18,13 +19,17 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
@@ -41,7 +46,9 @@ import sh.logn.app.ui.theme.LoginMetrics
 import sh.logn.app.ui.theme.LognDark
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Radius
+import sh.logn.app.ui.theme.Space
 import sh.logn.app.ui.theme.Stroke
+import sh.logn.coreshell.i18n.Str
 
 /** O que o campo recebe: muda o teclado e o preenchimento automático. */
 enum class FieldKind { Email, Password, NewPassword, Number, Text }
@@ -65,6 +72,9 @@ fun LognTextField(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
+    val secret = kind == FieldKind.Password || kind == FieldKind.NewPassword
+    // Saiu da tela, a senha volta a ficar escondida.
+    var revealed by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(Radius.sm)
     val border =
         when {
@@ -79,12 +89,7 @@ fun LognTextField(
         interactionSource = interaction,
         textStyle = textStyle.copy(color = LognDark.textPrimary),
         cursorBrush = SolidColor(LognDark.accent),
-        visualTransformation =
-            if (kind == FieldKind.Password || kind == FieldKind.NewPassword) {
-                PasswordVisualTransformation()
-            } else {
-                VisualTransformation.None
-            },
+        visualTransformation = if (secret && !revealed) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions =
             KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
@@ -115,20 +120,42 @@ fun LognTextField(
                     }
                 },
         decorationBox = { inner ->
-            Box(
+            Row(
                 Modifier
                     .fillMaxWidth()
                     .height(FieldMetrics.height)
                     .background(LognDark.surface, shape)
                     .border(Stroke.hairline, border, shape)
-                    .padding(horizontal = FieldMetrics.paddingH),
-                contentAlignment = Alignment.CenterStart,
+                    .padding(start = FieldMetrics.paddingH, end = if (secret) FieldMetrics.eyeEndPadding else FieldMetrics.paddingH),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (value.isEmpty()) Text(placeholder, style = textStyle, color = LognDark.textDim)
-                inner()
+                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                    if (value.isEmpty()) Text(placeholder, style = textStyle, color = LognDark.textDim)
+                    inner()
+                }
+                if (secret) PasswordEye(revealed) { revealed = !revealed }
             }
         },
     )
+}
+
+/** O olho na borda direita do campo de senha: mostra e esconde, com o rótulo do que faz. */
+@Composable
+private fun PasswordEye(
+    revealed: Boolean,
+    onToggle: () -> Unit,
+) {
+    val context = LocalContext.current
+    val label = if (revealed) Str.Field.hide_password(context) else Str.Field.show_password(context)
+    Box(
+        Modifier
+            .size(Space.minTouch)
+            .clearAndSetSemantics { contentDescription = label }
+            .clickable(role = Role.Button, onClick = onToggle),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(if (revealed) LognIcon.EyeSlash else LognIcon.Eye, color = LognDark.textDim, size = FieldMetrics.eyeIcon)
+    }
 }
 
 /**

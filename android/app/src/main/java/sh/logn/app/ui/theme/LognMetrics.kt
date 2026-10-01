@@ -76,6 +76,10 @@ object FieldMetrics {
     val focusStroke = 2.dp
     val checkbox = 18.dp
     val checkboxGap = 10.dp
+
+    /** O olho da senha: o ícone, e a borda direita que o alvo de 48 deixa no campo. */
+    val eyeIcon = 18.dp
+    val eyeEndPadding = 2.dp
     val otpWidth = 44.dp
     val otpHeight = 56.dp
     const val TEXT_SIZE = 14f

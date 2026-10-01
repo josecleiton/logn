@@ -443,6 +443,11 @@ google_signup_reason = {}
 google_signup_continue = {}
 google_signup_cancel = {}
 
+# O olho do campo de senha, em todo lugar que pede senha: o rótulo diz o que o toque faz.
+[groups.field.keys]
+show_password = {}
+hide_password = {}
+
 # Trilha paga: o que a loja responde e o Core não sabe.
 [groups.paywall.keys]
 cancelled = {}

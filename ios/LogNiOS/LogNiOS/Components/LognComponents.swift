@@ -72,6 +72,65 @@ struct PressSinkStyle: ButtonStyle {
     }
 }
 
+// MARK: - PasswordField
+
+/// O `SecureField` com o olho na borda direita, que mostra e esconde a senha. Quem usa
+/// aplica o mesmo visual de antes (padding, fundo, borda, `textContentType`), que vale
+/// para o par de campos por dentro. Some da tela, a senha volta a ficar escondida.
+struct PasswordField: View {
+    let placeholder: String
+    @Binding var text: String
+    var prompt: Text? = nil
+
+    @State private var revealed = false
+    @FocusState private var focused: Bool
+
+    init(_ placeholder: String, text: Binding<String>, prompt: Text? = nil) {
+        self.placeholder = placeholder
+        self._text = text
+        self.prompt = prompt
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            field
+            Button(action: toggle) {
+                Image(systemName: revealed ? "eye.slash" : "eye")
+                    .font(.system(size: 15))
+                    .foregroundColor(LognDark.textDim)
+                    .frame(width: Space.minTouch, height: Space.minTouch)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            // O alvo de 44 come parte do padding do campo, e o olho fica perto da borda.
+            .padding(.trailing, -Space.md)
+            .accessibilityLabel(revealed ? Str.Field.hide_password : Str.Field.show_password)
+        }
+    }
+
+    // Os dois campos trocam de lugar; o foco vai junto, e o teclado não fecha.
+    @ViewBuilder
+    private var field: some View {
+        if revealed {
+            TextField(placeholder, text: $text, prompt: prompt)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .focused($focused)
+        } else {
+            SecureField(placeholder, text: $text, prompt: prompt)
+                .focused($focused)
+        }
+    }
+
+    private func toggle() {
+        let hadFocus = focused
+        revealed.toggle()
+        if hadFocus {
+            DispatchQueue.main.async { focused = true }
+        }
+    }
+}
+
 // MARK: - LifeBar
 
 /// 3 corações. Cheio = `wrong`; vazio = `heartOff`.

@@ -44,7 +44,7 @@ struct ResetPasswordView: View {
                         codeField
                     }
 
-                    SecureField(Str.Reset.password_prompt, text: $password)
+                    PasswordField(Str.Reset.password_prompt, text: $password)
                         .textContentType(.newPassword)
                         .font(LognFont.bodyLarge)
                         .foregroundColor(LognDark.textPrimary)
@@ -56,7 +56,7 @@ struct ResetPasswordView: View {
                                 .stroke(LognDark.lineDim, lineWidth: 1)
                         )
                     
-                    SecureField(Str.Reset.confirm_prompt, text: $confirmPassword)
+                    PasswordField(Str.Reset.confirm_prompt, text: $confirmPassword)
                         .textContentType(.newPassword)
                         .font(LognFont.bodyLarge)
                         .foregroundColor(LognDark.textPrimary)

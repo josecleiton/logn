@@ -129,7 +129,7 @@ struct LoginView: View {
                         .focused($emailFocused)
 
                     // Password field
-                    SecureField("", text: $password, prompt: Text(Str.Login.password_prompt).foregroundColor(LognDark.textDim))
+                    PasswordField("", text: $password, prompt: Text(Str.Login.password_prompt).foregroundColor(LognDark.textDim))
                         .font(.plexMono(14))
                         .padding(.horizontal, 14)
                         .frame(height: 52)
@@ -224,6 +224,7 @@ struct LoginView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
             }
+            .scrollsAboveKeyboard()
         }
         .navigationBarHidden(true)
         .onAppear {

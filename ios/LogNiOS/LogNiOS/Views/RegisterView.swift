@@ -173,7 +173,7 @@ struct RegisterView: View {
     
     private var passwordStep: some View {
         VStack(spacing: Space.sm) {
-            SecureField(Str.Register.password_prompt, text: $password)
+            PasswordField(Str.Register.password_prompt, text: $password)
                 .textContentType(.newPassword)
                 .font(.plexMono(14))
                 .foregroundColor(LognDark.textPrimary)
@@ -186,7 +186,7 @@ struct RegisterView: View {
                         .stroke(LognDark.line, lineWidth: 1)
                 )
             
-            SecureField(Str.Register.confirm_prompt, text: $confirmPassword)
+            PasswordField(Str.Register.confirm_prompt, text: $confirmPassword)
                 .textContentType(.newPassword)
                 .font(.plexMono(14))
                 .foregroundColor(LognDark.textPrimary)

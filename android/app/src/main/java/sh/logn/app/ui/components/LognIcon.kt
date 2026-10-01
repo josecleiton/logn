@@ -32,6 +32,13 @@ enum class LognIcon(
     private vararg val parts: Part,
 ) {
     Close(Part("M6 6 L18 18 M18 6 L6 18")),
+
+    // O `eye` e o `eye.slash` do campo de senha.
+    Eye(Part("M2.5 12 C5 7.2 8.3 5 12 5 C15.7 5 19 7.2 21.5 12 C19 16.8 15.7 19 12 19 C8.3 19 5 16.8 2.5 12 Z M12 9 A3 3 0 1 1 11.99 9 Z")),
+    EyeSlash(
+        Part("M2.5 12 C5 7.2 8.3 5 12 5 C15.7 5 19 7.2 21.5 12 C19 16.8 15.7 19 12 19 C8.3 19 5 16.8 2.5 12 Z M12 9 A3 3 0 1 1 11.99 9 Z"),
+        Part("M4 4 L20 20"),
+    ),
     Check(Part("M5 12.5 L10 17.5 L19 7")),
     ChevronLeft(Part("M15 5 L8 12 L15 19")),
     ChevronRight(Part("M9 5 L16 12 L9 19")),
