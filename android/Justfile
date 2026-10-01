@@ -46,6 +46,71 @@ install: reverse
     cd android && ./gradlew :app:installDebug
     adb shell am start -n {{ app }}/.MainActivity
 
+# Build de release no seu celular, o `install-ios-device` do Android: R8, .so de release e
+# a chave de upload do `keystore.properties`. Fala com o API_BASE_URL do .env, que hoje é
+# a produção (o release recusa URL sem https). A assinatura difere da de debug, então o
+# Android recusa instalar por cima dela: desinstale o debug antes (apaga os dados dele).
+# Sem argumento, no único aparelho conectado; com argumento, no serial de `adb devices`.
+# Uso: just android/install-device        ou   just android/install-device <serial>
+install-device device="": (generate "release")
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -f android/keystore.properties ]; then
+    	echo "Falta android/keystore.properties (modelo em keystore.properties.example)." >&2
+    	exit 1
+    fi
+    device="{{ device }}"
+    if [ -z "$device" ]; then
+    	devices=$(adb devices | awk 'NR > 1 && $2 == "device" { print $1 }')
+    	if [ "$(printf '%s\n' "$devices" | grep -c .)" -ne 1 ]; then
+    		echo "Conecte um aparelho só, ou passe o serial de 'adb devices'." >&2
+    		exit 1
+    	fi
+    	device="$devices"
+    fi
+    (cd android && ./gradlew :app:assembleRelease)
+    apk=android/app/build/outputs/apk/release/app-release.apk
+    if ! out=$(adb -s "$device" install -r "$apk" 2>&1); then
+    	echo "$out" >&2
+    	if grep -q INSTALL_FAILED_UPDATE_INCOMPATIBLE <<<"$out"; then
+    		echo "O aparelho tem o build de debug, assinado com outra chave. Rode 'adb -s $device uninstall {{ app }}' e tente de novo." >&2
+    	fi
+    	exit 1
+    fi
+    adb -s "$device" shell am start -n {{ app }}/.MainActivity
+
+# A trilha e os documentos legais que viajam no app saem da API de produção (API_BASE_URL
+# do .env), nunca do banco local, com as mesmas portas do iOS: conteúdo e documentos sem
+# pendência nem rascunho, toda língua publicada inteira. O .aab leva o mapeamento do R8 e
+# os símbolos do .so, para o Play ler os crashes. O versionCode é o do build.gradle.kts:
+# o Play recusa um repetido, então suba-o antes de cada envio.
+#
+# Saída: android/build/store/LogN.aab. Envie pelo Play Console (teste interno primeiro).
+# Para o seu celular, o caminho é o `install-device`.
+#
+# Build de loja, o `release-ios` do Android: o .aab para o Play Console, sem enviar.
+release: (generate "release")
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -f android/keystore.properties ]; then
+    	echo "Falta android/keystore.properties: sem ela o .aab sai sem assinatura." >&2
+    	exit 1
+    fi
+    base=$(sed -n 's/^API_BASE_URL=//p' .env | tr -d '"' | tail -1)
+    if [ -z "$base" ]; then echo "API_BASE_URL vazio no .env" >&2; exit 1; fi
+    echo "Conteúdo e documentos legais de $base"
+    {{ just_executable() }} --justfile Justfile --working-directory . content-check release
+    {{ just_executable() }} --justfile Justfile --working-directory . legal-check release
+    env -u LEGAL_BUNDLE_ALLOW_DRAFT SEED_BUNDLE_BASE_URL="$base" SEED_BUNDLE_OUT=android/app/src/main/assets/trail-seed.json python3 tools/seed_bundle.py --release
+    env -u LEGAL_BUNDLE_ALLOW_DRAFT LEGAL_BUNDLE_BASE_URL="$base" LEGAL_BUNDLE_OUT=android/app/src/main/assets/legal python3 tools/legal_bundle.py
+    (cd android && ./gradlew :app:bundleRelease)
+    rm -rf android/build/store
+    mkdir -p android/build/store
+    cp android/app/build/outputs/bundle/release/app-release.aab android/build/store/LogN.aab
+    name=$(sed -n 's/^ *versionName = "\(.*\)".*/\1/p' android/app/build.gradle.kts)
+    code=$(sed -n 's/^ *versionCode = \([0-9]*\).*/\1/p' android/app/build.gradle.kts)
+    echo "Pronto: android/build/store/LogN.aab (versão $name, versionCode $code). Envie pelo Play Console."
+
 # Abre como visitante, o `-LogNStartAsGuest` de iOS. Só em debug.
 guest: reverse
     adb shell am force-stop {{ app }}

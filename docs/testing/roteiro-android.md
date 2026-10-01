@@ -282,15 +282,21 @@ e o mesmo ponto da tela é a lixeira, não o "Baixar".
 ## 11 · Build de release
 
 O release recusa `API_BASE_URL` sem `https://`, então ele fala com o servidor do `.env`.
-Para não sujar a análise de uso, desligue a telemetria no build de teste. A assinatura
-difere da de debug: desinstale antes, e reinstale o debug depois.
+A assinatura difere da de debug, e o Android recusa instalar por cima: desinstale o
+debug antes (a receita para e diz o comando), e reinstale o debug depois.
 
 ```bash
-just android/generate release
-(cd android && ./gradlew :app:assembleRelease -Plogn.TELEMETRY_KEY=)
 adb uninstall sh.logn.app
-adb install android/app/build/outputs/apk/release/app-release.apk
+just android/install-device          # release no celular, o install-ios-device do Android
 ```
+
+Para um teste sem sujar a análise de uso, desligue a telemetria no build à mão:
+`(cd android && ./gradlew :app:assembleRelease -Plogn.TELEMETRY_KEY=)`.
+
+O build de loja é `just android/release`: confere conteúdo e documentos legais, empacota a
+trilha e os documentos da produção nos assets e gera `android/build/store/LogN.aab`,
+assinado, com o mapeamento do R8 e os símbolos do `.so`. Suba o `versionCode` antes de
+cada envio: o Play recusa um repetido.
 
 - Abre até o login com "CORE PRONTO" no pé: a ponte JNI sobreviveu ao R8.
 - "Termos de uso" abre o documento.
