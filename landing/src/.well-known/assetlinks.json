@@ -1,0 +1,11 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "sh.logn.app",
+      "sha256_cert_fingerprints":
+        ["D2:DA:51:4F:BC:4E:D9:D8:3D:F1:1C:EF:1F:F1:E8:05:3C:79:4D:B9:3A:C8:33:E9:64:B1:CE:0B:44:0B:52:9F"]
+    }
+  }
+]

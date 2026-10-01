@@ -23,6 +23,7 @@ landing/
     ├── waitlist.html   as quatro páginas de volta da lista de espera do iPhone
     ├── _headers        CSP e demais cabeçalhos dos assets
     ├── worker.js       redirect de /legal/terms e /legal/privacy para o backend
+    ├── .well-known/    assetlinks.json, o Digital Asset Links do app Android (Play App Signing)
     └── assets/         site.css, site.js, icons/ (favicon SVG, PNG 32, apple-touch-icon)
 ```
 

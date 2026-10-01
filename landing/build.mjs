@@ -335,6 +335,12 @@ for (const store of live) {
 }
 for (const font of FONTS) copyFileSync(join(FONTS_DIR, font), join(DIST, "fonts", font));
 
+// O Digital Asset Links do app Android: liga `logn.sh` ao pacote assinado pelo Play App
+// Signing (a impressão do certificado público, que vem em todo APK da loja). O Google o
+// lê neste caminho exato, como `application/json`.
+mkdirSync(join(DIST, ".well-known"), { recursive: true });
+copyFileSync(join(ROOT, "src/.well-known/assetlinks.json"), join(DIST, ".well-known/assetlinks.json"));
+
 // As páginas de `waitlist/` saem com `noindex` e ficam fora do mapa.
 const INDEXED = ["", "account/delete/"];
 writeFileSync(join(DIST, "robots.txt"), `User-agent: *\nAllow: /\nSitemap: ${ORIGIN}/sitemap.xml\n`);
