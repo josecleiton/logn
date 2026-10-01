@@ -439,6 +439,20 @@ struct ProfileHubView: View {
         // Visitante e conta: os dois jogam sob os mesmos termos.
         LegalLinksRow(presented: $legalSheet)
             .padding(.top, 4)
+
+        // Para o jogador dizer qual versão tem quando reporta um problema.
+        Text(appVersion)
+            .font(.plexMono(11.5, relativeTo: .caption))
+            .foregroundColor(LognDark.textDim)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 2)
+    }
+
+    private var appVersion: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return Str.Profile.app_version(version, build)
     }
 
     /// Nomeia o risco e o ganho em números reais — nunca um "crie sua conta" genérico.

@@ -230,6 +230,7 @@ analytics_title = "Usage analytics"
 analytics_desc = "Sends how you use the app, so we can improve LogN. App errors are still sent, not linked to your account."
 storage = "Storage"
 restore_purchases = "Restore purchases"
+app_version = "Version %{version} (%{build})"
 
 [logout]
 server_safe = "Your %{xp} XP are on the server. Signing in again brings everything back."

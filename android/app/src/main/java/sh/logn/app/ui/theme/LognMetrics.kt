@@ -382,6 +382,7 @@ object ProfileMetrics {
     const val BODY_LINE = 19f
     const val META_SIZE = 10.5f
     const val RETRY_SIZE = 11.5f
+    const val VERSION_SIZE = 11.5f
     const val LEVEL_SIZE = 44f
     const val LEVEL_TRACKING = -0.035f
     const val LEVEL_LABEL_TRACKING = 0.14f

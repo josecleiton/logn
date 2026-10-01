@@ -250,6 +250,8 @@ analytics_title = {}
 analytics_desc = {}
 storage = {}
 restore_purchases = {}
+# Abaixo dos links de termos e privacidade: a versão instalada e o número do build.
+app_version = { placeholders = [{ name = "version", type = "text" }, { name = "build", type = "text" }] }
 
 [groups.logout.keys]
 server_safe = { placeholders = [{ name = "xp", type = "int" }] }

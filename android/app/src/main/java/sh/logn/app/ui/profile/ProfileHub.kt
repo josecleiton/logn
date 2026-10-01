@@ -36,8 +36,10 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
+import sh.logn.app.BuildConfig
 import sh.logn.app.ui.LocalDispatch
 import sh.logn.app.ui.ShellState
 import sh.logn.app.ui.account.CriticalLogoutSheet
@@ -426,6 +428,14 @@ private fun Footer(
     // Visitante e conta: a política promete o interruptor para os dois.
     AnalyticsToggle(view, Modifier.padding(top = NodeSheetMetrics.headerGap))
     LegalLinksRow(onOpen = onLegal, modifier = Modifier.padding(top = Space.xs))
+    // Para o jogador dizer qual versão tem quando reporta um problema.
+    Text(
+        Str.Profile.app_version(context, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE.toString()),
+        style = LognFont.mono(ProfileMetrics.VERSION_SIZE),
+        color = LognDark.textDim,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(top = Space.xxs),
+    )
 }
 
 @Composable

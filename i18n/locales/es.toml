@@ -228,6 +228,7 @@ analytics_title = "Análisis de uso"
 analytics_desc = "Envía cómo usas la app, para que mejoremos LogN. Los errores de la app se siguen enviando, sin vínculo con tu cuenta."
 storage = "Almacenamiento"
 restore_purchases = "Restaurar compras"
+app_version = "Versión %{version} (%{build})"
 
 [logout]
 server_safe = "Tus %{xp} XP están en el servidor. Iniciar sesión de nuevo recuperará todo."
