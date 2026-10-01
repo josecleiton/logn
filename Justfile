@@ -134,9 +134,15 @@ landing-build:
 landing-dev:
     cd landing && npx wrangler dev --port 8788
 
-# Sobe a landing em logn.sh e www.logn.sh (rotas em landing/wrangler.toml).
+# Sobe a landing em logn.sh e www.logn.sh (rotas em landing/wrangler.toml), com o que está
+# no ar: o link do Google Play e a lista de espera do iPhone aberta. Sem os dois, um deploy
+# voltava a página a "em breve" e fechava a lista. As duas URLs são públicas. Para mudar,
+# passe a variável; vazia (`LOGN_API_ORIGIN= just landing-deploy`) desliga aquele item.
 landing-deploy:
-    cd landing && npx wrangler deploy
+    cd landing && \
+        LOGN_API_ORIGIN="${LOGN_API_ORIGIN-https://api.logn.sh}" \
+        LOGN_PLAY_STORE_URL="${LOGN_PLAY_STORE_URL-https://play.google.com/store/apps/details?id=sh.logn.app}" \
+        npx wrangler deploy
 
 # Aponta o proxy /legal/* da landing para o serviço `logn` do Cloud Run. A URL sai do
 # gcloud direto para o secret do Worker, sem passar por arquivo versionado.
