@@ -353,12 +353,13 @@ private fun WarnBar(
         Modifier
             .fillMaxWidth()
             .background(LognDark.warn)
-            .padding(vertical = Space.sm),
+            .padding(horizontal = Space.screenMargin, vertical = Space.sm),
         horizontalArrangement = Arrangement.spacedBy(Space.sm, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, LognDark.onAccent, HomeMetrics.warnIcon, knockout = LognDark.warn)
-        Text(text, style = LognFont.label, color = LognDark.onAccent)
+        // Com a fonte do sistema maior a frase quebra; sem o peso ela empurra o ícone para fora.
+        Text(text, style = LognFont.label, color = LognDark.onAccent, modifier = Modifier.weight(1f, fill = false))
     }
 }
 
