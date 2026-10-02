@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sincronização Offline-First e Chaining Criptográfico (Mini-Git)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        code {
+            background-color: #f1f1f1;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background-color: #272822;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 0.9em;
+        }
+        pre code {
+            background-color: transparent;
+            padding: 0;
+            color: inherit;
+        }
+        .note {
+            background-color: #e7f3fe;
+            border-left: 6px solid #2196F3;
+            margin-bottom: 15px;
+            padding: 15px;
+        }
+        .warning {
+            background-color: #fff4e5;
+            border-left: 6px solid #ffa000;
+            margin-bottom: 15px;
+            padding: 15px;
+        }
+        .toc {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+        .toc ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .toc li {
+            margin-bottom: 10px;
+        }
+        .toc a {
+            text-decoration: none;
+            color: #3498db;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        .chapter {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Sincronização Offline-First e Chaining Criptográfico (Mini-Git) no LogN</h1>
+    <p>Um guia técnico detalhado sobre a arquitetura do endpoint <code>/sync</code> e a técnica de hash inspirada no Git.</p>
+
+    <div class="toc">
+        <h2>Índice</h2>
+        <ul>
+            <li><a href="#capitulo-1">1. O Desafio do Offline-First</a></li>
+            <li><a href="#capitulo-2">2. A Arquitetura Mini-Git: Chaining Criptográfico</a></li>
+            <li><a href="#capitulo-3">3. Anatomia de um GameEvent e Cálculo do Hash</a></li>
+            <li><a href="#capitulo-4">4. O Endpoint /sync: Validação Server-Side</a></li>
+            <li><a href="#capitulo-5">5. Tratamento de Conflitos: O "Rebase"</a></li>
+            <li><a href="#capitulo-6">6. Segurança e Prevenção contra Cheaters</a></li>
+        </ul>
+    </div>
+
+    <div class="chapter" id="capitulo-1">
+        <h2>Capítulo 1: O Desafio do Offline-First</h2>
+        <p>O modelo de micro-aprendizagem do LogN exige um princípio rigoroso de design: <strong>o usuário não pode ser interrompido por oscilações de rede</strong>. Seja no metrô, num avião ou numa área de baixa cobertura, o jogador deve ser capaz de completar dezenas de desafios de código contiguamente (de acordo com as decisões documentadas na ADR 0002).</p>
+        <p>No entanto, manter o estado em um cliente que pode estar offline por longos períodos traz problemas clássicos de sistemas distribuídos: Como garantir 100% de integridade transacional dos pontos e XP quando o aplicativo for reconectado à internet? Como impedir ataques de duplicação (<em>replay attacks</em>) ou alterações maliciosas no banco de dados SQLite local no celular?</p>
+        <p>Para solucionar essas questões, foi projetada uma sincronização inspirada na estrutura fundamental do Git: um registro (ledger) imutável de eventos atrelados uns aos outros de forma criptográfica.</p>
+    </div>
+
+    <div class="chapter" id="capitulo-2">
+        <h2>Capítulo 2: A Arquitetura Mini-Git: Chaining Criptográfico</h2>
+        <p>A "Mente" do cliente reside no <strong>Shared Core</strong>, escrito em Rust (Crux). É no core que toda a lógica de negócios acontece de forma "Offline-First". Em vez de tentar enviar "estados finais" (como: "este usuário tem 1500 XP no total agora"), a arquitetura funciona através de um log de eventos de mutação, os chamados <code>GameEvent</code>.</p>
+        
+        <p>Para assegurar que o histórico não foi corrompido, adulterado ou reordenado pelo cliente, cada evento possui um hash criptográfico que leva em conta não só seu próprio conteúdo, mas o hash do evento imediatamente anterior na linha do tempo.</p>
+        
+        <p>Assim como os commits no Git apontam para os commits pais criando uma árvore rastreável, cada <code>GameEvent</code> no LogN carrega um campo <code>PreviousHash</code> que obrigatoriamente é parte do cálculo do seu <code>CurrentHash</code>. A corrente se torna inquebrável: uma adulteração num evento antigo altera seu hash local, o que mudaria o hash do evento seguinte, arruinando a validação da cadeia a partir daquele ponto.</p>
+    </div>
+
+    <div class="chapter" id="capitulo-3">
+        <h2>Capítulo 3: Anatomia de um GameEvent e Cálculo do Hash</h2>
+        
+        <h3>O Modelo GameEvent</h3>
+        <p>No código de domínio (tanto no core em Rust quanto no struct correspondente em Go), o evento que trafega pela API é representado com os seguintes campos-chave:</p>
+<pre><code>type GameEvent struct {
+    ID           string `json:"id"`
+    EventType    string `json:"event_type"`
+    PayloadJSON  string `json:"payload_json"`
+    Timestamp    int64  `json:"timestamp"`
+    PreviousHash string `json:"previous_hash"`
+    CurrentHash  string `json:"current_hash"`
+}</code></pre>
+
+        <h3>A Fórmula de Hash SHA-256</h3>
+        <p>Quando um evento ocorre, seja offline ou online, o Core calcula o <code>CurrentHash</code> concatenando dados muito específicos. O Backend Go realiza exatamente o mesmo cálculo para fins de auditoria, usando o código em <code>backend/internal/domain/sync.go</code>:</p>
+<pre><code>func ComputeHash(event GameEvent, previousHash string) string {
+    // 1. Concatenação estrita de dados base:
+    //    PreviousHash + ID + EventType + Payload
+    payloadForHash := fmt.Sprintf("%s%s%s%s", previousHash, event.ID, event.EventType, event.PayloadJSON)
+
+    hasher := sha256.New()
+    hasher.Write([]byte(payloadForHash))
+
+    // 2. Os bytes do timestamp (int64) em formato BigEndian são inseridos na sequência
+    timestampBytes := make([]byte, 8)
+    binary.BigEndian.PutUint64(timestampBytes, uint64(event.Timestamp))
+    hasher.Write(timestampBytes)
+
+    // 3. A saída é a string hexadecimal da soma
+    return hex.EncodeToString(hasher.Sum(nil))
+}</code></pre>
+        <div class="note">
+            <strong>Detalhe importante:</strong> Quando a conta é nova e não tem eventos anteriores, o "PreviousHash" utilizado é uma string com 64 zeros (<code>0000...0000</code>).
+        </div>
+    </div>
+
+    <div class="chapter" id="capitulo-4">
+        <h2>Capítulo 4: O Endpoint /sync: Validação Server-Side</h2>
+        <p>No LogN, há uma diretriz severa de design descrita no <code>AGENTS.md</code>: <strong>"O Go Backend deve apenas validar esse hash, nunca recalculá-lo para reescrever o histórico"</strong>. </p>
+        <p>O endpoint de entrada <code>POST /api/v1/sync</code> processa a solicitação em <code>syncHandler</code> e realiza as etapas de forma determinística e segura.</p>
+
+        <h3>Isolamento do UserID</h3>
+        <p>O corpo da requisição de sync contém um campo <code>user_id</code> no payload JSON. No entanto, por segurança, o Handler ignora essa informação provida pelo cliente. Ele captura o ID do usuário direto do Token JWT validado pelo sistema e sobrescreve <code>payload.UserID = userID</code>. Sem isso, alguém com um token legítimo poderia despachar eventos (como "desafio vencido") para a conta de terceiros forjando a identificação da cadeia.</p>
+
+        <h3>O Processo de Verificação (ValidateSync)</h3>
+        <p>Depois de buscar no banco de dados a "Top Hash" (o hash do último evento já aceito para este usuário), a função <code>ValidateSync</code> entra em ação:</p>
+<pre><code>func ValidateSync(payload SyncPayload, serverLastHash string) (bool, error) {
+    currentHash := serverLastHash
+    // ... ajuste de inicialização ...
+
+    for i, event := range payload.Events {
+        // Valida se o ponto de partida do lote conecta com o HEAD do servidor
+        if event.PreviousHash != currentHash && i == 0 {
+            return false, errors.New("force_rebase")
+        }
+
+        // Refaz o Hash e verifica se a conta do cliente bate com a realidade
+        calculated := ComputeHash(event, currentHash)
+        if calculated != event.CurrentHash {
+            return false, fmt.Errorf("hash mismatch on event %s", event.ID)
+        }
+
+        currentHash = calculated
+    }
+
+    return true, nil
+}</code></pre>
+        <p>Se em qualquer ponto da cadeia houver falha matemática, tudo é imediatamente abortado, devolvendo <code>HTTP 403 Forbidden</code> e logando <code>"sync recusado"</code>.</p>
+    </div>
+
+    <div class="chapter" id="capitulo-5">
+        <h2>Capítulo 5: Tratamento de Conflitos: O "Rebase"</h2>
+        <p>Como resolver a situação em que um usuário joga pelo Celular A sem internet, enquanto joga pelo Tablet B (que estava online e emitiu eventos reais)? Nesse cenário, as linhas do tempo dos dois dispositivos se ramificam.</p>
+        
+        <p>Isso é interceptado em <code>ValidateSync</code> quando o <code>PreviousHash</code> do primeiro evento que o Celular tenta enviar <strong>não corresponde</strong> ao último hash gravado no servidor. O servidor lança um erro interno <code>"force_rebase"</code>. </p>
+
+        <p>No <code>syncHandler</code>, a resposta devolvida ao aplicativo é um conflito (status 409):</p>
+<pre><code>if err.Error() == "force_rebase" {
+    // ...
+    writeRebaseRequired(w, serverLastHash)
+    return
+}</code></pre>
+        <p>Ao captar a exigência de "Rebase", o Core do aplicativo sabe que precisa fazer pull do estado do servidor, anular os próprios hashes dos eventos ainda não sincronizados, calcular os hashes novos usando como base a hash mais recente da nuvem (o "novo HEAD"), e despachar tudo novamente (tal qual um <code>git rebase</code> sobre a <code>origin/main</code>).</p>
+    </div>
+
+    <div class="chapter" id="capitulo-6">
+        <h2>Capítulo 6: Segurança e Integridade da Máquina de Estados</h2>
+        <p>Esta arquitetura foi escolhida especificamente para blindar o estado da gamificação:</p>
+        <ul>
+            <li><strong>Bloqueio de trapaça via SQLite Local:</strong> Se o jogador usar um aparelho "rootado", abrir o banco de dados interno da aplicação e mudar o registro do desafio <code>is_correct: false</code> para <code>true</code>, o sistema falhará silenciosamente. O <code>PayloadJSON</code> será diferente, o que fará o Hash SHA-256 não ser mais igual ao hash salvo naquele evento. Quando tentar fazer sync, o Go recusará a atualização por disparidade criptográfica.</li>
+            <li><strong>Prevenção de Replay e Transações Duplas:</strong> O ataque comum de "capturar e reenviar" (mandar a mesma requisição via Proxy para ganhar XP múltiplas vezes) falha porque o <code>PreviousHash</code> do payload que está sendo enviado só era válido naquele momento específico do tempo. Na segunda tentativa de envio, o HEAD do servidor já terá avançado, forçando rejeição com pedido de rebase. Como a regra do servidor diz que XP é calculado uma única vez ancorado em transações (através de registros constantes e <code>user_paid_challenges</code>), o reenvio de vitórias é barrado.</li>
+        </ul>
+        <p>Em suma, o LogN adota um mecanismo de integridade elegante: não briga contra manipulação de dados em cliente, ele torna a manipulação criptograficamente inválida sem possuir a "chave" para revalidá-la.</p>
+    </div>
+
+</body>
+</html>
