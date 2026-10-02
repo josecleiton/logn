@@ -199,7 +199,7 @@ struct ManageAccountView: View {
         .sheet(isPresented: $showingDeleteConfirm) {
             DeleteAccountSheet(
                 onDelete: { password in
-                    core.dispatch(event: .deleteAccount(passwordHash: password))
+                    core.dispatch(event: .deleteAccount(password: password))
                 },
                 onDeleteWithProvider: { proof in
                     core.dispatch(event: .deleteAccountWithProvider(

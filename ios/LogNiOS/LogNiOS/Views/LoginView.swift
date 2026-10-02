@@ -141,7 +141,7 @@ struct LoginView: View {
                     // Submit button
                     Button(action: {
                         if !email.isEmpty && !password.isEmpty {
-                            core.dispatch(event: .login(email: email, passwordHash: password))
+                            core.dispatch(event: .login(email: email, password: password))
                         }
                     }) {
                         Text(signInLabel)

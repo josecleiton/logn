@@ -20,7 +20,8 @@ pub enum Event {
     TelemetrySent,
     Ping,
     Pong,
-    Login { email: String, password_hash: String },
+    /// A senha viaja como a pessoa digitou, sobre TLS; quem roda o Argon2 é o servidor.
+    Login { email: String, password: String },
     LoginCompleted(HttpResult),
     /// O shell fez o login no provedor e entrega o ID token e o nonce cru que gerou
     /// (ADR 0016). O pedido ao provedor levou o SHA-256 do nonce; o servidor confere.
@@ -202,9 +203,9 @@ pub enum Event {
     /// alfa-2 ou alfa-3, vazio se o shell não souber). O país vai também no cadastro.
     FetchLegalVersions { country: String },
     LegalVersionsFetched(HttpResult),
-    /// Pede a exclusão da conta, com a senha. O nome do campo segue o do `Login`: o que
-    /// viaja é a senha em si, sobre TLS, e o servidor confere com Argon2.
-    DeleteAccount { password_hash: String },
+    /// Pede a exclusão da conta, com a senha. Como no `Login`, viaja a senha em si,
+    /// sobre TLS, e o servidor confere com Argon2.
+    DeleteAccount { password: String },
     /// Pede a exclusão provando que é dono com um login novo no provedor: é o caminho
     /// da conta que não tem senha. `authorization_code` é o da Apple, com que o servidor
     /// revoga o acesso; vazio no Google.
@@ -2051,7 +2052,7 @@ impl App for LogNApp {
             }
             Event::Pong => Command::done(),
 
-            Event::Login { email, password_hash } => {
+            Event::Login { email, password } => {
                 if model.auth_cooldown.is_active() {
                     return still_rate_limited(model);
                 }
@@ -2062,7 +2063,7 @@ impl App for LogNApp {
 
                 let body = serde_json::json!({
                     "email": email,
-                    "password": password_hash // Em prod mandaríamos em plaintext sobre TLS pra o Go rodar o Argon2
+                    "password": password
                 });
 
                 let request = HttpRequest {
@@ -3782,7 +3783,7 @@ Event::FetchChallenges => {
                 }
                 render::render()
             }
-            Event::DeleteAccount { password_hash } => {
+            Event::DeleteAccount { password } => {
                 if model.access_token.is_none() {
                     // Sem sessão com o servidor (offline ou visitante) não há como
                     // provar a senha; a tela só é alcançável com conta.
@@ -3794,7 +3795,7 @@ Event::FetchChallenges => {
                     method: "POST".to_string(),
                     url: "/api/v1/users/me/delete".to_string(),
                     headers: auth_headers(&model.access_token, &model.locale),
-                    body: serde_json::json!({ "password": password_hash }).to_string().into_bytes(),
+                    body: serde_json::json!({ "password": password }).to_string().into_bytes(),
                 };
                 Command::request_from_shell(request)
                     .then_send(Event::AccountDeleted)
@@ -5322,7 +5323,7 @@ mod tests {
 
     /// Leva um login por senha até o fim da cadeia do cofre, onde a trilha é pedida.
     fn login_until_session_stored(app: &LogNApp, model: &mut Model) -> Command<Effect, Event> {
-        let _ = app.update(Event::Login { email: "a@example.com".into(), password_hash: "senha".into() }, model);
+        let _ = app.update(Event::Login { email: "a@example.com".into(), password: "senha".into() }, model);
         let _ = app.update(
             Event::LoginCompleted(http(200, serde_json::json!({
                 "access_token": "acc", "refresh_token": "ref", "user_id": USER_B,
@@ -6818,7 +6819,7 @@ mod tests {
         let app = LogNApp::default();
         let mut model = Model::default();
 
-        let mut cmd = app.update(Event::Login { email: "test@x.com".into(), password_hash: "hash".into() }, &mut model);
+        let mut cmd = app.update(Event::Login { email: "test@x.com".into(), password: "senha".into() }, &mut model);
         assert!(model.is_authenticating);
 
         // Sem o render junto do request, o botão "Entrar" não mostra que está esperando.
@@ -7639,7 +7640,7 @@ mod tests {
         model.pending_events = vec![answer("a1", GameEvent::GENESIS)];
         model.last_hash = model.pending_events[0].current_hash.clone();
 
-        let _ = app.update(Event::Login { email: "b@x.com".into(), password_hash: "senha".into() }, &mut model);
+        let _ = app.update(Event::Login { email: "b@x.com".into(), password: "senha".into() }, &mut model);
         let _ = app.update(
             Event::LoginCompleted(http(200, serde_json::json!({
                 "access_token": "acc_b", "refresh_token": "ref_b", "user_id": USER_B,
@@ -7911,7 +7912,7 @@ mod tests {
         assert!(!model.is_authenticating);
 
         for event in [
-            Event::Login { email: "a@x.com".into(), password_hash: "senha-forte".into() },
+            Event::Login { email: "a@x.com".into(), password: "senha-forte".into() },
             Event::RequestOTP { email: "a@x.com".into(), purpose: "verify_email".into() },
             Event::VerifyOTP { email: "a@x.com".into(), code: "123456".into(), purpose: "verify_email".into() },
             Event::Register { email: "a@x.com".into(), password: "senha-forte".into(), otp: "123456".into(), age_confirmed: true, legal_accepted: true },
@@ -8315,7 +8316,7 @@ mod tests {
             "0000000000000000000000000000000000000000000000000000000000000000".into(),
         )];
 
-        let mut cmd = app.update(Event::DeleteAccount { password_hash: "senha-forte".into() }, &mut model);
+        let mut cmd = app.update(Event::DeleteAccount { password: "senha-forte".into() }, &mut model);
         let body = cmd.effects().find_map(|e| match e {
             Effect::Http(r) if r.operation.url == "/api/v1/users/me/delete" => Some(r.operation.body.clone()),
             _ => None,
@@ -9725,7 +9726,7 @@ mod tests {
         let app = LogNApp::default();
         let mut model = Model::default();
         model.access_token = Some("acc".into());
-        let _ = app.update(Event::DeleteAccount { password_hash: "senha-forte".into() }, &mut model);
+        let _ = app.update(Event::DeleteAccount { password: "senha-forte".into() }, &mut model);
         let _ = app.update(Event::AccountDeleted(api_error(409, "provider_reauth_required")), &mut model);
         assert_eq!(model.status_key, StatusKey::ProviderReauthRequired);
         assert!(model.access_token.is_some(), "a conta segue de pé");

@@ -938,7 +938,8 @@ indirect public enum Event: Hashable, Equatable {
     case telemetrySent
     case ping
     case pong
-    case login(email: String, passwordHash: String)
+    /// A senha viaja como a pessoa digitou, sobre TLS; quem roda o Argon2 é o servidor.
+    case login(email: String, password: String)
     case loginCompleted(HttpResult)
     /// O shell fez o login no provedor e entrega o ID token e o nonce cru que gerou
     /// (ADR 0016). O pedido ao provedor levou o SHA-256 do nonce; o servidor confere.
@@ -1102,9 +1103,9 @@ indirect public enum Event: Hashable, Equatable {
     /// alfa-2 ou alfa-3, vazio se o shell não souber). O país vai também no cadastro.
     case fetchLegalVersions(country: String)
     case legalVersionsFetched(HttpResult)
-    /// Pede a exclusão da conta, com a senha. O nome do campo segue o do `Login`: o que
-    /// viaja é a senha em si, sobre TLS, e o servidor confere com Argon2.
-    case deleteAccount(passwordHash: String)
+    /// Pede a exclusão da conta, com a senha. Como no `Login`, viaja a senha em si,
+    /// sobre TLS, e o servidor confere com Argon2.
+    case deleteAccount(password: String)
     /// Pede a exclusão provando que é dono com um login novo no provedor: é o caminho
     /// da conta que não tem senha. `authorization_code` é o da Apple, com que o servidor
     /// revoga o acesso; vazio no Google.
@@ -1180,10 +1181,10 @@ indirect public enum Event: Hashable, Equatable {
             try serializer.serialize_variant_index(value: 2)
         case .pong:
             try serializer.serialize_variant_index(value: 3)
-        case .login(let email, let passwordHash):
+        case .login(let email, let password):
             try serializer.serialize_variant_index(value: 4)
             try serializer.serialize_str(value: email)
-            try serializer.serialize_str(value: passwordHash)
+            try serializer.serialize_str(value: password)
         case .loginCompleted(let x):
             try serializer.serialize_variant_index(value: 5)
             try x.serialize(serializer: serializer)
@@ -1499,9 +1500,9 @@ indirect public enum Event: Hashable, Equatable {
         case .legalVersionsFetched(let x):
             try serializer.serialize_variant_index(value: 107)
             try x.serialize(serializer: serializer)
-        case .deleteAccount(let passwordHash):
+        case .deleteAccount(let password):
             try serializer.serialize_variant_index(value: 108)
-            try serializer.serialize_str(value: passwordHash)
+            try serializer.serialize_str(value: password)
         case .deleteAccountWithProvider(let provider, let idToken, let nonce, let authorizationCode):
             try serializer.serialize_variant_index(value: 109)
             try serializer.serialize_str(value: provider)
@@ -1613,9 +1614,9 @@ indirect public enum Event: Hashable, Equatable {
             return .pong
         case 4:
             let email = try deserializer.deserialize_str()
-            let passwordHash = try deserializer.deserialize_str()
+            let password = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
-            return .login(email: email, passwordHash: passwordHash)
+            return .login(email: email, password: password)
         case 5:
             let x = try LogN.HttpResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
@@ -2035,9 +2036,9 @@ indirect public enum Event: Hashable, Equatable {
             try deserializer.decrease_container_depth()
             return .legalVersionsFetched(x)
         case 108:
-            let passwordHash = try deserializer.deserialize_str()
+            let password = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
-            return .deleteAccount(passwordHash: passwordHash)
+            return .deleteAccount(password: password)
         case 109:
             let provider = try deserializer.deserialize_str()
             let idToken = try deserializer.deserialize_str()
