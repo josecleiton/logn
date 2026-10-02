@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -308,6 +310,47 @@ func TestReadDeadlineReachesTheConnectionThroughGzip(t *testing.T) {
 	resp.Body.Close()
 	if deadlineErr != nil {
 		t.Fatalf("prazo de leitura atrás do gzip: %v", deadlineErr)
+	}
+}
+
+// O user_id do corpo que não bate com o token vai para o log cortado e escapado: cru,
+// um corpo grande virava log grande, e uma quebra de linha forjava outra entrada.
+func TestSyncLogsAForeignUserIDClippedAndEscaped(t *testing.T) {
+	conn := setupTestDB(t)
+	t.Cleanup(conn.Close)
+	ctx := context.Background()
+	s := &Server{repo: domain.NewRepository(conn)}
+
+	uid := newTestUUID(t)
+	if _, err := conn.Exec(ctx, `INSERT INTO users (id, email) VALUES ($1, $2)`, uid, "sync-log-"+uid+"@example.com"); err != nil {
+		t.Fatalf("criando o usuário: %v", err)
+	}
+	t.Cleanup(func() {
+		conn.Exec(ctx, `DELETE FROM user_sync_state WHERE user_id = $1`, uid)
+		conn.Exec(ctx, `DELETE FROM users WHERE id = $1`, uid)
+	})
+
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+
+	forged := "x\n2026/10/02 00:00:00 sync ok: user=admin\n" + strings.Repeat("a", 100_000)
+	body, _ := json.Marshal(domain.SyncPayload{UserID: forged})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sync", bytes.NewReader(body))
+	req.Header.Set("Authorization", bearer(t, uid))
+	s.syncHandler(httptest.NewRecorder(), req)
+
+	out := buf.String()
+	if !strings.Contains(out, "tentativa de cheat") {
+		t.Fatalf("o log da tentativa não saiu: %q", out)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		if strings.Contains(line, "sync ok: user=admin") && !strings.Contains(line, "tentativa de cheat") {
+			t.Fatalf("a quebra de linha do cliente forjou uma entrada: %q", line)
+		}
+	}
+	if len(out) > 1000 {
+		t.Fatalf("o log levou %d bytes do corpo", len(out))
 	}
 }
 

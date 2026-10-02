@@ -62,6 +62,18 @@ var syncSlotWait = 5 * time.Second
 
 const syncBodyReadTimeout = 10 * time.Second
 
+// logClip é quanto de um texto do cliente entra no log.
+const logClip = 64
+
+// clipForLog corta o texto que o cliente mandou antes de ir para o log. Vai com `%q`,
+// que escapa quebra de linha e byte inválido.
+func clipForLog(s string) string {
+	if len(s) <= logClip {
+		return s
+	}
+	return s[:logClip] + "…"
+}
+
 // GitHubExchanger é a troca do código do GitHub (ADR 0019), trocada nos testes.
 type GitHubExchanger interface {
 	Exchange(ctx context.Context, code, verifier, nonceHash string, keepToken bool) (socialauth.Exchanged, error)
@@ -181,7 +193,9 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	// O corpo do pedido não decide de quem é a cadeia. Mandava e o servidor obedecia:
 	// dava para escrever eventos na conta de qualquer um.
 	if payload.UserID != "" && payload.UserID != userID {
-		log.Printf("sync: tentativa de cheat interceptada (token_user=%s, payload_user=%s)", userID, payload.UserID)
+		// O user_id do corpo é texto do cliente: vai cortado e entre aspas. Cru, um corpo
+		// de 2 MB virava 2 MB de log, e uma quebra de linha forjava outra entrada.
+		log.Printf("sync: tentativa de cheat interceptada (token_user=%s, payload_user=%q)", userID, clipForLog(payload.UserID))
 	}
 	payload.UserID = userID
 
