@@ -178,7 +178,7 @@ O risco para quem joga é baixo: entra depois das trilhas pagas.
 
 PRD: [`specs/logn_instituicao_spec.md`](specs/logn_instituicao_spec.md).
 
-## O repositório ainda é privado
+## O repositório é público
 
 A segunda varredura (outubro de 2026) passou pela árvore, por todo blob do histórico e
 pelos `refs/pull/*` atrás de segredo, conteúdo (regra 8), licença e segurança.
@@ -196,9 +196,10 @@ pelos `refs/pull/*` atrás de segredo, conteúdo (regra 8), licença e seguranç
   /64, tentativas de senha por e-mail e IP, envio de código por IP e teto global).
 
 Por isso a abertura não vira a chave deste repositório: o GitHub guarda os
-`refs/pull/*`, que ninguém apaga, e eles seguram os commits antigos. O histórico é
-reescrito com `git filter-repo` (mensagens, gabaritos antigos, autor no endereço
-noreply) e publicado num repositório novo; este fica privado, com outro nome. O
+`refs/pull/*`, que ninguém apaga, e eles seguram os commits antigos. O histórico foi
+reescrito com `git filter-repo` (mensagens e gabaritos antigos; a autoria ficou como
+era) e publicado num repositório novo em 2026-10-02; o antigo fica privado, como
+`logn-private`. O repositório de conteúdo lê este sem token agora. O
 Workload Identity de `terraform/github_deploy.tf` é do repositório de conteúdo e não
 muda; o repositório novo só precisa do environment `deployment` e do segredo
 `CONTENT_DEPLOY_DISPATCH_TOKEN` outra vez.

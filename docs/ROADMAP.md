@@ -190,7 +190,7 @@ The risk to players is low: it comes after the paid tracks.
 
 PRD: [`specs/logn_instituicao_spec.md`](specs/logn_instituicao_spec.md).
 
-## The repository is still private
+## The repository is public
 
 The second sweep (October 2026) went through the tree, every blob in the history and the
 `refs/pull/*` looking for secrets, content (rule 8), licensing and security.
@@ -210,8 +210,9 @@ The second sweep (October 2026) went through the tree, every blob in the history
 
 That is why going public does not mean flipping this repository's switch: GitHub keeps the
 `refs/pull/*`, which nobody can delete, and they hold on to the old commits. The history
-is rewritten with `git filter-repo` (messages, old answer keys, author on the noreply
-address) and published to a new repository; this one stays private, under another name.
+was rewritten with `git filter-repo` (commit messages and old answer keys; authorship
+unchanged) and published to a new repository on 2026-10-02; the old one stays private as
+`logn-private`. The content repository reads this one without a token now.
 The Workload Identity in `terraform/github_deploy.tf` belongs to the content repository
 and does not change; the new repository only needs the `deployment` environment and the
 `CONTENT_DEPLOY_DISPATCH_TOKEN` secret again.
