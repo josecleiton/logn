@@ -56,6 +56,7 @@
 		AF4EF398751D584030B9F840 /* NodeSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9476B1DFF7AE686900CF32CD /* NodeSheetView.swift */; };
 		B118212843B83D5CB04DFAE9 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CE6BEE57EEC4C8617FEABC33 /* Localizable.xcstrings */; };
 		B25F010AFF41794BFC439A02 /* LogNCoreFFI in Frameworks */ = {isa = PBXBuildFile; productRef = 13135BDC590A9C01156FE7B3 /* LogNCoreFFI */; };
+		B306F73E3CA2140F554F37DE /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = ED4DE978990611D8C64EC43D /* OFL.txt */; };
 		B8F59D5FA327BDA47F4FEFA5 /* legal-manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = A1BDCF2925B08814426FF636 /* legal-manifest.json */; };
 		B9C7645E671FFFA6668EF826 /* LegalWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AD3AA2F9805C2879EA05524 /* LegalWebView.swift */; };
 		C1C10995476705C547B2E3F3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F486C5E97DFDCE2C80818FB7 /* Assets.xcassets */; };
@@ -147,6 +148,7 @@
 		E24E7180F9C2D1ABF5578BE3 /* Telemetry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Telemetry.swift; sourceTree = "<group>"; };
 		E30F815E4AC253B06790AAE8 /* IBMPlexSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexSans-Medium.ttf"; sourceTree = "<group>"; };
 		EB03B22842CF2E79E83561F8 /* SVGPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SVGPath.swift; sourceTree = "<group>"; };
+		ED4DE978990611D8C64EC43D /* OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL.txt; sourceTree = "<group>"; };
 		F0F824827A71810A1B195C0D /* GoogleAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuth.swift; sourceTree = "<group>"; };
 		F111AFD2776AF5D50D29BF33 /* IBMPlexMono-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-SemiBold.ttf"; sourceTree = "<group>"; };
 		F486C5E97DFDCE2C80818FB7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -235,6 +237,7 @@
 				E30F815E4AC253B06790AAE8 /* IBMPlexSans-Medium.ttf */,
 				752CBF98CC2C51F2EDC3EF62 /* IBMPlexSans-Regular.ttf */,
 				1BE5DBCB70C667BEFA031ED7 /* IBMPlexSans-SemiBold.ttf */,
+				ED4DE978990611D8C64EC43D /* OFL.txt */,
 			);
 			path = Fonts;
 			sourceTree = "<group>";
@@ -420,6 +423,7 @@
 				2904B02ECB83300658D107C7 /* IBMPlexSans-SemiBold.ttf in Resources */,
 				113A7C042597592AB08772A7 /* InfoPlist.strings in Resources */,
 				B118212843B83D5CB04DFAE9 /* Localizable.xcstrings in Resources */,
+				B306F73E3CA2140F554F37DE /* OFL.txt in Resources */,
 				3A348F23DD622A6ACF7538E2 /* StoreKitConfig.storekit in Resources */,
 				B8F59D5FA327BDA47F4FEFA5 /* legal-manifest.json in Resources */,
 				1D453632FCF4FC2DDA13EB0D /* legal-privacy.en.html in Resources */,
@@ -570,7 +574,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "$(LOGN_CODE_SIGN_ENTITLEMENTS)";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				INFOPLIST_FILE = LogNiOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LogN;
@@ -581,7 +585,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = sh.logn.LogNiOS;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -658,7 +662,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "$(LOGN_CODE_SIGN_ENTITLEMENTS)";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				INFOPLIST_FILE = LogNiOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LogN;
@@ -669,7 +673,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = sh.logn.LogNiOS;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
