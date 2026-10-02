@@ -1,0 +1,2785 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "API do LogN. Erro de rota que o app lê sai como {\"code\", \"message\"}, e o código é contrato.",
+        "title": "LogN API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "basePath": "/",
+    "paths": {
+        "/api/v1/appstore/notifications": {
+            "post": {
+                "description": "Chamada pela Apple, fora da checagem de origem. Vale só a assinatura, verificada contra a raiz fixa (ADR 0013).",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "purchases"
+                ],
+                "summary": "Notificação da App Store",
+                "parameters": [
+                    {
+                        "description": "signedPayload da Apple",
+                        "name": "notification",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.appStoreNotificationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "aceita, sem corpo"
+                    },
+                    "400": {
+                        "description": "invalid_request, purchase_invalid",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/github/exchange": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Com `purpose` = `delete`, exige o Bearer da conta que vai ser excluída.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Troca o código do GitHub pelo bilhete",
+                "parameters": [
+                    {
+                        "description": "Código, verifier PKCE e nonce",
+                        "name": "exchange",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.GitHubExchangeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.GitHubExchangeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated, social_token_invalid",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "503": {
+                        "description": "provider_disabled",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/login": {
+            "post": {
+                "description": "Conta inexistente e senha errada devolvem o mesmo código. Erros seguidos travam o login por um tempo (`login_locked`, com `Retry-After`).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Login por e-mail e senha",
+                "parameters": [
+                    {
+                        "description": "E-mail e senha",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.AuthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "invalid_credentials",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "login_locked, rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/refresh": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Renova a sessão",
+                "parameters": [
+                    {
+                        "description": "Refresh token",
+                        "name": "token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.RefreshRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.AuthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "session_invalid",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/register": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Cadastro por e-mail",
+                "parameters": [
+                    {
+                        "description": "Conta, OTP, idade e aceites",
+                        "name": "signup",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.RegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.AuthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request, invalid_email, password_too_short, password_too_long, invalid_country, age_not_confirmed, legal_acceptance_required",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "otp_invalid",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "409": {
+                        "description": "legal_version_outdated, email_taken",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/request-otp": {
+            "post": {
+                "description": "O e-mail sai na língua de `Accept-Language`. O reenvio tem intervalo mínimo e teto por IP e global (`otp_resend_too_soon`, com `Retry-After`).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Pede um OTP por e-mail",
+                "parameters": [
+                    {
+                        "description": "E-mail e propósito (verify_email ou reset_password)",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.RequestOTPPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "otp_sent",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "status": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request, invalid_email",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "otp_resend_too_soon, otp_locked, rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/reset-password": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Redefine a senha",
+                "parameters": [
+                    {
+                        "description": "E-mail, OTP e senha nova",
+                        "name": "reset",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.ResetPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.AuthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request, invalid_email, password_too_short, password_too_long",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "otp_invalid",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/social": {
+            "post": {
+                "description": "Sem conta, a primeira resposta é 409 `signup_required`; o app reenvia o mesmo token com idade, país e aceites (ADR 0016).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Login por provedor (Google, Apple, GitHub)",
+                "parameters": [
+                    {
+                        "description": "Provedor, ID token e nonce",
+                        "name": "login",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.SocialLoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.AuthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request, invalid_country, age_not_confirmed, legal_acceptance_required",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "social_token_invalid",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "403": {
+                        "description": "social_email_unverified",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "409": {
+                        "description": "signup_required, legal_version_outdated, email_taken",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "503": {
+                        "description": "provider_disabled",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/verify-otp": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Confere um OTP",
+                "parameters": [
+                    {
+                        "description": "E-mail, código e propósito",
+                        "name": "otp",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.VerifyOTPPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "otp_verified",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "status": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "otp_invalid",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/challenges": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Conteúdo na língua negociada (`?lang=` ou `Accept-Language`), devolvida em `Content-Language`. Sem token, é o visitante; token presente e inválido é 401.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "content"
+                ],
+                "summary": "Desafios abertos",
+                "parameters": [
+                    {
+                        "enum": [
+                            "pt-BR",
+                            "en",
+                            "es"
+                        ],
+                        "type": "string",
+                        "description": "Língua do conteúdo",
+                        "name": "lang",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.Challenge"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/internal/licenses/appeal": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Só com ID token OIDC do Google, da conta `ADMIN_SERVICE_ACCOUNT` (ADR 0021). Campo desconhecido no corpo é 400.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "internal"
+                ],
+                "summary": "Responde à contestação de uma revogação",
+                "parameters": [
+                    {
+                        "description": "Conta, trilha e desfecho",
+                        "name": "action",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.licenseActionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "email_sent": {
+                                    "type": "boolean"
+                                },
+                                "locale": {
+                                    "type": "string"
+                                },
+                                "outcome": {
+                                    "type": "string"
+                                },
+                                "reason": {
+                                    "type": "string"
+                                },
+                                "status": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "license_not_revoked, license_appeal_out_of_order, license_store_revoked",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "503": {
+                        "description": "internal (sem mailer)",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/internal/licenses/revoke": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Só com ID token OIDC do Google, da conta `ADMIN_SERVICE_ACCOUNT` (ADR 0021). Campo desconhecido no corpo é 400.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "internal"
+                ],
+                "summary": "Revoga uma licença à mão",
+                "parameters": [
+                    {
+                        "description": "Conta, trilha e motivo",
+                        "name": "action",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.licenseActionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "email_sent": {
+                                    "type": "boolean"
+                                },
+                                "locale": {
+                                    "type": "string"
+                                },
+                                "outcome": {
+                                    "type": "string"
+                                },
+                                "reason": {
+                                    "type": "string"
+                                },
+                                "status": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "license_not_active, license_store_revoked",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "503": {
+                        "description": "internal (sem mailer)",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/internal/play/voided": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Só com ID token OIDC do Google, da conta do Scheduler (ADR 0022). Erros de autorização e de loja saem em texto.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "internal"
+                ],
+                "summary": "Reembolsos e estornos do Google Play",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "acknowledged": {
+                                    "type": "integer"
+                                },
+                                "status": {
+                                    "type": "string"
+                                },
+                                "voided": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "Google Play disabled",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/internal/purge": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Só com ID token OIDC do Google, da conta `CLOUD_SCHEDULER_SERVICE_ACCOUNT`. Erros saem em texto, não em `{code}`.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "internal"
+                ],
+                "summary": "Purga diária",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "login_attempts_purged": {
+                                    "type": "integer"
+                                },
+                                "purged": {
+                                    "type": "integer"
+                                },
+                                "status": {
+                                    "type": "string"
+                                },
+                                "waitlist_purged": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/legal/accept": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "legal"
+                ],
+                "summary": "Aceita os documentos pendentes",
+                "parameters": [
+                    {
+                        "description": "Documentos, versões e hashes aceitos",
+                        "name": "acceptance",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.AcceptLegalRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "aceite gravado, sem corpo"
+                    },
+                    "400": {
+                        "description": "invalid_request",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "409": {
+                        "description": "legal_version_outdated",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/legal/current": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "legal"
+                ],
+                "summary": "Versões legais vigentes e idade mínima",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "País, ISO 3166-1 alfa-2",
+                        "name": "country",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.currentLegalResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_country",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/legal/pending": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "legal"
+                ],
+                "summary": "Aceites pendentes da conta",
+                "parameters": [
+                    {
+                        "enum": [
+                            "pt-BR",
+                            "en",
+                            "es"
+                        ],
+                        "type": "string",
+                        "description": "Língua",
+                        "name": "lang",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.pendingLegalResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/nodes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "content"
+                ],
+                "summary": "Grafo de nós e cartões de origem",
+                "parameters": [
+                    {
+                        "enum": [
+                            "pt-BR",
+                            "en",
+                            "es"
+                        ],
+                        "type": "string",
+                        "description": "Língua do conteúdo",
+                        "name": "lang",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.nodesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/progress": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account"
+                ],
+                "summary": "Progresso da conta",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.UserStats"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/purchases": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "App Store manda o JWS da transação; Google Play, `provider`, `product_id` e `purchase_token` (ADR 0013).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "purchases"
+                ],
+                "summary": "Liga uma compra à conta",
+                "parameters": [
+                    {
+                        "description": "Transação da loja",
+                        "name": "purchase",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.purchaseRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.purchaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request, purchase_invalid, unknown_product",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "403": {
+                        "description": "purchase_account_mismatch, purchase_revoked",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "409": {
+                        "description": "purchase_owned_by_other_account, purchase_pending",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "502": {
+                        "description": "internal (Google Play falhou)",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "503": {
+                        "description": "store_unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/purchases/restore": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "purchases"
+                ],
+                "summary": "Restaura compras",
+                "parameters": [
+                    {
+                        "description": "Transação da loja",
+                        "name": "purchase",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.purchaseRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.purchaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request, purchase_invalid, unknown_product",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "403": {
+                        "description": "purchase_account_mismatch, purchase_revoked",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "409": {
+                        "description": "purchase_owned_by_other_account, purchase_pending",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "502": {
+                        "description": "internal (Google Play falhou)",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "503": {
+                        "description": "store_unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sync": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Valida a cadeia de hash e aplica os eventos; nunca recalcula o histórico. Lote fora do topo do servidor volta 409 com o topo atual.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sync"
+                ],
+                "summary": "Sincroniza eventos de jogo",
+                "parameters": [
+                    {
+                        "description": "Lote de eventos",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.SyncPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "events_applied": {
+                                    "type": "integer"
+                                },
+                                "new_top": {
+                                    "type": "string"
+                                },
+                                "status": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "403": {
+                        "description": "sync_rejected",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "409": {
+                        "description": "rebase_required",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "code": {
+                                    "type": "string"
+                                },
+                                "events_applied": {
+                                    "type": "integer"
+                                },
+                                "server_top": {
+                                    "type": "string"
+                                },
+                                "status": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "sync_too_large",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tracks": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tracks"
+                ],
+                "summary": "Catálogo de trilhas",
+                "parameters": [
+                    {
+                        "enum": [
+                            "pt-BR",
+                            "en",
+                            "es"
+                        ],
+                        "type": "string",
+                        "description": "Língua do conteúdo",
+                        "name": "lang",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.Track"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tracks/{id}/license": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tracks"
+                ],
+                "summary": "Licença de uma trilha paga",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Id da trilha (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Id do aparelho (UUID)",
+                        "name": "X-Device-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.License"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request, device_id_required",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "403": {
+                        "description": "entitlement_required",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tracks/{id}/package": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Bytes cifrados; a versão do conteúdo vem em `X-Content-Version`.",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "tracks"
+                ],
+                "summary": "Pacote cifrado de uma trilha paga",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Id da trilha (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "403": {
+                        "description": "entitlement_required",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/me/delete": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account"
+                ],
+                "summary": "Exclui a conta",
+                "parameters": [
+                    {
+                        "description": "Senha, ou provedor com id_token e nonce",
+                        "name": "proof",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.DeleteAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Unix, em segundos, de quando os dados somem",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "purge_after": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated, invalid_credentials, social_token_invalid",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "409": {
+                        "description": "provider_reauth_required",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "503": {
+                        "description": "provider_disabled",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/waitlist": {
+            "post": {
+                "description": "Formulário da landing: `Origin` tem de ser a landing, ou `Sec-Fetch-Site` same-site. Todo desfecho, inclusive erro e limite, é 303 para uma página da landing.",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "tags": [
+                    "waitlist"
+                ],
+                "summary": "Entra na lista de espera",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "E-mail",
+                        "name": "email",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "pt-BR",
+                            "en",
+                            "es"
+                        ],
+                        "type": "string",
+                        "description": "Língua",
+                        "name": "locale",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Honeypot; tem de vir vazio",
+                        "name": "website",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "303": {
+                        "description": "redireciona para thanks ou error"
+                    }
+                }
+            }
+        },
+        "/api/v1/waitlist/confirm": {
+            "get": {
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "waitlist"
+                ],
+                "summary": "Página do botão de um link do e-mail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token assinado do link",
+                        "name": "t",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "página com o botão",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "303": {
+                        "description": "link inválido ou já confirmado"
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "waitlist"
+                ],
+                "summary": "Confirma ou sai da lista de espera",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token assinado do link",
+                        "name": "t",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "303": {
+                        "description": "redireciona para confirmed, left ou error"
+                    }
+                }
+            }
+        },
+        "/api/v1/waitlist/leave": {
+            "get": {
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "waitlist"
+                ],
+                "summary": "Página do botão de um link do e-mail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token assinado do link",
+                        "name": "t",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "página com o botão",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "303": {
+                        "description": "link inválido ou já confirmado"
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "waitlist"
+                ],
+                "summary": "Confirma ou sai da lista de espera",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token assinado do link",
+                        "name": "t",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "303": {
+                        "description": "redireciona para confirmed, left ou error"
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Sonda de vida",
+                "responses": {
+                    "200": {
+                        "description": "ok",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/legal/privacy": {
+            "get": {
+                "description": "HTML pela allowlist de `internal/legal`, com CSP. Versão e vigência saem em `X-LogN-Legal-Version` e `X-LogN-Legal-Effective`. Erros em texto.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "legal"
+                ],
+                "summary": "Página pública dos termos ou da política",
+                "parameters": [
+                    {
+                        "enum": [
+                            "pt-BR",
+                            "en",
+                            "es"
+                        ],
+                        "type": "string",
+                        "description": "Língua",
+                        "name": "lang",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "1 para a versão embutida no app",
+                        "name": "embed",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Seções a destacar, separadas por vírgula",
+                        "name": "highlight",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "página",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "rascunho em modo estrito",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/legal/terms": {
+            "get": {
+                "description": "HTML pela allowlist de `internal/legal`, com CSP. Versão e vigência saem em `X-LogN-Legal-Version` e `X-LogN-Legal-Effective`. Erros em texto.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "legal"
+                ],
+                "summary": "Página pública dos termos ou da política",
+                "parameters": [
+                    {
+                        "enum": [
+                            "pt-BR",
+                            "en",
+                            "es"
+                        ],
+                        "type": "string",
+                        "description": "Língua",
+                        "name": "lang",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "1 para a versão embutida no app",
+                        "name": "embed",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Seções a destacar, separadas por vírgula",
+                        "name": "highlight",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "página",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "rascunho em modo estrito",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/ping": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Ping",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string"
+                                },
+                                "status": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ready": {
+            "get": {
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Sonda de prontidão",
+                "responses": {
+                    "200": {
+                        "description": "ready",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "banco fora do ar",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "domain.Challenge": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "node_id": {
+                    "type": "string"
+                },
+                "origin": {
+                    "description": "De onde o desafio veio, quando não foi escrito para o LogN. Vazio é o caso\ncomum; o cliente mostra um selo quando há algo aqui.",
+                    "type": "string"
+                },
+                "payload": {
+                    "type": "object"
+                },
+                "position_idx": {
+                    "description": "Posição dentro do nó, a partir de 1. É ela que vira a letra A, B, C da partida.",
+                    "type": "integer"
+                },
+                "template_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.GameEvent": {
+            "type": "object",
+            "properties": {
+                "current_hash": {
+                    "type": "string"
+                },
+                "event_type": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payload_json": {
+                    "type": "string"
+                },
+                "previous_hash": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.LegalAcceptance": {
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "type": "string"
+                },
+                "locale": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.License": {
+            "type": "object",
+            "properties": {
+                "content_version": {
+                    "type": "integer"
+                },
+                "issued_at": {
+                    "type": "integer"
+                },
+                "key_hex": {
+                    "type": "string"
+                },
+                "track_id": {
+                    "type": "string"
+                },
+                "valid_until": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.OriginCard": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.SkillNode": {
+            "type": "object",
+            "properties": {
+                "column": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "prerequisites": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "required_xp": {
+                    "type": "integer"
+                },
+                "requires_purchase": {
+                    "description": "O nó é de trilha paga e não é a amostra: só abre com licença. Quem decide é o\nservidor, pela mesma regra que filtra os desafios abertos (`openNode`).",
+                    "type": "boolean"
+                },
+                "row": {
+                    "type": "integer"
+                },
+                "topic": {
+                    "description": "Assunto do nó, neutro (`adhoc`, `graphs`): decide cor e ícone no app, que antes\nadivinhava pelo nome. Vazio enquanto o conteúdo não preencher.",
+                    "type": "string"
+                },
+                "track_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.SyncPayload": {
+            "type": "object",
+            "properties": {
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.GameEvent"
+                    }
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.Track": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "type": "string"
+                },
+                "color": {
+                    "description": "A cor do balão da trilha, `#RRGGBB`.",
+                    "type": "string"
+                },
+                "content_version": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "languages": {
+                    "description": "Línguas em que a trilha foi publicada.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "node_count": {
+                    "type": "integer"
+                },
+                "owned": {
+                    "description": "A conta que pediu tem direito ativo. Falso sem conta.",
+                    "type": "boolean"
+                },
+                "problem_count": {
+                    "type": "integer"
+                },
+                "product_id": {
+                    "description": "Vazio na gratuita.",
+                    "type": "string"
+                },
+                "revoked_reason": {
+                    "description": "Motivo, quando o direito da conta foi revogado; vazio no resto.",
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.UserProgress": {
+            "type": "object",
+            "properties": {
+                "completed_at": {
+                    "type": "string"
+                },
+                "current_xp": {
+                    "type": "integer"
+                },
+                "node_id": {
+                    "type": "string"
+                },
+                "unlocked": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "domain.UserStats": {
+            "type": "object",
+            "properties": {
+                "bugs_found": {
+                    "type": "integer"
+                },
+                "dry_runs_completed": {
+                    "type": "integer"
+                },
+                "global_xp": {
+                    "type": "integer"
+                },
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.UserProgress"
+                    }
+                },
+                "paid_challenge_ids": {
+                    "description": "Desafios que já renderam XP. O cliente precisa deles para não prometer XP de novo\npor um desafio que o servidor não vai pagar, inclusive depois de trocar de aparelho.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "paid_track_xp": {
+                    "description": "XP ganho em cada trilha paga, amostra incluída. O portão de um nó conta só o XP da\ntrilha dele (spec, seção 8); o da trilha gratuita é o global menos a soma destes.\n\nSai daqui e não do Core porque o Core pode não conhecer mais os desafios de uma\ntrilha revogada, e aí somaria o XP dela no portão da gratuita.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "httpapi.AcceptLegalDocument": {
+            "type": "object",
+            "properties": {
+                "from_version": {
+                    "type": "integer"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "locale": {
+                    "type": "string"
+                },
+                "sha256": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "httpapi.AcceptLegalRequest": {
+            "type": "object",
+            "properties": {
+                "client": {
+                    "type": "object",
+                    "properties": {
+                        "app": {
+                            "type": "string"
+                        },
+                        "platform": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "documents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/httpapi.AcceptLegalDocument"
+                    }
+                },
+                "shown_changes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "source": {
+                    "description": "\"reaccept\" (a tela que bloqueia) ou \"notice\" (a faixa do aviso único).",
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.AuthResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "account_restored": {
+                    "description": "A conta tinha pedido exclusão, e este login ou esta troca de senha a cancelou.\nO app avisa uma vez. Some do JSON quando falso: app antigo ignora o campo.",
+                    "type": "boolean"
+                },
+                "email": {
+                    "description": "O e-mail da conta. No login pelo provedor o app não digitou nenhum, e é por ele\nque a sessão sabe de quem é.",
+                    "type": "string"
+                },
+                "refresh_expires_at": {
+                    "description": "Até quando a sessão vale, em segundos desde a época. É o que deixa o app seguir\nfuncionando sem rede: sem saber o prazo, ele só podia perguntar ao servidor.",
+                    "type": "integer"
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "description": "Quem é o dono da sessão. Sem este campo o cliente não tinha como saber, e o\nsync subia com o literal \"user_1\", que o Postgres recusa como UUID.",
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.DeleteAccountRequest": {
+            "type": "object",
+            "properties": {
+                "authorization_code": {
+                    "description": "Da Apple, junto do token: é com ele que o servidor revoga o acesso (ADR 0017).",
+                    "type": "string"
+                },
+                "id_token": {
+                    "type": "string"
+                },
+                "nonce": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "provider": {
+                    "description": "Conta sem senha prova que é dona com um login novo no provedor (ADR 0016).",
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.GitHubExchangeRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "code_verifier": {
+                    "type": "string"
+                },
+                "nonce_hash": {
+                    "description": "SHA-256 (hex) do nonce que o app guarda cru e manda depois a `/auth/social`.",
+                    "type": "string"
+                },
+                "purpose": {
+                    "description": "\"login\" ou \"delete\". Na exclusão, o access token volta junto, para o servidor\nrevogar a autorização com ele.",
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.GitHubExchangeResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "ticket": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.LoginRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.RefreshRequest": {
+            "type": "object",
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.RegisterRequest": {
+            "type": "object",
+            "properties": {
+                "age_confirmed": {
+                    "type": "boolean"
+                },
+                "client": {
+                    "description": "O app que grava os aceites, como no reaceite.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/httpapi.SignupClient"
+                        }
+                    ]
+                },
+                "country": {
+                    "description": "País considerado na confirmação de idade, ISO 3166-1 alfa-2. Vazio vale a\nidade padrão.",
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "legal_acceptances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.LegalAcceptance"
+                    }
+                },
+                "otp": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.RequestOTPPayload": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "purpose": {
+                    "description": "\"verify_email\", \"reset_password\"",
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.ResetPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "otp": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.SignupClient": {
+            "type": "object",
+            "properties": {
+                "app": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.SocialLoginRequest": {
+            "type": "object",
+            "properties": {
+                "age_confirmed": {
+                    "description": "Só na primeira vez, quando a identidade ainda não tem conta: o mesmo que o\ncadastro por e-mail pede.",
+                    "type": "boolean"
+                },
+                "client": {
+                    "$ref": "#/definitions/httpapi.SignupClient"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "id_token": {
+                    "type": "string"
+                },
+                "legal_acceptances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.LegalAcceptance"
+                    }
+                },
+                "nonce": {
+                    "description": "O nonce cru. O pedido ao provedor levou o SHA-256 dele, e é isso que o token traz.",
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.VerifyOTPPayload": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "purpose": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.apiError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.appStoreNotificationRequest": {
+            "type": "object",
+            "properties": {
+                "signedPayload": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.currentLegalResponse": {
+            "type": "object",
+            "properties": {
+                "documents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/httpapi.currentLegalVersion"
+                    }
+                },
+                "min_age": {
+                    "description": "Idade mínima para criar conta no país de `?country=`. É o N da caixa \"tenho N\nanos ou mais\" e o que o cadastro confere.",
+                    "type": "integer"
+                }
+            }
+        },
+        "httpapi.currentLegalVersion": {
+            "type": "object",
+            "properties": {
+                "effective_at": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "httpapi.licenseActionRequest": {
+            "type": "object",
+            "properties": {
+                "evidence": {
+                    "type": "string"
+                },
+                "outcome": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "track_id": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.nodesResponse": {
+            "type": "object",
+            "properties": {
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.SkillNode"
+                    }
+                },
+                "origins": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.OriginCard"
+                    }
+                }
+            }
+        },
+        "httpapi.pendingLegalChange": {
+            "type": "object",
+            "properties": {
+                "change": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "section": {
+                    "type": "string"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "httpapi.pendingLegalDocument": {
+            "type": "object",
+            "properties": {
+                "accepted_effective_at": {
+                    "type": "string"
+                },
+                "accepted_version": {
+                    "description": "0 quando a conta nunca aceitou; aí a data vem vazia.",
+                    "type": "integer"
+                },
+                "effective_at": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "locale": {
+                    "type": "string"
+                },
+                "material": {
+                    "type": "boolean"
+                },
+                "sha256": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "httpapi.pendingLegalResponse": {
+            "type": "object",
+            "properties": {
+                "blocking": {
+                    "description": "Alguma versão pulada é relevante: o app bloqueia até aceitar. Falso com\ndocumentos na lista é o aviso único.",
+                    "type": "boolean"
+                },
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/httpapi.pendingLegalChange"
+                    }
+                },
+                "documents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/httpapi.pendingLegalDocument"
+                    }
+                }
+            }
+        },
+        "httpapi.purchaseRequest": {
+            "type": "object",
+            "properties": {
+                "jws": {
+                    "type": "string"
+                },
+                "product_id": {
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "purchase_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.purchaseResponse": {
+            "type": "object",
+            "properties": {
+                "track_id": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Access token do login, no formato `Bearer \u003ctoken\u003e`.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

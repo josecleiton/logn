@@ -44,6 +44,17 @@ type pendingLegalResponse struct {
 
 // pendingLegalHandler diz o que a conta tem para aceitar e o que mudou desde o último
 // aceite (ADR 0020). Quem decide se bloqueia é o servidor; o app não compara versão.
+//
+//	@Summary	Aceites pendentes da conta
+//	@Tags		legal
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		lang	query		string	false	"Língua"	Enums(pt-BR, en, es)
+//	@Success	200		{object}	pendingLegalResponse
+//	@Failure	401		{object}	apiError	"unauthenticated"
+//	@Failure	429		{object}	apiError	"rate_limited"
+//	@Failure	500		{object}	apiError	"internal"
+//	@Router		/api/v1/legal/pending [get]
 func (s *Server) pendingLegalHandler(w http.ResponseWriter, r *http.Request) {
 	userID, ok := s.authenticate(w, r)
 	if !ok {
@@ -129,6 +140,19 @@ func (c SignupClient) info() (domain.ClientInfo, bool) {
 // acceptLegalHandler grava o novo aceite (ADR 0020). O pedido tem de aceitar tudo o
 // que está pendente, na versão vigente e com o hash do texto que o servidor serve: é
 // a prova de que o aceito é o que estava na tela. A hora é a do servidor.
+//
+//	@Summary	Aceita os documentos pendentes
+//	@Tags		legal
+//	@Accept		json
+//	@Security	BearerAuth
+//	@Param		acceptance	body	AcceptLegalRequest	true	"Documentos, versões e hashes aceitos"
+//	@Success	200			"aceite gravado, sem corpo"
+//	@Failure	400			{object}	apiError	"invalid_request"
+//	@Failure	401			{object}	apiError	"unauthenticated"
+//	@Failure	409			{object}	apiError	"legal_version_outdated"
+//	@Failure	429			{object}	apiError	"rate_limited"
+//	@Failure	500			{object}	apiError	"internal"
+//	@Router		/api/v1/legal/accept [post]
 func (s *Server) acceptLegalHandler(w http.ResponseWriter, r *http.Request) {
 	userID, ok := s.authenticate(w, r)
 	if !ok {

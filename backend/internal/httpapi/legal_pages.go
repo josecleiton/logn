@@ -37,6 +37,20 @@ func (s legalStore) Latest(ctx context.Context, kind legal.Kind, locale string) 
 
 // registerLegalRoutes pendura as duas páginas públicas. Separado de `main` para os
 // testes montarem o mesmo mux com um store falso.
+//
+//	@Summary		Página pública dos termos ou da política
+//	@Description	HTML pela allowlist de `internal/legal`, com CSP. Versão e vigência saem em `X-LogN-Legal-Version` e `X-LogN-Legal-Effective`. Erros em texto.
+//	@Tags			legal
+//	@Produce		html
+//	@Param			lang		query		string	false	"Língua"	Enums(pt-BR, en, es)
+//	@Param			embed		query		string	false	"1 para a versão embutida no app"
+//	@Param			highlight	query		string	false	"Seções a destacar, separadas por vírgula"
+//	@Success		200			{string}	string	"página"
+//	@Failure		404			{string}	string	"Not found"
+//	@Failure		500			{string}	string	"Internal error"
+//	@Failure		503			{string}	string	"rascunho em modo estrito"
+//	@Router			/legal/terms [get]
+//	@Router			/legal/privacy [get]
 func registerLegalRoutes(mux *http.ServeMux, store legal.Store, strict bool) {
 	mux.HandleFunc("GET /legal/terms", legal.Handler(store, legal.Terms, strict))
 	mux.HandleFunc("GET /legal/privacy", legal.Handler(store, legal.Privacy, strict))
@@ -58,6 +72,15 @@ type currentLegalResponse struct {
 // currentLegalVersionsHandler diz o que o cadastro precisa aceitar e declarar: as
 // versões vigentes dos documentos e a idade mínima do país (`?country=BR`). O app não
 // tem outra forma de saber nenhum dos dois.
+//
+//	@Summary	Versões legais vigentes e idade mínima
+//	@Tags		legal
+//	@Produce	json
+//	@Param		country	query		string	false	"País, ISO 3166-1 alfa-2"
+//	@Success	200		{object}	currentLegalResponse
+//	@Failure	400		{object}	apiError	"invalid_country"
+//	@Failure	500		{object}	apiError	"internal"
+//	@Router		/api/v1/legal/current [get]
 func (s *Server) currentLegalVersionsHandler(w http.ResponseWriter, r *http.Request) {
 	country, ok := legal.NormalizeCountry(r.URL.Query().Get("country"))
 	if !ok {

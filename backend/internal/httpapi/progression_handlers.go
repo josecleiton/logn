@@ -19,6 +19,16 @@ type nodesResponse struct {
 
 // O método já vem filtrado pela rota: `GET /api/v1/nodes` aceita também HEAD, que uma
 // guarda de GET aqui dentro recusava com 405.
+//
+//	@Summary	Grafo de nós e cartões de origem
+//	@Tags		content
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		lang	query		string	false	"Língua do conteúdo"	Enums(pt-BR, en, es)
+//	@Success	200		{object}	nodesResponse
+//	@Failure	401		{object}	apiError	"unauthenticated"
+//	@Failure	500		{object}	apiError	"internal"
+//	@Router		/api/v1/nodes [get]
 func (s *Server) getNodesHandler(w http.ResponseWriter, r *http.Request) {
 	userID, ok := s.optionalAccount(w, r)
 	if !ok {
@@ -41,6 +51,16 @@ func (s *Server) getNodesHandler(w http.ResponseWriter, r *http.Request) {
 	writeAccountContentJSON(w, lang, userID, nodesResponse{Nodes: nodes, Origins: origins})
 }
 
+// getUserProgressHandler devolve o XP e o progresso da conta do token.
+//
+//	@Summary	Progresso da conta
+//	@Tags		account
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Success	200	{object}	domain.UserStats
+//	@Failure	401	{object}	apiError	"unauthenticated"
+//	@Failure	500	{object}	apiError	"internal"
+//	@Router		/api/v1/progress [get]
 func (s *Server) getUserProgressHandler(w http.ResponseWriter, r *http.Request) {
 	// Era um UUID fixo, escrito à mão, que não pertencia a ninguém: a rota respondia
 	// `null` para todo mundo e nenhum cliente a chamava.

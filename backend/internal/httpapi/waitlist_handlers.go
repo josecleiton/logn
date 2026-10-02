@@ -138,6 +138,17 @@ func (s *Server) registerWaitlistRoutes(mux *http.ServeMux) {
 	}
 }
 
+// joinWaitlistHandler inscreve um e-mail na lista de espera do iPhone (ADR 0022).
+//
+//	@Summary		Entra na lista de espera
+//	@Description	Formulário da landing: `Origin` tem de ser a landing, ou `Sec-Fetch-Site` same-site. Todo desfecho, inclusive erro e limite, é 303 para uma página da landing.
+//	@Tags			waitlist
+//	@Accept			x-www-form-urlencoded
+//	@Param			email	formData	string	true	"E-mail"
+//	@Param			locale	formData	string	false	"Língua"	Enums(pt-BR, en, es)
+//	@Param			website	formData	string	false	"Honeypot; tem de vir vazio"
+//	@Success		303		"redireciona para thanks ou error"
+//	@Router			/api/v1/waitlist [post]
 func (s *Server) joinWaitlistHandler(limiter *rateLimiter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {
@@ -200,6 +211,16 @@ func (s *Server) joinWaitlistHandler(limiter *rateLimiter) http.HandlerFunc {
 
 // waitlistPageHandler mostra a página do botão de um link do e-mail. Link que não vale
 // vai para a página de erro da landing.
+//
+//	@Summary	Página do botão de um link do e-mail
+//	@Tags		waitlist
+//	@Produce	html
+//	@Param		t	query		string	true	"Token assinado do link"
+//	@Success	200	{string}	string	"página com o botão"
+//	@Success	303	"link inválido ou já confirmado"
+//	@Failure	500	{string}	string	"Internal error"
+//	@Router		/api/v1/waitlist/confirm [get]
+//	@Router		/api/v1/waitlist/leave [get]
 func (s *Server) waitlistPageHandler(limiter *rateLimiter, action string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !limiter.allowIP(r) {
@@ -231,6 +252,13 @@ func (s *Server) waitlistPageHandler(limiter *rateLimiter, action string) http.H
 }
 
 // waitlistActionHandler faz o que o botão pede.
+//
+//	@Summary	Confirma ou sai da lista de espera
+//	@Tags		waitlist
+//	@Param		t	query	string	true	"Token assinado do link"
+//	@Success	303	"redireciona para confirmed, left ou error"
+//	@Router		/api/v1/waitlist/confirm [post]
+//	@Router		/api/v1/waitlist/leave [post]
 func (s *Server) waitlistActionHandler(limiter *rateLimiter, action string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !limiter.allowIP(r) {

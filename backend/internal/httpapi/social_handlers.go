@@ -58,6 +58,22 @@ func (s *Server) verifySocial(ctx context.Context, w http.ResponseWriter, provid
 // ligada, vale o e-mail: se já existe conta com ele, a identidade é ligada a ela, desde
 // que o provedor diga que o e-mail foi verificado. Sem conta nenhuma, responde
 // `signup_required` até o pedido trazer idade e aceite, e então cria a conta sem senha.
+//
+//	@Summary		Login por provedor (Google, Apple, GitHub)
+//	@Description	Sem conta, a primeira resposta é 409 `signup_required`; o app reenvia o mesmo token com idade, país e aceites (ADR 0016).
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			login	body		SocialLoginRequest	true	"Provedor, ID token e nonce"
+//	@Success		200		{object}	AuthResponse
+//	@Failure		400		{object}	apiError	"invalid_request, invalid_country, age_not_confirmed, legal_acceptance_required"
+//	@Failure		401		{object}	apiError	"social_token_invalid"
+//	@Failure		403		{object}	apiError	"social_email_unverified"
+//	@Failure		409		{object}	apiError	"signup_required, legal_version_outdated, email_taken"
+//	@Failure		429		{object}	apiError	"rate_limited"
+//	@Failure		500		{object}	apiError	"internal"
+//	@Failure		503		{object}	apiError	"provider_disabled"
+//	@Router			/api/v1/auth/social [post]
 func (s *Server) socialLoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -157,6 +173,20 @@ type GitHubExchangeResponse struct {
 // githubExchangeHandler troca o código do login no GitHub pelo bilhete que faz o papel
 // do ID token em `/auth/social` e na exclusão (ADR 0019). A troca precisa do secret, que
 // só o servidor tem.
+//
+//	@Summary		Troca o código do GitHub pelo bilhete
+//	@Description	Com `purpose` = `delete`, exige o Bearer da conta que vai ser excluída.
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			exchange	body		GitHubExchangeRequest	true	"Código, verifier PKCE e nonce"
+//	@Success		200			{object}	GitHubExchangeResponse
+//	@Failure		400			{object}	apiError	"invalid_request"
+//	@Failure		401			{object}	apiError	"unauthenticated, social_token_invalid"
+//	@Failure		429			{object}	apiError	"rate_limited"
+//	@Failure		503			{object}	apiError	"provider_disabled"
+//	@Router			/api/v1/auth/github/exchange [post]
 func (s *Server) githubExchangeHandler(w http.ResponseWriter, r *http.Request) {
 	if s.github == nil {
 		writeError(w, http.StatusServiceUnavailable, codeProviderDisabled)

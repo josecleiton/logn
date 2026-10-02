@@ -84,6 +84,21 @@ func (s *Server) issueSession(ctx context.Context, w http.ResponseWriter, userID
 	})
 }
 
+// loginHandler entra com e-mail e senha. A senha chega como foi digitada, sobre TLS, e
+// é conferida com Argon2id.
+//
+//	@Summary		Login por e-mail e senha
+//	@Description	Conta inexistente e senha errada devolvem o mesmo código. Erros seguidos travam o login por um tempo (`login_locked`, com `Retry-After`).
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			credentials	body		LoginRequest	true	"E-mail e senha"
+//	@Success		200			{object}	AuthResponse
+//	@Failure		400			{object}	apiError	"invalid_request"
+//	@Failure		401			{object}	apiError	"invalid_credentials"
+//	@Failure		429			{object}	apiError	"login_locked, rate_limited"
+//	@Failure		500			{object}	apiError	"internal"
+//	@Router			/api/v1/auth/login [post]
 func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -174,6 +189,20 @@ type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+// refreshHandler troca o refresh token por um par novo. O usado é rotacionado, e
+// reusar um já rotacionado derruba todas as sessões da conta.
+//
+//	@Summary	Renova a sessão
+//	@Tags		auth
+//	@Accept		json
+//	@Produce	json
+//	@Param		token	body		RefreshRequest	true	"Refresh token"
+//	@Success	200		{object}	AuthResponse
+//	@Failure	400		{object}	apiError	"invalid_request"
+//	@Failure	401		{object}	apiError	"session_invalid"
+//	@Failure	429		{object}	apiError	"rate_limited"
+//	@Failure	500		{object}	apiError	"internal"
+//	@Router		/api/v1/auth/refresh [post]
 func (s *Server) refreshHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -257,6 +286,20 @@ type RegisterRequest struct {
 	Client SignupClient `json:"client"`
 }
 
+// registerHandler cria a conta por e-mail, com o OTP que provou o endereço.
+//
+//	@Summary	Cadastro por e-mail
+//	@Tags		auth
+//	@Accept		json
+//	@Produce	json
+//	@Param		signup	body		RegisterRequest	true	"Conta, OTP, idade e aceites"
+//	@Success	200		{object}	AuthResponse
+//	@Failure	400		{object}	apiError	"invalid_request, invalid_email, password_too_short, password_too_long, invalid_country, age_not_confirmed, legal_acceptance_required"
+//	@Failure	401		{object}	apiError	"otp_invalid"
+//	@Failure	409		{object}	apiError	"legal_version_outdated, email_taken"
+//	@Failure	429		{object}	apiError	"rate_limited"
+//	@Failure	500		{object}	apiError	"internal"
+//	@Router		/api/v1/auth/register [post]
 func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -355,6 +398,19 @@ type ResetPasswordRequest struct {
 	Password string `json:"password"`
 }
 
+// resetPasswordHandler troca a senha com o OTP de `reset_password` e já entra.
+//
+//	@Summary	Redefine a senha
+//	@Tags		auth
+//	@Accept		json
+//	@Produce	json
+//	@Param		reset	body		ResetPasswordRequest	true	"E-mail, OTP e senha nova"
+//	@Success	200		{object}	AuthResponse
+//	@Failure	400		{object}	apiError	"invalid_request, invalid_email, password_too_short, password_too_long"
+//	@Failure	401		{object}	apiError	"otp_invalid"
+//	@Failure	429		{object}	apiError	"rate_limited"
+//	@Failure	500		{object}	apiError	"internal"
+//	@Router		/api/v1/auth/reset-password [post]
 func (s *Server) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -442,6 +498,23 @@ type DeleteAccountRequest struct {
 	AuthorizationCode string `json:"authorization_code,omitempty"`
 }
 
+// deleteAccountHandler agenda a exclusão da conta do token. Quem tem senha prova com
+// ela; quem entrou por provedor, com um login novo nele.
+//
+//	@Summary	Exclui a conta
+//	@Tags		account
+//	@Accept		json
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		proof	body		DeleteAccountRequest	true	"Senha, ou provedor com id_token e nonce"
+//	@Success	200		{object}	object{purge_after=int}	"Unix, em segundos, de quando os dados somem"
+//	@Failure	400		{object}	apiError				"invalid_request"
+//	@Failure	401		{object}	apiError				"unauthenticated, invalid_credentials, social_token_invalid"
+//	@Failure	409		{object}	apiError				"provider_reauth_required"
+//	@Failure	429		{object}	apiError				"rate_limited"
+//	@Failure	500		{object}	apiError				"internal"
+//	@Failure	503		{object}	apiError				"provider_disabled"
+//	@Router		/api/v1/users/me/delete [post]
 func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

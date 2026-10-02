@@ -57,6 +57,20 @@ func (s *Server) internalCaller(w http.ResponseWriter, r *http.Request, accountE
 	return caller.Email, true
 }
 
+// purgeHandler apaga as contas excluídas que venceram o prazo, as inscrições não
+// confirmadas da lista de espera e as contagens de login errado com janela vencida.
+// Quem chama é o Cloud Scheduler.
+//
+//	@Summary		Purga diária
+//	@Description	Só com ID token OIDC do Google, da conta `CLOUD_SCHEDULER_SERVICE_ACCOUNT`. Erros saem em texto, não em `{code}`.
+//	@Tags			internal
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	object{status=string,purged=int,waitlist_purged=int,login_attempts_purged=int}
+//	@Failure		401	{string}	string	"Unauthorized"
+//	@Failure		403	{string}	string	"Forbidden"
+//	@Failure		500	{string}	string	"Internal error"
+//	@Router			/api/v1/internal/purge [post]
 func (s *Server) purgeHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -108,6 +122,19 @@ const playVoidedWindow = 29 * 24 * time.Hour
 //
 // Erro de banco ou da loja responde 500, e o Scheduler tenta de novo. Compra anulada que
 // não é nossa também entra em `revoked_transactions`: ela nunca vira licença depois.
+//
+//	@Summary		Reembolsos e estornos do Google Play
+//	@Description	Só com ID token OIDC do Google, da conta do Scheduler (ADR 0022). Erros de autorização e de loja saem em texto.
+//	@Tags			internal
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	object{status=string,voided=int,acknowledged=int}
+//	@Failure		401	{string}	string		"Unauthorized"
+//	@Failure		403	{string}	string		"Forbidden"
+//	@Failure		429	{object}	apiError	"rate_limited"
+//	@Failure		500	{string}	string		"Internal error"
+//	@Failure		503	{string}	string		"Google Play disabled"
+//	@Router			/api/v1/internal/play/voided [post]
 func (s *Server) playVoidedHandler(w http.ResponseWriter, r *http.Request) {
 	if _, ok := s.internalCaller(w, r, envSchedulerAccount); !ok {
 		return
@@ -200,12 +227,46 @@ type licenseActionRequest struct {
 
 // revokeLicenseHandler revoga à mão a licença de uma conta e avisa por e-mail (termos,
 // seção 10.5; ADR 0021).
+//
+//	@Summary		Revoga uma licença à mão
+//	@Description	Só com ID token OIDC do Google, da conta `ADMIN_SERVICE_ACCOUNT` (ADR 0021). Campo desconhecido no corpo é 400.
+//	@Tags			internal
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			action	body		licenseActionRequest	true	"Conta, trilha e motivo"
+//	@Success		200		{object}	object{status=string,reason=string,outcome=string,locale=string,email_sent=bool}
+//	@Failure		400		{object}	apiError	"invalid_request"
+//	@Failure		401		{string}	string		"Unauthorized"
+//	@Failure		403		{string}	string		"Forbidden"
+//	@Failure		409		{object}	apiError	"license_not_active, license_store_revoked"
+//	@Failure		429		{object}	apiError	"rate_limited"
+//	@Failure		500		{object}	apiError	"internal"
+//	@Failure		503		{object}	apiError	"internal (sem mailer)"
+//	@Router			/api/v1/internal/licenses/revoke [post]
 func (s *Server) revokeLicenseHandler(w http.ResponseWriter, r *http.Request) {
 	s.manualLicenseAction(w, r, true)
 }
 
 // appealLicenseHandler responde à contestação de uma revogação manual, muda a licença
 // como a seção 10.5 manda e avisa por e-mail.
+//
+//	@Summary		Responde à contestação de uma revogação
+//	@Description	Só com ID token OIDC do Google, da conta `ADMIN_SERVICE_ACCOUNT` (ADR 0021). Campo desconhecido no corpo é 400.
+//	@Tags			internal
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			action	body		licenseActionRequest	true	"Conta, trilha e desfecho"
+//	@Success		200		{object}	object{status=string,reason=string,outcome=string,locale=string,email_sent=bool}
+//	@Failure		400		{object}	apiError	"invalid_request"
+//	@Failure		401		{string}	string		"Unauthorized"
+//	@Failure		403		{string}	string		"Forbidden"
+//	@Failure		409		{object}	apiError	"license_not_revoked, license_appeal_out_of_order, license_store_revoked"
+//	@Failure		429		{object}	apiError	"rate_limited"
+//	@Failure		500		{object}	apiError	"internal"
+//	@Failure		503		{object}	apiError	"internal (sem mailer)"
+//	@Router			/api/v1/internal/licenses/appeal [post]
 func (s *Server) appealLicenseHandler(w http.ResponseWriter, r *http.Request) {
 	s.manualLicenseAction(w, r, false)
 }

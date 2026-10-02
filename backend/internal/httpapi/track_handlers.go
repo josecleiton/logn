@@ -16,6 +16,17 @@ import (
 // com token, marca as compradas e mantém a descontinuada de quem comprou. Token
 // presente e inválido é 401, para o app renovar a sessão em vez de achar que não
 // comprou nada.
+//
+//	@Summary	Catálogo de trilhas
+//	@Tags		tracks
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		lang	query		string	false	"Língua do conteúdo"	Enums(pt-BR, en, es)
+//	@Success	200		{array}		domain.Track
+//	@Failure	401		{object}	apiError	"unauthenticated"
+//	@Failure	429		{object}	apiError	"rate_limited"
+//	@Failure	500		{object}	apiError	"internal"
+//	@Router		/api/v1/tracks [get]
 func (s *Server) tracksHandler(w http.ResponseWriter, r *http.Request) {
 	userID, ok := s.optionalAccount(w, r)
 	if !ok {
@@ -37,6 +48,20 @@ func (s *Server) tracksHandler(w http.ResponseWriter, r *http.Request) {
 //
 // Todo pedido traz `X-Device-ID` (o `identifierForVendor`). O registro não trava: não
 // há limite de aparelhos até existir medida de quantos uma conta legítima usa.
+//
+//	@Summary	Licença de uma trilha paga
+//	@Tags		tracks
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		id			path		string	true	"Id da trilha (UUID)"
+//	@Param		X-Device-ID	header		string	true	"Id do aparelho (UUID)"
+//	@Success	200			{object}	domain.License
+//	@Failure	400			{object}	apiError	"invalid_request, device_id_required"
+//	@Failure	401			{object}	apiError	"unauthenticated"
+//	@Failure	403			{object}	apiError	"entitlement_required"
+//	@Failure	429			{object}	apiError	"rate_limited"
+//	@Failure	500			{object}	apiError	"internal"
+//	@Router		/api/v1/tracks/{id}/license [get]
 func (s *Server) trackLicenseHandler(w http.ResponseWriter, r *http.Request) {
 	userID, ok := s.authenticate(w, r)
 	if !ok {
@@ -71,6 +96,20 @@ func (s *Server) trackLicenseHandler(w http.ResponseWriter, r *http.Request) {
 
 // trackPackageHandler devolve o conteúdo fechado da trilha, cifrado. Não registra
 // aparelho: baixar de novo não é usar num aparelho a mais.
+//
+//	@Summary		Pacote cifrado de uma trilha paga
+//	@Description	Bytes cifrados; a versão do conteúdo vem em `X-Content-Version`.
+//	@Tags			tracks
+//	@Produce		octet-stream
+//	@Security		BearerAuth
+//	@Param			id	path		string	true	"Id da trilha (UUID)"
+//	@Success		200	{file}		binary
+//	@Failure		400	{object}	apiError	"invalid_request"
+//	@Failure		401	{object}	apiError	"unauthenticated"
+//	@Failure		403	{object}	apiError	"entitlement_required"
+//	@Failure		429	{object}	apiError	"rate_limited"
+//	@Failure		500	{object}	apiError	"internal"
+//	@Router			/api/v1/tracks/{id}/package [get]
 func (s *Server) trackPackageHandler(w http.ResponseWriter, r *http.Request) {
 	userID, ok := s.authenticate(w, r)
 	if !ok {

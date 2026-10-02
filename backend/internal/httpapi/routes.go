@@ -115,6 +115,11 @@ func New(d Deps) (http.Handler, error) {
 
 	registerLegalRoutes(mux, legalStore{server.repo}, d.LegalStrict)
 	server.registerWaitlistRoutes(mux)
+	// A documentação da API só existe no binário de desenvolvimento (`-tags dev`); no
+	// de produção a função é vazia e o compilador nem vê o código dela (ADR 0025).
+	if err := registerAPIDocs(mux); err != nil {
+		return nil, err
+	}
 
 	mux.HandleFunc("GET /api/v1/legal/current", server.currentLegalVersionsHandler)
 	// Pendência e aceite têm balde próprio, como as trilhas: toda abertura pergunta pelos

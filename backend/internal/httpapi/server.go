@@ -79,11 +79,26 @@ type GitHubExchanger interface {
 	Exchange(ctx context.Context, code, verifier, nonceHash string, keepToken bool) (socialauth.Exchanged, error)
 }
 
+// healthHandler é a sonda de vida do Cloud Run: responde sem olhar o banco.
+//
+//	@Summary	Sonda de vida
+//	@Tags		health
+//	@Produce	plain
+//	@Success	200	{string}	string	"ok"
+//	@Router		/health [get]
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("ok"))
 }
 
+// readyHandler é a sonda de prontidão: só responde pronto com o banco no ar.
+//
+//	@Summary	Sonda de prontidão
+//	@Tags		health
+//	@Produce	plain
+//	@Success	200	{string}	string	"ready"
+//	@Failure	503	{string}	string	"banco fora do ar"
+//	@Router		/ready [get]
 func (s *Server) readyHandler(w http.ResponseWriter, r *http.Request) {
 	if err := s.repo.Ping(r.Context()); err != nil {
 		http.Error(w, "Database not ready", http.StatusServiceUnavailable)
@@ -93,6 +108,13 @@ func (s *Server) readyHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("ready"))
 }
 
+// pingHandler responde que o servidor está de pé, sem tocar no banco.
+//
+//	@Summary	Ping
+//	@Tags		health
+//	@Produce	json
+//	@Success	200	{object}	object{status=string,message=string}
+//	@Router		/ping [get]
 func (s *Server) pingHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -137,6 +159,24 @@ func (s *Server) optionalAccount(w http.ResponseWriter, r *http.Request) (string
 	return s.authenticate(w, r)
 }
 
+// syncHandler aplica um lote de eventos da cadeia de hash do jogador (ADR 0002).
+//
+//	@Summary		Sincroniza eventos de jogo
+//	@Description	Valida a cadeia de hash e aplica os eventos; nunca recalcula o histórico. Lote fora do topo do servidor volta 409 com o topo atual.
+//	@Tags			sync
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			payload	body		domain.SyncPayload	true	"Lote de eventos"
+//	@Success		200		{object}	object{status=string,events_applied=int,new_top=string}
+//	@Failure		400		{object}	apiError	"invalid_request"
+//	@Failure		401		{object}	apiError	"unauthenticated"
+//	@Failure		403		{object}	apiError	"sync_rejected"
+//	@Failure		409		{object}	object{code=string,status=string,server_top=string,events_applied=int}	"rebase_required"
+//	@Failure		413		{object}	apiError	"sync_too_large"
+//	@Failure		429		{object}	apiError	"rate_limited"
+//	@Failure		500		{object}	apiError	"internal"
+//	@Router			/api/v1/sync [post]
 func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -274,6 +314,17 @@ func writeRebaseRequired(w http.ResponseWriter, serverTop string) {
 }
 
 // Método filtrado pela rota, como em getNodesHandler: HEAD tem de passar.
+//
+//	@Summary		Desafios abertos
+//	@Description	Conteúdo na língua negociada (`?lang=` ou `Accept-Language`), devolvida em `Content-Language`. Sem token, é o visitante; token presente e inválido é 401.
+//	@Tags			content
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			lang	query		string	false	"Língua do conteúdo"	Enums(pt-BR, en, es)
+//	@Success		200		{array}		domain.Challenge
+//	@Failure		401		{object}	apiError	"unauthenticated"
+//	@Failure		500		{object}	apiError	"internal"
+//	@Router			/api/v1/challenges [get]
 func (s *Server) challengesHandler(w http.ResponseWriter, r *http.Request) {
 	userID, ok := s.optionalAccount(w, r)
 	if !ok {

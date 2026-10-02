@@ -36,12 +36,47 @@ type purchaseResponse struct {
 
 // purchaseHandler liga uma compra recém-feita à conta. A transação tem de trazer no
 // `appAccountToken` o id de quem manda.
+//
+//	@Summary		Liga uma compra à conta
+//	@Description	App Store manda o JWS da transação; Google Play, `provider`, `product_id` e `purchase_token` (ADR 0013).
+//	@Tags			purchases
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			purchase	body		purchaseRequest	true	"Transação da loja"
+//	@Success		200			{object}	purchaseResponse
+//	@Failure		400			{object}	apiError	"invalid_request, purchase_invalid, unknown_product"
+//	@Failure		401			{object}	apiError	"unauthenticated"
+//	@Failure		403			{object}	apiError	"purchase_account_mismatch, purchase_revoked"
+//	@Failure		409			{object}	apiError	"purchase_owned_by_other_account, purchase_pending"
+//	@Failure		429			{object}	apiError	"rate_limited"
+//	@Failure		500			{object}	apiError	"internal"
+//	@Failure		502			{object}	apiError	"internal (Google Play falhou)"
+//	@Failure		503			{object}	apiError	"store_unavailable"
+//	@Router			/api/v1/purchases [post]
 func (s *Server) purchaseHandler(w http.ResponseWriter, r *http.Request) {
 	s.grantPurchase(w, r, false)
 }
 
 // restorePurchaseHandler é o "Restaurar compras": aceita transação de uma conta que já
 // não está ativa, e recusa a de outra conta ativa.
+//
+//	@Summary	Restaura compras
+//	@Tags		purchases
+//	@Accept		json
+//	@Produce	json
+//	@Security	BearerAuth
+//	@Param		purchase	body		purchaseRequest	true	"Transação da loja"
+//	@Success	200			{object}	purchaseResponse
+//	@Failure	400			{object}	apiError	"invalid_request, purchase_invalid, unknown_product"
+//	@Failure	401			{object}	apiError	"unauthenticated"
+//	@Failure	403			{object}	apiError	"purchase_account_mismatch, purchase_revoked"
+//	@Failure	409			{object}	apiError	"purchase_owned_by_other_account, purchase_pending"
+//	@Failure	429			{object}	apiError	"rate_limited"
+//	@Failure	500			{object}	apiError	"internal"
+//	@Failure	502			{object}	apiError	"internal (Google Play falhou)"
+//	@Failure	503			{object}	apiError	"store_unavailable"
+//	@Router		/api/v1/purchases/restore [post]
 func (s *Server) restorePurchaseHandler(w http.ResponseWriter, r *http.Request) {
 	s.grantPurchase(w, r, true)
 }
@@ -220,6 +255,17 @@ func (s *Server) verifyPlayPurchase(w http.ResponseWriter, r *http.Request, req 
 // appStoreNotificationRoute é a rota pública das notificações, com os tetos dela.
 // Quem chama é a Apple, sem credencial nossa: a defesa é a assinatura, mais um teto
 // de corpo e de ritmo para a rota não virar porta de DoS.
+//
+//	@Summary		Notificação da App Store
+//	@Description	Chamada pela Apple, fora da checagem de origem. Vale só a assinatura, verificada contra a raiz fixa (ADR 0013).
+//	@Tags			purchases
+//	@Accept			json
+//	@Param			notification	body	appStoreNotificationRequest	true	"signedPayload da Apple"
+//	@Success		200				"aceita, sem corpo"
+//	@Failure		400				{object}	apiError	"invalid_request, purchase_invalid"
+//	@Failure		429				{object}	apiError	"rate_limited"
+//	@Failure		500				{object}	apiError	"internal"
+//	@Router			/api/v1/appstore/notifications [post]
 func (s *Server) appStoreNotificationRoute(rl *rateLimiter) http.HandlerFunc {
 	return rl.wrap(limitBody(appStoreNotificationBodyLimit, s.appStoreNotificationHandler))
 }

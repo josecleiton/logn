@@ -15,13 +15,20 @@ db-up:
 db-down:
     docker-compose down
 
-# Roda o servidor Go localmente na porta 8080 (Lembre-se de ter o .env)
+# Roda o servidor Go localmente na porta 8080 (Lembre-se de ter o .env). O binário de
+# desenvolvimento traz a documentação da API em http://localhost:8080/docs (ADR 0025).
 run-backend: db-up
-    cd backend && go run .
+    cd backend && go run -tags dev .
 
-# Roda todos os testes do Backend
+# Roda todos os testes do Backend, nos dois binários: o de produção e o de desenvolvimento
 test-backend:
     cd backend && go test -v ./...
+    cd backend && go test -tags dev ./internal/httpapi/
+
+# Regenera o spec da API a partir das anotações dos handlers. Rode depois de mexer em
+# rota, corpo ou código de erro: o teste do backend falha se rota e spec divergirem.
+api-docs:
+    cd backend && go tool swag init --quiet -g main.go -d ./,./internal/httpapi --parseInternal --parseDependency --parseDependencyLevel 1 --outputTypes json -o internal/httpapi/apidocs
 
 # Aplica as migrações no banco de Produção e encerra sem subir o servidor HTTP.
 # Uso: DATABASE_URL="postgres://admin..." just migrate-prod

@@ -1,0 +1,3 @@
+// Substituições de tipo para o `swag init` (just api-docs, ADR 0025). Ficam aqui, e não
+// em struct tag `swaggertype`, porque struct tag entra no binário de produção.
+replace encoding/json.RawMessage object

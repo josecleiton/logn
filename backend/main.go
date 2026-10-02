@@ -18,6 +18,16 @@ import (
 	"github.com/josecleiton/logn/backend/schema"
 )
 
+// Cabeçalho do spec da API, lido pelo `just api-docs` (ADR 0025).
+//
+//	@title						LogN API
+//	@version					1.0
+//	@description				API do LogN. Erro de rota que o app lê sai como {"code", "message"}, e o código é contrato.
+//	@BasePath					/
+//	@securityDefinitions.apikey	BearerAuth
+//	@in							header
+//	@name						Authorization
+//	@description				Access token do login, no formato `Bearer <token>`.
 func main() {
 	dbUrl := os.Getenv("DATABASE_URL")
 	if dbUrl == "" {

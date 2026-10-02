@@ -25,6 +25,19 @@ type RequestOTPPayload struct {
 	Purpose string `json:"purpose"` // "verify_email", "reset_password"
 }
 
+// requestOTPHandler manda por e-mail o código de confirmar endereço ou redefinir senha.
+//
+//	@Summary		Pede um OTP por e-mail
+//	@Description	O e-mail sai na língua de `Accept-Language`. O reenvio tem intervalo mínimo e teto por IP e global (`otp_resend_too_soon`, com `Retry-After`).
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		RequestOTPPayload	true	"E-mail e propósito (verify_email ou reset_password)"
+//	@Success		200		{object}	object{status=string}	"otp_sent"
+//	@Failure		400		{object}	apiError				"invalid_request, invalid_email"
+//	@Failure		429		{object}	apiError				"otp_resend_too_soon, otp_locked, rate_limited"
+//	@Failure		500		{object}	apiError				"internal"
+//	@Router			/api/v1/auth/request-otp [post]
 func (s *Server) requestOTPHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -109,6 +122,19 @@ type VerifyOTPPayload struct {
 	Purpose string `json:"purpose"`
 }
 
+// verifyOTPHandler confere o código sem consumi-lo: quem consome é o cadastro ou a
+// redefinição.
+//
+//	@Summary	Confere um OTP
+//	@Tags		auth
+//	@Accept		json
+//	@Produce	json
+//	@Param		otp	body		VerifyOTPPayload		true	"E-mail, código e propósito"
+//	@Success	200	{object}	object{status=string}	"otp_verified"
+//	@Failure	400	{object}	apiError				"invalid_request"
+//	@Failure	401	{object}	apiError				"otp_invalid"
+//	@Failure	429	{object}	apiError				"rate_limited"
+//	@Router		/api/v1/auth/verify-otp [post]
 func (s *Server) verifyOTPHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
