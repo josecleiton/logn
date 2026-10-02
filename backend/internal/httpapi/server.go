@@ -180,6 +180,9 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 
 	// O corpo do pedido não decide de quem é a cadeia. Mandava e o servidor obedecia:
 	// dava para escrever eventos na conta de qualquer um.
+	if payload.UserID != "" && payload.UserID != userID {
+		log.Printf("sync: tentativa de cheat interceptada (token_user=%s, payload_user=%s)", userID, payload.UserID)
+	}
 	payload.UserID = userID
 
 	ctx := r.Context()
