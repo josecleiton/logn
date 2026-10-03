@@ -62,6 +62,10 @@ login_locked = "Muitas senhas erradas para este e-mail. Espere alguns minutos ou
 code_locked = "Muitos códigos errados para este e-mail. Um código novo só sai amanhã."
 wait_seconds = "Aguarde %{seconds} s"
 sample_standings = "Dados de exemplo. O ranking ainda não está no ar: times, posições e números são fictícios."
+nickname_invalid = "Use de 3 a 20 caracteres: letras sem acento, números e _."
+nickname_reserved = "Esse apelido é reservado. Escolha outro."
+nickname_taken = "Esse apelido já está em uso."
+nickname_locked = "Esta conta já escolheu o apelido."
 
 [leave]
 eyebrow = "Sair da partida"
@@ -416,6 +420,56 @@ full_screen = "VER O TELÃO COMPLETO"
 row_accessibility = "%{rank}º, %{handle}, %{university}, %{solved} aceitos, %{penalty} de penalidade"
 row_accessibility_user = "sua posição, %{rank}º, %{handle}, %{university}, %{solved} aceitos, %{penalty} de penalidade"
 you = "você"
+
+[leaderboard]
+title = "Placar"
+subtitle = "GLOBAL · XP DA TRILHA GRATUITA"
+you = "VOCÊ"
+anon_name = "jogador #%{number}"
+xp = "%{xp} XP"
+rank_none = "—"
+hidden_label = "FORA DO PLACAR"
+closed_eyebrow = "AINDA NÃO ABRIU"
+closed_of = "/ %{threshold} jogadores"
+closed_missing = { one = "Falta %{count} jogador para o placar abrir", other = "Faltam %{count} jogadores para o placar abrir" }
+closed_body = "Entra quem tem XP na trilha gratuita."
+closed_accessibility = "%{players} de %{threshold} jogadores"
+zero_xp = "Acerte um desafio da trilha gratuita para entrar no placar."
+zero_xp_action = "Ir para a trilha"
+guest_title = "Crie uma conta para aparecer no placar"
+guest_body = "O XP que você ganhou como convidado vai junto para a conta."
+guest_create = "Criar conta"
+guest_sign_in = "Já tenho conta"
+offline = "Sem conexão · atualizado %{ago}"
+age_now = "agora"
+age_minutes = { one = "há %{count} min", other = "há %{count} min" }
+age_hours = { one = "há %{count} h", other = "há %{count} h" }
+age_days = { one = "há %{count} dia", other = "há %{count} dias" }
+unavailable_title = "Conecte para ver o placar"
+unavailable_body = "O placar vem do servidor. A trilha continua funcionando sem internet, e o XP sobe quando a conexão voltar."
+loading_accessibility = "Carregando o placar"
+row_accessibility = "%{rank}º, %{name}, %{xp} XP"
+row_accessibility_me = "sua posição, %{rank}º, %{name}, %{xp} XP"
+me_unranked_accessibility = "você, %{name}, %{xp} XP, sem posição"
+
+[nickname]
+choose = "Escolher apelido"
+title = "Escolha seu apelido"
+body = "É o nome que aparece no placar no lugar de %{anon}."
+label = "APELIDO"
+placeholder = "seu_apelido"
+helper = "3 a 20 caracteres: letras sem acento, números e _"
+counter = "%{count}/%{max}"
+continue_action = "Continuar"
+confirm_eyebrow = "NÃO DÁ PARA TROCAR DEPOIS"
+confirm_sub = "substitui %{anon} no placar e no Perfil"
+confirm_body = "Depois de confirmar, este apelido fica para sempre nesta conta. Confira a grafia."
+confirm = "Confirmar %{nickname}"
+back = "Voltar e corrigir"
+success = "Agora você é %{nickname}"
+success_body = "O placar mostra o novo nome na próxima atualização."
+close = "Fechar"
+field_accessibility = "Apelido"
 
 [paywall]
 cancelled = "Compra cancelada."

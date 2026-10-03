@@ -60,6 +60,10 @@ login_locked = "Demasiadas contraseñas incorrectas para este correo. Espera uno
 code_locked = "Demasiados códigos incorrectos para este correo. Un código nuevo solo podrá enviarse mañana."
 wait_seconds = "Espera %{seconds} s"
 sample_standings = "Datos de ejemplo. La tabla de posiciones aún no está activa: equipos, puestos y números son ficticios."
+nickname_invalid = "Usa de 3 a 20 caracteres: letras sin tilde, números y _."
+nickname_reserved = "Ese apodo está reservado. Elige otro."
+nickname_taken = "Ese apodo ya está en uso."
+nickname_locked = "Esta cuenta ya eligió su apodo."
 
 [leave]
 eyebrow = "Salir de la partida"
@@ -414,6 +418,56 @@ full_screen = "VER PANTALLA COMPLETA"
 row_accessibility = "%{rank}º, %{handle}, %{university}, %{solved} aceptados, %{penalty} de penalidad"
 row_accessibility_user = "tu posición, %{rank}º, %{handle}, %{university}, %{solved} aceptados, %{penalty} de penalidad"
 you = "tú"
+
+[leaderboard]
+title = "Tabla"
+subtitle = "GLOBAL · XP DE LA RUTA GRATUITA"
+you = "TÚ"
+anon_name = "jugador #%{number}"
+xp = "%{xp} XP"
+rank_none = "—"
+hidden_label = "FUERA DE LA TABLA"
+closed_eyebrow = "AÚN NO ABRE"
+closed_of = "/ %{threshold} jugadores"
+closed_missing = { one = "Falta %{count} jugador para abrir la tabla", other = "Faltan %{count} jugadores para abrir la tabla" }
+closed_body = "Entra quien tiene XP en la ruta gratuita."
+closed_accessibility = "%{players} de %{threshold} jugadores"
+zero_xp = "Resuelve un desafío de la ruta gratuita para entrar en la tabla."
+zero_xp_action = "Ir a la ruta"
+guest_title = "Crea una cuenta para aparecer en la tabla"
+guest_body = "El XP que ganaste como invitado se va contigo a la cuenta."
+guest_create = "Crear cuenta"
+guest_sign_in = "Ya tengo cuenta"
+offline = "Sin conexión · actualizado %{ago}"
+age_now = "ahora"
+age_minutes = { one = "hace %{count} min", other = "hace %{count} min" }
+age_hours = { one = "hace %{count} h", other = "hace %{count} h" }
+age_days = { one = "hace %{count} día", other = "hace %{count} días" }
+unavailable_title = "Conéctate para ver la tabla"
+unavailable_body = "La tabla viene del servidor. La ruta sigue funcionando sin internet, y el XP sube cuando vuelva la conexión."
+loading_accessibility = "Cargando la tabla"
+row_accessibility = "puesto %{rank}, %{name}, %{xp} XP"
+row_accessibility_me = "tu puesto, %{rank}, %{name}, %{xp} XP"
+me_unranked_accessibility = "tú, %{name}, %{xp} XP, sin puesto"
+
+[nickname]
+choose = "Elegir apodo"
+title = "Elige tu apodo"
+body = "Es el nombre que aparece en la tabla en lugar de %{anon}."
+label = "APODO"
+placeholder = "tu_apodo"
+helper = "3 a 20 caracteres: letras sin tilde, números y _"
+counter = "%{count}/%{max}"
+continue_action = "Continuar"
+confirm_eyebrow = "NO SE PUEDE CAMBIAR DESPUÉS"
+confirm_sub = "reemplaza a %{anon} en la tabla y en el perfil"
+confirm_body = "Después de confirmar, este apodo se queda para siempre en esta cuenta. Revisa cómo lo escribiste."
+confirm = "Confirmar %{nickname}"
+back = "Volver y corregir"
+success = "Ahora eres %{nickname}"
+success_body = "La tabla muestra el nuevo nombre en la próxima actualización."
+close = "Cerrar"
+field_accessibility = "Apodo"
 
 [paywall]
 cancelled = "Compra cancelada."

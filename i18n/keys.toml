@@ -69,6 +69,12 @@ login_locked = {}
 code_locked = {}
 wait_seconds ={ placeholders = [{ name = "seconds", type = "int" }] }
 sample_standings = {}
+# O apelido do placar. Os três primeiros o jogador corrige; o último diz que a conta
+# já escolheu ou perdeu a chance.
+nickname_invalid = {}
+nickname_reserved = {}
+nickname_taken = {}
+nickname_locked = {}
 # Sair da partida. O Core decide se pergunta; a cópia mora aqui.
 
 [groups.leave.keys]
@@ -395,6 +401,60 @@ full_screen = {}
 row_accessibility = { placeholders = [{ name = "rank", type = "int" }, { name = "handle", type = "text" }, { name = "university", type = "text" }, { name = "solved", type = "int" }, { name = "penalty", type = "int" }] }
 row_accessibility_user = { placeholders = [{ name = "rank", type = "int" }, { name = "handle", type = "text" }, { name = "university", type = "text" }, { name = "solved", type = "int" }, { name = "penalty", type = "int" }] }
 you = {}
+
+# O placar geral de XP (docs/specs/logn_placar_spec.md). O nome de quem não escolheu
+# apelido é "jogador #N": o servidor manda o número e a frase mora aqui. O XP chega já
+# formatado pelo shell, com o separador de milhar da língua.
+[groups.leaderboard.keys]
+title = {}
+subtitle = {}
+you = {}
+anon_name = { placeholders = [{ name = "number", type = "int" }] }
+xp = { placeholders = [{ name = "xp", type = "text" }] }
+rank_none = {}
+hidden_label = {}
+closed_eyebrow = {}
+closed_of = { placeholders = [{ name = "threshold", type = "int" }] }
+closed_missing = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+closed_body = {}
+closed_accessibility = { placeholders = [{ name = "players", type = "int" }, { name = "threshold", type = "int" }] }
+zero_xp = {}
+zero_xp_action = {}
+guest_title = {}
+guest_body = {}
+guest_create = {}
+guest_sign_in = {}
+offline = { placeholders = [{ name = "ago", type = "text" }] }
+age_now = {}
+age_minutes = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+age_hours = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+age_days = { plural = true, placeholders = [{ name = "count", type = "int" }] }
+unavailable_title = {}
+unavailable_body = {}
+loading_accessibility = {}
+row_accessibility = { placeholders = [{ name = "rank", type = "int" }, { name = "name", type = "text" }, { name = "xp", type = "text" }] }
+row_accessibility_me = { placeholders = [{ name = "rank", type = "int" }, { name = "name", type = "text" }, { name = "xp", type = "text" }] }
+me_unranked_accessibility = { placeholders = [{ name = "name", type = "text" }, { name = "xp", type = "text" }] }
+
+# Escolher o apelido do placar, no Perfil. É uma escolha só.
+[groups.nickname.keys]
+choose = {}
+title = {}
+body = { placeholders = [{ name = "anon", type = "text" }] }
+label = {}
+placeholder = {}
+helper = {}
+counter = { placeholders = [{ name = "count", type = "int" }, { name = "max", type = "int" }] }
+continue_action = {}
+confirm_eyebrow = {}
+confirm_sub = { placeholders = [{ name = "anon", type = "text" }] }
+confirm_body = {}
+confirm = { placeholders = [{ name = "nickname", type = "text" }] }
+back = {}
+success = { placeholders = [{ name = "nickname", type = "text" }] }
+success_body = {}
+close = {}
+field_accessibility = {}
 
 # A splash da abertura: o log das verificações. O Core manda `BootLine` com a
 # verificação e o veredito como enum; a frase de cada um mora aqui.

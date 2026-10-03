@@ -62,6 +62,10 @@ login_locked = "Too many wrong passwords for this email. Wait a few minutes or r
 code_locked = "Too many wrong codes for this email. A new code can only be sent tomorrow."
 wait_seconds = "Wait %{seconds} s"
 sample_standings = "Sample data. The ranking isn't live yet: teams, positions and numbers are made up."
+nickname_invalid = "Use 3 to 20 characters: unaccented letters, numbers and _."
+nickname_reserved = "That nickname is reserved. Pick another one."
+nickname_taken = "That nickname is already taken."
+nickname_locked = "This account already picked its nickname."
 
 [leave]
 eyebrow = "Leave the match"
@@ -416,6 +420,56 @@ full_screen = "VIEW FULL SCREEN"
 row_accessibility = "%{rank}º, %{handle}, %{university}, %{solved} accepted, %{penalty} penalty"
 row_accessibility_user = "your position, %{rank}º, %{handle}, %{university}, %{solved} accepted, %{penalty} penalty"
 you = "you"
+
+[leaderboard]
+title = "Leaderboard"
+subtitle = "GLOBAL · FREE TRACK XP"
+you = "YOU"
+anon_name = "player #%{number}"
+xp = "%{xp} XP"
+rank_none = "—"
+hidden_label = "OFF THE BOARD"
+closed_eyebrow = "NOT OPEN YET"
+closed_of = "/ %{threshold} players"
+closed_missing = { one = "%{count} more player to open the leaderboard", other = "%{count} more players to open the leaderboard" }
+closed_body = "Anyone with XP on the free track counts."
+closed_accessibility = "%{players} of %{threshold} players"
+zero_xp = "Solve a challenge on the free track to join the leaderboard."
+zero_xp_action = "Go to the track"
+guest_title = "Create an account to show up on the leaderboard"
+guest_body = "The XP you earned as a guest comes with you to the account."
+guest_create = "Create account"
+guest_sign_in = "I have an account"
+offline = "Offline · updated %{ago}"
+age_now = "just now"
+age_minutes = { one = "%{count} min ago", other = "%{count} min ago" }
+age_hours = { one = "%{count} h ago", other = "%{count} h ago" }
+age_days = { one = "%{count} day ago", other = "%{count} days ago" }
+unavailable_title = "Connect to see the leaderboard"
+unavailable_body = "The leaderboard comes from the server. The track keeps working offline, and your XP goes up when you're back online."
+loading_accessibility = "Loading the leaderboard"
+row_accessibility = "number %{rank}, %{name}, %{xp} XP"
+row_accessibility_me = "your position, number %{rank}, %{name}, %{xp} XP"
+me_unranked_accessibility = "you, %{name}, %{xp} XP, no position"
+
+[nickname]
+choose = "Pick a nickname"
+title = "Pick your nickname"
+body = "It's the name that shows on the leaderboard instead of %{anon}."
+label = "NICKNAME"
+placeholder = "your_nickname"
+helper = "3 to 20 characters: unaccented letters, numbers and _"
+counter = "%{count}/%{max}"
+continue_action = "Continue"
+confirm_eyebrow = "YOU CAN'T CHANGE IT LATER"
+confirm_sub = "replaces %{anon} on the leaderboard and your profile"
+confirm_body = "Once you confirm, this nickname stays on this account for good. Check the spelling."
+confirm = "Confirm %{nickname}"
+back = "Go back and fix it"
+success = "You're now %{nickname}"
+success_body = "The leaderboard shows the new name on its next update."
+close = "Close"
+field_accessibility = "Nickname"
 
 [paywall]
 cancelled = "Purchase cancelled."
