@@ -431,6 +431,7 @@ closed_eyebrow = "AÚN NO ABRE"
 closed_of = "/ %{threshold} jugadores"
 closed_missing = { one = "Falta %{count} jugador para abrir la tabla", other = "Faltan %{count} jugadores para abrir la tabla" }
 closed_body = "Entra quien tiene XP en la ruta gratuita."
+closed_counted = "Tú ya cuentas."
 closed_accessibility = "%{players} de %{threshold} jugadores"
 zero_xp = "Resuelve un desafío de la ruta gratuita para entrar en la tabla."
 zero_xp_action = "Ir a la ruta"

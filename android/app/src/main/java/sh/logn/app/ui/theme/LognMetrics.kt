@@ -439,55 +439,101 @@ object StoreMetrics {
     const val DIMMED_ALPHA = 0.45f
 }
 
-/** Ranking (tela 6) e telão (tela 1). As colunas do telão são as mesmas no cabeçalho e no corpo. */
-object StandingsMetrics {
+/** O placar geral de XP, com as medidas do canvas "LogN — Placar geral de XP". */
+object LeaderboardMetrics {
     val headerTop = 18.dp
-    val titleBottom = 14.dp
-    val tabIndicator = 2.dp
-    val rowPaddingV = 14.dp
+    val headerGap = 6.dp
+    val headerBottom = 12.dp
+    val rowPaddingV = 13.dp
+    val rowMinHeight = 44.dp
     val rowGap = 14.dp
     val rankWidth = 26.dp
-    val barGap = 18.dp
-    val frozenPaddingV = 5.dp
-    val headerHeight = 40.dp
-    val rowHeight = 52.dp
-    val cellHeight = 38.dp
-    val rank = 52.dp
-    val team = 150.dp
-    val solved = 56.dp
-    val penalty = 68.dp
-    val cell = 44.dp
-    val headerBalloon = 15.dp
-    val gap3 = 3.dp
-    val legendPaddingV = 14.dp
-    val legendGap = 20.dp
-    val swatchWidth = 22.dp
-    val swatchHeight = 14.dp
-    const val NOTICE_SIZE = 12.5f
+    val meNameGap = 2.dp
+    val bannerPaddingV = 10.dp
+    val bannerIcon = 14.dp
+    val stateIcon = 28.dp
+    val emptyPaddingH = 32.dp
+    val closedGap = 22.dp
+    val closedCountGap = 8.dp
+    val barHeight = 6.dp
+    val barGap = 4.dp
+    val barRadius = 1.dp
+    val textGap = 8.dp
+    val stateGap = 20.dp
+    val buttonGap = 10.dp
+    val button = 48.dp
+    val smallButton = 44.dp
+    val zeroGap = 12.dp
+    val zeroBottom = 20.dp
+    val guestAvatar = 52.dp
+    val guestIcon = 22.dp
+    val guestDash = 3.dp
+    val skeletonRank = 18.dp
+    val skeletonRankHeight = 10.dp
+    val skeletonText = 12.dp
+    val skeletonXp = 58.dp
+    /** Os nomes do esqueleto, cada um de uma largura, para não parecer uma grade. */
+    val skeletonWidths = listOf(110.dp, 132.dp, 84.dp, 120.dp, 96.dp, 140.dp, 88.dp, 118.dp, 104.dp, 126.dp, 92.dp, 114.dp)
     const val TITLE_SIZE = 22f
     const val TITLE_TRACKING = -0.02f
-    const val TAB_SIZE = 14f
+    const val LABEL_SIZE = 11f
+    const val LABEL_TRACKING = 0.1f
     const val RANK_SIZE = 13f
-    const val HANDLE_SIZE = 15f
-    const val SUB_SIZE = 11f
-    const val SCORE_SIZE = 14f
-    const val CONTEST_SIZE = 13f
-    const val CONTEST_TRACKING = 0.12f
-    const val FROZEN_SIZE = 11f
-    const val FROZEN_TRACKING = 0.1f
-    const val CLOCK_SIZE = 24f
-    const val CLOCK_TRACKING = -0.01f
-    const val HEADER_SIZE = 10f
-    const val HEADER_TRACKING = 0.12f
-    const val UNIVERSITY_TRACKING = 0.08f
-    const val LETTER_SIZE = 11f
-    const val RANK_CELL_SIZE = 14f
-    const val TEAM_SIZE = 14f
-    const val SOLVED_SIZE = 15f
-    const val PENALTY_SIZE = 13f
-    const val CELL_TOP_SIZE = 12f
-    const val CELL_BOTTOM_SIZE = 9f
-    const val CELL_BOTTOM_ALPHA = 0.75f
+    const val NICKNAME_SIZE = 15f
+    const val ANON_SIZE = 14f
+    const val XP_SIZE = 14f
+    const val BANNER_SIZE = 12.5f
+    const val COUNT_SIZE = 48f
+    const val COUNT_OF_SIZE = 20f
+    const val STATE_TITLE_SIZE = 20f
+    const val CLOSED_TITLE_SIZE = 18f
+    const val BODY_SIZE = 14f
+    const val BODY_LINE = 21f
+    const val BUTTON_SIZE = 15f
+    const val SMALL_BUTTON_SIZE = 14f
+}
+
+/** A folha de escolher apelido e o cabeçalho do Perfil com o nome do placar. */
+object NicknameMetrics {
+    val paddingTop = 12.dp
+    val paddingBottom = 28.dp
+    val gap = 18.dp
+    val textGap = 8.dp
+    val handleWidth = 36.dp
+    val handleHeight = 4.dp
+    val field = 48.dp
+    val fieldPaddingH = 14.dp
+    val cardPaddingV = 18.dp
+    val cardPaddingH = 16.dp
+    val cardGap = 6.dp
+    val buttonGap = 10.dp
+    val button = 48.dp
+    val chooseButton = 44.dp
+    val choosePaddingH = 16.dp
+    val chooseIcon = 14.dp
+    val chooseGap = 8.dp
+    val identityGap = 14.dp
+    val nameGap = 4.dp
+    val headerGap = 14.dp
+    val errorIcon = 14.dp
+    val errorIconGap = 6.dp
+    val errorIconTop = 2.dp
+    const val TITLE_SIZE = 20f
+    const val BODY_SIZE = 14f
+    const val BODY_LINE = 21f
+    const val LABEL_SIZE = 11f
+    const val LABEL_TRACKING = 0.1f
+    const val FIELD_SIZE = 16f
+    const val HELPER_SIZE = 13f
+    const val COUNTER_SIZE = 12f
+    const val CARD_NAME_SIZE = 24f
+    const val CARD_SUB_SIZE = 12f
+    const val BUTTON_SIZE = 15f
+    const val CHOOSE_SIZE = 14f
+    const val NICKNAME_SIZE = 17f
+    const val ANON_SIZE = 16f
+    const val ANON_AVATAR_SIZE = 18f
+    const val EMAIL_SIZE = 12f
 }
 
 object RootMetrics {

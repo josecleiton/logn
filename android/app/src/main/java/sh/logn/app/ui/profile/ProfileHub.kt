@@ -57,6 +57,7 @@ import sh.logn.app.ui.legal.LegalLinksRow
 import sh.logn.app.ui.theme.IconMetrics
 import sh.logn.app.ui.theme.LognDark
 import sh.logn.app.ui.theme.LognFont
+import sh.logn.app.ui.theme.NicknameMetrics
 import sh.logn.app.ui.theme.NodeSheetMetrics
 import sh.logn.app.ui.theme.ProfileMetrics
 import sh.logn.app.ui.theme.Radius
@@ -83,6 +84,7 @@ fun ProfileHub(
     var showsAccount by rememberSaveable { mutableStateOf(false) }
     var showsStorage by rememberSaveable { mutableStateOf(false) }
     var legal by rememberSaveable { mutableStateOf<LegalKind?>(null) }
+    var showsNickname by rememberSaveable { mutableStateOf(false) }
     BottomSheet(onDismiss = onDismiss) {
         Column(
             Modifier
@@ -97,6 +99,9 @@ fun ProfileHub(
                     .background(LognDark.lineStrong, RoundedCornerShape(NodeSheetMetrics.handleHeight)),
             )
             Identity(view)
+            if (view.canChooseNickname) {
+                Box(Modifier.padding(top = NicknameMetrics.headerGap)) { ChooseNicknameButton { showsNickname = true } }
+            }
             if (view.pendingSyncCount > 0u && !view.isGuest) QueueCard(view)
             LevelBlock(view)
             Stats(view)
@@ -120,6 +125,7 @@ fun ProfileHub(
         }
     }
     if (showsStorage) StorageSheet(view) { showsStorage = false }
+    if (showsNickname) NicknameSheet(view) { showsNickname = false }
     legal?.let { LegalDocumentScreen(it, onClose = { legal = null }) }
     restoreSheet()
 }
@@ -144,8 +150,10 @@ private fun Identity(view: ViewModel) {
                     },
                 contentAlignment = Alignment.Center,
             ) { Icon(LognIcon.Person, LognDark.textMuted, ProfileMetrics.personIcon) }
+        } else if (view.profileAnonNumber > 0 && view.profileNickname == null) {
+            AnonAvatar(ProfileMetrics.avatar)
         } else {
-            ProfileAvatar(view.displayName.ifEmpty { view.accountEmail }, hasPending = false, size = ProfileMetrics.avatar)
+            ProfileAvatar(view.profileNickname ?: view.displayName.ifEmpty { view.accountEmail }, hasPending = false, size = ProfileMetrics.avatar)
         }
         Column(Modifier.weight(1f)) {
             if (view.isGuest) {
@@ -164,6 +172,17 @@ private fun Identity(view: ViewModel) {
                     color = LognDark.textMuted,
                     modifier = Modifier.padding(top = ProfileMetrics.gap6),
                 )
+            } else if (view.profileAnonNumber > 0) {
+                // O nome do placar em cima, o e-mail embaixo (canvas do placar).
+                ProfileName(view)
+                Text(
+                    view.accountEmail,
+                    style = LognFont.mono(NicknameMetrics.EMAIL_SIZE),
+                    color = LognDark.textMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.MiddleEllipsis,
+                    modifier = Modifier.padding(top = NicknameMetrics.nameGap),
+                )
             } else {
                 Text(
                     view.accountEmail,
@@ -172,6 +191,8 @@ private fun Identity(view: ViewModel) {
                     maxLines = 1,
                     overflow = TextOverflow.MiddleEllipsis,
                 )
+            }
+            if (!view.isGuest) {
                 Row(
                     Modifier.padding(top = ProfileMetrics.gap6),
                     horizontalArrangement = Arrangement.spacedBy(ProfileMetrics.gap6),

@@ -79,6 +79,8 @@ enum class LognIcon(
     TestTube(Part("M9 3 V17 A3 3 0 0 0 15 17 V3 M7.5 3 H16.5 M9 11 H15")),
     Box(Part("M12 3 L20.5 7.5 V16.5 L12 21 L3.5 16.5 V7.5 Z M3.5 7.5 L12 12 L20.5 7.5 M12 12 V21")),
     Logout(Part("M14 4 H6 V20 H14 M10 12 H21 M17 8 L21 12 L17 16")),
+    ExclamationCircle(Part("M12 3 A9 9 0 1 1 11.99 3 Z M12 7.5 V13 M12 16.5 V16.6")),
+    Pencil(Part("M12 20 H21 M16.5 3.5 A2.1 2.1 0 0 1 19.5 6.5 L7 19 L3 20 L4 16 Z")),
     Person(Part("M12 12 A4 4 0 1 0 11.99 12 Z M4.5 21 C4.5 16.8 7.8 14.5 12 14.5 C16.2 14.5 19.5 16.8 19.5 21")),
     PauseCircle(Part("M12 2.5 A9.5 9.5 0 1 1 11.99 2.5 Z M10 8.5 V15.5 M14 8.5 V15.5")),
     Lock(Part("M6 11 H18 V20.5 H6 Z M8.5 11 V7.5 A3.5 3.5 0 0 1 15.5 7.5 V11")),

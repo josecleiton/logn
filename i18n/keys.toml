@@ -417,6 +417,8 @@ closed_eyebrow = {}
 closed_of = { placeholders = [{ name = "threshold", type = "int" }] }
 closed_missing = { plural = true, placeholders = [{ name = "count", type = "int" }] }
 closed_body = {}
+# Só quando o jogador já tem XP: ele é um dos que contam.
+closed_counted = {}
 closed_accessibility = { placeholders = [{ name = "players", type = "int" }, { name = "threshold", type = "int" }] }
 zero_xp = {}
 zero_xp_action = {}

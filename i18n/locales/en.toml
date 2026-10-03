@@ -433,6 +433,7 @@ closed_eyebrow = "NOT OPEN YET"
 closed_of = "/ %{threshold} players"
 closed_missing = { one = "%{count} more player to open the leaderboard", other = "%{count} more players to open the leaderboard" }
 closed_body = "Anyone with XP on the free track counts."
+closed_counted = "You already count."
 closed_accessibility = "%{players} of %{threshold} players"
 zero_xp = "Solve a challenge on the free track to join the leaderboard."
 zero_xp_action = "Go to the track"

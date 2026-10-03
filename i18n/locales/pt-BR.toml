@@ -433,6 +433,7 @@ closed_eyebrow = "AINDA NÃO ABRIU"
 closed_of = "/ %{threshold} jogadores"
 closed_missing = { one = "Falta %{count} jogador para o placar abrir", other = "Faltam %{count} jogadores para o placar abrir" }
 closed_body = "Entra quem tem XP na trilha gratuita."
+closed_counted = "Você já está na conta."
 closed_accessibility = "%{players} de %{threshold} jogadores"
 zero_xp = "Acerte um desafio da trilha gratuita para entrar no placar."
 zero_xp_action = "Ir para a trilha"

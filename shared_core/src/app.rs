@@ -10313,6 +10313,20 @@ mod tests {
     }
 
     #[test]
+    fn test_a_refresh_that_fails_marks_the_list_offline() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        let _ = app.update(Event::LeaderboardOpened, &mut model);
+        let _ = app.update(Event::LeaderboardFetched { owner: "u1".into(), result: board_body(true, Some(2), None, 100) }, &mut model);
+        let mut cmd = app.update(Event::LeaderboardRefresh, &mut model);
+        assert_eq!(http_requests(&mut cmd).len(), 1, "puxar para atualizar pede de novo");
+        let _ = app.update(Event::LeaderboardFetched { owner: "u1".into(), result: HttpResult::Err(crux_http::HttpError::Io("ConnectException".into())) }, &mut model);
+        let view = app.view(&model).leaderboard;
+        assert!(view.offline, "sem rede, a lista guardada fica marcada");
+        assert_eq!(view.rows.len(), 2);
+    }
+
+    #[test]
     fn test_a_closed_leaderboard_shows_how_many_are_missing() {
         let app = LogNApp::default();
         let mut model = board_session();

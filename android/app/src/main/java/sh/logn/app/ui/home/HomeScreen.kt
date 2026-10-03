@@ -79,15 +79,13 @@ sealed interface HomeRoute {
     ) : HomeRoute
 
     data object Catalog : HomeRoute
-
-    data object Scoreboard : HomeRoute
 }
 
 /** Os pontos de extensão das fases seguintes; vazios até lá. */
 data class HomeSlots(
     val route: @Composable (HomeRoute, onBack: () -> Unit) -> Unit = { _, _ -> },
     val profile: @Composable (onDismiss: () -> Unit) -> Unit = {},
-    val standings: @Composable (openScoreboard: () -> Unit) -> Unit = {},
+    val standings: @Composable (goToTrail: () -> Unit) -> Unit = {},
     val lockedNode: @Composable (SkillNode, onDismiss: () -> Unit) -> Unit = { _, _ -> },
 )
 
@@ -141,7 +139,7 @@ fun HomeScreen(
                 when (tab) {
                     LognTab.Trails -> TrailsTab(view, slots, onRoute = { route = it })
                     LognTab.Arena -> ArenaTab()
-                    LognTab.Standings -> slots.standings { route = HomeRoute.Scoreboard }
+                    LognTab.Standings -> slots.standings { tab = LognTab.Trails }
                 }
             }
             BottomNav(tab, onSelect = { tab = it })
@@ -498,14 +496,13 @@ fun Divider(modifier: Modifier = Modifier) {
     )
 }
 
-/** A rota sobrevive à recriação da Activity como texto: "match:<id>", "catalog", "scoreboard". */
+/** A rota sobrevive à recriação da Activity como texto: "match:<id>", "catalog". */
 private val homeRouteSaver =
     androidx.compose.runtime.saveable.Saver<HomeRoute?, String>(
         save = { route ->
             when (route) {
                 is HomeRoute.Match -> "match:${route.nodeId}"
                 HomeRoute.Catalog -> "catalog"
-                HomeRoute.Scoreboard -> "scoreboard"
                 null -> ""
             }
         },
@@ -513,7 +510,6 @@ private val homeRouteSaver =
             when {
                 saved.startsWith("match:") -> HomeRoute.Match(saved.removePrefix("match:"))
                 saved == "catalog" -> HomeRoute.Catalog
-                saved == "scoreboard" -> HomeRoute.Scoreboard
                 else -> null
             }
         },
