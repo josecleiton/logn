@@ -2713,8 +2713,14 @@ impl App for LogNApp {
                     return render::render();
                 };
                 match serde_json::from_slice::<crate::leaderboard::LeaderboardCache>(&bytes) {
-                    // O guardado é de outra conta (a sessão venceu sem sair): fora.
+                    // O guardado é de outra conta (a sessão venceu sem sair): fora. Se a
+                    // rede já trouxe e gravou a lista desta conta, o disco lido antes é
+                    // velho e a chave já é dela: apagar levaria a lista nova junto.
                     Ok(cache) if cache.owner != model.user_id => {
+                        let already_ours = model.leaderboard.as_ref().is_some_and(|c| c.owner == model.user_id);
+                        if already_ours {
+                            return Command::done();
+                        }
                         Command::request_from_shell(KeyValueOperation::Delete { key: crate::leaderboard::LEADERBOARD_KEY.into() })
                             .then_send(|_| Event::Ping)
                     }
@@ -2751,9 +2757,20 @@ impl App for LogNApp {
                         // O placar também diz o nome da conta: o Perfil acompanha. Um
                         // apelido recém-salvo não volta a "jogador #N" por uma resposta
                         // que saiu antes dele; o /progress é quem corrige de vez.
+                        //
+                        // Só não rebaixa o nome que é sabidamente desta conta: o de dono
+                        // marcado igual, ou o do retrato (sem dono) com o mesmo número. O
+                        // retrato pode ser de outra conta que a sessão vencida deixou; aí o
+                        // nome vem inteiro da resposta, apelido nulo inclusive.
                         if board.me.anon_number > 0 {
-                            if !model.profile.belongs_to(&owner) {
-                                model.profile = crate::leaderboard::ProfileIdentity::default();
+                            let known = model.profile.owner == owner
+                                || (model.profile.owner.is_empty() && model.profile.anon_number == board.me.anon_number);
+                            if !known {
+                                model.profile = crate::leaderboard::ProfileIdentity {
+                                    nickname: board.me.nickname.clone(),
+                                    nickname_locked: board.me.nickname.is_some(),
+                                    ..Default::default()
+                                };
                             }
                             model.profile.owner = owner.clone();
                             model.profile.anon_number = board.me.anon_number;
@@ -10551,6 +10568,47 @@ mod tests {
         assert_eq!(app.view(&model).leaderboard.state, crate::domain::LeaderboardState::Loading,
             "u2 segue esperando o pedido dele");
         assert_eq!(model.leaderboard_in_flight.as_deref(), Some("u2"));
+    }
+
+    #[test]
+    fn test_a_snapshot_nickname_of_another_account_does_not_stick() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        // O retrato (sem dono) é de A, com apelido; quem está na sessão é B, sem apelido.
+        model.profile = crate::leaderboard::ProfileIdentity {
+            owner: String::new(), anon_number: 1111, nickname: Some("de_a".into()), nickname_locked: true,
+        };
+        let _ = deliver_board(&app, &mut model, board_body(true, Some(2), None, 100));
+        let view = app.view(&model);
+        assert_eq!(view.profile_anon_number, 2207);
+        assert!(view.profile_nickname.is_none(), "o apelido de A não fica com B");
+        assert!(view.can_choose_nickname);
+    }
+
+    #[test]
+    fn test_a_snapshot_nickname_of_this_account_is_not_downgraded() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        // O retrato é desta conta (mesmo número), e o apelido saiu depois da lista.
+        model.profile = crate::leaderboard::ProfileIdentity {
+            owner: String::new(), anon_number: 2207, nickname: Some("ana_dev".into()), nickname_locked: true,
+        };
+        let _ = deliver_board(&app, &mut model, board_body(true, Some(2), None, 100));
+        assert_eq!(app.view(&model).profile_nickname.as_deref(), Some("ana_dev"));
+    }
+
+    #[test]
+    fn test_a_late_disk_read_does_not_delete_the_fresh_board() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        let _ = app.update(Event::LeaderboardOpened, &mut model);
+        // A rede respondeu antes do disco e gravou a lista desta conta.
+        let _ = app.update(Event::LeaderboardFetched { owner: "u1".into(), result: board_body(true, Some(2), None, 100) }, &mut model);
+        // O disco volta com a lista de outra conta, lida antes da gravação.
+        let stale = serde_json::to_vec(&crate::leaderboard::LeaderboardCache { owner: "u0".into(), board: Default::default() }).unwrap();
+        let mut cmd = app.update(Event::LeaderboardRestored { owner: "u1".into(), result: kv_bytes(stale) }, &mut model);
+        assert!(kv_ops(&mut cmd).is_empty(), "a lista nova no disco não é apagada");
+        assert_eq!(model.leaderboard.as_ref().unwrap().owner, "u1");
     }
 
     #[test]
