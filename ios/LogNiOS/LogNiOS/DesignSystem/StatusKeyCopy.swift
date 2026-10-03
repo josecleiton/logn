@@ -39,6 +39,10 @@ extension LogN.StatusKey {
         case .rateLimited:       return Str.Status.rate_limited
         case .loginLocked:       return Str.Status.login_locked
         case .codeLocked:        return Str.Status.code_locked
+        case .nicknameInvalid:   return Str.Status.nickname_invalid
+        case .nicknameReserved:  return Str.Status.nickname_reserved
+        case .nicknameTaken:     return Str.Status.nickname_taken
+        case .nicknameLocked:    return Str.Status.nickname_locked
         case .invalidEmail:      return Str.Status.invalid_email
         case .passwordTooShort:  return Str.Status.password_too_short
         case .passwordTooLong:   return Str.Status.password_too_long

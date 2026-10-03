@@ -117,7 +117,17 @@ public class CoreWrapper: ObservableObject {
             restoreResult: RestoreResultView(active: false, finished: false, total: 0, restored: 0, otherAccount: 0, restoredNames: []),
             sampleOffer: SampleOfferView(active: false, trackId: "", nextNodeName: "", nextNodeIndex: 0, remainingNodes: 0, remainingProblems: 0),
             purchasesToFinish: [],
-            purchaseInFlight: false
+            purchaseInFlight: false,
+            leaderboard: LeaderboardView(
+                state: .signedOut, missing: 0, threshold: 0, rows: [],
+                me: LeaderboardRow(rank: 0, anonNumber: 0, nickname: nil, xp: 0, isMe: true),
+                meStatus: .ranked, meInRows: false, ageUnit: .justNow, ageValue: 0,
+                refreshing: false, offline: false
+            ),
+            profileAnonNumber: 0,
+            profileNickname: nil,
+            canChooseNickname: false,
+            nicknameFlow: NicknameFlowView(step: .input, draft: "", submitting: false, error: .silent)
         )
         updateViewModel()
         // A língua do app vai antes de qualquer pedido: é o `Accept-Language` de cada um

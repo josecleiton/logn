@@ -1168,6 +1168,23 @@ indirect public enum Event: Hashable, Equatable {
     /// A fila de `owner` lida do disco, para tirar dela os eventos que um sync de antes
     /// da troca de dono já entregou.
     case syncedQueueRead(owner: String, sent: [String], result: KeyValueResult)
+    /// Abriu a aba Placar: mostra o guardado e pede o de agora (docs/specs/logn_placar_spec.md).
+    case leaderboardOpened
+    /// Puxou para atualizar.
+    case leaderboardRefresh
+    /// `owner` é de quem pediu: a resposta que chega depois de trocar de conta não entra.
+    case leaderboardFetched(owner: String, result: HttpResult)
+    case leaderboardRestored(owner: String, result: KeyValueResult)
+    /// Abriu a folha de escolher apelido.
+    case nicknameStarted
+    /// "Continuar": confere o formato e vai para a confirmação.
+    case nicknameChecked(String)
+    /// "Voltar e corrigir".
+    case nicknameBack
+    /// "Confirmar": manda ao servidor. É uma escolha só.
+    case nicknameSubmitted(String)
+    case nicknameSaved(owner: String, draft: String, result: HttpResult)
+    case nicknameFlowClosed
 
     public func serialize<S: Serializer>(serializer: S) throws {
         try serializer.increase_container_depth()
@@ -1585,6 +1602,35 @@ indirect public enum Event: Hashable, Equatable {
                 try serializer.serialize_str(value: item)
             }
             try result.serialize(serializer: serializer)
+        case .leaderboardOpened:
+            try serializer.serialize_variant_index(value: 135)
+        case .leaderboardRefresh:
+            try serializer.serialize_variant_index(value: 136)
+        case .leaderboardFetched(let owner, let result):
+            try serializer.serialize_variant_index(value: 137)
+            try serializer.serialize_str(value: owner)
+            try result.serialize(serializer: serializer)
+        case .leaderboardRestored(let owner, let result):
+            try serializer.serialize_variant_index(value: 138)
+            try serializer.serialize_str(value: owner)
+            try result.serialize(serializer: serializer)
+        case .nicknameStarted:
+            try serializer.serialize_variant_index(value: 139)
+        case .nicknameChecked(let x):
+            try serializer.serialize_variant_index(value: 140)
+            try serializer.serialize_str(value: x)
+        case .nicknameBack:
+            try serializer.serialize_variant_index(value: 141)
+        case .nicknameSubmitted(let x):
+            try serializer.serialize_variant_index(value: 142)
+            try serializer.serialize_str(value: x)
+        case .nicknameSaved(let owner, let draft, let result):
+            try serializer.serialize_variant_index(value: 143)
+            try serializer.serialize_str(value: owner)
+            try serializer.serialize_str(value: draft)
+            try result.serialize(serializer: serializer)
+        case .nicknameFlowClosed:
+            try serializer.serialize_variant_index(value: 144)
         }
         try serializer.decrease_container_depth()
     }
@@ -2147,6 +2193,45 @@ indirect public enum Event: Hashable, Equatable {
             let result = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .syncedQueueRead(owner: owner, sent: sent, result: result)
+        case 135:
+            try deserializer.decrease_container_depth()
+            return .leaderboardOpened
+        case 136:
+            try deserializer.decrease_container_depth()
+            return .leaderboardRefresh
+        case 137:
+            let owner = try deserializer.deserialize_str()
+            let result = try LogN.HttpResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .leaderboardFetched(owner: owner, result: result)
+        case 138:
+            let owner = try deserializer.deserialize_str()
+            let result = try LogN.KeyValueResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .leaderboardRestored(owner: owner, result: result)
+        case 139:
+            try deserializer.decrease_container_depth()
+            return .nicknameStarted
+        case 140:
+            let x = try deserializer.deserialize_str()
+            try deserializer.decrease_container_depth()
+            return .nicknameChecked(x)
+        case 141:
+            try deserializer.decrease_container_depth()
+            return .nicknameBack
+        case 142:
+            let x = try deserializer.deserialize_str()
+            try deserializer.decrease_container_depth()
+            return .nicknameSubmitted(x)
+        case 143:
+            let owner = try deserializer.deserialize_str()
+            let draft = try deserializer.deserialize_str()
+            let result = try LogN.HttpResult.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .nicknameSaved(owner: owner, draft: draft, result: result)
+        case 144:
+            try deserializer.decrease_container_depth()
+            return .nicknameFlowClosed
         default: throw DeserializationError.invalidInput(issue: "Unknown variant index for Event: \(index)")
         }
     }
@@ -2835,6 +2920,339 @@ indirect public enum KeyValueResult: Hashable, Equatable {
     }
 }
 
+/// A unidade do "atualizado há X". O número vai à parte, em `age_value`.
+indirect public enum LeaderboardAgeUnit: Hashable, Equatable {
+    case justNow
+    case minutes
+    case hours
+    case days
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        switch self {
+        case .justNow:
+            try serializer.serialize_variant_index(value: 0)
+        case .minutes:
+            try serializer.serialize_variant_index(value: 1)
+        case .hours:
+            try serializer.serialize_variant_index(value: 2)
+        case .days:
+            try serializer.serialize_variant_index(value: 3)
+        }
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> LeaderboardAgeUnit {
+        let index = try deserializer.deserialize_variant_index()
+        try deserializer.increase_container_depth()
+        switch index {
+        case 0:
+            try deserializer.decrease_container_depth()
+            return .justNow
+        case 1:
+            try deserializer.decrease_container_depth()
+            return .minutes
+        case 2:
+            try deserializer.decrease_container_depth()
+            return .hours
+        case 3:
+            try deserializer.decrease_container_depth()
+            return .days
+        default: throw DeserializationError.invalidInput(issue: "Unknown variant index for LeaderboardAgeUnit: \(index)")
+        }
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> LeaderboardAgeUnit {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+/// O que a linha fixa do jogador mostra.
+indirect public enum LeaderboardMeStatus: Hashable, Equatable {
+    /// Com posição.
+    case ranked
+    /// Placar fechado, com XP: a linha vem com "—".
+    case waiting
+    /// Sem XP na trilha gratuita: o convite para acertar o primeiro desafio.
+    case zeroXp
+    /// Tirado do placar pela moderação ou por objeção: a linha sem posição.
+    case hidden
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        switch self {
+        case .ranked:
+            try serializer.serialize_variant_index(value: 0)
+        case .waiting:
+            try serializer.serialize_variant_index(value: 1)
+        case .zeroXp:
+            try serializer.serialize_variant_index(value: 2)
+        case .hidden:
+            try serializer.serialize_variant_index(value: 3)
+        }
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> LeaderboardMeStatus {
+        let index = try deserializer.deserialize_variant_index()
+        try deserializer.increase_container_depth()
+        switch index {
+        case 0:
+            try deserializer.decrease_container_depth()
+            return .ranked
+        case 1:
+            try deserializer.decrease_container_depth()
+            return .waiting
+        case 2:
+            try deserializer.decrease_container_depth()
+            return .zeroXp
+        case 3:
+            try deserializer.decrease_container_depth()
+            return .hidden
+        default: throw DeserializationError.invalidInput(issue: "Unknown variant index for LeaderboardMeStatus: \(index)")
+        }
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> LeaderboardMeStatus {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+/// Uma linha do placar. O nome é o apelido ou, sem ele, "jogador #N": o shell compõe a
+/// frase com o catálogo a partir de `anon_number`.
+public struct LeaderboardRow: Hashable, Equatable {
+    /// 0 quando não há posição (placar fechado, sem XP, oculto).
+    public var rank: Int32
+    public var anonNumber: Int32
+    public var nickname: String?
+    public var xp: Int32
+    public var isMe: Bool
+
+    public init(rank: Int32, anonNumber: Int32, nickname: String?, xp: Int32, isMe: Bool) {
+        self.rank = rank
+        self.anonNumber = anonNumber
+        self.nickname = nickname
+        self.xp = xp
+        self.isMe = isMe
+    }
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        try serializer.serialize_i32(value: self.rank)
+        try serializer.serialize_i32(value: self.anonNumber)
+        try serializeOption(value: self.nickname, serializer: serializer) { value, serializer in
+            try serializer.serialize_str(value: value)
+        }
+        try serializer.serialize_i32(value: self.xp)
+        try serializer.serialize_bool(value: self.isMe)
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> LeaderboardRow {
+        try deserializer.increase_container_depth()
+        let rank = try deserializer.deserialize_i32()
+        let anonNumber = try deserializer.deserialize_i32()
+        let nickname = try deserializeOption(deserializer: deserializer) { deserializer in
+            try deserializer.deserialize_str()
+        }
+        let xp = try deserializer.deserialize_i32()
+        let isMe = try deserializer.deserialize_bool()
+        try deserializer.decrease_container_depth()
+        return LeaderboardRow(rank: rank, anonNumber: anonNumber, nickname: nickname, xp: xp, isMe: isMe)
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> LeaderboardRow {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+/// Em que pé está o placar geral de XP (docs/specs/logn_placar_spec.md, seção 7).
+indirect public enum LeaderboardState: Hashable, Equatable {
+    /// Visitante ou sem sessão: a chamada para criar conta.
+    case signedOut
+    /// Pedido no ar e nada guardado para mostrar.
+    case loading
+    /// Ainda não há jogadores para abrir: `missing` e `threshold` dizem quanto falta.
+    case closed
+    case open
+    /// Sem rede e nada guardado.
+    case unavailable
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        switch self {
+        case .signedOut:
+            try serializer.serialize_variant_index(value: 0)
+        case .loading:
+            try serializer.serialize_variant_index(value: 1)
+        case .closed:
+            try serializer.serialize_variant_index(value: 2)
+        case .open:
+            try serializer.serialize_variant_index(value: 3)
+        case .unavailable:
+            try serializer.serialize_variant_index(value: 4)
+        }
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> LeaderboardState {
+        let index = try deserializer.deserialize_variant_index()
+        try deserializer.increase_container_depth()
+        switch index {
+        case 0:
+            try deserializer.decrease_container_depth()
+            return .signedOut
+        case 1:
+            try deserializer.decrease_container_depth()
+            return .loading
+        case 2:
+            try deserializer.decrease_container_depth()
+            return .closed
+        case 3:
+            try deserializer.decrease_container_depth()
+            return .open
+        case 4:
+            try deserializer.decrease_container_depth()
+            return .unavailable
+        default: throw DeserializationError.invalidInput(issue: "Unknown variant index for LeaderboardState: \(index)")
+        }
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> LeaderboardState {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+/// O placar como a tela o desenha.
+public struct LeaderboardView: Hashable, Equatable {
+    public var state: LeaderboardState
+    /// Quantos faltam para abrir, e o limiar que o servidor usa ("7 / 10").
+    public var missing: UInt32
+    public var threshold: UInt32
+    public var rows: [LeaderboardRow]
+    /// A linha do jogador, para a parte fixa embaixo.
+    public var me: LeaderboardRow
+    public var meStatus: LeaderboardMeStatus
+    /// A linha do jogador está em `rows`; a parte fixa só aparece quando ela sai de vista.
+    public var meInRows: Bool
+    public var ageUnit: LeaderboardAgeUnit
+    public var ageValue: UInt32
+    /// Atualizando com a lista guardada na tela.
+    public var refreshing: Bool
+    /// A lista na tela não veio agora: a faixa "sem conexão · atualizado há X".
+    public var offline: Bool
+
+    public init(state: LeaderboardState, missing: UInt32, threshold: UInt32, rows: [LeaderboardRow], me: LeaderboardRow, meStatus: LeaderboardMeStatus, meInRows: Bool, ageUnit: LeaderboardAgeUnit, ageValue: UInt32, refreshing: Bool, offline: Bool) {
+        self.state = state
+        self.missing = missing
+        self.threshold = threshold
+        self.rows = rows
+        self.me = me
+        self.meStatus = meStatus
+        self.meInRows = meInRows
+        self.ageUnit = ageUnit
+        self.ageValue = ageValue
+        self.refreshing = refreshing
+        self.offline = offline
+    }
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        try self.state.serialize(serializer: serializer)
+        try serializer.serialize_u32(value: self.missing)
+        try serializer.serialize_u32(value: self.threshold)
+        try serializeArray(value: self.rows, serializer: serializer) { item, serializer in
+            try item.serialize(serializer: serializer)
+        }
+        try self.me.serialize(serializer: serializer)
+        try self.meStatus.serialize(serializer: serializer)
+        try serializer.serialize_bool(value: self.meInRows)
+        try self.ageUnit.serialize(serializer: serializer)
+        try serializer.serialize_u32(value: self.ageValue)
+        try serializer.serialize_bool(value: self.refreshing)
+        try serializer.serialize_bool(value: self.offline)
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> LeaderboardView {
+        try deserializer.increase_container_depth()
+        let state = try LogN.LeaderboardState.deserialize(deserializer: deserializer)
+        let missing = try deserializer.deserialize_u32()
+        let threshold = try deserializer.deserialize_u32()
+        let rows = try deserializeArray(deserializer: deserializer) { deserializer in
+            try LogN.LeaderboardRow.deserialize(deserializer: deserializer)
+        }
+        let me = try LogN.LeaderboardRow.deserialize(deserializer: deserializer)
+        let meStatus = try LogN.LeaderboardMeStatus.deserialize(deserializer: deserializer)
+        let meInRows = try deserializer.deserialize_bool()
+        let ageUnit = try LogN.LeaderboardAgeUnit.deserialize(deserializer: deserializer)
+        let ageValue = try deserializer.deserialize_u32()
+        let refreshing = try deserializer.deserialize_bool()
+        let offline = try deserializer.deserialize_bool()
+        try deserializer.decrease_container_depth()
+        return LeaderboardView(state: state, missing: missing, threshold: threshold, rows: rows, me: me, meStatus: meStatus, meInRows: meInRows, ageUnit: ageUnit, ageValue: ageValue, refreshing: refreshing, offline: offline)
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> LeaderboardView {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
 /// Severidade de um registro de log.
 indirect public enum LogLevel: Hashable, Equatable {
     case debug
@@ -3292,6 +3710,110 @@ indirect public enum MonitoringOperation: Hashable, Equatable {
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> MonitoringOperation {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+/// A folha de escolher apelido.
+public struct NicknameFlowView: Hashable, Equatable {
+    public var step: NicknameStep
+    /// O apelido normalizado, depois do "Continuar".
+    public var draft: String
+    public var submitting: Bool
+    /// `Silent` sem erro.
+    public var error: StatusKey
+
+    public init(step: NicknameStep, draft: String, submitting: Bool, error: StatusKey) {
+        self.step = step
+        self.draft = draft
+        self.submitting = submitting
+        self.error = error
+    }
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        try self.step.serialize(serializer: serializer)
+        try serializer.serialize_str(value: self.draft)
+        try serializer.serialize_bool(value: self.submitting)
+        try self.error.serialize(serializer: serializer)
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> NicknameFlowView {
+        try deserializer.increase_container_depth()
+        let step = try LogN.NicknameStep.deserialize(deserializer: deserializer)
+        let draft = try deserializer.deserialize_str()
+        let submitting = try deserializer.deserialize_bool()
+        let error = try LogN.StatusKey.deserialize(deserializer: deserializer)
+        try deserializer.decrease_container_depth()
+        return NicknameFlowView(step: step, draft: draft, submitting: submitting, error: error)
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> NicknameFlowView {
+        let deserializer = BincodeDeserializer.init(input: input);
+        let obj = try deserialize(deserializer: deserializer)
+        if deserializer.get_buffer_offset() < input.count {
+            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
+        }
+        return obj
+    }
+}
+
+/// O passo da folha de escolher apelido.
+indirect public enum NicknameStep: Hashable, Equatable {
+    case input
+    /// "Não dá para trocar depois", com o apelido em destaque.
+    case confirm
+    case done
+
+    public func serialize<S: Serializer>(serializer: S) throws {
+        try serializer.increase_container_depth()
+        switch self {
+        case .input:
+            try serializer.serialize_variant_index(value: 0)
+        case .confirm:
+            try serializer.serialize_variant_index(value: 1)
+        case .done:
+            try serializer.serialize_variant_index(value: 2)
+        }
+        try serializer.decrease_container_depth()
+    }
+
+    public func bincodeSerialize() throws -> [UInt8] {
+        let serializer = BincodeSerializer.init();
+        try self.serialize(serializer: serializer)
+        return serializer.get_bytes()
+    }
+
+    public static func deserialize<D: Deserializer>(deserializer: D) throws -> NicknameStep {
+        let index = try deserializer.deserialize_variant_index()
+        try deserializer.increase_container_depth()
+        switch index {
+        case 0:
+            try deserializer.decrease_container_depth()
+            return .input
+        case 1:
+            try deserializer.decrease_container_depth()
+            return .confirm
+        case 2:
+            try deserializer.decrease_container_depth()
+            return .done
+        default: throw DeserializationError.invalidInput(issue: "Unknown variant index for NicknameStep: \(index)")
+        }
+    }
+
+    public static func bincodeDeserialize(input: [UInt8]) throws -> NicknameStep {
         let deserializer = BincodeDeserializer.init(input: input);
         let obj = try deserialize(deserializer: deserializer)
         if deserializer.get_buffer_offset() < input.count {
@@ -4167,6 +4689,14 @@ indirect public enum StatusKey: Hashable, Equatable {
     /// `otp_locked`: código errado demais para este e-mail. Nenhum código novo sai até a
     /// janela do servidor vencer (um dia), e esperar um minuto não resolve.
     case codeLocked
+    /// O apelido do placar fora do formato (3 a 20 de `a-z0-9_`).
+    case nicknameInvalid
+    /// O apelido é um nome reservado, ou um que a moderação bloqueou.
+    case nicknameReserved
+    /// Outra conta já tem o apelido.
+    case nicknameTaken
+    /// A conta já escolheu o apelido, ou perdeu a chance.
+    case nicknameLocked
 
     public func serialize<S: Serializer>(serializer: S) throws {
         try serializer.increase_container_depth()
@@ -4261,6 +4791,14 @@ indirect public enum StatusKey: Hashable, Equatable {
             try serializer.serialize_variant_index(value: 43)
         case .codeLocked:
             try serializer.serialize_variant_index(value: 44)
+        case .nicknameInvalid:
+            try serializer.serialize_variant_index(value: 45)
+        case .nicknameReserved:
+            try serializer.serialize_variant_index(value: 46)
+        case .nicknameTaken:
+            try serializer.serialize_variant_index(value: 47)
+        case .nicknameLocked:
+            try serializer.serialize_variant_index(value: 48)
         }
         try serializer.decrease_container_depth()
     }
@@ -4410,6 +4948,18 @@ indirect public enum StatusKey: Hashable, Equatable {
         case 44:
             try deserializer.decrease_container_depth()
             return .codeLocked
+        case 45:
+            try deserializer.decrease_container_depth()
+            return .nicknameInvalid
+        case 46:
+            try deserializer.decrease_container_depth()
+            return .nicknameReserved
+        case 47:
+            try deserializer.decrease_container_depth()
+            return .nicknameTaken
+        case 48:
+            try deserializer.decrease_container_depth()
+            return .nicknameLocked
         default: throw DeserializationError.invalidInput(issue: "Unknown variant index for StatusKey: \(index)")
         }
     }
@@ -5274,8 +5824,17 @@ public struct ViewModel: Hashable, Equatable {
     /// devolver com `PurchaseFinished`.
     public var purchasesToFinish: [String]
     public var purchaseInFlight: Bool
+    /// O placar geral de XP (docs/specs/logn_placar_spec.md).
+    public var leaderboard: LeaderboardView
+    /// O nome do placar: o número de "jogador #N" (0 enquanto o servidor não disse) e o
+    /// apelido, quando houver. O Perfil mostra o apelido ou a frase do catálogo.
+    public var profileAnonNumber: Int32
+    public var profileNickname: String?
+    /// Mostra "Escolher apelido": conta sem apelido e com a chance de pé.
+    public var canChooseNickname: Bool
+    public var nicknameFlow: NicknameFlowView
 
-    public init(status: StatusKey, pendingSyncCount: UInt32, isSyncing: Bool, isFetching: Bool, isAuthenticating: Bool, hasAccessToken: Bool, hasSession: Bool, isOfflineSession: Bool, trailFromBundle: Bool, trailGeneratedAt: String, matchLeft: Bool, isGuest: Bool, locale: String, challenges: [Challenge], nodes: [SkillNode], otpEmail: String, accountEmail: String, otpVerified: Bool, globalXp: Int32, bugsFound: Int32, dryRunsCompleted: Int32, level: Int32, xpIntoLevel: Int32, xpForLevel: Int32, xpToNextLevel: Int32, challengesCompleted: Int32, balloonsUp: Int32, justLoggedOut: Bool, passwordResetDone: Bool, displayName: String, matchView: MatchViewModel, contestName: String, standingsGlobal: [StandingRow], standingsHome: [StandingRow], userStanding: StandingRow, scoreboard: [ScoreboardRow], standingsAreSample: Bool, authCooldownSeconds: UInt32, resendCooldownSeconds: UInt32, legalVersionsReady: Bool, minAge: UInt32, deletionPurgeAfter: Int64, accountRestoredNotice: Bool, socialSignupRequired: Bool, analyticsEnabled: Bool, boot: BootViewModel, termsUpdate: TermsUpdateViewModel?, termsNotice: Bool, resumeEmail: String, accountUserId: String, tracks: [TrackView], currentTrack: TrackView, catalogBadge: CatalogBadge, showOnboarding: Bool, purchaseFlow: PurchaseFlowView, restoreResult: RestoreResultView, sampleOffer: SampleOfferView, purchasesToFinish: [String], purchaseInFlight: Bool) {
+    public init(status: StatusKey, pendingSyncCount: UInt32, isSyncing: Bool, isFetching: Bool, isAuthenticating: Bool, hasAccessToken: Bool, hasSession: Bool, isOfflineSession: Bool, trailFromBundle: Bool, trailGeneratedAt: String, matchLeft: Bool, isGuest: Bool, locale: String, challenges: [Challenge], nodes: [SkillNode], otpEmail: String, accountEmail: String, otpVerified: Bool, globalXp: Int32, bugsFound: Int32, dryRunsCompleted: Int32, level: Int32, xpIntoLevel: Int32, xpForLevel: Int32, xpToNextLevel: Int32, challengesCompleted: Int32, balloonsUp: Int32, justLoggedOut: Bool, passwordResetDone: Bool, displayName: String, matchView: MatchViewModel, contestName: String, standingsGlobal: [StandingRow], standingsHome: [StandingRow], userStanding: StandingRow, scoreboard: [ScoreboardRow], standingsAreSample: Bool, authCooldownSeconds: UInt32, resendCooldownSeconds: UInt32, legalVersionsReady: Bool, minAge: UInt32, deletionPurgeAfter: Int64, accountRestoredNotice: Bool, socialSignupRequired: Bool, analyticsEnabled: Bool, boot: BootViewModel, termsUpdate: TermsUpdateViewModel?, termsNotice: Bool, resumeEmail: String, accountUserId: String, tracks: [TrackView], currentTrack: TrackView, catalogBadge: CatalogBadge, showOnboarding: Bool, purchaseFlow: PurchaseFlowView, restoreResult: RestoreResultView, sampleOffer: SampleOfferView, purchasesToFinish: [String], purchaseInFlight: Bool, leaderboard: LeaderboardView, profileAnonNumber: Int32, profileNickname: String?, canChooseNickname: Bool, nicknameFlow: NicknameFlowView) {
         self.status = status
         self.pendingSyncCount = pendingSyncCount
         self.isSyncing = isSyncing
@@ -5335,6 +5894,11 @@ public struct ViewModel: Hashable, Equatable {
         self.sampleOffer = sampleOffer
         self.purchasesToFinish = purchasesToFinish
         self.purchaseInFlight = purchaseInFlight
+        self.leaderboard = leaderboard
+        self.profileAnonNumber = profileAnonNumber
+        self.profileNickname = profileNickname
+        self.canChooseNickname = canChooseNickname
+        self.nicknameFlow = nicknameFlow
     }
 
     public func serialize<S: Serializer>(serializer: S) throws {
@@ -5414,6 +5978,13 @@ public struct ViewModel: Hashable, Equatable {
             try serializer.serialize_str(value: item)
         }
         try serializer.serialize_bool(value: self.purchaseInFlight)
+        try self.leaderboard.serialize(serializer: serializer)
+        try serializer.serialize_i32(value: self.profileAnonNumber)
+        try serializeOption(value: self.profileNickname, serializer: serializer) { value, serializer in
+            try serializer.serialize_str(value: value)
+        }
+        try serializer.serialize_bool(value: self.canChooseNickname)
+        try self.nicknameFlow.serialize(serializer: serializer)
         try serializer.decrease_container_depth()
     }
 
@@ -5500,8 +6071,15 @@ public struct ViewModel: Hashable, Equatable {
             try deserializer.deserialize_str()
         }
         let purchaseInFlight = try deserializer.deserialize_bool()
+        let leaderboard = try LogN.LeaderboardView.deserialize(deserializer: deserializer)
+        let profileAnonNumber = try deserializer.deserialize_i32()
+        let profileNickname = try deserializeOption(deserializer: deserializer) { deserializer in
+            try deserializer.deserialize_str()
+        }
+        let canChooseNickname = try deserializer.deserialize_bool()
+        let nicknameFlow = try LogN.NicknameFlowView.deserialize(deserializer: deserializer)
         try deserializer.decrease_container_depth()
-        return ViewModel(status: status, pendingSyncCount: pendingSyncCount, isSyncing: isSyncing, isFetching: isFetching, isAuthenticating: isAuthenticating, hasAccessToken: hasAccessToken, hasSession: hasSession, isOfflineSession: isOfflineSession, trailFromBundle: trailFromBundle, trailGeneratedAt: trailGeneratedAt, matchLeft: matchLeft, isGuest: isGuest, locale: locale, challenges: challenges, nodes: nodes, otpEmail: otpEmail, accountEmail: accountEmail, otpVerified: otpVerified, globalXp: globalXp, bugsFound: bugsFound, dryRunsCompleted: dryRunsCompleted, level: level, xpIntoLevel: xpIntoLevel, xpForLevel: xpForLevel, xpToNextLevel: xpToNextLevel, challengesCompleted: challengesCompleted, balloonsUp: balloonsUp, justLoggedOut: justLoggedOut, passwordResetDone: passwordResetDone, displayName: displayName, matchView: matchView, contestName: contestName, standingsGlobal: standingsGlobal, standingsHome: standingsHome, userStanding: userStanding, scoreboard: scoreboard, standingsAreSample: standingsAreSample, authCooldownSeconds: authCooldownSeconds, resendCooldownSeconds: resendCooldownSeconds, legalVersionsReady: legalVersionsReady, minAge: minAge, deletionPurgeAfter: deletionPurgeAfter, accountRestoredNotice: accountRestoredNotice, socialSignupRequired: socialSignupRequired, analyticsEnabled: analyticsEnabled, boot: boot, termsUpdate: termsUpdate, termsNotice: termsNotice, resumeEmail: resumeEmail, accountUserId: accountUserId, tracks: tracks, currentTrack: currentTrack, catalogBadge: catalogBadge, showOnboarding: showOnboarding, purchaseFlow: purchaseFlow, restoreResult: restoreResult, sampleOffer: sampleOffer, purchasesToFinish: purchasesToFinish, purchaseInFlight: purchaseInFlight)
+        return ViewModel(status: status, pendingSyncCount: pendingSyncCount, isSyncing: isSyncing, isFetching: isFetching, isAuthenticating: isAuthenticating, hasAccessToken: hasAccessToken, hasSession: hasSession, isOfflineSession: isOfflineSession, trailFromBundle: trailFromBundle, trailGeneratedAt: trailGeneratedAt, matchLeft: matchLeft, isGuest: isGuest, locale: locale, challenges: challenges, nodes: nodes, otpEmail: otpEmail, accountEmail: accountEmail, otpVerified: otpVerified, globalXp: globalXp, bugsFound: bugsFound, dryRunsCompleted: dryRunsCompleted, level: level, xpIntoLevel: xpIntoLevel, xpForLevel: xpForLevel, xpToNextLevel: xpToNextLevel, challengesCompleted: challengesCompleted, balloonsUp: balloonsUp, justLoggedOut: justLoggedOut, passwordResetDone: passwordResetDone, displayName: displayName, matchView: matchView, contestName: contestName, standingsGlobal: standingsGlobal, standingsHome: standingsHome, userStanding: userStanding, scoreboard: scoreboard, standingsAreSample: standingsAreSample, authCooldownSeconds: authCooldownSeconds, resendCooldownSeconds: resendCooldownSeconds, legalVersionsReady: legalVersionsReady, minAge: minAge, deletionPurgeAfter: deletionPurgeAfter, accountRestoredNotice: accountRestoredNotice, socialSignupRequired: socialSignupRequired, analyticsEnabled: analyticsEnabled, boot: boot, termsUpdate: termsUpdate, termsNotice: termsNotice, resumeEmail: resumeEmail, accountUserId: accountUserId, tracks: tracks, currentTrack: currentTrack, catalogBadge: catalogBadge, showOnboarding: showOnboarding, purchaseFlow: purchaseFlow, restoreResult: restoreResult, sampleOffer: sampleOffer, purchasesToFinish: purchasesToFinish, purchaseInFlight: purchaseInFlight, leaderboard: leaderboard, profileAnonNumber: profileAnonNumber, profileNickname: profileNickname, canChooseNickname: canChooseNickname, nicknameFlow: nicknameFlow)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> ViewModel {

@@ -1,4 +1,5 @@
 pub mod domain;
+pub mod leaderboard;
 pub mod match_engine;
 pub mod mock_data;
 pub mod tracks;

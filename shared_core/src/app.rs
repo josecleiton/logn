@@ -268,6 +268,23 @@ pub enum Event {
     /// A fila de `owner` lida do disco, para tirar dela os eventos que um sync de antes
     /// da troca de dono já entregou.
     SyncedQueueRead { owner: String, sent: Vec<String>, result: KeyValueResult },
+    /// Abriu a aba Placar: mostra o guardado e pede o de agora (docs/specs/logn_placar_spec.md).
+    LeaderboardOpened,
+    /// Puxou para atualizar.
+    LeaderboardRefresh,
+    /// `owner` é de quem pediu: a resposta que chega depois de trocar de conta não entra.
+    LeaderboardFetched { owner: String, result: HttpResult },
+    LeaderboardRestored { owner: String, result: KeyValueResult },
+    /// Abriu a folha de escolher apelido.
+    NicknameStarted,
+    /// "Continuar": confere o formato e vai para a confirmação.
+    NicknameChecked(String),
+    /// "Voltar e corrigir".
+    NicknameBack,
+    /// "Confirmar": manda ao servidor. É uma escolha só.
+    NicknameSubmitted(String),
+    NicknameSaved { owner: String, draft: String, result: HttpResult },
+    NicknameFlowClosed,
 }
 
 /// O que o desfazer devolve. Existe só entre a saída e o jogador deixar a tela.
@@ -287,6 +304,9 @@ pub struct LogoutSnapshot {
     pub challenges: Vec<Challenge>,
     pub pending_events: Vec<GameEvent>,
     pub queue_owner: String,
+    /// O placar e o nome dele: a saída apaga do aparelho, o desfazer devolve.
+    pub leaderboard: Option<crate::leaderboard::LeaderboardCache>,
+    pub profile: crate::leaderboard::ProfileIdentity,
 }
 
 /// A abertura em andamento: o que a splash mostra.
@@ -359,6 +379,39 @@ pub struct PendingLegalChange {
     pub change: String,
     pub section: String,
     pub summary: String,
+}
+
+/// Abre ou fecha a folha do apelido do zero. O envio que ainda estiver no ar continua
+/// valendo: fechar e reabrir a folha não destrava um segundo PUT, e a resposta dele
+/// ainda grava o apelido.
+fn reset_nickname_flow(model: &mut Model) {
+    let in_flight = model.nickname_flow.submitting && model.nickname_flow.owner == model.user_id;
+    // O envio que levou 401 e espera a sessão: com a folha fechada, ele não sai mais.
+    if matches!(model.pending_retry_event, Some(Event::NicknameSubmitted(_))) {
+        model.pending_retry_event = None;
+    }
+    model.nickname_flow = crate::leaderboard::NicknameFlow {
+        owner: model.user_id.clone(),
+        submitting: in_flight,
+        ..Default::default()
+    };
+}
+
+/// Pede o placar, marcando de quem é o pedido.
+fn fetch_leaderboard(model: &mut Model) -> Command<Effect, Event> {
+    if model.access_token.is_none() {
+        // Sessão sem rede: nada a pedir, a lista guardada é o que há.
+        return Command::done();
+    }
+    model.leaderboard_in_flight = Some(model.user_id.clone());
+    let request = HttpRequest {
+        method: "GET".to_string(),
+        url: "/api/v1/leaderboard".to_string(),
+        headers: auth_headers(&model.access_token, &model.locale),
+        body: vec![],
+    };
+    let owner = model.user_id.clone();
+    Command::request_from_shell(request).then_send(move |result| Event::LeaderboardFetched { owner: owner.clone(), result })
 }
 
 /// Pergunta pelos termos, marcando de que conta é a pergunta.
@@ -774,6 +827,20 @@ pub struct Model {
     /// sobrevive ao rebase, que só troca o elo.
     pub sync_sent_ids: Vec<String>,
     pub sync_owner: String,
+    /// O placar geral de XP, com o dono. Fica no disco para a tela abrir sem rede.
+    pub leaderboard: Option<crate::leaderboard::LeaderboardCache>,
+    /// De que conta o placar guardado já foi lido. Outra conta na sessão lê de novo.
+    pub leaderboard_disk_read_for: String,
+    /// A leitura do disco ainda não voltou.
+    pub leaderboard_disk_pending: bool,
+    /// O pedido do placar no ar, por dono. Só a resposta esperada entra: a que chega
+    /// depois de sair, ou de outra conta, ou de um pedido já superado, fica de fora.
+    pub leaderboard_in_flight: Option<String>,
+    /// O último pedido do placar falhou (rede, servidor): a lista guardada é velha.
+    pub leaderboard_failed: bool,
+    /// O nome do placar da conta: número, apelido e se ainda pode escolher.
+    pub profile: crate::leaderboard::ProfileIdentity,
+    pub nickname_flow: crate::leaderboard::NicknameFlow,
 }
 
 /// "Restaurar compras" em andamento: quantas transações o shell mandou e como voltaram.
@@ -996,6 +1063,15 @@ pub struct ViewModel {
     /// devolver com `PurchaseFinished`.
     pub purchases_to_finish: Vec<String>,
     pub purchase_in_flight: bool,
+    /// O placar geral de XP (docs/specs/logn_placar_spec.md).
+    pub leaderboard: crate::domain::LeaderboardView,
+    /// O nome do placar: o número de "jogador #N" (0 enquanto o servidor não disse) e o
+    /// apelido, quando houver. O Perfil mostra o apelido ou a frase do catálogo.
+    pub profile_anon_number: i32,
+    pub profile_nickname: Option<String>,
+    /// Mostra "Escolher apelido": conta sem apelido e com a chance de pé.
+    pub can_choose_nickname: bool,
+    pub nickname_flow: crate::domain::NicknameFlowView,
 }
 
 #[effect(facet_typegen)]
@@ -1057,6 +1133,9 @@ fn save_offline_snapshot(model: &Model) -> Command<Effect, Event> {
         paid_track_xp: model.paid_track_xp.clone(),
         tracks: model.tracks.clone(),
         locale: model.content_locale.clone(),
+        anon_number: model.profile.anon_number,
+        nickname: model.profile.nickname.clone(),
+        nickname_locked: model.profile.nickname_locked,
     };
     Command::request_from_shell(KeyValueOperation::Set {
         key: "offline_snapshot".to_string(),
@@ -1460,6 +1539,13 @@ struct OfflineSnapshot {
     /// Língua do conteúdo guardado. Vazio é o retrato de antes das línguas: pt-BR.
     #[serde(default)]
     locale: String,
+    /// O nome do placar, para o Perfil abrir sem rede. 0 é o retrato de antes dele.
+    #[serde(default)]
+    anon_number: i32,
+    #[serde(default)]
+    nickname: Option<String>,
+    #[serde(default)]
+    nickname_locked: bool,
 }
 
 /// Tira o "A · " da frente do nome do problema.
@@ -2450,6 +2536,13 @@ impl App for LogNApp {
                     // no aparelho, espera a dona dela voltar.
                     .and(Command::request_from_shell(KeyValueOperation::Delete { key: queue_key(&model.queue_owner) }).then_send(|_| Event::Ping))
                     .and(Command::request_from_shell(KeyValueOperation::Delete { key: "offline_snapshot".into() }).then_send(|_| Event::Ping))
+                    // O placar guardado traz a linha de quem saiu. A resposta que ainda
+                    // estiver no ar não o regrava: ninguém mais a espera.
+                    .and({
+                        model.leaderboard_in_flight = None;
+                        model.nickname_flow = crate::leaderboard::NicknameFlow::default();
+                        Command::request_from_shell(KeyValueOperation::Delete { key: crate::leaderboard::LEADERBOARD_KEY.into() }).then_send(|_| Event::Ping)
+                    })
                     // A trilha escolhida é de quem saiu.
                     .and(Command::request_from_shell(KeyValueOperation::Delete { key: SELECTED_TRACK_KEY.into() }).then_send(|_| Event::Ping))
                     // Depois de sair, os eventos não seguem presos ao id da conta, e quem
@@ -2477,7 +2570,14 @@ impl App for LogNApp {
                     challenges: std::mem::take(&mut model.challenges),
                     pending_events: std::mem::take(&mut model.pending_events),
                     queue_owner: model.queue_owner.clone(),
+                    leaderboard: model.leaderboard.take(),
+                    profile: std::mem::take(&mut model.profile),
                 });
+                model.leaderboard_disk_read_for.clear();
+                model.leaderboard_disk_pending = false;
+                model.leaderboard_in_flight = None;
+                model.leaderboard_failed = false;
+                model.nickname_flow = crate::leaderboard::NicknameFlow::default();
 
                 model.is_guest = false;
                 model.session_offline = false;
@@ -2527,6 +2627,17 @@ impl App for LogNApp {
                 model.nodes = snapshot.nodes;
                 model.challenges = snapshot.challenges;
                 model.pending_events = snapshot.pending_events;
+                model.profile = snapshot.profile;
+                model.leaderboard = snapshot.leaderboard;
+                // O placar volta para o disco, como o resto que a saída apagou.
+                let board = match &model.leaderboard {
+                    Some(cache) => Command::request_from_shell(KeyValueOperation::Set {
+                        key: crate::leaderboard::LEADERBOARD_KEY.to_string(),
+                        value: serde_json::to_vec(cache).unwrap_or_default(),
+                    })
+                    .then_send(|_| Event::Ping),
+                    None => Command::done(),
+                };
                 model.last_hash = model.pending_events.last().map(|e| e.current_hash.clone()).unwrap_or_default();
                 // A fila do visitante que a saída começou a carregar chega depois e é
                 // descartada: o dono voltou a ser quem saiu.
@@ -2565,12 +2676,276 @@ impl App for LogNApp {
                 let downloads = self.update(Event::LoadTrackDownloads, model);
                 token
                     .and(account)
+                    .and(board)
                     .and(Command::request_from_shell(store_queue(model)).then_send(|_| Event::Ping))
                     .and(downloads)
                     .and(render::render())
             }
 
             Event::LogoutUndone(_) => render::render(),
+
+            Event::LeaderboardOpened => {
+                if model.access_token.is_none() && !model.session_offline {
+                    return render::render();
+                }
+                let owner = model.user_id.clone();
+                let disk = if model.leaderboard_disk_read_for == owner {
+                    Command::done()
+                } else {
+                    model.leaderboard_disk_read_for = owner.clone();
+                    model.leaderboard_disk_pending = true;
+                    let o = owner.clone();
+                    Command::request_from_shell(KeyValueOperation::Get { key: crate::leaderboard::LEADERBOARD_KEY.to_string() })
+                        .then_send(move |result| Event::LeaderboardRestored { owner: o.clone(), result })
+                };
+                let fetch = if model.leaderboard_in_flight.as_deref() == Some(owner.as_str()) {
+                    Command::done()
+                } else {
+                    fetch_leaderboard(model)
+                };
+                disk.and(fetch).and(render::render())
+            }
+
+            Event::LeaderboardRefresh => {
+                // Um pedido por vez: dois no ar podiam voltar fora de ordem.
+                if model.leaderboard_in_flight.as_deref() == Some(model.user_id.as_str()) {
+                    return render::render();
+                }
+                fetch_leaderboard(model).and(render::render())
+            }
+
+            Event::LeaderboardRestored { owner, result } => {
+                if owner != model.user_id {
+                    return Command::done();
+                }
+                model.leaderboard_disk_pending = false;
+                let KeyValueResult::Ok { response: KeyValueResponse::Get { value: crux_kv::Value::Bytes(bytes) } } = result else {
+                    return render::render();
+                };
+                match serde_json::from_slice::<crate::leaderboard::LeaderboardCache>(&bytes) {
+                    // O guardado é de outra conta (a sessão venceu sem sair): fora.
+                    Ok(cache) if cache.owner != model.user_id => {
+                        Command::request_from_shell(KeyValueOperation::Delete { key: crate::leaderboard::LEADERBOARD_KEY.into() })
+                            .then_send(|_| Event::Ping)
+                    }
+                    Ok(cache) => {
+                        // A rede pode ter chegado antes do disco: fica o mais novo.
+                        let newer = model
+                            .leaderboard
+                            .as_ref()
+                            .map_or(true, |current| cache.board.generated_at > current.board.generated_at);
+                        if newer {
+                            model.leaderboard = Some(cache);
+                        }
+                        render::render()
+                    }
+                    Err(_) => render::render(),
+                }
+            }
+
+            Event::LeaderboardFetched { owner, result } => {
+                if model.leaderboard_in_flight.as_ref() != Some(&owner) {
+                    return Command::done();
+                }
+                model.leaderboard_in_flight = None;
+                if owner != model.user_id {
+                    return Command::done();
+                }
+                match result {
+                    HttpResult::Ok(response) if response.status == 200 => {
+                        let Ok(board) = serde_json::from_slice::<crate::leaderboard::Board>(&response.body) else {
+                            model.leaderboard_failed = true;
+                            return render::render();
+                        };
+                        model.leaderboard_failed = false;
+                        // O placar também diz o nome da conta: o Perfil acompanha. Um
+                        // apelido recém-salvo não volta a "jogador #N" por uma resposta
+                        // que saiu antes dele; o /progress é quem corrige de vez.
+                        if board.me.anon_number > 0 {
+                            if !model.profile.belongs_to(&owner) {
+                                model.profile = crate::leaderboard::ProfileIdentity::default();
+                            }
+                            model.profile.owner = owner.clone();
+                            model.profile.anon_number = board.me.anon_number;
+                            if board.me.nickname.is_some() {
+                                model.profile.nickname = board.me.nickname.clone();
+                                model.profile.nickname_locked = true;
+                            }
+                        }
+                        let cache = crate::leaderboard::LeaderboardCache { owner, board };
+                        let store = Command::request_from_shell(KeyValueOperation::Set {
+                            key: crate::leaderboard::LEADERBOARD_KEY.to_string(),
+                            value: serde_json::to_vec(&cache).unwrap_or_default(),
+                        })
+                        .then_send(|_| Event::Ping);
+                        model.leaderboard = Some(cache);
+                        store.and(render::render())
+                    }
+                    HttpResult::Ok(response) if response.status == 401 => {
+                        model.pending_retry_event = Some(Event::LeaderboardRefresh);
+                        self.update(Event::AttemptRefresh, model)
+                    }
+                    // Sem rede, 429 ou erro: a lista guardada fica, marcada como velha.
+                    _ => {
+                        model.leaderboard_failed = true;
+                        render::render()
+                    }
+                }
+            }
+
+            Event::NicknameStarted => {
+                reset_nickname_flow(model);
+                render::render()
+            }
+
+            Event::NicknameChecked(raw) => {
+                model.nickname_flow.owner = model.user_id.clone();
+                match crate::leaderboard::normalize_nickname(&raw) {
+                    Some(draft) => {
+                        model.nickname_flow.draft = draft;
+                        model.nickname_flow.error = StatusKey::Silent;
+                        model.nickname_flow.step = crate::domain::NicknameStep::Confirm;
+                    }
+                    None => {
+                        model.nickname_flow.error = StatusKey::NicknameInvalid;
+                        model.nickname_flow.step = crate::domain::NicknameStep::Input;
+                    }
+                }
+                render::render()
+            }
+
+            Event::NicknameBack => {
+                model.nickname_flow.step = crate::domain::NicknameStep::Input;
+                render::render()
+            }
+
+            Event::NicknameSubmitted(raw) => {
+                let mine = model.nickname_flow.owner == model.user_id;
+                if model.nickname_flow.submitting && mine {
+                    return Command::done();
+                }
+                // A repetição depois do 401 só vale se a confirmação ainda está na tela:
+                // fechada a folha, o pedido velho não sai sozinho.
+                if model.nickname_flow.retry {
+                    model.nickname_flow.retry = false;
+                    if !mine || model.nickname_flow.step != crate::domain::NicknameStep::Confirm {
+                        return Command::done();
+                    }
+                }
+                model.nickname_flow.owner = model.user_id.clone();
+                // O Core confere de novo, sem contar que o shell passou pelo "Continuar".
+                let Some(draft) = crate::leaderboard::normalize_nickname(&raw) else {
+                    model.nickname_flow.error = StatusKey::NicknameInvalid;
+                    model.nickname_flow.step = crate::domain::NicknameStep::Input;
+                    return render::render();
+                };
+                let profile_locked = model.profile.belongs_to(&model.user_id)
+                    && (model.profile.nickname.is_some() || model.profile.nickname_locked);
+                if profile_locked {
+                    model.nickname_flow.error = StatusKey::NicknameLocked;
+                    model.nickname_flow.step = crate::domain::NicknameStep::Input;
+                    return render::render();
+                }
+                if model.access_token.is_none() {
+                    model.nickname_flow.error = StatusKey::NoConnection;
+                    model.nickname_flow.step = crate::domain::NicknameStep::Input;
+                    return render::render();
+                }
+                model.nickname_flow.submitting = true;
+                model.nickname_flow.draft = draft.clone();
+                let request = HttpRequest {
+                    method: "PUT".to_string(),
+                    url: "/api/v1/profile/nickname".to_string(),
+                    headers: auth_headers(&model.access_token, &model.locale),
+                    body: serde_json::json!({ "nickname": draft }).to_string().into_bytes(),
+                };
+                let owner = model.user_id.clone();
+                Command::request_from_shell(request)
+                    .then_send(move |result| Event::NicknameSaved { owner: owner.clone(), draft: draft.clone(), result })
+                    .and(render::render())
+            }
+
+            Event::NicknameSaved { owner, draft, result } => {
+                // Só a resposta que a folha espera: a que chega depois de sair (que zera a
+                // folha) ou de outra conta fica de fora.
+                if owner != model.user_id || model.nickname_flow.owner != owner || !model.nickname_flow.submitting {
+                    return Command::done();
+                }
+                model.nickname_flow.submitting = false;
+                match result {
+                    HttpResult::Ok(response) if response.status == 200 => {
+                        #[derive(Deserialize)]
+                        struct Saved { nickname: String }
+                        let nickname = serde_json::from_slice::<Saved>(&response.body)
+                            .map(|s| s.nickname)
+                            .unwrap_or(draft);
+                        if !model.profile.belongs_to(&owner) {
+                            model.profile = crate::leaderboard::ProfileIdentity::default();
+                        }
+                        model.profile.owner = owner.clone();
+                        model.profile.nickname = Some(nickname.clone());
+                        model.profile.nickname_locked = true;
+                        model.nickname_flow.draft = nickname.clone();
+                        model.nickname_flow.error = StatusKey::Silent;
+                        model.nickname_flow.step = crate::domain::NicknameStep::Done;
+                        // A lista guardada já mostra o nome novo, sem esperar o próximo GET.
+                        let store = match model.leaderboard.as_mut() {
+                            Some(cache) => {
+                                cache.board.me.nickname = Some(nickname.clone());
+                                for row in cache.board.rows.iter_mut().filter(|r| r.is_me) {
+                                    row.nickname = Some(nickname.clone());
+                                }
+                                Command::request_from_shell(KeyValueOperation::Set {
+                                    key: crate::leaderboard::LEADERBOARD_KEY.to_string(),
+                                    value: serde_json::to_vec(cache).unwrap_or_default(),
+                                })
+                                .then_send(|_| Event::Ping)
+                            }
+                            None => Command::done(),
+                        };
+                        return store.and(save_offline_snapshot(model)).and(render::render());
+                    }
+                    HttpResult::Ok(response) if response.status == 401 => {
+                        model.nickname_flow.retry = true;
+                        model.pending_retry_event = Some(Event::NicknameSubmitted(draft));
+                        return self.update(Event::AttemptRefresh, model);
+                    }
+                    HttpResult::Ok(response) if response.status == 429 => {
+                        model.nickname_flow.error = StatusKey::RateLimited;
+                    }
+                    HttpResult::Ok(response) => {
+                        let code = api_code(&response.body);
+                        // Um segundo envio que chega depois do primeiro ter gravado: não é
+                        // erro, o apelido já é da conta.
+                        if code.as_deref() == Some("nickname_locked") && model.profile.nickname.is_some() {
+                            model.nickname_flow.error = StatusKey::Silent;
+                            model.nickname_flow.step = crate::domain::NicknameStep::Done;
+                            return render::render();
+                        }
+                        model.nickname_flow.error = match code.as_deref() {
+                            Some("nickname_invalid") => StatusKey::NicknameInvalid,
+                            Some("nickname_reserved") => StatusKey::NicknameReserved,
+                            Some("nickname_taken") => StatusKey::NicknameTaken,
+                            Some("nickname_locked") => {
+                                model.profile.owner = owner.clone();
+                                model.profile.nickname_locked = true;
+                                StatusKey::NicknameLocked
+                            }
+                            _ => StatusKey::ServerUnreadable,
+                        };
+                    }
+                    HttpResult::Err(_) => {
+                        model.nickname_flow.error = StatusKey::NoConnection;
+                    }
+                }
+                model.nickname_flow.step = crate::domain::NicknameStep::Input;
+                render::render()
+            }
+
+            Event::NicknameFlowClosed => {
+                reset_nickname_flow(model);
+                render::render()
+            }
 
             Event::Tick { now } => {
                 model.now = now;
@@ -2618,6 +2993,15 @@ impl App for LogNApp {
                         model.paid_challenges = snap.paid_challenge_ids;
                         model.paid_track_xp = snap.paid_track_xp;
                         model.tracks = snap.tracks;
+                        if snap.anon_number > 0 {
+                            // Sem dono: o retrato é sempre da conta do aparelho.
+                            model.profile = crate::leaderboard::ProfileIdentity {
+                                owner: String::new(),
+                                anon_number: snap.anon_number,
+                                nickname: snap.nickname,
+                                nickname_locked: snap.nickname_locked,
+                            };
+                        }
                         credit_queued_answers(model);
                         let snap_locale = if snap.locale.is_empty() { "pt-BR".to_string() } else { snap.locale };
                         // Retrato em outra língua (o app mudou de língua sem rede): o XP e
@@ -2921,6 +3305,13 @@ impl App for LogNApp {
                             paid_challenge_ids: Vec<String>,
                             #[serde(default)]
                             paid_track_xp: std::collections::HashMap<String, i32>,
+                            // O nome do placar. Servidor anterior ao placar não manda.
+                            #[serde(default)]
+                            anon_number: i32,
+                            #[serde(default)]
+                            nickname: Option<String>,
+                            #[serde(default)]
+                            nickname_locked: bool,
                         }
 
                         if let Ok(stats) = serde_json::from_slice::<Stats>(&response.body) {
@@ -2929,6 +3320,14 @@ impl App for LogNApp {
                             model.dry_runs_completed = stats.dry_runs_completed;
                             model.paid_challenges = stats.paid_challenge_ids;
                             model.paid_track_xp = stats.paid_track_xp;
+                            if stats.anon_number > 0 {
+                                model.profile = crate::leaderboard::ProfileIdentity {
+                                    owner: model.user_id.clone(),
+                                    anon_number: stats.anon_number,
+                                    nickname: stats.nickname,
+                                    nickname_locked: stats.nickname_locked,
+                                };
+                            }
                             credit_queued_answers(model);
                             return save_offline_snapshot(model);
                         }
@@ -3910,6 +4309,13 @@ Event::FetchChallenges => {
                         let delete = |key: &str| {
                             Command::request_from_shell(KeyValueOperation::Delete { key: key.into() }).then_send(|_| Event::Ping)
                         };
+                        model.leaderboard = None;
+                        model.leaderboard_disk_read_for.clear();
+                        model.leaderboard_disk_pending = false;
+                        model.leaderboard_in_flight = None;
+                        model.leaderboard_failed = false;
+                        model.profile = crate::leaderboard::ProfileIdentity::default();
+                        model.nickname_flow = crate::leaderboard::NicknameFlow::default();
                         let queue = queue_key(&model.queue_owner);
                         return delete("refresh_token")
                             .and(delete("account_email"))
@@ -3917,6 +4323,7 @@ Event::FetchChallenges => {
                             .and(delete("session_expires_at"))
                             .and(delete(&queue))
                             .and(delete("offline_snapshot"))
+                            .and(delete(crate::leaderboard::LEADERBOARD_KEY))
                             // O aparelho para de mandar eventos com o id da conta apagada;
                             // os que já estão no PostHog somem pela retenção de 30 dias.
                             .and(Command::request_from_shell(TelemetryOperation::Reset).then_send(|_| Event::TelemetrySent))
@@ -5029,6 +5436,8 @@ Event::FetchChallenges => {
     }
 
         fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        // O nome do placar só aparece para a conta de quem ele é.
+        let profile = Some(&model.profile).filter(|p| p.belongs_to(&model.user_id));
         let mut computed_nodes = model.nodes.clone();
         
         // Calculate DAG status
@@ -5202,6 +5611,29 @@ Event::FetchChallenges => {
             sample_offer: sample_offer(model),
             purchases_to_finish: model.purchases_to_finish.clone(),
             purchase_in_flight: model.purchase_in_flight,
+            leaderboard: crate::leaderboard::view(&crate::leaderboard::BoardContext {
+                signed_in: !model.is_guest && (model.access_token.is_some() || model.session_offline),
+                cache: model.leaderboard.as_ref().filter(|c| c.owner == model.user_id),
+                in_flight: model.leaderboard_in_flight.as_deref() == Some(model.user_id.as_str()),
+                disk_pending: model.leaderboard_disk_pending,
+                failed: model.leaderboard_failed,
+                session_offline: model.session_offline,
+                now: model.now,
+            }),
+            profile_anon_number: profile.map_or(0, |p| p.anon_number),
+            profile_nickname: profile.and_then(|p| p.nickname.clone()),
+            can_choose_nickname: !model.is_guest
+                && profile.is_some_and(|p| p.anon_number > 0 && p.nickname.is_none() && !p.nickname_locked),
+            nickname_flow: if model.nickname_flow.owner == model.user_id {
+                crate::domain::NicknameFlowView {
+                    step: model.nickname_flow.step.clone(),
+                    draft: model.nickname_flow.draft.clone(),
+                    submitting: model.nickname_flow.submitting,
+                    error: model.nickname_flow.error.clone(),
+                }
+            } else {
+                crate::domain::NicknameFlowView::default()
+            },
         }
     }
 }
@@ -9802,5 +10234,343 @@ mod tests {
         let everything = format!("{} {:?}", logs[0].message, logs[0].attributes);
         assert!(everything.contains("/api/v1/tracks/{id}/license"));
         assert!(!everything.contains(USER_A) && !everything.contains("trilha-1"));
+    }
+
+    // --- Placar geral de XP (docs/specs/logn_placar_spec.md) ---
+
+    fn board_session() -> Model {
+        Model { access_token: Some("a".into()), user_id: "u1".into(), ..Model::default() }
+    }
+
+    /// Entrega a resposta do placar como a de um pedido que estava no ar.
+    fn deliver_board(app: &LogNApp, model: &mut Model, result: HttpResult) -> Command<Effect, Event> {
+        model.leaderboard_in_flight = Some(model.user_id.clone());
+        app.update(Event::LeaderboardFetched { owner: model.user_id.clone(), result }, model)
+    }
+
+    fn board_body(open: bool, me_rank: Option<i32>, nickname: Option<&str>, generated_at: i64) -> HttpResult {
+        http(200, serde_json::json!({
+            "open": open, "missing": if open { 0 } else { 3 }, "threshold": 10,
+            "rows": if open { serde_json::json!([
+                { "rank": 1, "anon_number": 4821, "nickname": null, "xp": 900, "is_me": false },
+                { "rank": 2, "anon_number": 2207, "nickname": nickname, "xp": 50, "is_me": true },
+            ]) } else { serde_json::json!([]) },
+            "me": { "rank": me_rank, "anon_number": 2207, "nickname": nickname, "xp": 50, "hidden": false },
+            "generated_at": generated_at,
+        }))
+    }
+
+    #[test]
+    fn test_a_guest_sees_the_call_to_sign_up_and_asks_nothing() {
+        let app = LogNApp::default();
+        let mut model = Model { is_guest: true, ..Model::default() };
+        let mut cmd = app.update(Event::LeaderboardOpened, &mut model);
+        let (kv, http) = drain(&mut cmd);
+        assert!(kv.is_empty() && http.is_empty());
+        assert_eq!(app.view(&model).leaderboard.state, crate::domain::LeaderboardState::SignedOut);
+    }
+
+    #[test]
+    fn test_opening_the_leaderboard_reads_the_disk_and_asks_the_server() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        let mut cmd = app.update(Event::LeaderboardOpened, &mut model);
+        let (kv, http) = drain(&mut cmd);
+        assert!(matches!(&kv[..], [KeyValueOperation::Get { key }] if key == "leaderboard"));
+        assert_eq!(http.len(), 1);
+        assert_eq!(http[0].url, "/api/v1/leaderboard");
+        assert_eq!(app.view(&model).leaderboard.state, crate::domain::LeaderboardState::Loading);
+
+        let mut cmd = app.update(Event::LeaderboardFetched { owner: "u1".into(), result: board_body(true, Some(2), None, 100) }, &mut model);
+        let (kv, _) = drain(&mut cmd);
+        assert!(kv.iter().any(|op| matches!(op, KeyValueOperation::Set { key, .. } if key == "leaderboard")),
+            "a lista vai para o disco");
+        let view = app.view(&model);
+        assert_eq!(view.leaderboard.state, crate::domain::LeaderboardState::Open);
+        assert_eq!(view.leaderboard.rows.len(), 2);
+        assert!(view.leaderboard.me_in_rows);
+        assert_eq!(view.profile_anon_number, 2207);
+
+        // Abrir de novo não relê o disco.
+        let mut cmd = app.update(Event::LeaderboardOpened, &mut model);
+        let (kv, http) = drain(&mut cmd);
+        assert!(kv.is_empty() && http.len() == 1);
+    }
+
+    #[test]
+    fn test_a_network_error_keeps_the_stored_list_as_offline() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        let _ = deliver_board(&app, &mut model, HttpResult::Err(crux_http::HttpError::Io("x".into())));
+        assert_eq!(app.view(&model).leaderboard.state, crate::domain::LeaderboardState::Unavailable);
+
+        let _ = deliver_board(&app, &mut model, board_body(true, Some(2), None, 100));
+        let _ = app.update(Event::LeaderboardRefresh, &mut model);
+        let _ = deliver_board(&app, &mut model, HttpResult::Err(crux_http::HttpError::Io("x".into())));
+        let view = app.view(&model).leaderboard;
+        assert_eq!(view.state, crate::domain::LeaderboardState::Open);
+        assert!(view.offline && view.rows.len() == 2);
+    }
+
+    #[test]
+    fn test_a_closed_leaderboard_shows_how_many_are_missing() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        let _ = deliver_board(&app, &mut model, board_body(false, None, None, 100));
+        let view = app.view(&model).leaderboard;
+        assert_eq!(view.state, crate::domain::LeaderboardState::Closed);
+        assert_eq!((view.missing, view.threshold), (3, 10));
+        assert!(view.rows.is_empty());
+        assert_eq!(view.me_status, crate::domain::LeaderboardMeStatus::Waiting);
+    }
+
+    #[test]
+    fn test_the_leaderboard_401_renews_the_session_and_retries() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        let _ = deliver_board(&app, &mut model, api_error(401, "unauthenticated"));
+        assert!(matches!(model.pending_retry_event, Some(Event::LeaderboardRefresh)));
+    }
+
+    #[test]
+    fn test_another_accounts_board_never_enters() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        // Resposta de quem pediu antes de trocar de conta.
+        let _ = app.update(Event::LeaderboardFetched { owner: "u0".into(), result: board_body(true, Some(2), None, 100) }, &mut model);
+        assert!(model.leaderboard.is_none());
+
+        // No disco, de outra conta: apaga.
+        let stored = serde_json::to_vec(&crate::leaderboard::LeaderboardCache { owner: "u0".into(), board: Default::default() }).unwrap();
+        let mut cmd = app.update(Event::LeaderboardRestored { owner: "u1".into(), result: kv_bytes(stored) }, &mut model);
+        let (kv, _) = drain(&mut cmd);
+        assert!(matches!(&kv[..], [KeyValueOperation::Delete { key }] if key == "leaderboard"));
+        assert!(model.leaderboard.is_none());
+    }
+
+    #[test]
+    fn test_an_older_disk_board_does_not_replace_a_newer_one() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        let _ = deliver_board(&app, &mut model, board_body(true, Some(2), None, 200));
+        let old = crate::leaderboard::LeaderboardCache {
+            owner: "u1".into(),
+            board: crate::leaderboard::Board { generated_at: 100, ..Default::default() },
+        };
+        let _ = app.update(Event::LeaderboardRestored { owner: "u1".into(), result: kv_bytes(serde_json::to_vec(&old).unwrap()) }, &mut model);
+        assert_eq!(model.leaderboard.as_ref().unwrap().board.generated_at, 200);
+    }
+
+    #[test]
+    fn test_logout_deletes_the_board_and_undo_brings_it_back() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        let _ = deliver_board(&app, &mut model, board_body(true, Some(2), None, 100));
+
+        let mut cmd = app.update(Event::Logout, &mut model);
+        let (kv, _) = drain(&mut cmd);
+        assert!(kv.iter().any(|op| matches!(op, KeyValueOperation::Delete { key } if key == "leaderboard")));
+        let _ = app.update(Event::TokenCleared(KeyValueResult::Ok { response: KeyValueResponse::Delete { previous: crux_kv::Value::None } }), &mut model);
+        assert!(model.leaderboard.is_none());
+        assert_eq!(model.profile.anon_number, 0);
+
+        let mut cmd = app.update(Event::UndoLogout, &mut model);
+        let (kv, _) = drain(&mut cmd);
+        assert!(kv.iter().any(|op| matches!(op, KeyValueOperation::Set { key, .. } if key == "leaderboard")));
+        assert!(model.leaderboard.is_some());
+        assert_eq!(model.profile.anon_number, 2207);
+    }
+
+    #[test]
+    fn test_progress_brings_the_profile_name() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        let _ = app.update(Event::ProgressFetched(http(200, serde_json::json!({
+            "global_xp": 0, "bugs_found": 0, "dry_runs_completed": 0,
+            "anon_number": 4821, "nickname": null, "nickname_locked": false,
+        }))), &mut model);
+        let view = app.view(&model);
+        assert_eq!(view.profile_anon_number, 4821);
+        assert!(view.profile_nickname.is_none() && view.can_choose_nickname);
+
+        // Moderado: sem apelido e sem botão.
+        let _ = app.update(Event::ProgressFetched(http(200, serde_json::json!({
+            "global_xp": 0, "bugs_found": 0, "dry_runs_completed": 0,
+            "anon_number": 4821, "nickname": null, "nickname_locked": true,
+        }))), &mut model);
+        assert!(!app.view(&model).can_choose_nickname);
+    }
+
+    #[test]
+    fn test_an_invalid_nickname_never_leaves_the_device() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        let mut cmd = app.update(Event::NicknameChecked("Ana Dev".into()), &mut model);
+        assert!(http_requests(&mut cmd).is_empty());
+        let flow = app.view(&model).nickname_flow;
+        assert_eq!(flow.error, StatusKey::NicknameInvalid);
+        assert_eq!(flow.step, crate::domain::NicknameStep::Input);
+
+        let _ = app.update(Event::NicknameChecked("  Ana_Dev ".into()), &mut model);
+        let flow = app.view(&model).nickname_flow;
+        assert_eq!(flow.step, crate::domain::NicknameStep::Confirm);
+        assert_eq!(flow.draft, "ana_dev");
+    }
+
+    #[test]
+    fn test_a_saved_nickname_shows_without_a_new_fetch() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        model.profile.anon_number = 2207;
+        let _ = deliver_board(&app, &mut model, board_body(true, Some(2), None, 100));
+
+        let mut cmd = app.update(Event::NicknameSubmitted("ana_dev".into()), &mut model);
+        let reqs = http_requests(&mut cmd);
+        assert_eq!(reqs.len(), 1);
+        assert_eq!(reqs[0].method, "PUT");
+        assert_eq!(reqs[0].url, "/api/v1/profile/nickname");
+
+        let mut cmd = app.update(Event::NicknameSaved {
+            owner: "u1".into(), draft: "ana_dev".into(),
+            result: http(200, serde_json::json!({ "nickname": "ana_dev" })),
+        }, &mut model);
+        assert!(http_requests(&mut cmd).is_empty(), "sem novo GET do placar");
+        let view = app.view(&model);
+        assert_eq!(view.profile_nickname.as_deref(), Some("ana_dev"));
+        assert!(!view.can_choose_nickname);
+        assert_eq!(view.nickname_flow.step, crate::domain::NicknameStep::Done);
+        let me = view.leaderboard.rows.iter().find(|r| r.is_me).unwrap();
+        assert_eq!(me.nickname.as_deref(), Some("ana_dev"));
+    }
+
+    #[test]
+    fn test_each_nickname_error_has_its_key() {
+        let app = LogNApp::default();
+        for (status, code, want) in [
+            (400, "nickname_invalid", StatusKey::NicknameInvalid),
+            (409, "nickname_reserved", StatusKey::NicknameReserved),
+            (409, "nickname_taken", StatusKey::NicknameTaken),
+            (409, "nickname_locked", StatusKey::NicknameLocked),
+        ] {
+            let mut model = board_session();
+            model.profile.anon_number = 2207;
+            let _ = app.update(Event::NicknameSubmitted("ana_dev".into()), &mut model);
+            let _ = app.update(Event::NicknameSaved { owner: "u1".into(), draft: "ana_dev".into(), result: api_error(status, code) }, &mut model);
+            let view = app.view(&model);
+            assert_eq!(view.nickname_flow.error, want, "{code}");
+            assert_eq!(view.nickname_flow.step, crate::domain::NicknameStep::Input, "{code}");
+            assert_eq!(view.can_choose_nickname, code != "nickname_locked", "{code}");
+        }
+    }
+
+    #[test]
+    fn test_the_nickname_goes_once_even_reopening_the_sheet() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        model.profile.anon_number = 2207;
+        let mut cmd = app.update(Event::NicknameSubmitted("ana_dev".into()), &mut model);
+        assert_eq!(http_requests(&mut cmd).len(), 1);
+        let mut cmd = app.update(Event::NicknameSubmitted("ana_dev".into()), &mut model);
+        assert!(http_requests(&mut cmd).is_empty(), "segundo toque com o PUT no ar");
+
+        let _ = app.update(Event::NicknameFlowClosed, &mut model);
+        let _ = app.update(Event::NicknameStarted, &mut model);
+        let mut cmd = app.update(Event::NicknameSubmitted("outro_nome".into()), &mut model);
+        assert!(http_requests(&mut cmd).is_empty(), "reabrir a folha não destrava outro envio");
+
+        // A resposta do primeiro ainda grava.
+        let _ = app.update(Event::NicknameSaved {
+            owner: "u1".into(), draft: "ana_dev".into(),
+            result: http(200, serde_json::json!({ "nickname": "ana_dev" })),
+        }, &mut model);
+        assert_eq!(app.view(&model).profile_nickname.as_deref(), Some("ana_dev"));
+    }
+
+    #[test]
+    fn test_a_nickname_answer_nobody_waits_for_is_dropped() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        model.profile.anon_number = 2207;
+        let ok = || http(200, serde_json::json!({ "nickname": "ana_dev" }));
+
+        // De outra conta.
+        let _ = app.update(Event::NicknameSubmitted("ana_dev".into()), &mut model);
+        let _ = app.update(Event::NicknameSaved { owner: "u0".into(), draft: "ana_dev".into(), result: ok() }, &mut model);
+        assert!(model.profile.nickname.is_none());
+
+        // Depois de sair: a folha foi zerada, e o retrato não é regravado.
+        let _ = app.update(Event::Logout, &mut model);
+        let mut cmd = app.update(Event::NicknameSaved { owner: "u1".into(), draft: "ana_dev".into(), result: ok() }, &mut model);
+        assert!(kv_ops(&mut cmd).is_empty());
+        assert!(model.profile.nickname.is_none());
+    }
+
+    #[test]
+    fn test_a_nickname_retry_only_goes_with_the_confirmation_open() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        model.profile.anon_number = 2207;
+        let _ = app.update(Event::NicknameChecked("ana_dev".into()), &mut model);
+        let _ = app.update(Event::NicknameSubmitted("ana_dev".into()), &mut model);
+        let _ = app.update(Event::NicknameSaved { owner: "u1".into(), draft: "ana_dev".into(), result: api_error(401, "unauthenticated") }, &mut model);
+        assert!(matches!(model.pending_retry_event, Some(Event::NicknameSubmitted(_))));
+
+        // Fechou a folha antes de a sessão voltar: o envio não sai sozinho depois.
+        let _ = app.update(Event::NicknameFlowClosed, &mut model);
+        assert!(model.pending_retry_event.is_none());
+    }
+
+    #[test]
+    fn test_no_session_asks_nothing() {
+        let app = LogNApp::default();
+        let mut model = Model { user_id: "u1".into(), profile: crate::leaderboard::ProfileIdentity { anon_number: 2207, ..Default::default() }, ..Model::default() };
+        let mut cmd = app.update(Event::LeaderboardRefresh, &mut model);
+        assert!(http_requests(&mut cmd).is_empty());
+        let mut cmd = app.update(Event::NicknameSubmitted("ana_dev".into()), &mut model);
+        assert!(http_requests(&mut cmd).is_empty());
+        assert_eq!(app.view(&model).nickname_flow.error, StatusKey::NoConnection);
+    }
+
+    #[test]
+    fn test_a_late_board_after_logout_is_not_stored() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        let _ = app.update(Event::LeaderboardOpened, &mut model);
+        let _ = app.update(Event::Logout, &mut model);
+        let mut cmd = app.update(Event::LeaderboardFetched { owner: "u1".into(), result: board_body(true, Some(2), None, 100) }, &mut model);
+        assert!(kv_ops(&mut cmd).is_empty(), "o placar apagado na saída não volta ao disco");
+        assert!(model.leaderboard.is_none());
+    }
+
+    #[test]
+    fn test_another_account_in_the_session_starts_its_own_board() {
+        let app = LogNApp::default();
+        let mut model = board_session();
+        let _ = app.update(Event::LeaderboardOpened, &mut model);
+        model.profile = crate::leaderboard::ProfileIdentity { owner: "u1".into(), anon_number: 2207, ..Default::default() };
+
+        // A sessão venceu e outra conta entrou, sem passar pela saída.
+        model.user_id = "u2".into();
+        let view = app.view(&model);
+        assert_eq!(view.profile_anon_number, 0, "o nome de u1 não aparece para u2");
+        let mut cmd = app.update(Event::LeaderboardOpened, &mut model);
+        let (kv, http) = drain(&mut cmd);
+        assert_eq!(http.len(), 1, "o pedido de u1 no ar não trava o de u2");
+        assert!(matches!(&kv[..], [KeyValueOperation::Get { .. }]), "o disco é relido para u2");
+        // A resposta de u1 chega depois e fica de fora.
+        let _ = app.update(Event::LeaderboardFetched { owner: "u1".into(), result: board_body(true, Some(2), None, 100) }, &mut model);
+        assert!(model.leaderboard.is_none());
+        assert_eq!(app.view(&model).leaderboard.state, crate::domain::LeaderboardState::Loading,
+            "u2 segue esperando o pedido dele");
+        assert_eq!(model.leaderboard_in_flight.as_deref(), Some("u2"));
+    }
+
+    #[test]
+    fn test_an_old_snapshot_without_the_name_still_reads() {
+        let snap: OfflineSnapshot = serde_json::from_str(
+            r#"{"global_xp":10,"bugs_found":0,"dry_runs_completed":0,"nodes":[],"challenges":[]}"#,
+        ).unwrap();
+        assert_eq!(snap.anon_number, 0);
+        assert!(snap.nickname.is_none());
     }
 }

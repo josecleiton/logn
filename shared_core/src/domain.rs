@@ -319,6 +319,14 @@ pub enum StatusKey {
     /// `otp_locked`: código errado demais para este e-mail. Nenhum código novo sai até a
     /// janela do servidor vencer (um dia), e esperar um minuto não resolve.
     CodeLocked,
+    /// O apelido do placar fora do formato (3 a 20 de `a-z0-9_`).
+    NicknameInvalid,
+    /// O apelido é um nome reservado, ou um que a moderação bloqueou.
+    NicknameReserved,
+    /// Outra conta já tem o apelido.
+    NicknameTaken,
+    /// A conta já escolheu o apelido, ou perdeu a chance.
+    NicknameLocked,
 }
 
 /// Uma das verificações que a abertura roda antes de soltar o jogador no app.
@@ -516,6 +524,110 @@ pub struct StandingRow {
     pub is_user: bool,
     /// Só na linha do usuário: `subiu 6 nesta rodada`. Vazio nas demais.
     pub note: String,
+}
+
+/// Em que pé está o placar geral de XP (docs/specs/logn_placar_spec.md, seção 7).
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum LeaderboardState {
+    /// Visitante ou sem sessão: a chamada para criar conta.
+    #[default]
+    SignedOut,
+    /// Pedido no ar e nada guardado para mostrar.
+    Loading,
+    /// Ainda não há jogadores para abrir: `missing` e `threshold` dizem quanto falta.
+    Closed,
+    Open,
+    /// Sem rede e nada guardado.
+    Unavailable,
+}
+
+/// O que a linha fixa do jogador mostra.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum LeaderboardMeStatus {
+    /// Com posição.
+    #[default]
+    Ranked,
+    /// Placar fechado, com XP: a linha vem com "—".
+    Waiting,
+    /// Sem XP na trilha gratuita: o convite para acertar o primeiro desafio.
+    ZeroXp,
+    /// Tirado do placar pela moderação ou por objeção: a linha sem posição.
+    Hidden,
+}
+
+/// A unidade do "atualizado há X". O número vai à parte, em `age_value`.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum LeaderboardAgeUnit {
+    #[default]
+    JustNow,
+    Minutes,
+    Hours,
+    Days,
+}
+
+/// Uma linha do placar. O nome é o apelido ou, sem ele, "jogador #N": o shell compõe a
+/// frase com o catálogo a partir de `anon_number`.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[facet(fg::namespace = "LogN")]
+pub struct LeaderboardRow {
+    /// 0 quando não há posição (placar fechado, sem XP, oculto).
+    pub rank: i32,
+    pub anon_number: i32,
+    pub nickname: Option<String>,
+    pub xp: i32,
+    pub is_me: bool,
+}
+
+/// O placar como a tela o desenha.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[facet(fg::namespace = "LogN")]
+pub struct LeaderboardView {
+    pub state: LeaderboardState,
+    /// Quantos faltam para abrir, e o limiar que o servidor usa ("7 / 10").
+    pub missing: u32,
+    pub threshold: u32,
+    pub rows: Vec<LeaderboardRow>,
+    /// A linha do jogador, para a parte fixa embaixo.
+    pub me: LeaderboardRow,
+    pub me_status: LeaderboardMeStatus,
+    /// A linha do jogador está em `rows`; a parte fixa só aparece quando ela sai de vista.
+    pub me_in_rows: bool,
+    pub age_unit: LeaderboardAgeUnit,
+    pub age_value: u32,
+    /// Atualizando com a lista guardada na tela.
+    pub refreshing: bool,
+    /// A lista na tela não veio agora: a faixa "sem conexão · atualizado há X".
+    pub offline: bool,
+}
+
+/// O passo da folha de escolher apelido.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
+#[facet(fg::namespace = "LogN")]
+#[repr(u8)]
+pub enum NicknameStep {
+    #[default]
+    Input,
+    /// "Não dá para trocar depois", com o apelido em destaque.
+    Confirm,
+    Done,
+}
+
+/// A folha de escolher apelido.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[facet(fg::namespace = "LogN")]
+pub struct NicknameFlowView {
+    pub step: NicknameStep,
+    /// O apelido normalizado, depois do "Continuar".
+    pub draft: String,
+    pub submitting: bool,
+    /// `Silent` sem erro.
+    pub error: StatusKey,
 }
 
 /// A licença de uma trilha paga, como `GET /api/v1/tracks/{id}/license` devolve.
