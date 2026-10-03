@@ -1,15 +1,18 @@
 <pt-BR>
-• Versão 1.0.
+• Placar de verdade: o XP da trilha gratuita, com a sua posição entre os jogadores.
+• Escolha um apelido no Perfil para aparecer no placar no lugar de "jogador #N".
 • O progresso feito sem internet sobe em partes, mesmo depois de muito tempo offline.
 • Mensagens mais claras quando há senhas ou códigos errados demais para um e-mail.
 </pt-BR>
 <en-US>
-• Version 1.0.
+• A real leaderboard: your free track XP and your position among players.
+• Pick a nickname on your Profile to show on the leaderboard instead of "player #N".
 • Progress made offline goes up in parts, even after a long time without internet.
 • Clearer messages when an email gets too many wrong passwords or codes.
 </en-US>
 <es-419>
-• Versión 1.0.
+• Una tabla de verdad: el XP de la ruta gratuita y tu puesto entre los jugadores.
+• Elige un apodo en el Perfil para aparecer en la tabla en lugar de "jugador #N".
 • El progreso hecho sin internet se sube por partes, incluso después de mucho tiempo sin conexión.
 • Mensajes más claros cuando un correo recibe demasiadas contraseñas o códigos incorrectos.
 </es-419>
