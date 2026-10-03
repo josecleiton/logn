@@ -166,12 +166,15 @@ placar, pelo mesmo motivo que não paga XP duas vezes.
 - Autenticada, com `limitBody` e `rateLimiter` por usuário.
 - Corpo: `{"nickname": "..."}`.
 - Validação, nesta ordem:
-  1. Passa a entrada para minúsculas e tira espaço das pontas.
-  2. Confere o formato.
-  3. Confere a lista de reservados.
-  4. Confere se o apelido está em `blocked_nicknames`.
-- Gravação: um `UPDATE` com `nickname IS NULL AND nickname_burned_at IS NULL` no `WHERE`.
-  A unicidade é garantida pelo índice, não por uma leitura antes.
+  1. Conta que já escolheu, ou perdeu a chance, ouve `nickname_locked` antes de tudo.
+     Senão ela poderia sondar quais apelidos a moderação bloqueou.
+  2. Passa a entrada para minúsculas (só ASCII) e tira espaço das pontas.
+  3. Confere o formato.
+  4. Confere a lista de reservados.
+- Gravação: um `UPDATE` com `nickname IS NULL AND nickname_burned_at IS NULL` e o apelido
+  fora de `blocked_nicknames` no `WHERE`. O bloqueio entra no próprio `UPDATE` para uma
+  moderação no meio do pedido não escapar, e a unicidade é garantida pelo índice, não por
+  uma leitura antes.
 
 | Código | Quando |
 |---|---|

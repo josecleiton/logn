@@ -399,14 +399,22 @@ type UserStats struct {
 	// Sai daqui e não do Core porque o Core pode não conhecer mais os desafios de uma
 	// trilha revogada, e aí somaria o XP dela no portão da gratuita.
 	PaidTrackXP map[string]int `json:"paid_track_xp"`
+	// O nome do placar (docs/specs/logn_placar_spec.md): o número sorteado, o apelido
+	// quando houver, e se a chance de escolher já foi queimada pela moderação. Vêm aqui
+	// porque o Perfil mostra o nome antes de alguém abrir o placar.
+	AnonNumber     int     `json:"anon_number"`
+	Nickname       *string `json:"nickname"`
+	NicknameLocked bool    `json:"nickname_locked"`
 }
 
 func (r *Repository) GetUserStats(ctx context.Context, userID string) (UserStats, error) {
 	var stats UserStats
 
-	query := `SELECT global_xp, bugs_found, dry_runs_completed FROM users WHERE id = $1`
+	query := `
+		SELECT global_xp, bugs_found, dry_runs_completed, anon_number, nickname, nickname_burned_at IS NOT NULL
+		FROM users WHERE id = $1`
 	err := r.db.QueryRow(ctx, query, userID).
-		Scan(&stats.GlobalXP, &stats.BugsFound, &stats.DryRunsCompleted)
+		Scan(&stats.GlobalXP, &stats.BugsFound, &stats.DryRunsCompleted, &stats.AnonNumber, &stats.Nickname, &stats.NicknameLocked)
 	if err != nil {
 		return stats, err
 	}

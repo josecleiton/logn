@@ -594,6 +594,101 @@
                 }
             }
         },
+        "/api/v1/internal/leaderboard/actions": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Só com ID token OIDC do Google, da conta `ADMIN_SERVICE_ACCOUNT`. A conta sai de exatamente um de user_id, nickname, anon_number ou email.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "internal"
+                ],
+                "summary": "Moderação do placar",
+                "parameters": [
+                    {
+                        "description": "Conta, ação e motivo",
+                        "name": "action",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.leaderboardActionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "action": {
+                                    "type": "string"
+                                },
+                                "status": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "user_not_found",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "409": {
+                        "description": "leaderboard_no_change",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "413": {
+                        "description": "body_too_large",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/internal/licenses/appeal": {
             "post": {
                 "security": [
@@ -913,6 +1008,48 @@
                 }
             }
         },
+        "/api/v1/leaderboard": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account"
+                ],
+                "summary": "Placar geral de XP",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Leaderboard"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/legal/accept": {
             "post": {
                 "security": [
@@ -1105,6 +1242,80 @@
                     },
                     "401": {
                         "description": "unauthenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "500": {
+                        "description": "internal",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/profile/nickname": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account"
+                ],
+                "summary": "Escolher o apelido do placar",
+                "parameters": [
+                    {
+                        "description": "Apelido",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.nicknameRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.nicknameResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_request, nickname_invalid",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "409": {
+                        "description": "nickname_reserved, nickname_taken, nickname_locked",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "413": {
+                        "description": "body_too_large",
+                        "schema": {
+                            "$ref": "#/definitions/httpapi.apiError"
+                        }
+                    },
+                    "429": {
+                        "description": "rate_limited",
                         "schema": {
                             "$ref": "#/definitions/httpapi.apiError"
                         }
@@ -2108,6 +2319,73 @@
                 }
             }
         },
+        "domain.Leaderboard": {
+            "type": "object",
+            "properties": {
+                "generated_at": {
+                    "description": "Segundos desde a época, a hora do servidor que vira o \"atualizado há X\".",
+                    "type": "integer"
+                },
+                "me": {
+                    "$ref": "#/definitions/domain.LeaderboardMe"
+                },
+                "missing": {
+                    "type": "integer"
+                },
+                "open": {
+                    "type": "boolean"
+                },
+                "rows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.LeaderboardRow"
+                    }
+                },
+                "threshold": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.LeaderboardMe": {
+            "type": "object",
+            "properties": {
+                "anon_number": {
+                    "type": "integer"
+                },
+                "hidden": {
+                    "type": "boolean"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "rank": {
+                    "type": "integer"
+                },
+                "xp": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.LeaderboardRow": {
+            "type": "object",
+            "properties": {
+                "anon_number": {
+                    "type": "integer"
+                },
+                "is_me": {
+                    "type": "boolean"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "rank": {
+                    "type": "integer"
+                },
+                "xp": {
+                    "type": "integer"
+                }
+            }
+        },
         "domain.LegalAcceptance": {
             "type": "object",
             "properties": {
@@ -2291,6 +2569,10 @@
         "domain.UserStats": {
             "type": "object",
             "properties": {
+                "anon_number": {
+                    "description": "O nome do placar (docs/specs/logn_placar_spec.md): o número sorteado, o apelido\nquando houver, e se a chance de escolher já foi queimada pela moderação. Vêm aqui\nporque o Perfil mostra o nome antes de alguém abrir o placar.",
+                    "type": "integer"
+                },
                 "bugs_found": {
                     "type": "integer"
                 },
@@ -2299,6 +2581,12 @@
                 },
                 "global_xp": {
                     "type": "integer"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "nickname_locked": {
+                    "type": "boolean"
                 },
                 "nodes": {
                     "type": "array",
@@ -2637,6 +2925,29 @@
                 }
             }
         },
+        "httpapi.leaderboardActionRequest": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "anon_number": {
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "httpapi.licenseActionRequest": {
             "type": "object",
             "properties": {
@@ -2653,6 +2964,22 @@
                     "type": "string"
                 },
                 "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.nicknameRequest": {
+            "type": "object",
+            "properties": {
+                "nickname": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpapi.nicknameResponse": {
+            "type": "object",
+            "properties": {
+                "nickname": {
                     "type": "string"
                 }
             }

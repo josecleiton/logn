@@ -69,6 +69,21 @@ const (
 	codeLicenseNotRevoked       = "license_not_revoked"
 	codeLicenseAppealOutOfOrder = "license_appeal_out_of_order"
 	codeLicenseStoreRevoked     = "license_store_revoked"
+
+	// Apelido do placar. Os três primeiros o jogador corrige; o último diz que a conta
+	// já escolheu ou perdeu a chance.
+	codeNicknameInvalid  = "nickname_invalid"
+	codeNicknameReserved = "nickname_reserved"
+	codeNicknameTaken    = "nickname_taken"
+	codeNicknameLocked   = "nickname_locked"
+
+	// Corpo acima do teto da rota. As rotas antigas respondem 400 nesse caso, porque o
+	// corpo cortado falha no decode; as do placar respondem 413.
+	codeBodyTooLarge = "body_too_large"
+
+	// Moderação do placar. Quem lê é o `just leaderboard-*`, não o app.
+	codeUserNotFound        = "user_not_found"
+	codeLeaderboardNoChange = "leaderboard_no_change"
 )
 
 // apiError é o corpo de todo erro da API. `message` é para quem lê log e curl, em

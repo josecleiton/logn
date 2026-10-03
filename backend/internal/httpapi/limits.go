@@ -29,6 +29,8 @@ const (
 	syncBodyLimit                 = 2 << 20
 	appStoreNotificationBodyLimit = 256 << 10
 	licenseActionBodyLimit        = 32 << 10
+	// `{"nickname": "..."}` com 20 caracteres cabe com folga.
+	nicknameBodyLimit = 1 << 10
 )
 
 func limitBody(n int64, next http.HandlerFunc) http.HandlerFunc {

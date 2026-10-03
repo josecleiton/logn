@@ -48,6 +48,9 @@ type Server struct {
 	// Envio de código por IP, por hora (otpSendPerSource). Nulo nos testes que chamam o
 	// handler direto.
 	otpSendLimiter *rateLimiter
+	// Escolha de apelido por conta, além do limite por IP da rota. Nulo nos testes que
+	// chamam o handler direto.
+	nicknameUserLimiter *rateLimiter
 }
 
 // syncSlots limita quantos syncs decodificam e gravam ao mesmo tempo. O corpo vira

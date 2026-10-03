@@ -101,6 +101,15 @@ func New(d Deps) (http.Handler, error) {
 
 	mux.HandleFunc("GET /api/v1/nodes", server.getNodesHandler)
 	mux.HandleFunc("GET /api/v1/progress", server.getUserProgressHandler)
+	// O placar tem balde próprio, na faixa das trilhas: o app pede a cada abertura da
+	// aba e a cada puxar para atualizar.
+	leaderboardLimiter := newRateLimiter(60, time.Minute)
+	mux.HandleFunc("GET /api/v1/leaderboard", leaderboardLimiter.wrap(limitBody(authBodyLimit, server.leaderboardHandler)))
+	// O apelido se escolhe uma vez; dez por minuto por conta folgam para quem erra o
+	// formato, e o balde por IP segura quem sonda apelido com muitas contas.
+	server.nicknameUserLimiter = newRateLimiter(10, time.Minute)
+	nicknameIPLimiter := newRateLimiter(30, time.Minute)
+	mux.HandleFunc("PUT /api/v1/profile/nickname", nicknameIPLimiter.wrap(limitBody(nicknameBodyLimit, server.nicknameHandler)))
 	mux.HandleFunc("POST /api/v1/internal/purge", server.purgeHandler)
 	// Revogação manual de licença e resposta à contestação (ADR 0021). Quem chama é uma
 	// pessoa pelo `just revoke`; dez por minuto sobra.
@@ -110,6 +119,8 @@ func New(d Deps) (http.Handler, error) {
 	}
 	mux.HandleFunc("POST /api/v1/internal/licenses/revoke", internal(server.revokeLicenseHandler))
 	mux.HandleFunc("POST /api/v1/internal/licenses/appeal", internal(server.appealLicenseHandler))
+	// Moderação e objeção do placar, pelo `just leaderboard-*`, com a mesma conta.
+	mux.HandleFunc("POST /api/v1/internal/leaderboard/actions", internal(server.leaderboardActionHandler))
 	// Reembolso e estorno do Google Play, uma vez por dia pelo Cloud Scheduler (ADR 0022).
 	mux.HandleFunc("POST /api/v1/internal/play/voided", internal(server.playVoidedHandler))
 

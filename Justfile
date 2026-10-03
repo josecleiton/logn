@@ -86,6 +86,21 @@ revoke user track reason evidence:
 appeal user track outcome evidence:
     python3 tools/license_admin.py appeal {{ quote(user) }} {{ quote(track) }} {{ quote(outcome) }} {{ quote(evidence) }}
 
+# Moderação do placar (docs/specs/logn_placar_spec.md, seção 8). `account` é o id, o
+# número com # ("#4821"; sem o #, "4821" é apelido), o apelido ou o e-mail de quem
+# pediu. O motivo fica gravado, sem dado pessoal.
+# Volta o apelido ofensivo ao número; a conta não escolhe outro e o apelido fica bloqueado.
+leaderboard-anonymize account reason:
+    python3 tools/leaderboard_admin.py anonymize {{ quote(account) }} {{ quote(reason) }}
+
+# Tira a conta do placar: a objeção que chega por e-mail.
+leaderboard-hide account reason:
+    python3 tools/leaderboard_admin.py hide {{ quote(account) }} {{ quote(reason) }}
+
+# Devolve ao placar a conta que saiu por objeção.
+leaderboard-unhide account reason:
+    python3 tools/leaderboard_admin.py unhide {{ quote(account) }} {{ quote(reason) }}
+
 # --- Terraform: estado e variáveis no bucket `<projeto>-tfstate` ---
 # O bucket é privado, versionado e em us-east1 (Always Free). O nome sai do projeto
 # ativo no gcloud; nada identificável fica no repositório.
