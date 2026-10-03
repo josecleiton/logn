@@ -201,7 +201,7 @@ inteira. Só em Debug, não mudam nada em Release.
 ```bash
 xcrun simctl launch booted sh.logn.LogNiOS -LogNStartAsGuest 1      # entra como visitante
 xcrun simctl launch booted sh.logn.LogNiOS -LogNStartTab placar     # trilhas | arena | placar
-xcrun simctl launch booted sh.logn.LogNiOS -LogNStartScreen perfil  # perfil | telao
+xcrun simctl launch booted sh.logn.LogNiOS -LogNStartScreen perfil  # perfil | apelido
 ```
 
 `-LogNStartScreen perfil` é a forma confiável de abrir o hub de perfil sem depender
@@ -548,6 +548,28 @@ Repita com `'(en)'` e `'(de)'`.
 - com conta e progresso, trocar a língua do app em Ajustes: o XP e os problemas
   resolvidos continuam, e o texto troca. Sem rede, troca pela semente; com rede, busca
   de novo.
+
+### 4.16 Placar e apelido
+
+A referência é o canvas "LogN — Placar geral de XP" (docs/specs/logn_placar_spec.md). O
+build de debug fala com o `API_BASE_URL` do `Local.xcconfig`, que costuma ser a
+produção: para o backend local, passe `'API_BASE_URL=http:/$()/localhost:8080'` ao
+`xcodebuild`, como na seção 4.13. A semente das contas e os estados por SQL são os do
+roteiro do Android (seção 9), no banco local.
+
+```bash
+xcrun simctl launch booted sh.logn.LogNiOS -AppleLanguages '(pt-BR)' -LogNStartTab placar
+xcrun simctl launch booted sh.logn.LogNiOS -AppleLanguages '(pt-BR)' -LogNStartScreen apelido
+```
+
+- Os mesmos estados do Android, lado a lado: aberto, linha fixa, fechado, sem XP, oculto,
+  offline com e sem lista, carregando, convidado.
+- "jogador #50002" sem separador de milhar: o número vai ao catálogo como texto, porque o
+  iOS agrupa inteiro localizado.
+- O texto de 14 tem altura de linha 21, como no canvas (`bodyLineSpacing`).
+- A folha do apelido abraça o conteúdo em cada passo. Sobre o Perfil, o iOS 26 a desenha
+  solta 8 pt das bordas: é do sistema, não do layout.
+- Offline: pare o backend e puxe para atualizar (`"$SP/tap" $GEO drag 0.5 0.3 0.5 0.75`).
 
 ---
 

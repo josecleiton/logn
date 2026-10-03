@@ -68,7 +68,8 @@ The two tracks are on sale on Play, each with a first-purchase offer. Still open
 - **Terms and policy.** v4 is live (2026-09-30), store-neutral: Google as a processor,
   refunds through Google Play and the waitlist section. It shipped without a lawyer's
   review, and these stay open for one: the legal basis for acceptance, acceptances deleted
-  on account deletion, teenagers, the XP gates, and the retention of access logs. With
+  on account deletion, teenagers, the XP gates, the retention of access logs, and the
+  leaderboard showing every player with no way to opt out (objection by email). With
   acceptances on record, a correction is a new version.
   The text promises something the code does not do yet: delete `store_transactions`,
   `revoked_transactions` and `manual_revocations` 5 years after the transaction (the
@@ -120,19 +121,26 @@ again without legal review.
 
 PRD: [`specs/logn_instituicao_spec.md`](specs/logn_instituicao_spec.md).
 
-## The leaderboard is sample data
+## The global leaderboard is built, not deployed
 
-The Placar (Leaderboard) tab exists on both clients, with the Global and Sede (Home base)
-tabs, the player's row pinned at the bottom, and the full scoreboard: rank and team frozen,
-solved, penalty and the A–M columns, with the balloon legend. Everything comes from
-`mock_data.rs`; the Core sends `standings_are_sample: true`, and the screen shows the
-sample-data notice on top. There is no table, route or job on the server.
+Free-track XP, all-time, opening at 10 players. Everyone shows as "jogador #N" (player #N)
+until they pick a permanent nickname on the Profile screen; moderation and objections go
+through `just leaderboard-*` (anonymize, hide, unhide). The backend, the Core and both
+clients are done and were checked against the "LogN — Placar geral de XP" canvas, on an
+Android device and the iOS simulator. The scoreboard and the Sede tab left the screen;
+their types and mock stay in the Core for contests.
 
-The global leaderboard has a PRD: free-track XP, all-time, opening at 10 players.
-Everyone shows as "jogador #N" (player #N) until they pick a permanent nickname on the
-Profile screen, and moderation is manual, through an internal route. The scoreboard and
-the Sede tab leave the screen. Before coding: approving the screens (the "LogN — Placar
-geral de XP" canvas) and v5 of the policy.
+What is left, in this order:
+
+- **v5 of the policy** in the content repository, non-material, with the notice banner:
+  the leaderboard shows number or nickname, XP and position to other players, on
+  legitimate interest, with objection by email; a moderated nickname is kept after
+  account deletion.
+- **Deploy 1:** migration 0070 with the code that draws numbers and keeps free XP. Before
+  it, run 0070's guard as a SELECT against production: the migration aborts if global XP
+  minus paid-track XP does not match the free-track challenges.
+- **Deploy 2:** migration 0071 (recompute and NOT NULL) with the routes and v5.
+- **Android release** with the new screens.
 
 PRD: [`specs/logn_placar_spec.md`](specs/logn_placar_spec.md).
 
@@ -185,7 +193,7 @@ Bincode does not write the variant name, only its position in the enum; the code
 
 **Why reordering is safe today:** on each platform both sides ship in the same binary. iOS generates and compiles them together with `build-ios-ffi`; Android with `just android/generate`, and Gradle's `verifyGenerated` refuses the build if the Core changed after the last generate (ADR 0023). What goes to disk to be read later is JSON, not bincode.
 
-**Stability rule (JSON):** in JSON, serialization is based on the name. So you cannot rename a variant or a field of persisted types (`OfflineSnapshot`, `SkillNode`, `Challenge`, `GameEvent` and `NodeStatus`). If you need a new field, use `#[serde(default)]`.
+**Stability rule (JSON):** in JSON, serialization is based on the name. So you cannot rename a variant or a field of persisted types (`OfflineSnapshot`, `SkillNode`, `Challenge`, `GameEvent`, `NodeStatus` and the stored leaderboard, `LeaderboardCache`). If you need a new field, use `#[serde(default)]`.
 
 **Situations that would require changing this decision (they would require "enums only grow at the end" and hard guards):**
 - If some state starts being persisted in bincode.

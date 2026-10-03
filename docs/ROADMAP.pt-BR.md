@@ -64,7 +64,8 @@ As duas trilhas estão à venda no Play, cada uma com oferta de primeira compra.
 - **Termos e política.** A v4 está no ar (2026-09-30), com texto neutro de loja: Google
   como processador, reembolso pelo Google Play e a seção da lista de espera. Saiu sem
   revisão de advogado, e ficam em aberto para ele: a base legal do aceite, os aceites
-  apagados na exclusão, adolescentes, os portões de XP e a guarda dos registros de acesso.
+  apagados na exclusão, adolescentes, os portões de XP, a guarda dos registros de acesso,
+  e o placar mostrar todo jogador sem opção de sair (objeção por e-mail).
   Com aceite registrado, correção é versão nova.
   O texto promete uma coisa que o código ainda não faz: apagar `store_transactions`,
   `revoked_transactions` e `manual_revocations` 5 anos depois da transação (a primeira
@@ -110,18 +111,25 @@ de novo sem revisão jurídica.
 
 PRD: [`specs/logn_instituicao_spec.md`](specs/logn_instituicao_spec.md).
 
-## O placar é dado de exemplo
+## O placar geral está pronto, falta subir
 
-A aba Placar existe nos dois clientes, com as abas Global e Sede, a linha do jogador
-fixa embaixo, e o telão completo: posição e time congelados, resolvidos, penalidade e as
-colunas A–M, com a legenda dos balões. Tudo sai de `mock_data.rs`; o Core manda
-`standings_are_sample: true`, e a tela mostra a tarja de dados de exemplo no topo. Não há
-tabela, rota nem job no servidor.
+XP da trilha gratuita, desde sempre, aberto com 10 jogadores. Todo mundo aparece como
+"jogador #N" até escolher um apelido definitivo no Perfil; moderação e objeção saem por
+`just leaderboard-*` (anonimizar, ocultar, devolver). Backend, Core e os dois clientes
+estão prontos e foram conferidos contra o canvas "LogN — Placar geral de XP", no aparelho
+Android e no simulador iOS. O telão e a aba Sede saíram da tela; os tipos e o mock deles
+ficam no Core para o contest.
 
-O placar geral tem PRD: XP da trilha gratuita, desde sempre, aberto com 10 jogadores.
-Todo mundo aparece como "jogador #N" até escolher um apelido definitivo no Perfil, e a
-moderação é manual, por rota interna. O telão e a aba Sede saem da tela. Antes de codar
-faltam aprovar as telas (canvas "LogN — Placar geral de XP") e a v5 da política.
+Falta, nesta ordem:
+
+- **v5 da política** no repositório de conteúdo, não relevante, com a faixa de aviso: o
+  placar mostra número ou apelido, XP e posição a outros jogadores, por legítimo
+  interesse, com objeção por e-mail; o apelido moderado fica guardado depois da exclusão.
+- **Deploy 1:** a migração 0070 com o código que sorteia o número e mantém o XP gratuito.
+  Antes, rode a guarda da 0070 como SELECT contra a produção: a migração aborta se o XP
+  global menos o das pagas não bater com os desafios da gratuita.
+- **Deploy 2:** a migração 0071 (recalcula e fecha o NOT NULL) com as rotas e a v5.
+- **Release Android** com as telas novas.
 
 PRD: [`specs/logn_placar_spec.md`](specs/logn_placar_spec.md).
 
@@ -174,7 +182,7 @@ O bincode não grava o nome da variante, só a posição dela no enum; o código
 
 **Por que reordenar é seguro hoje:** em cada plataforma os dois lados vão no mesmo binário. O iOS gera e compila os dois juntos pelo `build-ios-ffi`; o Android pelo `just android/generate`, e o `verifyGenerated` do Gradle recusa o build se o Core mudou depois do último generate (ADR 0023). O que vai para o disco para ser lido depois é JSON, e não bincode.
 
-**Regra de estabilidade (JSON):** no JSON, a serialização se baseia no nome. Portanto, não se pode renomear variante nem campo de tipos persistidos (`OfflineSnapshot`, `SkillNode`, `Challenge`, `GameEvent` e `NodeStatus`). Se precisar de um campo novo, use `#[serde(default)]`.
+**Regra de estabilidade (JSON):** no JSON, a serialização se baseia no nome. Portanto, não se pode renomear variante nem campo de tipos persistidos (`OfflineSnapshot`, `SkillNode`, `Challenge`, `GameEvent`, `NodeStatus` e o placar guardado, `LeaderboardCache`). Se precisar de um campo novo, use `#[serde(default)]`.
 
 **Situações que exigiriam mudar essa decisão (exigiriam "enum só cresce no fim" e travas rígidas):**
 - Se algum estado passar a ser persistido em bincode.

@@ -241,20 +241,53 @@ docker exec logn-db-1 psql -U logn_user -d logn_db -c \
 
 ---
 
-## 9 · Placar e telão
+## 9 · Placar e apelido
 
-- Aba Placar: "Global" e a sede do jogador, sublinhado de 2 dp na ativa; a linha do
-  jogador grudada no pé, tingida, com a borda de acento em cima e embaixo.
-- A tarja azul de dados de exemplo enquanto o ranking não tem servidor.
-- "Ver o telão completo": rank e equipe ficam fixos e SLV, PEN e A–M rolam juntos.
-  Arraste longe da borda direita, senão o Android lê o gesto de voltar:
+A referência é o canvas "LogN — Placar geral de XP" (docs/specs/logn_placar_spec.md).
+Cada estado depende de dado no banco **local**; as contas de teste são inventadas e
+`@example.com`, e nada disto roda contra produção:
 
 ```bash
-adb shell input swipe 850 900 300 900 400
+# o placar abre com 10 contas visíveis com XP
+docker exec -i logn-db-1 psql -U logn_user -d logn_db -q <<'SQL'
+INSERT INTO users (email, anon_number, global_xp, free_xp, free_xp_reached_at, nickname)
+SELECT 'placar-seed-' || n || '@example.com', 50000 + n, 5000 - n*100, 5000 - n*100, now(),
+       CASE WHEN n % 2 = 1 THEN 'seed_' || n END
+FROM generate_series(1, 40) n;
+SQL
+# a sua conta: XP, oculta, sem apelido
+docker exec logn-db-1 psql -U logn_user -d logn_db -c "update users set free_xp=650, global_xp=650, free_xp_reached_at=now() where email='<sua conta>'"
+docker exec logn-db-1 psql -U logn_user -d logn_db -c "update users set leaderboard_hidden=true where email='<sua conta>'"
+docker exec logn-db-1 psql -U logn_user -d logn_db -c "update users set nickname=null where email='<sua conta>'"
+# desfaz a semente
+docker exec logn-db-1 psql -U logn_user -d logn_db -c "delete from users where email like 'placar-seed-%'"
 ```
 
-- A legenda das quatro cores sempre visível, em duas linhas, sem cortar texto.
-- Fora de partida não há relógio na barra; o voltar do sistema fecha o telão.
+- **Aberto:** posição, nome e XP com o milhar da língua ("4.850 XP"). O apelido em Sans
+  15, o anônimo em mono 14 cinza; "jogador #50002", sem separador no número.
+- **Linha do jogador:** fundo `accentTint`, fio de acento em cima e embaixo, "VOCÊ". Na
+  lista, quando está à vista; fixa no pé quando sai de vista (precisa de mais de uma tela
+  de contas acima dela).
+- **Fechado** (menos de 10 visíveis): "N / 10 jogadores", a barra de dez, "Faltam K". Com
+  XP, a linha fixa com "—" e "Você já está na conta."
+- **Sem XP:** o rodapé "Acerte um desafio…" com "Ir para a trilha", que leva à aba Trilhas.
+- **Oculto:** a linha fixa com "—" e "FORA DO PLACAR".
+- **Offline com lista:** pare o backend (o `adb reverse --remove` não basta: a conexão que
+  já estava aberta continua pelo túnel) e puxe para atualizar: a faixa azul "Sem conexão
+  · atualizado …".
+- **Offline sem lista:** com o app fechado, apague a lista guardada e abra sem backend:
+
+```bash
+adb shell am force-stop sh.logn.app
+adb shell run-as sh.logn.app sed -i '/name=\"leaderboard\"/d' shared_prefs/logn_store.xml
+```
+
+- **Carregando:** `kill -STOP` no backend antes de abrir a aba, e `kill -CONT` depois.
+- **Convidado:** "Crie uma conta para aparecer no placar", com os dois botões.
+- **Apelido:** Perfil → "Escolher apelido". "Ana Dev" falha no Continuar; "gm_1"
+  (reservado) e um apelido de outra conta (em uso) passam para a confirmação e voltam ao
+  campo com o erro em amarelo, depois de "Confirmar". Um livre termina em "Agora você é …",
+  e o botão some do Perfil.
 
 ---
 
