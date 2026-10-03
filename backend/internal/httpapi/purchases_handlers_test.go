@@ -31,6 +31,18 @@ func newTestUUID(t *testing.T) string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
+// testAnonNumber é o número do placar de uma conta de teste: acima de cem milhões,
+// longe da faixa que o servidor sorteia, para não colidir com conta do banco local.
+func testAnonNumber(t *testing.T) int {
+	t.Helper()
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		t.Fatal(err)
+	}
+	n := int(b[0])<<24 | int(b[1])<<16 | int(b[2])<<8 | int(b[3])
+	return 100_000_000 + n%1_900_000_000
+}
+
 // storeFixture é uma trilha paga inventada, dois usuários e a cadeia que assina as
 // compras. O servidor confia só nessa cadeia.
 type storeFixture struct {
@@ -80,7 +92,7 @@ func newStoreFixture(t *testing.T) *storeFixture {
 		t.Fatal(err)
 	}
 	for _, id := range []string{f.alice, f.bob} {
-		if _, err := conn.Exec(ctx, `INSERT INTO users (id, email) VALUES ($1, $2)`, id, "store-"+id[:8]+"@example.com"); err != nil {
+		if _, err := conn.Exec(ctx, `INSERT INTO users (id, email, anon_number) VALUES ($1, $2, $3)`, id, "store-"+id[:8]+"@example.com", testAnonNumber(t)); err != nil {
 			t.Fatal(err)
 		}
 	}

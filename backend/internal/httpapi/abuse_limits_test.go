@@ -64,7 +64,7 @@ func loginFixture(t *testing.T, prefix string) (*Server, string, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := conn.Exec(ctx, `INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)`, uid, email, hash); err != nil {
+	if _, err := conn.Exec(ctx, `INSERT INTO users (id, email, password_hash, anon_number) VALUES ($1, $2, $3, $4)`, uid, email, hash, testAnonNumber(t)); err != nil {
 		t.Fatalf("criando o usuário: %v", err)
 	}
 	t.Cleanup(func() {
@@ -215,7 +215,7 @@ func TestSyncRefusesWhatPassesTheLimits(t *testing.T) {
 	s := &Server{repo: domain.NewRepository(conn)}
 
 	uid := newTestUUID(t)
-	if _, err := conn.Exec(ctx, `INSERT INTO users (id, email) VALUES ($1, $2)`, uid, "sync-limits-"+uid+"@example.com"); err != nil {
+	if _, err := conn.Exec(ctx, `INSERT INTO users (id, email, anon_number) VALUES ($1, $2, $3)`, uid, "sync-limits-"+uid+"@example.com", testAnonNumber(t)); err != nil {
 		t.Fatalf("criando o usuário: %v", err)
 	}
 	t.Cleanup(func() {
@@ -322,7 +322,7 @@ func TestSyncLogsAForeignUserIDClippedAndEscaped(t *testing.T) {
 	s := &Server{repo: domain.NewRepository(conn)}
 
 	uid := newTestUUID(t)
-	if _, err := conn.Exec(ctx, `INSERT INTO users (id, email) VALUES ($1, $2)`, uid, "sync-log-"+uid+"@example.com"); err != nil {
+	if _, err := conn.Exec(ctx, `INSERT INTO users (id, email, anon_number) VALUES ($1, $2, $3)`, uid, "sync-log-"+uid+"@example.com", testAnonNumber(t)); err != nil {
 		t.Fatalf("criando o usuário: %v", err)
 	}
 	t.Cleanup(func() {

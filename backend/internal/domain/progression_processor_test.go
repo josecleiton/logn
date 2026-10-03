@@ -18,9 +18,9 @@ func TestProcessEventXPPagaUmaVezPorDesafio(t *testing.T) {
 	repo := NewRepository(conn)
 	ctx := context.Background()
 
-	email := fmt.Sprintf("xp_%d@test.logn", time.Now().UnixNano())
+	email := fmt.Sprintf("xp_%d@example.com", time.Now().UnixNano())
 	var userID string
-	if err := conn.QueryRow(ctx, `INSERT INTO users (email) VALUES ($1) RETURNING id`, email).Scan(&userID); err != nil {
+	if err := conn.QueryRow(ctx, `INSERT INTO users (email, anon_number) VALUES ($1, $2) RETURNING id`, email, farAnonNumber(t)).Scan(&userID); err != nil {
 		t.Fatalf("criando usuário: %v", err)
 	}
 	defer conn.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
@@ -89,5 +89,40 @@ func TestProcessEventXPPagaUmaVezPorDesafio(t *testing.T) {
 	}
 	if len(stats.Nodes) != 1 || stats.Nodes[0].CurrentXP != 2*XPPerAcceptedAnswer {
 		t.Errorf("progresso do nó = %+v, esperava um nó com %d", stats.Nodes, 2*XPPerAcceptedAnswer)
+	}
+
+	// O nó é da trilha gratuita: o placar anda junto, e o rejogo não anda nada.
+	freeXP, reached := freeXPOf(t, repo, userID)
+	if freeXP != 2*XPPerAcceptedAnswer || !reached {
+		t.Errorf("free_xp = %d (reached %v), esperava %d com hora", freeXP, reached, 2*XPPerAcceptedAnswer)
+	}
+	// A mesma conta que as migrações 0070 e 0071 fazem.
+	var counted int
+	if err := conn.QueryRow(ctx, `
+		SELECT 50 * count(*)
+		FROM user_paid_challenges up
+		JOIN challenges c ON c.id = up.challenge_id
+		JOIN skill_nodes sn ON sn.id = c.node_id
+		JOIN tracks t ON t.id = sn.track_id
+		WHERE up.user_id = $1 AND t.kind = 'free'`, userID).Scan(&counted); err != nil {
+		t.Fatal(err)
+	}
+	if counted != freeXP {
+		t.Errorf("a conta da migração dá %d e o processamento deu %d", counted, freeXP)
+	}
+
+	replay, err := conn.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.ProcessEventXP(ctx, replay, userID, answer("ch_xp_1", true, "SPOT_THE_BUG")); err != nil {
+		replay.Rollback(ctx)
+		t.Fatal(err)
+	}
+	if err := replay.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if again, _ := freeXPOf(t, repo, userID); again != freeXP {
+		t.Errorf("o replay de MATCH_ANSWER andou o placar: %d -> %d", freeXP, again)
 	}
 }

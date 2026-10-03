@@ -558,14 +558,12 @@ func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string,
 
 // createUserTx insere a conta e os aceites dentro da transação de quem chama. Hash
 // vazio grava NULL: é a conta que só entra por provedor externo.
+//
+// Todo cadastro passa por aqui, com senha ou por provedor, e é aqui que a conta ganha
+// o número do placar (seção 4.2 do PRD).
 func createUserTx(ctx context.Context, tx pgx.Tx, email, passwordHash string, ageConfirmed bool, country string, acceptances []LegalAcceptance, client ClientInfo) (string, error) {
-	var id string
-	query := `
-		INSERT INTO users (email, password_hash, age_confirmed_at, country)
-		VALUES ($1, NULLIF($2, ''), CASE WHEN $3::boolean THEN CURRENT_TIMESTAMP ELSE NULL END, NULLIF($4, ''))
-		RETURNING id
-	`
-	if err := tx.QueryRow(ctx, query, email, passwordHash, ageConfirmed, country).Scan(&id); err != nil {
+	id, err := insertUserWithAnonNumber(ctx, tx, email, passwordHash, ageConfirmed, country)
+	if err != nil {
 		return "", err
 	}
 
@@ -587,6 +585,42 @@ func createUserTx(ctx context.Context, tx pgx.Tx, email, passwordHash string, ag
 		}
 	}
 	return id, nil
+}
+
+// insertUserWithAnonNumber insere a conta com um número sorteado, e sorteia de novo
+// quando o número já é de alguém.
+//
+// A colisão sai por `ON CONFLICT (anon_number) DO NOTHING`, sem linha de volta, e não
+// por 23505: uma violação abortaria a transação de quem chama. O conflito de e-mail
+// continua estourando 23505, como antes, porque o ON CONFLICT só cobre o número. A cada
+// três colisões seguidas a faixa ganha um dígito.
+func insertUserWithAnonNumber(ctx context.Context, tx pgx.Tx, email, passwordHash string, ageConfirmed bool, country string) (string, error) {
+	query := `
+		INSERT INTO users (email, password_hash, age_confirmed_at, country, anon_number)
+		VALUES ($1, NULLIF($2, ''), CASE WHEN $3::boolean THEN CURRENT_TIMESTAMP ELSE NULL END, NULLIF($4, ''), $5)
+		ON CONFLICT (anon_number) DO NOTHING
+		RETURNING id
+	`
+	digits := anonFirstDigits
+	for draw := 0; draw < anonMaxDraws; draw++ {
+		if draw > 0 && draw%anonDrawsPerWidth == 0 {
+			digits++
+		}
+		n, err := anonDraw(digits)
+		if err != nil {
+			return "", err
+		}
+		var id string
+		err = tx.QueryRow(ctx, query, email, passwordHash, ageConfirmed, country, n).Scan(&id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return "", err
+		}
+		return id, nil
+	}
+	return "", errors.New("sem número livre para o placar depois de todos os sorteios")
 }
 
 // ErrUserNotFound sinaliza e-mail sem conta.
@@ -757,9 +791,10 @@ func (r *Repository) PurgeDeletedAccounts(ctx context.Context) (int, error) {
 //
 // A linha de `users` sai primeiro, conferindo de novo a carência: quem entrou na conta
 // entre a seleção e este passo não perde nada. Em cascata vão `refresh_tokens`,
-// `user_progress`, `user_paid_challenges`, `legal_acceptances` e `user_identities`. `game_events` e
-// `user_sync_state` não têm chave estrangeira para `users`, e `otps` é por e-mail:
-// esses saem à mão.
+// `user_progress`, `user_paid_challenges`, `legal_acceptances`, `user_identities` e
+// `leaderboard_actions`. `game_events` e `user_sync_state` não têm chave estrangeira
+// para `users`, e `otps` é por e-mail: esses saem à mão. `blocked_nicknames` fica de
+// propósito: guarda só o texto do apelido moderado, para ninguém reusá-lo.
 func (r *Repository) purgeAccount(ctx context.Context, userID string) (bool, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {

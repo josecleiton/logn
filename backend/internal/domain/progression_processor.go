@@ -42,15 +42,16 @@ func (r *Repository) ProcessEventXP(ctx context.Context, tx pgx.Tx, userID strin
 		// de trilha indisponível só a quem a vê (ADR 0014); o evento segue na cadeia de
 		// qualquer jeito (spec, seção 8).
 		var nodeID string
-		var open, entitled bool
+		var open, entitled, isFree bool
 		err := tx.QueryRow(ctx, `
 			SELECT n.id, `+openNode+` AND `+visibleTrack("$2")+`,
 			       EXISTS (SELECT 1 FROM entitlements e
-			               WHERE e.user_id = $2::uuid AND e.track_id = n.track_id AND e.status = 'active')
+			               WHERE e.user_id = $2::uuid AND e.track_id = n.track_id AND e.status = 'active'),
+			       t.kind = 'free'
 			FROM challenges c
 			JOIN skill_nodes n ON n.id = c.node_id
 			JOIN tracks t ON t.id = n.track_id
-			WHERE c.id = $1`, payload.ChallengeID, userID).Scan(&nodeID, &open, &entitled)
+			WHERE c.id = $1`, payload.ChallengeID, userID).Scan(&nodeID, &open, &entitled, &isFree)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -85,13 +86,19 @@ func (r *Repository) ProcessEventXP(ctx context.Context, tx pgx.Tx, userID strin
 			dryRunsEarned = 1
 		}
 
+		// O placar conta só a trilha gratuita (docs/specs/logn_placar_spec.md). A hora em
+		// que o XP chegou ao valor é a do servidor, não a do evento: a do evento vem do
+		// cliente e daria para forjar o desempate. É o mesmo CURRENT_TIMESTAMP da linha
+		// de `user_paid_challenges` acima, e a migração 0071 conta com essa igualdade.
 		updateUser := `
 			UPDATE users
 			SET global_xp = global_xp + $1,
 			    bugs_found = bugs_found + $2,
-			    dry_runs_completed = dry_runs_completed + $3
+			    dry_runs_completed = dry_runs_completed + $3,
+			    free_xp = free_xp + CASE WHEN $5::boolean THEN $1 ELSE 0 END,
+			    free_xp_reached_at = CASE WHEN $5::boolean THEN CURRENT_TIMESTAMP ELSE free_xp_reached_at END
 			WHERE id = $4`
-		if _, err := tx.Exec(ctx, updateUser, XPPerAcceptedAnswer, bugsEarned, dryRunsEarned, userID); err != nil {
+		if _, err := tx.Exec(ctx, updateUser, XPPerAcceptedAnswer, bugsEarned, dryRunsEarned, userID, isFree); err != nil {
 			return fmt.Errorf("failed to update user stats: %w", err)
 		}
 

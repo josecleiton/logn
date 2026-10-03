@@ -85,7 +85,7 @@ func seedUser(t *testing.T, conn *pgxpool.Pool) string {
 	t.Helper()
 	ctx := context.Background()
 	id := testUUID(t)
-	if _, err := conn.Exec(ctx, `INSERT INTO users (id, email) VALUES ($1, $2)`, id, "paid-"+id[:8]+"@example.com"); err != nil {
+	if _, err := conn.Exec(ctx, `INSERT INTO users (id, email, anon_number) VALUES ($1, $2, $3)`, id, "paid-"+id[:8]+"@example.com", farAnonNumber(t)); err != nil {
 		t.Fatalf("usuário: %v", err)
 	}
 	t.Cleanup(func() { conn.Exec(ctx, `DELETE FROM users WHERE id = $1`, id) })

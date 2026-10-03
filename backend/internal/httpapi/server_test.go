@@ -111,8 +111,8 @@ func TestSyncHandler(t *testing.T) {
 	// em users, o sync respondia 401 e o teste falhava desde então.
 	ctx := context.Background()
 	if _, err := conn.Exec(ctx,
-		`INSERT INTO users (id, email) VALUES ($1, $2)`,
-		syncUserID, "sync-"+syncUserID+"@example.com"); err != nil {
+		`INSERT INTO users (id, email, anon_number) VALUES ($1, $2, $3)`,
+		syncUserID, "sync-"+syncUserID+"@example.com", testAnonNumber(t)); err != nil {
 		t.Fatalf("criando o usuário do teste: %v", err)
 	}
 	t.Cleanup(func() {

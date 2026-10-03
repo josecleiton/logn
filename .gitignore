@@ -107,6 +107,7 @@ backend/test_match_sync
 !backend/schema/migrations/0065_lista_de_espera.sql
 !backend/schema/migrations/0066_compra_pelo_google_play.sql
 !backend/schema/migrations/0069_limites_de_abuso.sql
+!backend/schema/migrations/0070_placar.sql
 
 # Termos e política no modo do app, para ler sem rede. `just legal-bundle` gera a partir
 # do servidor, como a trilha empacotada.
