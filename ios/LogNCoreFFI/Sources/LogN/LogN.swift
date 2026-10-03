@@ -4275,177 +4275,6 @@ public struct SampleOfferView: Hashable, Equatable {
     }
 }
 
-public struct ScoreCell: Hashable, Equatable {
-    public var state: ScoreCellState
-    public var top: String
-    public var bottom: String
-
-    public init(state: ScoreCellState, top: String, bottom: String) {
-        self.state = state
-        self.top = top
-        self.bottom = bottom
-    }
-
-    public func serialize<S: Serializer>(serializer: S) throws {
-        try serializer.increase_container_depth()
-        try self.state.serialize(serializer: serializer)
-        try serializer.serialize_str(value: self.top)
-        try serializer.serialize_str(value: self.bottom)
-        try serializer.decrease_container_depth()
-    }
-
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
-        try self.serialize(serializer: serializer)
-        return serializer.get_bytes()
-    }
-
-    public static func deserialize<D: Deserializer>(deserializer: D) throws -> ScoreCell {
-        try deserializer.increase_container_depth()
-        let state = try LogN.ScoreCellState.deserialize(deserializer: deserializer)
-        let top = try deserializer.deserialize_str()
-        let bottom = try deserializer.deserialize_str()
-        try deserializer.decrease_container_depth()
-        return ScoreCell(state: state, top: top, bottom: bottom)
-    }
-
-    public static func bincodeDeserialize(input: [UInt8]) throws -> ScoreCell {
-        let deserializer = BincodeDeserializer.init(input: input);
-        let obj = try deserialize(deserializer: deserializer)
-        if deserializer.get_buffer_offset() < input.count {
-            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
-        }
-        return obj
-    }
-}
-
-/// Estado de uma célula do telão. Os quatro estados do DS, e só eles.
-indirect public enum ScoreCellState: Hashable, Equatable {
-    /// Aceito — `+` ou `+N` em cima, minuto do AC embaixo.
-    case accepted
-    /// Tentado sem AC — `−N` em cima.
-    case failed
-    /// Submetido após o congelamento — `?` em cima, `frz` embaixo.
-    case frozen
-    /// Não tentado — célula vazia.
-    case untried
-
-    public func serialize<S: Serializer>(serializer: S) throws {
-        try serializer.increase_container_depth()
-        switch self {
-        case .accepted:
-            try serializer.serialize_variant_index(value: 0)
-        case .failed:
-            try serializer.serialize_variant_index(value: 1)
-        case .frozen:
-            try serializer.serialize_variant_index(value: 2)
-        case .untried:
-            try serializer.serialize_variant_index(value: 3)
-        }
-        try serializer.decrease_container_depth()
-    }
-
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
-        try self.serialize(serializer: serializer)
-        return serializer.get_bytes()
-    }
-
-    public static func deserialize<D: Deserializer>(deserializer: D) throws -> ScoreCellState {
-        let index = try deserializer.deserialize_variant_index()
-        try deserializer.increase_container_depth()
-        switch index {
-        case 0:
-            try deserializer.decrease_container_depth()
-            return .accepted
-        case 1:
-            try deserializer.decrease_container_depth()
-            return .failed
-        case 2:
-            try deserializer.decrease_container_depth()
-            return .frozen
-        case 3:
-            try deserializer.decrease_container_depth()
-            return .untried
-        default: throw DeserializationError.invalidInput(issue: "Unknown variant index for ScoreCellState: \(index)")
-        }
-    }
-
-    public static func bincodeDeserialize(input: [UInt8]) throws -> ScoreCellState {
-        let deserializer = BincodeDeserializer.init(input: input);
-        let obj = try deserialize(deserializer: deserializer)
-        if deserializer.get_buffer_offset() < input.count {
-            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
-        }
-        return obj
-    }
-}
-
-/// Uma linha do telão. 13 células, uma por letra A—M.
-public struct ScoreboardRow: Hashable, Equatable {
-    public var rank: Int32
-    public var team: String
-    public var university: String
-    public var solved: Int32
-    public var penalty: Int32
-    public var isUser: Bool
-    public var cells: [ScoreCell]
-
-    public init(rank: Int32, team: String, university: String, solved: Int32, penalty: Int32, isUser: Bool, cells: [ScoreCell]) {
-        self.rank = rank
-        self.team = team
-        self.university = university
-        self.solved = solved
-        self.penalty = penalty
-        self.isUser = isUser
-        self.cells = cells
-    }
-
-    public func serialize<S: Serializer>(serializer: S) throws {
-        try serializer.increase_container_depth()
-        try serializer.serialize_i32(value: self.rank)
-        try serializer.serialize_str(value: self.team)
-        try serializer.serialize_str(value: self.university)
-        try serializer.serialize_i32(value: self.solved)
-        try serializer.serialize_i32(value: self.penalty)
-        try serializer.serialize_bool(value: self.isUser)
-        try serializeArray(value: self.cells, serializer: serializer) { item, serializer in
-            try item.serialize(serializer: serializer)
-        }
-        try serializer.decrease_container_depth()
-    }
-
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
-        try self.serialize(serializer: serializer)
-        return serializer.get_bytes()
-    }
-
-    public static func deserialize<D: Deserializer>(deserializer: D) throws -> ScoreboardRow {
-        try deserializer.increase_container_depth()
-        let rank = try deserializer.deserialize_i32()
-        let team = try deserializer.deserialize_str()
-        let university = try deserializer.deserialize_str()
-        let solved = try deserializer.deserialize_i32()
-        let penalty = try deserializer.deserialize_i32()
-        let isUser = try deserializer.deserialize_bool()
-        let cells = try deserializeArray(deserializer: deserializer) { deserializer in
-            try LogN.ScoreCell.deserialize(deserializer: deserializer)
-        }
-        try deserializer.decrease_container_depth()
-        return ScoreboardRow(rank: rank, team: team, university: university, solved: solved, penalty: penalty, isUser: isUser, cells: cells)
-    }
-
-    public static func bincodeDeserialize(input: [UInt8]) throws -> ScoreboardRow {
-        let deserializer = BincodeDeserializer.init(input: input);
-        let obj = try deserialize(deserializer: deserializer)
-        if deserializer.get_buffer_offset() < input.count {
-            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
-        }
-        return obj
-    }
-}
-
 public struct SkillNode: Hashable, Equatable {
     public var id: String
     public var name: String
@@ -4536,68 +4365,6 @@ public struct SkillNode: Hashable, Equatable {
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> SkillNode {
-        let deserializer = BincodeDeserializer.init(input: input);
-        let obj = try deserialize(deserializer: deserializer)
-        if deserializer.get_buffer_offset() < input.count {
-            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
-        }
-        return obj
-    }
-}
-
-/// Uma linha do ranking de celular.
-public struct StandingRow: Hashable, Equatable {
-    public var rank: Int32
-    public var handle: String
-    public var university: String
-    public var solved: Int32
-    public var penalty: Int32
-    public var isUser: Bool
-    /// Só na linha do usuário: `subiu 6 nesta rodada`. Vazio nas demais.
-    public var note: String
-
-    public init(rank: Int32, handle: String, university: String, solved: Int32, penalty: Int32, isUser: Bool, note: String) {
-        self.rank = rank
-        self.handle = handle
-        self.university = university
-        self.solved = solved
-        self.penalty = penalty
-        self.isUser = isUser
-        self.note = note
-    }
-
-    public func serialize<S: Serializer>(serializer: S) throws {
-        try serializer.increase_container_depth()
-        try serializer.serialize_i32(value: self.rank)
-        try serializer.serialize_str(value: self.handle)
-        try serializer.serialize_str(value: self.university)
-        try serializer.serialize_i32(value: self.solved)
-        try serializer.serialize_i32(value: self.penalty)
-        try serializer.serialize_bool(value: self.isUser)
-        try serializer.serialize_str(value: self.note)
-        try serializer.decrease_container_depth()
-    }
-
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
-        try self.serialize(serializer: serializer)
-        return serializer.get_bytes()
-    }
-
-    public static func deserialize<D: Deserializer>(deserializer: D) throws -> StandingRow {
-        try deserializer.increase_container_depth()
-        let rank = try deserializer.deserialize_i32()
-        let handle = try deserializer.deserialize_str()
-        let university = try deserializer.deserialize_str()
-        let solved = try deserializer.deserialize_i32()
-        let penalty = try deserializer.deserialize_i32()
-        let isUser = try deserializer.deserialize_bool()
-        let note = try deserializer.deserialize_str()
-        try deserializer.decrease_container_depth()
-        return StandingRow(rank: rank, handle: handle, university: university, solved: solved, penalty: penalty, isUser: isUser, note: note)
-    }
-
-    public static func bincodeDeserialize(input: [UInt8]) throws -> StandingRow {
         let deserializer = BincodeDeserializer.init(input: input);
         let obj = try deserialize(deserializer: deserializer)
         if deserializer.get_buffer_offset() < input.count {
@@ -5763,16 +5530,6 @@ public struct ViewModel: Hashable, Equatable {
     /// Primeiro nome derivado do e-mail, para a despedida.
     public var displayName: String
     public var matchView: MatchViewModel
-    public var contestName: String
-    public var standingsGlobal: [StandingRow]
-    public var standingsHome: [StandingRow]
-    public var userStanding: StandingRow
-    public var scoreboard: [ScoreboardRow]
-    /// Ranking e telão são dados de exemplo, não de jogadores de verdade.
-    /// 
-    /// Sem este aviso o jogador lia "você está em 42º" como fato. Quem sabe de onde os
-    /// dados vêm é o Core, então é ele quem desliga o aviso quando o placar tiver API.
-    public var standingsAreSample: Bool
     /// Segundos até login, verificação, cadastro e troca de senha voltarem a valer.
     /// Zero quando não há bloqueio.
     public var authCooldownSeconds: UInt32
@@ -5834,7 +5591,7 @@ public struct ViewModel: Hashable, Equatable {
     public var canChooseNickname: Bool
     public var nicknameFlow: NicknameFlowView
 
-    public init(status: StatusKey, pendingSyncCount: UInt32, isSyncing: Bool, isFetching: Bool, isAuthenticating: Bool, hasAccessToken: Bool, hasSession: Bool, isOfflineSession: Bool, trailFromBundle: Bool, trailGeneratedAt: String, matchLeft: Bool, isGuest: Bool, locale: String, challenges: [Challenge], nodes: [SkillNode], otpEmail: String, accountEmail: String, otpVerified: Bool, globalXp: Int32, bugsFound: Int32, dryRunsCompleted: Int32, level: Int32, xpIntoLevel: Int32, xpForLevel: Int32, xpToNextLevel: Int32, challengesCompleted: Int32, balloonsUp: Int32, justLoggedOut: Bool, passwordResetDone: Bool, displayName: String, matchView: MatchViewModel, contestName: String, standingsGlobal: [StandingRow], standingsHome: [StandingRow], userStanding: StandingRow, scoreboard: [ScoreboardRow], standingsAreSample: Bool, authCooldownSeconds: UInt32, resendCooldownSeconds: UInt32, legalVersionsReady: Bool, minAge: UInt32, deletionPurgeAfter: Int64, accountRestoredNotice: Bool, socialSignupRequired: Bool, analyticsEnabled: Bool, boot: BootViewModel, termsUpdate: TermsUpdateViewModel?, termsNotice: Bool, resumeEmail: String, accountUserId: String, tracks: [TrackView], currentTrack: TrackView, catalogBadge: CatalogBadge, showOnboarding: Bool, purchaseFlow: PurchaseFlowView, restoreResult: RestoreResultView, sampleOffer: SampleOfferView, purchasesToFinish: [String], purchaseInFlight: Bool, leaderboard: LeaderboardView, profileAnonNumber: Int32, profileNickname: String?, canChooseNickname: Bool, nicknameFlow: NicknameFlowView) {
+    public init(status: StatusKey, pendingSyncCount: UInt32, isSyncing: Bool, isFetching: Bool, isAuthenticating: Bool, hasAccessToken: Bool, hasSession: Bool, isOfflineSession: Bool, trailFromBundle: Bool, trailGeneratedAt: String, matchLeft: Bool, isGuest: Bool, locale: String, challenges: [Challenge], nodes: [SkillNode], otpEmail: String, accountEmail: String, otpVerified: Bool, globalXp: Int32, bugsFound: Int32, dryRunsCompleted: Int32, level: Int32, xpIntoLevel: Int32, xpForLevel: Int32, xpToNextLevel: Int32, challengesCompleted: Int32, balloonsUp: Int32, justLoggedOut: Bool, passwordResetDone: Bool, displayName: String, matchView: MatchViewModel, authCooldownSeconds: UInt32, resendCooldownSeconds: UInt32, legalVersionsReady: Bool, minAge: UInt32, deletionPurgeAfter: Int64, accountRestoredNotice: Bool, socialSignupRequired: Bool, analyticsEnabled: Bool, boot: BootViewModel, termsUpdate: TermsUpdateViewModel?, termsNotice: Bool, resumeEmail: String, accountUserId: String, tracks: [TrackView], currentTrack: TrackView, catalogBadge: CatalogBadge, showOnboarding: Bool, purchaseFlow: PurchaseFlowView, restoreResult: RestoreResultView, sampleOffer: SampleOfferView, purchasesToFinish: [String], purchaseInFlight: Bool, leaderboard: LeaderboardView, profileAnonNumber: Int32, profileNickname: String?, canChooseNickname: Bool, nicknameFlow: NicknameFlowView) {
         self.status = status
         self.pendingSyncCount = pendingSyncCount
         self.isSyncing = isSyncing
@@ -5866,12 +5623,6 @@ public struct ViewModel: Hashable, Equatable {
         self.passwordResetDone = passwordResetDone
         self.displayName = displayName
         self.matchView = matchView
-        self.contestName = contestName
-        self.standingsGlobal = standingsGlobal
-        self.standingsHome = standingsHome
-        self.userStanding = userStanding
-        self.scoreboard = scoreboard
-        self.standingsAreSample = standingsAreSample
         self.authCooldownSeconds = authCooldownSeconds
         self.resendCooldownSeconds = resendCooldownSeconds
         self.legalVersionsReady = legalVersionsReady
@@ -5938,18 +5689,6 @@ public struct ViewModel: Hashable, Equatable {
         try serializer.serialize_bool(value: self.passwordResetDone)
         try serializer.serialize_str(value: self.displayName)
         try self.matchView.serialize(serializer: serializer)
-        try serializer.serialize_str(value: self.contestName)
-        try serializeArray(value: self.standingsGlobal, serializer: serializer) { item, serializer in
-            try item.serialize(serializer: serializer)
-        }
-        try serializeArray(value: self.standingsHome, serializer: serializer) { item, serializer in
-            try item.serialize(serializer: serializer)
-        }
-        try self.userStanding.serialize(serializer: serializer)
-        try serializeArray(value: self.scoreboard, serializer: serializer) { item, serializer in
-            try item.serialize(serializer: serializer)
-        }
-        try serializer.serialize_bool(value: self.standingsAreSample)
         try serializer.serialize_u32(value: self.authCooldownSeconds)
         try serializer.serialize_u32(value: self.resendCooldownSeconds)
         try serializer.serialize_bool(value: self.legalVersionsReady)
@@ -6031,18 +5770,6 @@ public struct ViewModel: Hashable, Equatable {
         let passwordResetDone = try deserializer.deserialize_bool()
         let displayName = try deserializer.deserialize_str()
         let matchView = try LogN.MatchViewModel.deserialize(deserializer: deserializer)
-        let contestName = try deserializer.deserialize_str()
-        let standingsGlobal = try deserializeArray(deserializer: deserializer) { deserializer in
-            try LogN.StandingRow.deserialize(deserializer: deserializer)
-        }
-        let standingsHome = try deserializeArray(deserializer: deserializer) { deserializer in
-            try LogN.StandingRow.deserialize(deserializer: deserializer)
-        }
-        let userStanding = try LogN.StandingRow.deserialize(deserializer: deserializer)
-        let scoreboard = try deserializeArray(deserializer: deserializer) { deserializer in
-            try LogN.ScoreboardRow.deserialize(deserializer: deserializer)
-        }
-        let standingsAreSample = try deserializer.deserialize_bool()
         let authCooldownSeconds = try deserializer.deserialize_u32()
         let resendCooldownSeconds = try deserializer.deserialize_u32()
         let legalVersionsReady = try deserializer.deserialize_bool()
@@ -6079,7 +5806,7 @@ public struct ViewModel: Hashable, Equatable {
         let canChooseNickname = try deserializer.deserialize_bool()
         let nicknameFlow = try LogN.NicknameFlowView.deserialize(deserializer: deserializer)
         try deserializer.decrease_container_depth()
-        return ViewModel(status: status, pendingSyncCount: pendingSyncCount, isSyncing: isSyncing, isFetching: isFetching, isAuthenticating: isAuthenticating, hasAccessToken: hasAccessToken, hasSession: hasSession, isOfflineSession: isOfflineSession, trailFromBundle: trailFromBundle, trailGeneratedAt: trailGeneratedAt, matchLeft: matchLeft, isGuest: isGuest, locale: locale, challenges: challenges, nodes: nodes, otpEmail: otpEmail, accountEmail: accountEmail, otpVerified: otpVerified, globalXp: globalXp, bugsFound: bugsFound, dryRunsCompleted: dryRunsCompleted, level: level, xpIntoLevel: xpIntoLevel, xpForLevel: xpForLevel, xpToNextLevel: xpToNextLevel, challengesCompleted: challengesCompleted, balloonsUp: balloonsUp, justLoggedOut: justLoggedOut, passwordResetDone: passwordResetDone, displayName: displayName, matchView: matchView, contestName: contestName, standingsGlobal: standingsGlobal, standingsHome: standingsHome, userStanding: userStanding, scoreboard: scoreboard, standingsAreSample: standingsAreSample, authCooldownSeconds: authCooldownSeconds, resendCooldownSeconds: resendCooldownSeconds, legalVersionsReady: legalVersionsReady, minAge: minAge, deletionPurgeAfter: deletionPurgeAfter, accountRestoredNotice: accountRestoredNotice, socialSignupRequired: socialSignupRequired, analyticsEnabled: analyticsEnabled, boot: boot, termsUpdate: termsUpdate, termsNotice: termsNotice, resumeEmail: resumeEmail, accountUserId: accountUserId, tracks: tracks, currentTrack: currentTrack, catalogBadge: catalogBadge, showOnboarding: showOnboarding, purchaseFlow: purchaseFlow, restoreResult: restoreResult, sampleOffer: sampleOffer, purchasesToFinish: purchasesToFinish, purchaseInFlight: purchaseInFlight, leaderboard: leaderboard, profileAnonNumber: profileAnonNumber, profileNickname: profileNickname, canChooseNickname: canChooseNickname, nicknameFlow: nicknameFlow)
+        return ViewModel(status: status, pendingSyncCount: pendingSyncCount, isSyncing: isSyncing, isFetching: isFetching, isAuthenticating: isAuthenticating, hasAccessToken: hasAccessToken, hasSession: hasSession, isOfflineSession: isOfflineSession, trailFromBundle: trailFromBundle, trailGeneratedAt: trailGeneratedAt, matchLeft: matchLeft, isGuest: isGuest, locale: locale, challenges: challenges, nodes: nodes, otpEmail: otpEmail, accountEmail: accountEmail, otpVerified: otpVerified, globalXp: globalXp, bugsFound: bugsFound, dryRunsCompleted: dryRunsCompleted, level: level, xpIntoLevel: xpIntoLevel, xpForLevel: xpForLevel, xpToNextLevel: xpToNextLevel, challengesCompleted: challengesCompleted, balloonsUp: balloonsUp, justLoggedOut: justLoggedOut, passwordResetDone: passwordResetDone, displayName: displayName, matchView: matchView, authCooldownSeconds: authCooldownSeconds, resendCooldownSeconds: resendCooldownSeconds, legalVersionsReady: legalVersionsReady, minAge: minAge, deletionPurgeAfter: deletionPurgeAfter, accountRestoredNotice: accountRestoredNotice, socialSignupRequired: socialSignupRequired, analyticsEnabled: analyticsEnabled, boot: boot, termsUpdate: termsUpdate, termsNotice: termsNotice, resumeEmail: resumeEmail, accountUserId: accountUserId, tracks: tracks, currentTrack: currentTrack, catalogBadge: catalogBadge, showOnboarding: showOnboarding, purchaseFlow: purchaseFlow, restoreResult: restoreResult, sampleOffer: sampleOffer, purchasesToFinish: purchasesToFinish, purchaseInFlight: purchaseInFlight, leaderboard: leaderboard, profileAnonNumber: profileAnonNumber, profileNickname: profileNickname, canChooseNickname: canChooseNickname, nicknameFlow: nicknameFlow)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> ViewModel {

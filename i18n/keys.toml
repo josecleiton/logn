@@ -68,7 +68,6 @@ store_unavailable = {}
 login_locked = {}
 code_locked = {}
 wait_seconds ={ placeholders = [{ name = "seconds", type = "int" }] }
-sample_standings = {}
 # O apelido do placar. Os três primeiros o jogador corrige; o último diz que a conta
 # já escolheu ou perdeu a chance.
 nickname_invalid = {}
@@ -393,14 +392,6 @@ legend_failed = {}
 legend_frozen = {}
 legend_untried = {}
 cell_accessibility = { placeholders = [{ name = "letter", type = "text" }, { name = "status", type = "text" }] }
-
-[groups.standings.keys]
-title = {}
-global_tab = {}
-full_screen = {}
-row_accessibility = { placeholders = [{ name = "rank", type = "int" }, { name = "handle", type = "text" }, { name = "university", type = "text" }, { name = "solved", type = "int" }, { name = "penalty", type = "int" }] }
-row_accessibility_user = { placeholders = [{ name = "rank", type = "int" }, { name = "handle", type = "text" }, { name = "university", type = "text" }, { name = "solved", type = "int" }, { name = "penalty", type = "int" }] }
-you = {}
 
 # O placar geral de XP (docs/specs/logn_placar_spec.md). O nome de quem não escolheu
 # apelido é "jogador #N": o servidor manda o número e a frase mora aqui. O XP chega já

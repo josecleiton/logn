@@ -61,7 +61,6 @@ store_unavailable = "Couldn't reach the store right now. Try again in a moment."
 login_locked = "Too many wrong passwords for this email. Wait a few minutes or reset your password by email."
 code_locked = "Too many wrong codes for this email. A new code can only be sent tomorrow."
 wait_seconds = "Wait %{seconds} s"
-sample_standings = "Sample data. The ranking isn't live yet: teams, positions and numbers are made up."
 nickname_invalid = "Use 3 to 20 characters: unaccented letters, numbers and _."
 nickname_reserved = "That nickname is reserved. Pick another one."
 nickname_taken = "That nickname is already taken."
@@ -412,14 +411,6 @@ legend_failed = "tried, no AC"
 legend_frozen = "submitted after freeze"
 legend_untried = "not tried"
 cell_accessibility = "problem %{letter}, %{status}"
-
-[standings]
-title = "Standings"
-global_tab = "Global"
-full_screen = "VIEW FULL SCREEN"
-row_accessibility = "%{rank}º, %{handle}, %{university}, %{solved} accepted, %{penalty} penalty"
-row_accessibility_user = "your position, %{rank}º, %{handle}, %{university}, %{solved} accepted, %{penalty} penalty"
-you = "you"
 
 [leaderboard]
 title = "Leaderboard"

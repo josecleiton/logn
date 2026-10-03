@@ -84,15 +84,6 @@ public class CoreWrapper: ObservableObject {
                 lastVerdict: "", errors: [], hasTrap: false, trapKind: .wrongAnswer,
                 trapTitle: "", trapExplanation: ""
             ),
-            contestName: "",
-            standingsGlobal: [],
-            standingsHome: [],
-            userStanding: StandingRow(
-                rank: 0, handle: "", university: "", solved: 0, penalty: 0,
-                isUser: true, note: ""
-            ),
-            scoreboard: [],
-            standingsAreSample: true,
             authCooldownSeconds: 0,
             resendCooldownSeconds: 0,
             legalVersionsReady: false,

@@ -61,7 +61,6 @@ store_unavailable = "Não consegui falar com a loja agora. Tente de novo em inst
 login_locked = "Muitas senhas erradas para este e-mail. Espere alguns minutos ou redefina a senha pelo e-mail."
 code_locked = "Muitos códigos errados para este e-mail. Um código novo só sai amanhã."
 wait_seconds = "Aguarde %{seconds} s"
-sample_standings = "Dados de exemplo. O ranking ainda não está no ar: times, posições e números são fictícios."
 nickname_invalid = "Use de 3 a 20 caracteres: letras sem acento, números e _."
 nickname_reserved = "Esse apelido é reservado. Escolha outro."
 nickname_taken = "Esse apelido já está em uso."
@@ -412,14 +411,6 @@ legend_failed = "tentado, sem AC"
 legend_frozen = "submetido após o congelamento"
 legend_untried = "não tentado"
 cell_accessibility = "problema %{letter}, %{status}"
-
-[standings]
-title = "Standings"
-global_tab = "Global"
-full_screen = "VER O TELÃO COMPLETO"
-row_accessibility = "%{rank}º, %{handle}, %{university}, %{solved} aceitos, %{penalty} de penalidade"
-row_accessibility_user = "sua posição, %{rank}º, %{handle}, %{university}, %{solved} aceitos, %{penalty} de penalidade"
-you = "você"
 
 [leaderboard]
 title = "Placar"
