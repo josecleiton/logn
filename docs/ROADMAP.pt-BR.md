@@ -47,121 +47,55 @@ estado em memória, não o evento.
 Quando o histórico existir, é ele quem decide o que a partida abandonada vale: derrota,
 neutra ou escondida. O flag já está gravado para as três leituras.
 
-## A FFI numera variante por posição
+## Trilhas pagas: o que falta
 
-O bincode não grava o nome da variante, só a posição dela no enum; o código gerado pelo `codegen` escreve esse número. Tirar ou reordenar uma variante no meio de um tipo que atravessa a FFI mudaria o protocolo em silêncio se houvesse descasamento de versão.
+O PR #2 entregou o ciclo inteiro no iOS, e o cliente Android levou para o Google Play:
+catálogo em grade, uma trilha por árvore, amostra grátis, paywall em três pontos, compra
+validada pelo servidor, restauração, reembolso (notificações da App Store; job das
+anuladas do Play), licença offline de 30 dias com a escada de avisos, pacote cifrado e
+armazenamento. Desenho e ameaças na ADR 0013; telas nos designs `LogN Trilhas` e `LogN
+Validade Offline`. PRD: [`specs/logn_trilhas_pagas_spec.md`](specs/logn_trilhas_pagas_spec.md).
 
-**Por que reordenar é seguro hoje:** os dois lados (Swift e Rust) vão no mesmo binário, gerados e compilados juntos pelo `build-ios-ffi`, então nunca discordam. O que vai para o disco para ser lido depois é JSON, e não bincode.
+As duas trilhas estão à venda no Play, cada uma com oferta de primeira compra. Falta:
 
-**Regra de estabilidade (JSON):** no JSON, a serialização se baseia no nome. Portanto, não se pode renomear variante nem campo de tipos persistidos (`OfflineSnapshot`, `SkillNode`, `Challenge`, `GameEvent` e `NodeStatus`). Se precisar de um campo novo, use `#[serde(default)]`.
-
-**Situações que exigiriam mudar essa decisão (exigiriam "enum só cresce no fim" e travas rígidas):**
-- Se algum estado passar a ser persistido em bincode.
-- Se o xcframework passar a ser distribuído com versão própria e as pontas puderem desatualizar.
-- Extensão (ex: widget) ou relógio trocando bincode com o app.
-- Se criarmos um shell Android compilado em um pipeline separado.
-
-## Lançamento no Android (ADR 0022)
-
-O lançamento público passou a ser no Google Play. A conta do Play Console, de organização,
-já está verificada. A landing já tem os botões do Google Play, a lista de espera do iPhone
-(fechada até `LOGN_API_ORIGIN`) e `/account/delete/`. Falta, nesta ordem:
-
-- **Backend:** feito, desligado até configurar. Ficam a lista de espera
-  (`enable_waitlist`), a compra pelo Play e o job das anuladas (`play_package_name`) e o
-  login com Google no Android (`google_web_client_id` + `google_android_client_ids`). Falta
-  o Core mandar a compra na forma do Play e mapear `purchase_pending` e
-  `store_unavailable`.
-- **Documentos legais:** substituir a v4 com texto neutro de loja, Google como processador,
-  reembolso pelo Google Play e a seção da lista de espera. Só depois a landing abre a
-  lista.
-- **Cliente Android:** a pasta inteira. Os rótulos de exclusão têm de bater com
-  `/account/delete/`. Para destravar produto e `purchaseToken` reais, basta um AAB mínimo
-  com billing em teste interno, e ele pode vir antes do app completo.
-- **Play Console:** convidar a conta de serviço do Cloud Run, criar os produtos e preencher
-  Segurança dos dados com `https://logn.sh/account/delete`.
-- **iPhone:** entra quando houver 100 confirmados na lista ou receita no Android que pague a
-  conta da Apple, o que vier primeiro.
-
-## Antes de enviar para a loja
-
-O que saiu em setembro de 2026 e deixou uma ponta aberta:
-
-- **Conteúdo em três línguas** (ADR 0009) está no ar em português, inglês e espanhol. O
-  espanhol passou por revisão de texto, mas ainda precisa de um revisor técnico nativo
-  antes da loja.
-- **Build de loja:** `just release-ios` empacota a trilha e os documentos a partir da
-  produção e gera o `.ipa`, sem enviar. A semente (versão 3, com `track_id` e
-  `requires_purchase`) e a cópia offline dos documentos foram geradas da produção em
-  2026-09-30, com a v3; a v4 saiu no mesmo dia, e o `release-ios` gera as duas de novo.
-
-## Trilhas pagas: o que falta depois do PR #2
-
-O PR #2 entrega o ciclo inteiro: catálogo em grade, uma trilha por árvore, amostra grátis,
-paywall em três pontos, compra validada pelo servidor contra a raiz fixa da Apple,
-restauração, notificações de reembolso, licença offline de 30 dias com a escada de avisos,
-pacote cifrado e armazenamento. Desenho e ameaças na ADR 0013; telas nos designs `LogN
-Trilhas` e `LogN Validade Offline`. PRD:
-[`specs/logn_trilhas_pagas_spec.md`](specs/logn_trilhas_pagas_spec.md).
-
-Antes de vender a primeira trilha:
-
-- **Termos e política novos.** A v4 está no ar desde 2026-09-30, não relevante: a
-  política passou a citar o histórico da revogação manual (ADR 0021), e o app mostra a
-  faixa de aviso. Antes dela, a v3, do mesmo dia, relevante: toda conta
-  aceita de novo pelo bloqueio da ADR 0020, e `APP_PEDE_REACEITE` está ligado. A migração
-  0062 do repositório de conteúdo substituiu o texto da 0061 antes de qualquer aceite,
-  fechando três riscos da revisão automatizada: encerrar a conta por mau uso não revoga
-  trilha comprada, uma versão nova não muda as condições do que já foi comprado, e a
-  transferência internacional se apoia nos contratos de tratamento de dados, sem afirmar
-  cláusulas da ANPD. Daqui em diante, com aceite registrado, correção é versão nova.
-  A v3 saiu sem revisão de advogado, e ficam em aberto para ele: a base legal do aceite,
-  os aceites apagados na exclusão, adolescentes, os portões de XP e a guarda dos
-  registros de acesso.
+- **Escada de validade offline na tela.** Compra e reembolso já rodaram de ponta a ponta
+  no Play, mas a escada não foi vista: o servidor emite a licença com a hora de agora,
+  então só os testes do Core cobrem os 27 dias.
+- **Termos e política.** A v4 está no ar (2026-09-30), com texto neutro de loja: Google
+  como processador, reembolso pelo Google Play e a seção da lista de espera. Saiu sem
+  revisão de advogado, e ficam em aberto para ele: a base legal do aceite, os aceites
+  apagados na exclusão, adolescentes, os portões de XP e a guarda dos registros de acesso.
+  Com aceite registrado, correção é versão nova.
   O texto promete uma coisa que o código ainda não faz: apagar `store_transactions`,
   `revoked_transactions` e `manual_revocations` 5 anos depois da transação (a primeira
   vence em 2031). Não é para agora, mas também não é para deixar de fazer: a política diz
   que apaga.
 - **Revogação manual.** `just revoke` e `just appeal` (ADR 0021) revogam a licença e
   respondem à contestação pela rota interna, com a evidência gravada e o aviso por e-mail
-  da seção 10.5. Nunca rodaram contra a produção. A política cita esse histórico desde a
-  v4 (2026-09-30).
-- **Login com GitHub.** No ar no servidor, e o login rodou de ponta a ponta num iPhone em
-  2026-09-30, e o flag `sso_github_enabled` do PostHog, que mostra o botão, foi ligado no
-  mesmo dia; desligá-lo esconde o botão sem build novo. Falta ver a
-  exclusão de conta confirmada pelo GitHub, que revoga a autorização do app lá.
-- **Notificações da App Store.** O backend está no ar com as trilhas; falta cadastrar no
-  App Store Connect a URL das notificações, que é a `.run.app`, não o domínio atrás do
-  Cloudflare.
-- **App Store Connect.** Acordo de apps pagos, dados bancários e fiscais, e o produto não
-  consumível de cada trilha, sem Compartilhamento Familiar.
-- **Compra de ponta a ponta.** A compra pela loja só roda pelo Xcode, com o certificado do
-  StoreKit Testing em `APPLE_XCODE_ROOT_CERT`, e ainda não foi exercitada inteira. A
-  escada de validade offline também não foi vista na tela: o servidor emite a licença com a
-  hora de agora, e só os testes do Core cobrem os 27 dias.
+  da seção 10.5. Nunca rodaram contra a produção.
+- **Login com GitHub.** No ar, com o flag `sso_github_enabled` do PostHog ligado desde
+  2026-09-30. Falta ver a exclusão de conta confirmada pelo GitHub, que revoga a
+  autorização do app lá.
 
 Decidido e em aberto, cada um esperando o seu momento:
 
 - **Nivelador (nó zero).** Está no design e fica para um PR próprio, com PRD: é sistema de
   conteúdo novo, com vídeo, texto, figura, referências e o lembrete depois de dois erros.
-- **Conciliação de reembolso.** O reembolso cuja notificação esgota as tentativas da Apple
-  nunca chega. Falta conciliar pela App Store Server API.
-- **Sandbox em produção.** Quem testa pelo TestFlight ganha a trilha de verdade. Se virar
-  problema, a saída é tratar direito de Sandbox como temporário.
-- **Cadeia verificada na hora de agora.** Restaurar um JWS cuja folha venceu falha fechado;
-  a Apple verifica no `signedDate`.
 - **Uma chave por versão da trilha.** A chave de um comprador abre o pacote daquela versão
   para qualquer um. É a ameaça que a spec deixa fora; o remédio é subir `content_version`.
 - **Limite de aparelhos.** Hoje só registra. Um limite, se vier, vem depois de medir
   quantos aparelhos uma conta legítima usa.
 - **Seletor no cabeçalho.** O app abre o catálogo pelo nome da trilha com chevron; o
   design tem um botão "Trilhas" à parte. O arquivo de design precisa refletir a escolha.
+- **Espanhol.** O conteúdo em três línguas (ADR 0009) está no ar em português, inglês e
+  espanhol. O espanhol passou por revisão de texto, mas ainda precisa de um revisor
+  técnico nativo.
 
 ## Instituição de ensino no perfil
 
 O design ("LogN Instituicao") põe a instituição no Perfil, abaixo dos números, como a
-chave do placar por instituição e das inscrições em contest. Nenhum dos dois existe: a
-aba Placar mostra dados de exemplo, e a aba Sede diz "UFC" para todo mundo.
+chave do placar por instituição e das inscrições em contest. É o primeiro passo das duas
+seções abaixo, e nada dele existe ainda: a aba Sede diz "UFC" para todo mundo.
 
 Esta entrega é escolher na lista do e-MEC, no Perfil ou num passo pulável do cadastro,
 ver a sigla no Perfil e provar o vínculo com um código no e-mail institucional, que não
@@ -174,32 +108,77 @@ Antes de codar: a tela do passo no cadastro, que o design não tem, e a chave no
 `INSTITUTION_EMAIL_KEY` no Secret Manager. A política de privacidade ganha versão nova,
 de novo sem revisão jurídica.
 
-O risco para quem joga é baixo: entra depois das trilhas pagas.
-
 PRD: [`specs/logn_instituicao_spec.md`](specs/logn_instituicao_spec.md).
 
-## O repositório é público
+## O placar é dado de exemplo
 
-A segunda varredura (outubro de 2026) passou pela árvore, por todo blob do histórico e
-pelos `refs/pull/*` atrás de segredo, conteúdo (regra 8), licença e segurança.
+A aba Placar existe nos dois clientes, com as abas Global e Sede, a linha do jogador
+fixa embaixo, e o telão completo: posição e time congelados, resolvidos, penalidade e as
+colunas A–M, com a legenda dos balões. Tudo sai de `mock_data.rs`; o Core manda
+`standings_are_sample: true`, e a tela mostra a tarja de dados de exemplo no topo. Não há
+tabela, rota nem job no servidor.
 
-- **Segredo:** nenhum, nem no histórico.
-- **Licença:** `NOTICE` completo (IBM Plex com `OFL.txt`, runtime Serde, boltffi, selos
-  e logotipos de terceiros); o runtime do editor de design saiu do repositório.
-- **Conteúdo:** a árvore ainda tinha gabarito da trilha gratuita nos testes do Core
-  (`match_engine.rs`, `app.rs`); trocado por desafio inventado. O histórico tem esses
-  gabaritos nas versões antigas e, em mensagem de commit, o e-mail real de uma pessoa
-  e a história dela.
+Falta o PRD, e ele decide em cima do que o resto se constrói:
 
-- **Segurança:** os limites de abuso que a revisão apontou entraram com a migração 0069
-  (`/sync` com teto de eventos e vagas, falhas de OTP somadas entre reenvios, IPv6 por
-  /64, tentativas de senha por e-mail e IP, envio de código por IP e teto global).
+- **O que conta.** XP, respostas aceitas, resolvidos e penalidade como no ICPC, ou uma
+  mistura. As colunas do telão supõem a última; XP é o que o servidor já calcula.
+- **Quem conta.** Aluno, professor, ex-aluno: a spec da instituição deixa isso para o PRD
+  do placar, e no placar por instituição só conta vínculo verificado.
+- **Janela.** Desde sempre, por temporada ou por semana.
+- **Integridade.** A ordem sai do servidor, a partir do que o `/sync` já validou, nunca de
+  número que o cliente manda.
 
-Por isso a abertura não vira a chave deste repositório: o GitHub guarda os
-`refs/pull/*`, que ninguém apaga, e eles seguram os commits antigos. O histórico foi
-reescrito com `git filter-repo` (mensagens e gabaritos antigos; a autoria ficou como
-era) e publicado num repositório novo em 2026-10-02; o antigo fica privado, como
-`logn-private`. O repositório de conteúdo lê este sem token agora. O
-Workload Identity de `terraform/github_deploy.tf` é do repositório de conteúdo e não
-muda; o repositório novo só precisa do environment `deployment` e do segredo
-`CONTENT_DEPLOY_DISPATCH_TOKEN` outra vez.
+A aba Sede depende da instituição acima; a Global não, e pode vir antes. A carência de
+troca de instituição e as métricas do card do Perfil ("na instituição") vêm com este PRD.
+
+## Contest ainda não existe
+
+A partida já fala a língua de um contest: problema por letra, balão, relógio,
+`CONTEST ENCERRADO` no relatório, e `isFrozen` para a última hora no design system. Mas
+cada partida é jogada sozinha, offline. Não há contest com outras pessoas: nem agenda,
+nem inscrição, nem conjunto de problemas compartilhado, nem telão ao vivo.
+
+A spec da instituição já fixa duas regras para ele: só vínculo verificado conta na
+inscrição, e trocar de instituição nunca vale com contest em andamento. O resto pede PRD
+próprio, depois do PRD do placar, porque o telão do contest é a mesma tela com dado de
+verdade. Contest é a primeira função que precisa estar online numa hora marcada, o que vai
+contra o desenho offline-first (ADR 0002): o PRD tem de dizer quanto vale uma resposta
+dada offline durante um contest.
+
+## O iPhone
+
+O lançamento público passou a ser no Google Play (ADR 0022), no ar desde 2026-10-01. O
+iPhone entra quando houver 100 confirmados na lista de espera ou receita no Android que
+pague a conta de Apple Developer, o que vier primeiro. A lista de espera da landing está
+aberta.
+
+Até lá o iOS só roda pelo Xcode, e tudo que precisa da conta da Apple espera:
+
+- **Build de loja.** `just release-ios` empacota a trilha e os documentos a partir da
+  produção e gera o `.ipa`, sem enviar; gera de novo a semente e os documentos na hora.
+- **App Store Connect.** Acordo de apps pagos, dados bancários e fiscais, e o produto não
+  consumível de cada trilha, sem Compartilhamento Familiar.
+- **Notificações da App Store.** O backend está no ar; falta cadastrar a URL das
+  notificações, que é a `.run.app`, não o domínio atrás do Cloudflare.
+- **Sign in with Apple.** Apagado até a conta paga (ADR 0017).
+- **Compra de ponta a ponta.** A compra pela loja só roda pelo Xcode, com o certificado do
+  StoreKit Testing em `APPLE_XCODE_ROOT_CERT`, e ainda não foi exercitada inteira.
+- **Conciliação de reembolso.** O reembolso cuja notificação esgota as tentativas da Apple
+  nunca chega. Falta conciliar pela App Store Server API.
+- **Sandbox em produção.** Quem testa pelo TestFlight ganha a trilha de verdade. Se virar
+  problema, a saída é tratar direito de Sandbox como temporário.
+- **Cadeia verificada na hora de agora.** Restaurar um JWS cuja folha venceu falha fechado;
+  a Apple verifica no `signedDate`.
+
+## A FFI numera variante por posição
+
+O bincode não grava o nome da variante, só a posição dela no enum; o código gerado pelo `codegen` escreve esse número. Tirar ou reordenar uma variante no meio de um tipo que atravessa a FFI mudaria o protocolo em silêncio se houvesse descasamento de versão.
+
+**Por que reordenar é seguro hoje:** em cada plataforma os dois lados vão no mesmo binário. O iOS gera e compila os dois juntos pelo `build-ios-ffi`; o Android pelo `just android/generate`, e o `verifyGenerated` do Gradle recusa o build se o Core mudou depois do último generate (ADR 0023). O que vai para o disco para ser lido depois é JSON, e não bincode.
+
+**Regra de estabilidade (JSON):** no JSON, a serialização se baseia no nome. Portanto, não se pode renomear variante nem campo de tipos persistidos (`OfflineSnapshot`, `SkillNode`, `Challenge`, `GameEvent` e `NodeStatus`). Se precisar de um campo novo, use `#[serde(default)]`.
+
+**Situações que exigiriam mudar essa decisão (exigiriam "enum só cresce no fim" e travas rígidas):**
+- Se algum estado passar a ser persistido em bincode.
+- Se o Core passar a ser distribuído com versão própria e as pontas puderem desatualizar.
+- Extensão (ex: widget) ou relógio trocando bincode com o app.
