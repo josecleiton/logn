@@ -71,7 +71,7 @@ fun NicknameSheet(
         dispatch(Event.NicknameFlowClosed)
         onDismiss()
     }
-    val anon = Str.Leaderboard.anon_name(context, view.profileAnonNumber)
+    val anon = Str.Leaderboard.anon_name(context, view.profileAnonNumber.toString())
     BottomSheet(onDismiss = close, dismissible = !flow.submitting, background = LognDark.surface) {
         Column(
             Modifier

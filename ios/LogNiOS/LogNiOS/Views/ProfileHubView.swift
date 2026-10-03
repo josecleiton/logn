@@ -16,6 +16,7 @@ struct ProfileHubView: View {
     @State private var showsManageAccount = false
     @State private var showsStorage = false
     @State private var legalSheet: LegalKind?
+    @State private var showsNickname = LognTab.launchScreen == "apelido"
 
     /// Altura de partida do sheet, só até a primeira medição chegar.
     static let preferredHeight: CGFloat = 560
@@ -46,6 +47,7 @@ struct ProfileHubView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     grabber
                     identity
+                    if vm.canChooseNickname { chooseNicknameButton }
                     if pending > 0 && !isGuest { queueCard }
                     levelBlock
                     statsGrid
@@ -89,6 +91,12 @@ struct ProfileHubView: View {
         .sheet(item: $legalSheet) { kind in
             LegalDocumentView(kind: kind)
         }
+        .sheet(isPresented: $showsNickname) {
+            NicknameSheet(onClose: { showsNickname = false })
+                .environmentObject(core)
+                .presentationDragIndicator(.hidden)
+                .modifier(SheetCorners())
+        }
     }
 
     // MARK: Grabber
@@ -102,6 +110,66 @@ struct ProfileHubView: View {
     }
 
     // MARK: Identidade
+
+    /// O servidor já disse o nome do placar da conta.
+    private var hasAnonName: Bool { vm.profileAnonNumber > 0 && vm.profileNickname == nil }
+
+    /// O avatar de quem ainda é "jogador #N": "#" em mono, sobre a superfície.
+    private var anonAvatar: some View {
+        Circle()
+            .fill(LognDark.surface)
+            .frame(width: 52, height: 52)
+            .overlay(Circle().stroke(LognDark.lineStrong, lineWidth: 1))
+            .overlay(
+                Text("#")
+                    .font(.plexMono(18))
+                    .foregroundColor(LognDark.textSecondary)
+            )
+    }
+
+    /// O nome do placar em cima e o e-mail embaixo (canvas do placar). Sem o nome ainda,
+    /// o e-mail como antes.
+    @ViewBuilder
+    private var accountLines: some View {
+        if vm.profileAnonNumber > 0 {
+            Text(leaderboardName(anonNumber: vm.profileAnonNumber, nickname: vm.profileNickname))
+                .font(vm.profileNickname != nil ? .plexSansSemiBold(17) : .plexMonoSemiBold(16))
+                .foregroundColor(LognDark.textPrimary)
+                .lineLimit(1)
+            Text(vm.accountEmail)
+                .font(.plexMono(12))
+                .foregroundColor(LognDark.textMuted)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .padding(.top, 4)
+        } else {
+            Text(vm.accountEmail)
+                .font(.plexMono(13))
+                .foregroundColor(LognDark.textPrimary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+    }
+
+    /// "Escolher apelido": contorno em acento, lápis à esquerda.
+    private var chooseNicknameButton: some View {
+        Button {
+            showsNickname = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "pencil")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(Str.Nickname.choose)
+                    .font(.plexSansSemiBold(14))
+            }
+            .foregroundColor(LognDark.accentInk)
+            .padding(.horizontal, 16)
+            .frame(height: 44)
+            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.accent, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 14)
+    }
 
     private var identity: some View {
         HStack(spacing: 14) {
@@ -121,8 +189,10 @@ struct ProfileHubView: View {
                             .font(.system(size: 22, weight: .regular))
                             .foregroundColor(LognDark.textMuted)
                     )
+            } else if hasAnonName {
+                anonAvatar
             } else {
-                ProfileAvatar(initial: vm.displayName.isEmpty ? vm.accountEmail : vm.displayName, size: 52)
+                ProfileAvatar(initial: vm.profileNickname ?? (vm.displayName.isEmpty ? vm.accountEmail : vm.displayName), size: 52)
             }
 
             VStack(alignment: .leading, spacing: 0) {
@@ -141,11 +211,7 @@ struct ProfileHubView: View {
                         .foregroundColor(LognDark.textMuted)
                         .padding(.top, 6)
                 } else {
-                    Text(vm.accountEmail)
-                        .font(.plexMono(13))
-                        .foregroundColor(LognDark.textPrimary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
+                    accountLines
 
                     HStack(spacing: 6) {
                         Circle()

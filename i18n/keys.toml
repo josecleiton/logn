@@ -409,7 +409,9 @@ you = {}
 title = {}
 subtitle = {}
 you = {}
-anon_name = { placeholders = [{ name = "number", type = "int" }] }
+# O número vai como texto: inteiro localizado ganha separador de milhar no iOS
+# ("jogador #50.002"), e o número é um nome, não uma quantidade.
+anon_name = { placeholders = [{ name = "number", type = "text" }] }
 xp = { placeholders = [{ name = "xp", type = "text" }] }
 rank_none = {}
 hidden_label = {}

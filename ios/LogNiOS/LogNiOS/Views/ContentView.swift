@@ -133,7 +133,7 @@ enum LognTab: CaseIterable {
         #endif
     }
 
-    /// Tela empilhada a abrir no lançamento, só em DEBUG: `-LogNStartScreen telao`.
+    /// Tela empilhada a abrir no lançamento, só em DEBUG: `-LogNStartScreen apelido`.
     static var launchScreen: String? {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
@@ -232,7 +232,7 @@ struct SkillTreeHostView: View {
     @Binding var tab: LognTab
     /// O onboarding pediu o catálogo ("Já sei o básico").
     @Binding var catalogRequested: Bool
-    @State private var showsProfile = LognTab.launchScreen == "perfil"
+    @State private var showsProfile = LognTab.launchScreen == "perfil" || LognTab.launchScreen == "apelido"
     @State private var showsCatalog = LognTab.launchScreen == "catalogo"
 
     /// "N balões no ar" — o contador é de nós conquistados, não de problemas aceitos.
@@ -562,17 +562,11 @@ struct StandingsHostView: View {
     @EnvironmentObject var core: CoreWrapper
     @Binding var tab: LognTab
 
-    /// Só em DEBUG: `-LogNStartScreen telao` abre o telão direto, para inspeção visual.
-    @State private var showsScoreboard = LognTab.launchScreen == "telao"
-
     var body: some View {
         VStack(spacing: 0) {
-            StandingsView().environmentObject(core)
+            LeaderboardScreen(onGoToTrail: { tab = .trilhas }).environmentObject(core)
             LognBottomNav(selection: $tab)
         }
         .navigationBarHidden(true)
-        .navigationDestination(isPresented: $showsScoreboard) {
-            ScoreboardView().environmentObject(core)
-        }
     }
 }

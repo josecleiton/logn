@@ -74,7 +74,7 @@ fun leaderboardName(
     context: android.content.Context,
     anonNumber: Int,
     nickname: String?,
-): String = nickname ?: Str.Leaderboard.anon_name(context, anonNumber)
+): String = nickname ?: Str.Leaderboard.anon_name(context, anonNumber.toString())
 
 /** XP com o separador de milhar da língua do app ("4.850"). */
 private fun formatXp(
