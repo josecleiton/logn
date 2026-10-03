@@ -37,6 +37,11 @@ just landing-dev       # http://127.0.0.1:8788
 just landing-deploy    # sobe em logn.sh e www.logn.sh
 ```
 
+Push na main que mexa em `landing/` sobe sozinho: o workflow `deploy-landing.yml` roda a
+mesma receita, com `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` do environment
+`deployment`. O deploy à mão continua valendo, e também dá para disparar o workflow pela
+aba Actions.
+
 Antes do primeiro deploy, a zona `logn.sh` precisa estar na conta Cloudflare (os custom
 domains criam DNS e certificado sozinhos) e o redirect legal precisa do destino:
 

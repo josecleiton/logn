@@ -1,0 +1,47 @@
+# Publica a landing (logn.sh) quando `landing/` muda na main (ADR 0012).
+#
+# Roda a mesma receita da máquina, `just landing-deploy`: os links da loja e da API
+# moram nela, num lugar só. O `[build]` do `wrangler.toml` gera `dist/` antes de subir,
+# e o build falha se uma língua tiver chave a mais ou a menos.
+#
+# Os segredos moram no environment `deployment`, que só aceita a main
+# (Settings › Environments › Deployment branches):
+#   CLOUDFLARE_API_TOKEN   token com o template "Edit Cloudflare Workers", restrito à
+#                          conta da landing e à zona logn.sh.
+#   CLOUDFLARE_ACCOUNT_ID  id da conta, para o wrangler não ter de adivinhar.
+name: Deploy landing
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - landing/**
+      - .github/workflows/deploy-landing.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Dois pushes seguidos sobem em ordem; o segundo espera o primeiro terminar.
+concurrency:
+  group: deploy-landing
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Fork não tem o segredo, e não deve nem tentar.
+    if: github.repository == 'josecleiton/logn' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: deployment
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instala o just
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq just
+
+      - name: Publica
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: just landing-deploy
