@@ -118,18 +118,16 @@ colunas A–M, com a legenda dos balões. Tudo sai de `mock_data.rs`; o Core man
 `standings_are_sample: true`, e a tela mostra a tarja de dados de exemplo no topo. Não há
 tabela, rota nem job no servidor.
 
-Falta o PRD, e ele decide em cima do que o resto se constrói:
+O placar geral tem PRD: XP da trilha gratuita, desde sempre, aberto com 10 jogadores.
+Todo mundo aparece como "jogador #N" até escolher um apelido definitivo no Perfil, e a
+moderação é manual, por rota interna. O telão e a aba Sede saem da tela. Antes de codar
+faltam aprovar as telas (canvas "LogN — Placar geral de XP") e a v5 da política.
 
-- **O que conta.** XP, respostas aceitas, resolvidos e penalidade como no ICPC, ou uma
-  mistura. As colunas do telão supõem a última; XP é o que o servidor já calcula.
-- **Quem conta.** Aluno, professor, ex-aluno: a spec da instituição deixa isso para o PRD
-  do placar, e no placar por instituição só conta vínculo verificado.
-- **Janela.** Desde sempre, por temporada ou por semana.
-- **Integridade.** A ordem sai do servidor, a partir do que o `/sync` já validou, nunca de
-  número que o cliente manda.
+PRD: [`specs/logn_placar_spec.md`](specs/logn_placar_spec.md).
 
-A aba Sede depende da instituição acima; a Global não, e pode vir antes. A carência de
-troca de instituição e as métricas do card do Perfil ("na instituição") vêm com este PRD.
+O placar por instituição continua sem PRD: quem conta (aluno, professor, ex-aluno), a
+carência de troca de instituição e as métricas do card do Perfil ("na instituição") vêm
+com ele. Lá só conta vínculo verificado.
 
 ## Contest ainda não existe
 

@@ -128,19 +128,17 @@ solved, penalty and the A–M columns, with the balloon legend. Everything comes
 `mock_data.rs`; the Core sends `standings_are_sample: true`, and the screen shows the
 sample-data notice on top. There is no table, route or job on the server.
 
-What is missing is the PRD, and it decides what the rest is built on:
+The global leaderboard has a PRD: free-track XP, all-time, opening at 10 players.
+Everyone shows as "jogador #N" (player #N) until they pick a permanent nickname on the
+Profile screen, and moderation is manual, through an internal route. The scoreboard and
+the Sede tab leave the screen. Before coding: approving the screens (the "LogN — Placar
+geral de XP" canvas) and v5 of the policy.
 
-- **What it counts.** XP, accepted answers, ICPC-style solved and penalty, or a mix. The
-  scoreboard's columns assume the last one; XP is what the server already computes.
-- **Who counts.** Student, teacher, alumni: the institution spec leaves this to the
-  leaderboard PRD, and only a verified affiliation counts in the per-institution one.
-- **Window.** All-time, per season or per week.
-- **Integrity.** It is ranked on the server from what `/sync` already validated, never
-  from a number the client sends.
+PRD: [`specs/logn_placar_spec.md`](specs/logn_placar_spec.md).
 
-The Sede tab depends on the institution above; Global does not, and can come first. The
-institution's switching cooldown and the profile card's metrics ("at the institution")
-come with this PRD.
+The per-institution leaderboard still has no PRD: who counts (student, teacher, alumni),
+the institution's switching cooldown and the profile card's metrics ("at the
+institution") come with it. Only a verified affiliation counts there.
 
 ## Contests do not exist yet
 
