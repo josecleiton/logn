@@ -9,6 +9,14 @@ resource "google_service_account" "scheduler" {
   display_name = "Cloud Scheduler: purga de contas (rota interna)"
 }
 
+# A entrega da caixa de saída de e-mail (ADR 0026). O Cloud Tasks assina com ela a
+# chamada à rota de envio, e o backend aceita lá só ela (CLOUD_TASKS_SERVICE_ACCOUNT).
+# Quem cria a tarefa é o Cloud Run, que por isso age em nome dela (cloud_tasks.tf).
+resource "google_service_account" "tasks" {
+  account_id   = "logn-tasks"
+  display_name = "Cloud Tasks: entrega da caixa de saída de e-mail (rota interna)"
+}
+
 # A revogação manual de licença e a contestação. Quem está em admin_members emite o
 # token em nome dela pelo gcloud (`just revoke`), com a própria conta Google.
 resource "google_service_account" "admin" {

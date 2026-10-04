@@ -111,6 +111,17 @@ resource "google_cloud_run_v2_service" "logn" {
         name  = "ADMIN_SERVICE_ACCOUNT"
         value = google_service_account.admin.email
       }
+      # A caixa de saída de e-mail (ADR 0026): a fila onde o servidor cria as tarefas e
+      # a conta que as assina, a única que a rota de envio aceita. Sem as duas, o
+      # servidor não sobe no Cloud Run.
+      env {
+        name  = "CLOUD_TASKS_QUEUE"
+        value = google_cloud_tasks_queue.email.id
+      }
+      env {
+        name  = "CLOUD_TASKS_SERVICE_ACCOUNT"
+        value = google_service_account.tasks.email
+      }
       env {
         name  = "RUN_MIGRATIONS"
         value = "true"

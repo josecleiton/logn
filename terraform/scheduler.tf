@@ -30,6 +30,31 @@ resource "google_cloud_scheduler_job" "purge_deleted_accounts" {
   }
 }
 
+# Varredura da caixa de saída de e-mail (ADR 0026): põe na fila o que o pedido não
+# conseguiu pôr. Mesma URL .run.app e mesma conta da purga. Sem nova tentativa: a
+# próxima varredura roda em cinco minutos. É o terceiro job, o último do free tier.
+resource "google_cloud_scheduler_job" "email_outbox_sweep" {
+  name             = "email-outbox-sweep"
+  region           = var.region
+  schedule         = "*/5 * * * *"
+  time_zone        = "Etc/UTC"
+  attempt_deadline = "60s"
+
+  retry_config {
+    retry_count = 0
+  }
+
+  http_target {
+    http_method = "POST"
+    uri         = "${local.scheduler_audience}/api/v1/internal/email/sweep"
+
+    oidc_token {
+      service_account_email = google_service_account.scheduler.email
+      audience              = local.scheduler_audience
+    }
+  }
+}
+
 # A Google Play Developer API não vem ligada no projeto; sem ela, toda consulta de
 # compra responde 403, e o backend responde 502 à compra (ADR 0022).
 resource "google_project_service" "android_publisher" {
