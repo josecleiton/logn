@@ -76,8 +76,13 @@ ela faz duas coisas:
   espera isso deixava a pessoa sem o link e sem como pedir outro. Pôr de novo na fila não
   serve: o Cloud Tasks guarda por um tempo o nome da tarefa executada, e recusaria a nova.
 
-É o terceiro job do Scheduler, o último do free tier; cada execução é um pedido curto ao
-Cloud Run, 8.640 por mês, menos de 1% da cota gratuita de pedidos e de CPU.
+Cada execução é um pedido curto ao Cloud Run, 8.640 por mês, menos de 1% da cota
+gratuita de pedidos e de CPU.
+
+**Dois jobs do Scheduler, não três.** O free tier dá três jobs por conta de faturamento,
+e a varredura seria o terceiro. O reembolso do Google Play (ADR 0022), que era um job
+diário à parte com a mesma conta da purga, passou a rodar dentro dela
+(`POST /api/v1/internal/purge`), e a rota `/internal/play/voided` saiu. Sobra uma vaga.
 
 **Poda.** A purga diária apaga as linhas com mais de uma semana. Elas respondem "esse
 e-mail saiu? quando? em qual tentativa?", e `last_error` guarda o erro do SMTP sem

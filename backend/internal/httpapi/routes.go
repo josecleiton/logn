@@ -115,6 +115,7 @@ func New(d Deps) (http.Handler, error) {
 	server.nicknameUserLimiter = newRateLimiter(10, time.Minute)
 	nicknameIPLimiter := newRateLimiter(30, time.Minute)
 	mux.HandleFunc("PUT /api/v1/profile/nickname", nicknameIPLimiter.wrap(limitBody(nicknameBodyLimit, server.nicknameHandler)))
+	// A rotina diária do Cloud Scheduler: purga, poda e o reembolso do Google Play.
 	mux.HandleFunc("POST /api/v1/internal/purge", server.purgeHandler)
 	// Revogação manual de licença e resposta à contestação (ADR 0021). Quem chama é uma
 	// pessoa pelo `just revoke`; dez por minuto sobra.
@@ -126,8 +127,6 @@ func New(d Deps) (http.Handler, error) {
 	mux.HandleFunc("POST /api/v1/internal/licenses/appeal", internal(server.appealLicenseHandler))
 	// Moderação e objeção do placar, pelo `just leaderboard-*`, com a mesma conta.
 	mux.HandleFunc("POST /api/v1/internal/leaderboard/actions", internal(server.leaderboardActionHandler))
-	// Reembolso e estorno do Google Play, uma vez por dia pelo Cloud Scheduler (ADR 0022).
-	mux.HandleFunc("POST /api/v1/internal/play/voided", internal(server.playVoidedHandler))
 	// Caixa de saída de e-mail (ADR 0026). A entrega vem do Cloud Tasks, a até dois por
 	// segundo, e tem balde próprio: o das rotas internas, de dez por minuto, seguraria a
 	// fila. A varredura vem do Scheduler de cinco em cinco minutos.

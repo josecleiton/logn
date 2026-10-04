@@ -260,11 +260,11 @@ func TestPlayVoided(t *testing.T) {
 
 	call := func(auth string) *httptest.ResponseRecorder {
 		rr := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/internal/play/voided", nil)
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/internal/purge", nil)
 		if auth != "" {
 			req.Header.Set("Authorization", "Bearer "+auth)
 		}
-		f.server.playVoidedHandler(rr, req)
+		f.server.purgeHandler(rr, req)
 		return rr
 	}
 

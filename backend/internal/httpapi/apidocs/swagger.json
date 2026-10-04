@@ -1015,72 +1015,6 @@
                 }
             }
         },
-        "/api/v1/internal/play/voided": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Só com ID token OIDC do Google, da conta do Scheduler (ADR 0022). Erros de autorização e de loja saem em texto.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "internal"
-                ],
-                "summary": "Reembolsos e estornos do Google Play",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "acknowledged": {
-                                    "type": "integer"
-                                },
-                                "status": {
-                                    "type": "string"
-                                },
-                                "voided": {
-                                    "type": "integer"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "429": {
-                        "description": "rate_limited",
-                        "schema": {
-                            "$ref": "#/definitions/httpapi.apiError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "503": {
-                        "description": "Google Play disabled",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/internal/purge": {
             "post": {
                 "security": [
@@ -1106,6 +1040,12 @@
                                     "type": "integer"
                                 },
                                 "outbox_purged": {
+                                    "type": "integer"
+                                },
+                                "play_acknowledged": {
+                                    "type": "integer"
+                                },
+                                "play_voided": {
                                     "type": "integer"
                                 },
                                 "purged": {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -57,16 +58,17 @@ func (s *Server) internalCaller(w http.ResponseWriter, r *http.Request, accountE
 	return caller.Email, true
 }
 
-// purgeHandler apaga as contas excluídas que venceram o prazo, as inscrições não
-// confirmadas da lista de espera, as contagens de login errado com janela vencida e os
-// e-mails da caixa de saída com mais de uma semana. Quem chama é o Cloud Scheduler.
+// purgeHandler é a rotina diária: apaga as contas excluídas que venceram o prazo, as
+// inscrições não confirmadas da lista de espera, as contagens de login errado com janela
+// vencida e os e-mails velhos da caixa de saída, e, com o Google Play ligado, revoga as
+// compras anuladas e reconhece as pendentes. Quem chama é o Cloud Scheduler.
 //
 //	@Summary		Purga diária
 //	@Description	Só com ID token OIDC do Google, da conta `CLOUD_SCHEDULER_SERVICE_ACCOUNT`. Erros saem em texto, não em `{code}`.
 //	@Tags			internal
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Success		200	{object}	object{status=string,purged=int,waitlist_purged=int,login_attempts_purged=int,outbox_purged=int}
+//	@Success		200	{object}	object{status=string,purged=int,waitlist_purged=int,login_attempts_purged=int,outbox_purged=int,play_voided=int,play_acknowledged=int}
 //	@Failure		401	{string}	string	"Unauthorized"
 //	@Failure		403	{string}	string	"Forbidden"
 //	@Failure		500	{string}	string	"Internal error"
@@ -115,10 +117,25 @@ func (s *Server) purgeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("expurgo ok: %d e-mails da caixa de saída apagados", outbox)
 
+	// Reembolsos e estornos do Google Play, no mesmo passo diário (ADR 0022). Eram um job
+	// do Scheduler à parte, com a mesma conta; juntos, sobra um job do free tier. Erro da
+	// loja responde 500 e o Scheduler tenta tudo de novo: os passos de cima não mudam
+	// nada na segunda vez.
+	voided, acked := 0, 0
+	if s.play != nil {
+		voided, acked, err = s.revokeVoidedPlay(r.Context())
+		if err != nil {
+			log.Printf("rotina do Google Play falhou: erro=%v", err)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
+		log.Printf("rotina do Google Play ok: %d anuladas na janela, %d reconhecidas", voided, acked)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"status": "ok", "purged": purged, "waitlist_purged": pending, "login_attempts_purged": attempts,
-		"outbox_purged": outbox,
+		"outbox_purged": outbox, "play_voided": voided, "play_acknowledged": acked,
 	})
 }
 
@@ -127,38 +144,17 @@ func (s *Server) purgeHandler(w http.ResponseWriter, r *http.Request) {
 // não muda nada, e a janela larga cobre os dias em que o job não rodou.
 const playVoidedWindow = 29 * 24 * time.Hour
 
-// playVoidedHandler revoga as compras do Google Play anuladas: reembolso, estorno e
-// cancelamento (ADR 0022). Quem chama é o Cloud Scheduler, com a mesma conta da purga.
+// revokeVoidedPlay revoga as compras do Google Play anuladas: reembolso, estorno e
+// cancelamento (ADR 0022). Depois reconhece as compras que ficaram sem reconhecimento.
+// Roda na rotina diária, dentro da purga; devolve quantas anuladas a janela tinha e
+// quantas compras reconheceu.
 //
-// Erro de banco ou da loja responde 500, e o Scheduler tenta de novo. Compra anulada que
-// não é nossa também entra em `revoked_transactions`: ela nunca vira licença depois.
-//
-//	@Summary		Reembolsos e estornos do Google Play
-//	@Description	Só com ID token OIDC do Google, da conta do Scheduler (ADR 0022). Erros de autorização e de loja saem em texto.
-//	@Tags			internal
-//	@Produce		json
-//	@Security		BearerAuth
-//	@Success		200	{object}	object{status=string,voided=int,acknowledged=int}
-//	@Failure		401	{string}	string		"Unauthorized"
-//	@Failure		403	{string}	string		"Forbidden"
-//	@Failure		429	{object}	apiError	"rate_limited"
-//	@Failure		500	{string}	string		"Internal error"
-//	@Failure		503	{string}	string		"Google Play disabled"
-//	@Router			/api/v1/internal/play/voided [post]
-func (s *Server) playVoidedHandler(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.internalCaller(w, r, envSchedulerAccount); !ok {
-		return
-	}
-	if s.play == nil {
-		http.Error(w, "Google Play disabled", http.StatusServiceUnavailable)
-		return
-	}
-
-	voided, err := s.play.Voided(r.Context(), time.Now().Add(-playVoidedWindow))
+// Compra anulada que não é nossa também entra em `revoked_transactions`: ela nunca vira
+// licença depois.
+func (s *Server) revokeVoidedPlay(ctx context.Context) (int, int, error) {
+	voided, err := s.play.Voided(ctx, time.Now().Add(-playVoidedWindow))
 	if err != nil {
-		log.Printf("compras anuladas do Google Play não lidas: erro=%v", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
+		return 0, 0, fmt.Errorf("compras anuladas não lidas: %w", err)
 	}
 	for _, v := range voided {
 		if v.PurchaseToken == "" {
@@ -172,26 +168,19 @@ func (s *Server) playVoidedHandler(w http.ResponseWriter, r *http.Request) {
 		if at == 0 {
 			at = time.Now().UnixMilli()
 		}
-		if err := s.repo.RevokeTransaction(r.Context(), domain.ProviderGooglePlay,
+		if err := s.repo.RevokeTransaction(ctx, domain.ProviderGooglePlay,
 			googleplay.TransactionKey(v.PurchaseToken), reason, at); err != nil {
-			log.Printf("compra anulada do Google Play não revogada: erro=%v", err)
-			http.Error(w, "Internal error", http.StatusInternalServerError)
-			return
+			return len(voided), 0, fmt.Errorf("compra anulada não revogada: %w", err)
 		}
 	}
-	log.Printf("compras anuladas do Google Play ok: %d na janela", len(voided))
 
 	// A compra gravada cujo reconhecimento falhou, e o app não mandou de novo, o Play
 	// estorna em 3 dias. O job reconhece o que ficou para trás nesse prazo.
-	acked, err := s.acknowledgePending(r.Context())
+	acked, err := s.acknowledgePending(ctx)
 	if err != nil {
-		log.Printf("compras do Google Play sem reconhecimento: erro=%v", err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
+		return len(voided), acked, fmt.Errorf("compras sem reconhecimento: %w", err)
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"status": "ok", "voided": len(voided), "acknowledged": acked})
+	return len(voided), acked, nil
 }
 
 // playAcknowledgeWindow é o prazo do Play para reconhecer, com um dia de folga.

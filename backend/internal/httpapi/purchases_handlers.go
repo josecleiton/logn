@@ -151,7 +151,7 @@ func (s *Server) grantPurchase(w http.ResponseWriter, r *http.Request, restore b
 	// A licença gravada, a compra do Play é reconhecida. Sem reconhecimento em 3 dias o
 	// Play estorna sozinho. Se falhar aqui, a resposta é erro e o app manda de novo: a
 	// licença já existe, e gravar de novo não muda nada.
-	// Se o app não mandar de novo, o job diário reconhece o que ficou (playVoidedHandler).
+	// Se o app não mandar de novo, a rotina diária reconhece o que ficou (revokeVoidedPlay).
 	if play != nil && play.NeedsAcknowledge() {
 		if err := s.acknowledgePlay(r.Context(), req.ProductID, req.PurchaseToken); err != nil {
 			log.Printf("compra do Google Play não reconhecida: user=%s produto=%s erro=%v", userID, grant.ProductID, err)
