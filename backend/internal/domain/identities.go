@@ -48,8 +48,9 @@ func (r *Repository) LinkIdentity(ctx context.Context, provider, subject, userID
 
 // CreateSocialUser cria a conta sem senha, com idade, país e aceites, e a liga à
 // identidade externa, numa transação só. Conta sem identidade seria uma conta em que
-// ninguém consegue entrar.
-func (r *Repository) CreateSocialUser(ctx context.Context, email, provider, subject string, ageConfirmed bool, country string, acceptances []LegalAcceptance, client ClientInfo) (string, error) {
+// ninguém consegue entrar. As boas-vindas, na língua `lang`, entram na caixa de saída
+// na mesma transação.
+func (r *Repository) CreateSocialUser(ctx context.Context, email, provider, subject string, ageConfirmed bool, country string, acceptances []LegalAcceptance, client ClientInfo, lang string) (string, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return "", err
@@ -65,9 +66,14 @@ func (r *Repository) CreateSocialUser(ctx context.Context, email, provider, subj
 		provider, subject, id); err != nil {
 		return "", err
 	}
+	outboxID, err := queueWelcomeTx(ctx, tx, id, lang)
+	if err != nil {
+		return "", err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return "", err
 	}
+	TrackOutbox(ctx, outboxID)
 	return id, nil
 }
 

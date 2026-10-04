@@ -274,7 +274,7 @@ func (s *Server) socialSignup(w http.ResponseWriter, r *http.Request, req Social
 		return
 	}
 
-	userID, err := s.repo.CreateSocialUser(ctx, email, req.Provider, id.Subject, req.AgeConfirmed, country, acceptances, client)
+	userID, err := s.repo.CreateSocialUser(ctx, email, req.Provider, id.Subject, req.AgeConfirmed, country, acceptances, client, locale.Negotiate(r))
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		// Outro pedido criou a conta ou ligou a identidade no meio. O app tenta de
@@ -288,13 +288,6 @@ func (s *Server) socialSignup(w http.ResponseWriter, r *http.Request, req Social
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
-
-	lang := locale.Negotiate(r)
-	go func(email, lang string) {
-		if err := s.mailer.SendWelcome(email, lang); err != nil {
-			log.Printf("boas-vindas não enviadas: user=%s erro=%v", userID, err)
-		}
-	}(email, lang)
 
 	s.issueSession(ctx, w, userID, email, false)
 }

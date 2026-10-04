@@ -70,6 +70,7 @@ func loginFixture(t *testing.T, prefix string) (*Server, string, string) {
 	t.Cleanup(func() {
 		repo.ClearLoginAttempts(ctx, email)
 		conn.Exec(ctx, `DELETE FROM otps WHERE email = $1`, email)
+		conn.Exec(ctx, `DELETE FROM email_outbox WHERE kind = 'otp' AND email = $1`, email)
 		conn.Exec(ctx, `DELETE FROM refresh_tokens WHERE user_id = $1`, uid)
 		conn.Exec(ctx, `DELETE FROM users WHERE id = $1`, uid)
 	})
@@ -150,7 +151,7 @@ func TestResetPasswordClearsTheLockout(t *testing.T) {
 		t.Fatalf("a conta devia estar travada: status %d", rec.Code)
 	}
 
-	if err := s.repo.SaveOTP(ctx, email, "123456", domain.OTPPurposeResetPassword, domain.OTPValidity); err != nil {
+	if err := s.repo.SaveOTP(ctx, email, "123456", domain.OTPPurposeResetPassword, "pt-BR", domain.OTPValidity); err != nil {
 		t.Fatalf("código de troca: %v", err)
 	}
 	body, _ := json.Marshal(map[string]string{"email": email, "otp": "123456", "password": "senha-nova-456"})
@@ -174,7 +175,10 @@ func TestRequestOTPLimits(t *testing.T) {
 	s := &Server{repo: domain.NewRepository(conn)}
 
 	email := "otp-limits-" + newTestUUID(t) + "@example.com"
-	t.Cleanup(func() { conn.Exec(ctx, `DELETE FROM otps WHERE email = $1`, email) })
+	t.Cleanup(func() {
+		conn.Exec(ctx, `DELETE FROM otps WHERE email = $1`, email)
+		conn.Exec(ctx, `DELETE FROM email_outbox WHERE kind = 'otp' AND email = $1`, email)
+	})
 	request := func() *httptest.ResponseRecorder {
 		body, _ := json.Marshal(map[string]string{"email": email, "purpose": domain.OTPPurposeResetPassword})
 		rec := httptest.NewRecorder()

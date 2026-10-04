@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 func TestWaitlistToken(t *testing.T) {
@@ -45,6 +47,28 @@ func newWaitlistEmail(t *testing.T, repo *Repository) string {
 	return addr
 }
 
+// failWaitlistSend faz a última tentativa do e-mail pendente mais novo da inscrição
+// falhar. Sem pendente (inscrição confirmada), não faz nada.
+func failWaitlistSend(t *testing.T, repo *Repository, waitlistID string) {
+	t.Helper()
+	ctx := context.Background()
+	var outboxID string
+	err := repo.db.QueryRow(ctx, `
+		SELECT id FROM email_outbox WHERE waitlist_id = $1 AND status = 'pending'
+		ORDER BY created_at DESC LIMIT 1`, waitlistID).Scan(&outboxID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.DeliverOutbox(ctx, outboxID, true, func(OutboxMessage) error {
+		return errors.New("smtp fora do ar")
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestJoinWaitlist(t *testing.T) {
 	conn := setupTestDB(t)
 	t.Cleanup(conn.Close)
@@ -69,10 +93,9 @@ func TestJoinWaitlist(t *testing.T) {
 		t.Errorf("a reinscrição trocou a língua para %q", e.Locale)
 	}
 
-	// O envio falhou: o próximo pedido tenta de novo, na língua nova.
-	if err := repo.ReleaseWaitlistSend(ctx, id); err != nil {
-		t.Fatal(err)
-	}
+	// O envio desistiu na última tentativa: o próximo pedido tenta de novo, na língua
+	// nova.
+	failWaitlistSend(t, repo, id)
 	if again, send, err := repo.JoinWaitlist(ctx, addr, "es"); err != nil || !send || again != id {
 		t.Fatalf("reinscrição depois de liberar: id=%q send=%v err=%v", again, send, err)
 	}
@@ -81,7 +104,7 @@ func TestJoinWaitlist(t *testing.T) {
 	if _, err := repo.ConfirmWaitlist(ctx, id); err != nil {
 		t.Fatal(err)
 	}
-	repo.ReleaseWaitlistSend(ctx, id)
+	failWaitlistSend(t, repo, id)
 	if _, send, err := repo.JoinWaitlist(ctx, addr, "pt-BR"); err != nil || send {
 		t.Fatalf("inscrição confirmada mandou de novo: send=%v err=%v", send, err)
 	}

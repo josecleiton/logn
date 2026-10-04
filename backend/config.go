@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
@@ -13,6 +14,7 @@ import (
 	"github.com/josecleiton/logn/backend/internal/googleplay"
 	"github.com/josecleiton/logn/backend/internal/httpapi"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/socialauth"
+	"github.com/josecleiton/logn/backend/internal/infrastructure/tasks"
 	"github.com/josecleiton/logn/backend/internal/storekit"
 )
 
@@ -133,6 +135,36 @@ func playFromEnv() httpapi.PlayVerifier {
 		log.Fatalf("PLAY_PACKAGE_NAME inválido: %v", err)
 	}
 	return c
+}
+
+// outboxQueueFromEnv monta a fila da caixa de saída de e-mail (ADR 0026). Sem
+// CLOUD_TASKS_QUEUE nem CLOUD_TASKS_SERVICE_ACCOUNT, o e-mail sai na hora, dentro do
+// pedido: é o desenvolvimento, com o Mailpit. No Cloud Run a fila é obrigatória, e a
+// configuração pela metade também derruba o servidor: e-mail que não sai é cadastro que
+// não termina.
+func outboxQueueFromEnv() httpapi.OutboxQueue {
+	queue := strings.TrimSpace(os.Getenv("CLOUD_TASKS_QUEUE"))
+	account := strings.TrimSpace(os.Getenv("CLOUD_TASKS_SERVICE_ACCOUNT"))
+	if queue == "" && account == "" {
+		if os.Getenv("K_SERVICE") != "" {
+			log.Fatalf("CLOUD_TASKS_QUEUE and CLOUD_TASKS_SERVICE_ACCOUNT are not set. Refusing to start in production without the e-mail queue.")
+		}
+		log.Println("CLOUD_TASKS_QUEUE is not set. E-mails are sent inside the request (development only).")
+		return nil
+	}
+	// A rota de envio fica na mesma URL .run.app da purga, e o token leva a mesma
+	// audiência que o servidor confere nas rotas internas.
+	audience := strings.TrimSpace(os.Getenv("CLOUD_SCHEDULER_AUDIENCE"))
+	q, err := tasks.New(context.Background(), tasks.Config{
+		Queue:          queue,
+		TargetURL:      audience + "/api/v1/internal/email/send",
+		Audience:       audience,
+		ServiceAccount: account,
+	})
+	if err != nil {
+		log.Fatalf("Cloud Tasks: %v", err)
+	}
+	return q
 }
 
 func btoi(b bool) int {

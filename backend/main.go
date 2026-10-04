@@ -128,6 +128,7 @@ func main() {
 		// faixa de rascunho — o caso do TestFlight, enquanto o advogado revisa.
 		LegalStrict: os.Getenv("K_SERVICE") != "" && os.Getenv("LEGAL_ALLOW_DRAFT") != "true",
 		Waitlist:    waitlist,
+		OutboxQueue: outboxQueueFromEnv(),
 	}
 
 	if os.Getenv("PURGE_ONLY") == "true" {
@@ -140,7 +141,11 @@ func main() {
 		if err != nil {
 			log.Fatalf("Erro no expurgo da lista de espera: %v", err)
 		}
-		log.Printf("Expurgo concluído: %d contas e %d inscrições pendentes apagadas. Encerrando.", purged, pending)
+		outbox, err := repo.PruneOutbox(context.Background())
+		if err != nil {
+			log.Fatalf("Erro no expurgo da caixa de saída: %v", err)
+		}
+		log.Printf("Expurgo concluído: %d contas, %d inscrições pendentes e %d e-mails da caixa de saída apagados. Encerrando.", purged, pending, outbox)
 		return
 	}
 

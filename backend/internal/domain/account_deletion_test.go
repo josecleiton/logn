@@ -14,7 +14,7 @@ func newDeletionTestUser(t *testing.T, repo *Repository) (userID, email string) 
 	ctx := context.Background()
 	email = fmt.Sprintf("deletion-%d@logn.test", time.Now().UnixNano())
 
-	id, err := repo.CreateUser(ctx, email, "hash", true, "BR", []LegalAcceptance{{Kind: "terms", Version: 1, Locale: "pt-BR"}}, ClientInfo{})
+	id, err := repo.CreateUser(ctx, email, "hash", true, "BR", []LegalAcceptance{{Kind: "terms", Version: 1, Locale: "pt-BR"}}, ClientInfo{}, "pt-BR")
 	if err != nil {
 		t.Fatalf("CreateUser: %v", err)
 	}
@@ -30,7 +30,7 @@ func newDeletionTestUser(t *testing.T, repo *Repository) (userID, email string) 
 			t.Fatalf("semear %q: %v", q, err)
 		}
 	}
-	if err := repo.SaveOTP(ctx, email, "123456", OTPPurposeResetPassword, time.Minute); err != nil {
+	if err := repo.SaveOTP(ctx, email, "123456", OTPPurposeResetPassword, "pt-BR", time.Minute); err != nil {
 		t.Fatalf("SaveOTP: %v", err)
 	}
 
@@ -42,6 +42,7 @@ func newDeletionTestUser(t *testing.T, repo *Repository) (userID, email string) 
 		repo.db.Exec(ctx, `DELETE FROM game_events WHERE user_id = $1`, id)
 		repo.db.Exec(ctx, `DELETE FROM user_sync_state WHERE user_id = $1`, id)
 		repo.db.Exec(ctx, `DELETE FROM otps WHERE email = $1`, email)
+		repo.db.Exec(ctx, `DELETE FROM email_outbox WHERE kind = 'otp' AND email = $1`, email)
 	})
 	return id, email
 }
@@ -183,6 +184,8 @@ func TestPurgeDeletedAccounts(t *testing.T) {
 		`SELECT count(*) FROM game_events WHERE user_id = $1::text`:     expired,
 		`SELECT count(*) FROM user_sync_state WHERE user_id = $1::text`: expired,
 		`SELECT count(*) FROM otps WHERE email = $1`:                    expiredEmail,
+		`SELECT count(*) FROM email_outbox WHERE user_id = $1`:          expired,
+		`SELECT count(*) FROM email_outbox WHERE email = $1`:            expiredEmail,
 	} {
 		if n := countRows(t, repo, query, arg); n != 0 {
 			t.Errorf("%s: sobraram %d linhas", query, n)

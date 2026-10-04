@@ -32,6 +32,9 @@ type Deps struct {
 	LegalStrict bool
 	// Lista de espera do iPhone (ADR 0022). Nula, as rotas não existem.
 	Waitlist *WaitlistConfig
+	// A fila do Cloud Tasks da caixa de saída (ADR 0026). Nula, o e-mail sai na hora,
+	// dentro do pedido: é o desenvolvimento, e o `main` não sobe sem ela no Cloud Run.
+	OutboxQueue OutboxQueue
 }
 
 // New monta as rotas e o middleware em volta delas.
@@ -49,10 +52,12 @@ func New(d Deps) (http.Handler, error) {
 		revokers:       d.Revokers,
 		github:         d.GitHub,
 		waitlist:       d.Waitlist,
+		outboxQueue:    d.OutboxQueue,
 	}
 	if d.Mailer != nil {
 		server.licenseNotifier = d.Mailer
 		server.waitlistMailer = d.Mailer
+		server.outboxMailer = d.Mailer
 	}
 
 	// Rotas de autenticação passam por um limite por IP. Nenhuma tinha limite, e é
@@ -123,6 +128,12 @@ func New(d Deps) (http.Handler, error) {
 	mux.HandleFunc("POST /api/v1/internal/leaderboard/actions", internal(server.leaderboardActionHandler))
 	// Reembolso e estorno do Google Play, uma vez por dia pelo Cloud Scheduler (ADR 0022).
 	mux.HandleFunc("POST /api/v1/internal/play/voided", internal(server.playVoidedHandler))
+	// Caixa de saída de e-mail (ADR 0026). A entrega vem do Cloud Tasks, a até dois por
+	// segundo, e tem balde próprio: o das rotas internas, de dez por minuto, seguraria a
+	// fila. A varredura vem do Scheduler de cinco em cinco minutos.
+	outboxLimiter := newRateLimiter(300, time.Minute)
+	mux.HandleFunc("POST /api/v1/internal/email/send", outboxLimiter.wrap(limitBody(outboxSendBodyLimit, server.emailSendHandler)))
+	mux.HandleFunc("POST /api/v1/internal/email/sweep", internal(server.emailSweepHandler))
 
 	registerLegalRoutes(mux, legalStore{server.repo}, d.LegalStrict)
 	server.registerWaitlistRoutes(mux)
@@ -158,7 +169,9 @@ func New(d Deps) (http.Handler, error) {
 		return strings.HasPrefix(r.URL.Path, "/api/v1/internal/")
 	}
 
-	var handler http.Handler = mux
+	// Todo pedido ganha o OutboxTracker, e o e-mail que ele gravou vai para a fila
+	// quando o handler termina (ADR 0026).
+	var handler http.Handler = server.withOutbox(mux)
 	if os.Getenv("K_SERVICE") != "" {
 		origin, err := newOriginVerifierFromEnv()
 		if err != nil {

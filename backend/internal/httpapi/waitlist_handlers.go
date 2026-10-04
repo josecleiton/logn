@@ -1,7 +1,6 @@
 package httpapi
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -179,7 +178,7 @@ func (s *Server) joinWaitlistHandler(limiter *rateLimiter) http.HandlerFunc {
 			return
 		}
 
-		id, send, err := s.repo.JoinWaitlist(r.Context(), addr, lang)
+		_, _, err = s.repo.JoinWaitlist(r.Context(), addr, lang)
 		if errors.Is(err, domain.ErrWaitlistBusy) {
 			log.Printf("lista de espera: teto de %d envios por hora atingido", domain.WaitlistHourlySendCap)
 			s.waitlistRedirect(w, r, lang, waitlistError)
@@ -190,20 +189,12 @@ func (s *Server) joinWaitlistHandler(limiter *rateLimiter) http.HandlerFunc {
 			s.waitlistRedirect(w, r, lang, waitlistError)
 			return
 		}
-		// O envio sai fora do pedido, como o do OTP: esperar o SMTP só no caso de
-		// inscrição nova deixaria o tempo de resposta dizer quem já está na lista.
-		if send {
-			confirmURL := s.waitlist.link(domain.WaitlistActionConfirm, id)
-			leaveURL := s.waitlist.link(domain.WaitlistActionLeave, id)
-			go func(addr, lang, id string) {
-				if err := s.waitlistMailer.SendWaitlistConfirmation(addr, lang, confirmURL, leaveURL); err != nil {
-					log.Printf("lista de espera: confirmação não enviada: id=%s erro=%s", id, redactEmails(err))
-					if err := s.repo.ReleaseWaitlistSend(context.Background(), id); err != nil {
-						log.Printf("lista de espera: reenvio não liberado: id=%s erro=%v", id, err)
-					}
-				}
-			}(addr, lang, id)
-		}
+		// A confirmação entrou na caixa de saída com a inscrição, e vai para a fila quando
+		// o pedido termina (ADR 0026). Pôr na fila custa algumas dezenas de milissegundos
+		// que a inscrição repetida não gasta: o tempo de resposta pode dizer, a quem medir,
+		// que um endereço é novo na lista. Antes o envio saía numa goroutine para não dizer
+		// isso; a troca foi aceita na ADR, porque a goroutine podia nunca rodar.
+		//
 		// Novo, pendente ou já confirmado: a mesma página.
 		s.waitlistRedirect(w, r, lang, waitlistThanks)
 	}

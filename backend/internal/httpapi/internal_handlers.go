@@ -58,15 +58,15 @@ func (s *Server) internalCaller(w http.ResponseWriter, r *http.Request, accountE
 }
 
 // purgeHandler apaga as contas excluídas que venceram o prazo, as inscrições não
-// confirmadas da lista de espera e as contagens de login errado com janela vencida.
-// Quem chama é o Cloud Scheduler.
+// confirmadas da lista de espera, as contagens de login errado com janela vencida e os
+// e-mails da caixa de saída com mais de uma semana. Quem chama é o Cloud Scheduler.
 //
 //	@Summary		Purga diária
 //	@Description	Só com ID token OIDC do Google, da conta `CLOUD_SCHEDULER_SERVICE_ACCOUNT`. Erros saem em texto, não em `{code}`.
 //	@Tags			internal
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Success		200	{object}	object{status=string,purged=int,waitlist_purged=int,login_attempts_purged=int}
+//	@Success		200	{object}	object{status=string,purged=int,waitlist_purged=int,login_attempts_purged=int,outbox_purged=int}
 //	@Failure		401	{string}	string	"Unauthorized"
 //	@Failure		403	{string}	string	"Forbidden"
 //	@Failure		500	{string}	string	"Internal error"
@@ -106,9 +106,19 @@ func (s *Server) purgeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("expurgo ok: %d contagens de login apagadas", attempts)
 
+	// A caixa de saída guarda uma semana, para depuração (ADR 0026).
+	outbox, err := s.repo.PruneOutbox(r.Context())
+	if err != nil {
+		log.Printf("expurgo da caixa de saída falhou: erro=%v", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+	log.Printf("expurgo ok: %d e-mails da caixa de saída apagados", outbox)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"status": "ok", "purged": purged, "waitlist_purged": pending, "login_attempts_purged": attempts,
+		"outbox_purged": outbox,
 	})
 }
 

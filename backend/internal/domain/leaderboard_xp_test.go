@@ -60,7 +60,7 @@ func anonNumberOf(t *testing.T, repo *Repository, userID string) int {
 func createTestUser(t *testing.T, repo *Repository) string {
 	t.Helper()
 	ctx := context.Background()
-	id, err := repo.CreateUser(ctx, "placar-"+testUUID(t)[:12]+"@example.com", "", true, "", nil, ClientInfo{})
+	id, err := repo.CreateUser(ctx, "placar-"+testUUID(t)[:12]+"@example.com", "", true, "", nil, ClientInfo{}, "pt-BR")
 	if err != nil {
 		t.Fatalf("cadastro: %v", err)
 	}
@@ -135,7 +135,7 @@ func TestCreateUserGivesUpAfterMaxDraws(t *testing.T) {
 
 	asked := scriptAnonDraw(t, taken)
 	email := "placar-cheio-" + testUUID(t)[:12] + "@example.com"
-	if _, err := repo.CreateUser(ctx, email, "", true, "", nil, ClientInfo{}); err == nil {
+	if _, err := repo.CreateUser(ctx, email, "", true, "", nil, ClientInfo{}, "pt-BR"); err == nil {
 		t.Fatal("o cadastro passou com todos os sorteios colidindo")
 	}
 	if len(*asked) != anonMaxDraws {
@@ -157,13 +157,13 @@ func TestCreateUserStillReportsEmailTaken(t *testing.T) {
 	ctx := context.Background()
 
 	email := "placar-dup-" + testUUID(t)[:12] + "@example.com"
-	id, err := repo.CreateUser(ctx, email, "", true, "", nil, ClientInfo{})
+	id, err := repo.CreateUser(ctx, email, "", true, "", nil, ClientInfo{}, "pt-BR")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { conn.Exec(ctx, `DELETE FROM users WHERE id = $1`, id) })
 
-	_, err = repo.CreateUser(ctx, email, "", true, "", nil, ClientInfo{})
+	_, err = repo.CreateUser(ctx, email, "", true, "", nil, ClientInfo{}, "pt-BR")
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
 		t.Fatalf("e-mail repetido devolveu %v, esperava 23505", err)

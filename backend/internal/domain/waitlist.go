@@ -96,8 +96,9 @@ func isUUID(s string) bool {
 
 // JoinWaitlist inscreve o e-mail, já normalizado, e diz se é para mandar a confirmação.
 //
-// Devolve o id e `true` para inscrição nova, e para pendente cujo e-mail não saiu
-// (ReleaseWaitlistSend); a língua passa a ser a do pedido novo. A pendente recebe um
+// Devolve o id e `true` para inscrição nova, e para pendente cujo e-mail desistiu de
+// sair (DeliverOutbox na última tentativa); a língua passa a ser a do pedido novo. Nos
+// dois casos a confirmação entra na caixa de saída, na mesma transação. A pendente recebe um
 // e-mail só: pedir de novo não reenvia, senão quem reenviasse todo dia mandaria um
 // e-mail por dia a um endereço que não é dele. Para inscrição já confirmada, pendente
 // já avisada, ou vencida, devolve `false` e não muda nada. Quem chama responde igual em
@@ -105,8 +106,14 @@ func isUUID(s string) bool {
 //
 // Com WaitlistHourlySendCap atingido, devolve ErrWaitlistBusy antes de gravar.
 func (r *Repository) JoinWaitlist(ctx context.Context, email, locale string) (string, bool, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return "", false, err
+	}
+	defer tx.Rollback(ctx)
+
 	var sent int
-	if err := r.db.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		SELECT count(*) FROM waitlist_entries WHERE sent_at > CURRENT_TIMESTAMP - interval '1 hour'`).Scan(&sent); err != nil {
 		return "", false, err
 	}
@@ -117,7 +124,7 @@ func (r *Repository) JoinWaitlist(ctx context.Context, email, locale string) (st
 	// A pendente vencida que a purga ainda não levou sai agora, e o pedido vira
 	// inscrição nova. Sem isto, quem voltasse no oitavo dia não receberia nada até a
 	// purga do dia seguinte. É no máximo um e-mail a cada WaitlistPendingTTL por endereço.
-	if _, err := r.db.Exec(ctx, `
+	if _, err := tx.Exec(ctx, `
 		DELETE FROM waitlist_entries
 		WHERE email = $1 AND confirmed_at IS NULL
 		  AND created_at <= CURRENT_TIMESTAMP - make_interval(secs => $2)`,
@@ -126,7 +133,7 @@ func (r *Repository) JoinWaitlist(ctx context.Context, email, locale string) (st
 	}
 
 	var id string
-	err := r.db.QueryRow(ctx, `
+	err = tx.QueryRow(ctx, `
 		INSERT INTO waitlist_entries (email, locale) VALUES ($1, $2)
 		ON CONFLICT (email) DO UPDATE SET locale = EXCLUDED.locale, sent_at = CURRENT_TIMESTAMP
 		WHERE waitlist_entries.confirmed_at IS NULL
@@ -140,15 +147,15 @@ func (r *Repository) JoinWaitlist(ctx context.Context, email, locale string) (st
 	if err != nil {
 		return "", false, err
 	}
+	outboxID, err := queueWaitlistTx(ctx, tx, id, locale)
+	if err != nil {
+		return "", false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return "", false, err
+	}
+	TrackOutbox(ctx, outboxID)
 	return id, true, nil
-}
-
-// ReleaseWaitlistSend marca que o e-mail de uma inscrição pendente não saiu, para o
-// pedido seguinte tentar de novo.
-func (r *Repository) ReleaseWaitlistSend(ctx context.Context, id string) error {
-	_, err := r.db.Exec(ctx, `
-		UPDATE waitlist_entries SET sent_at = NULL WHERE id = $1 AND confirmed_at IS NULL`, id)
-	return err
 }
 
 // GetWaitlistEntry lê a inscrição de um link. Devolve ErrWaitlistNotFound se ela não

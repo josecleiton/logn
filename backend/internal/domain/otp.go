@@ -105,12 +105,36 @@ func otpHash(email, purpose, code string) string {
 // qualquer endereço sem parar, e cada pedido ainda invalidava o código que o dono de
 // verdade tinha acabado de receber. Com OTPHourlySendCap atingido, devolve
 // ErrOTPSendCapReached antes de gravar.
-func (r *Repository) SaveOTP(ctx context.Context, email, code, purpose string, duration time.Duration) error {
+//
+// O e-mail com o código entra na caixa de saída na mesma transação, na língua `lang`
+// (ADR 0026).
+func (r *Repository) SaveOTP(ctx context.Context, email, code, purpose, lang string, duration time.Duration) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if err := saveOTPTx(ctx, tx, email, code, purpose, duration); err != nil {
+		return err
+	}
+	outboxID, err := queueOTPTx(ctx, tx, email, purpose, code, lang)
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	TrackOutbox(ctx, outboxID)
+	return nil
+}
+
+func saveOTPTx(ctx context.Context, tx pgx.Tx, email, code, purpose string, duration time.Duration) error {
 	// A linha é uma por e-mail e propósito, então isto conta endereços que receberam
 	// código na última hora, não e-mails. Um endereço só recebe no máximo um por
 	// OTPResendCooldown, e o teto é sobre espalhar o envio por endereços.
 	var sent int
-	if err := r.db.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		SELECT count(*) FROM otps WHERE sent_at > CURRENT_TIMESTAMP - interval '1 hour'`).Scan(&sent); err != nil {
 		return err
 	}
@@ -129,7 +153,7 @@ func (r *Repository) SaveOTP(ctx context.Context, email, code, purpose string, d
 		  AND NOT (otps.failures_since > CURRENT_TIMESTAMP - make_interval(secs => $6)
 		           AND otps.recent_failures >= $7)
 	`
-	tag, err := r.db.Exec(ctx, query,
+	tag, err := tx.Exec(ctx, query,
 		email, purpose, otpHash(email, purpose, code), expiresAt, OTPResendCooldown.Seconds(),
 		OTPFailureWindow.Seconds(), OTPMaxFailuresPerWindow)
 	if err != nil {
@@ -139,7 +163,7 @@ func (r *Repository) SaveOTP(ctx context.Context, email, code, purpose string, d
 		// Recusado: pelo intervalo ou pela janela de falhas. A janela tem erro próprio,
 		// com o tempo que falta, porque esperar o intervalo não resolve nada.
 		var remaining float64
-		err := r.db.QueryRow(ctx, `
+		err := tx.QueryRow(ctx, `
 			SELECT EXTRACT(EPOCH FROM failures_since + make_interval(secs => $3) - CURRENT_TIMESTAMP)
 			FROM otps
 			WHERE email = $1 AND purpose = $2

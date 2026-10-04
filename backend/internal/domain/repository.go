@@ -546,8 +546,9 @@ func (r *Repository) GetUserProgress(ctx context.Context, userID string) ([]User
 }
 
 // CreateUser cria a conta com a confirmação de idade, o país considerado nela (vazio
-// grava NULL) e os aceites, com o app que os gravou, numa transação só.
-func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string, ageConfirmed bool, country string, acceptances []LegalAcceptance, client ClientInfo) (string, error) {
+// grava NULL) e os aceites, com o app que os gravou, numa transação só. As boas-vindas,
+// na língua `lang`, entram na caixa de saída na mesma transação.
+func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string, ageConfirmed bool, country string, acceptances []LegalAcceptance, client ClientInfo, lang string) (string, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return "", err
@@ -558,9 +559,14 @@ func (r *Repository) CreateUser(ctx context.Context, email, passwordHash string,
 	if err != nil {
 		return "", err
 	}
+	outboxID, err := queueWelcomeTx(ctx, tx, id, lang)
+	if err != nil {
+		return "", err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return "", err
 	}
+	TrackOutbox(ctx, outboxID)
 	return id, nil
 }
 
@@ -800,8 +806,9 @@ func (r *Repository) PurgeDeletedAccounts(ctx context.Context) (int, error) {
 // A linha de `users` sai primeiro, conferindo de novo a carência: quem entrou na conta
 // entre a seleção e este passo não perde nada. Em cascata vão `refresh_tokens`,
 // `user_progress`, `user_paid_challenges`, `legal_acceptances`, `user_identities` e
-// `leaderboard_actions`. `game_events` e `user_sync_state` não têm chave estrangeira
-// para `users`, e `otps` é por e-mail: esses saem à mão. `blocked_nicknames` fica de
+// `leaderboard_actions` e as boas-vindas de `email_outbox`. `game_events` e
+// `user_sync_state` não têm chave estrangeira para `users`, e `otps` e os e-mails de
+// código da caixa de saída são por e-mail: esses saem à mão. `blocked_nicknames` fica de
 // propósito: guarda só o texto do apelido moderado, para ninguém reusá-lo.
 func (r *Repository) purgeAccount(ctx context.Context, userID string) (bool, error) {
 	tx, err := r.db.Begin(ctx)
@@ -830,6 +837,7 @@ func (r *Repository) purgeAccount(ctx context.Context, userID string) (bool, err
 		{"DELETE FROM game_events WHERE user_id = $1", userID},
 		{"DELETE FROM user_sync_state WHERE user_id = $1", userID},
 		{"DELETE FROM otps WHERE email = $1", email},
+		{"DELETE FROM email_outbox WHERE kind = 'otp' AND email = $1", email},
 		{"DELETE FROM login_failures WHERE email_hmac = $1", loginKey(email)},
 	} {
 		if _, err := tx.Exec(ctx, q.sql, q.arg); err != nil {

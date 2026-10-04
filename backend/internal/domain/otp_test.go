@@ -40,12 +40,15 @@ func TestOTPRepository(t *testing.T) {
 
 	email := "test_otp@example.com"
 	purpose := OTPPurposeVerifyEmail
-	clear := func() { conn.Exec(ctx, "DELETE FROM otps WHERE email=$1 AND purpose=$2", email, purpose) }
+	clear := func() {
+		conn.Exec(ctx, "DELETE FROM otps WHERE email=$1 AND purpose=$2", email, purpose)
+		conn.Exec(ctx, "DELETE FROM email_outbox WHERE kind='otp' AND email=$1", email)
+	}
 	clear()
 	defer clear()
 
 	// Test Save
-	if err := repo.SaveOTP(ctx, email, "123456", purpose, 5*time.Minute); err != nil {
+	if err := repo.SaveOTP(ctx, email, "123456", purpose, "pt-BR", 5*time.Minute); err != nil {
 		t.Fatalf("Failed to save OTP: %v", err)
 	}
 
@@ -57,7 +60,7 @@ func TestOTPRepository(t *testing.T) {
 	}
 
 	// Pedir outro logo em seguida bate no intervalo mínimo.
-	if err := repo.SaveOTP(ctx, email, "654321", purpose, 5*time.Minute); !errors.Is(err, ErrOTPCooldown) {
+	if err := repo.SaveOTP(ctx, email, "654321", purpose, "pt-BR", 5*time.Minute); !errors.Is(err, ErrOTPCooldown) {
 		t.Fatalf("esperava ErrOTPCooldown, veio %v", err)
 	}
 
@@ -75,7 +78,7 @@ func TestOTPRepository(t *testing.T) {
 
 	// Test Expiry behavior (indirectly tested by injecting an expired time in Save)
 	clear()
-	if err := repo.SaveOTP(ctx, email, "999999", purpose, -1*time.Minute); err != nil {
+	if err := repo.SaveOTP(ctx, email, "999999", purpose, "pt-BR", -1*time.Minute); err != nil {
 		t.Errorf("Failed to save expired OTP: %v", err)
 	}
 
@@ -93,11 +96,14 @@ func TestOTPMorreDepoisDeTentativasErradas(t *testing.T) {
 
 	email := "test_otp_bruteforce@example.com"
 	purpose := OTPPurposeResetPassword
-	clear := func() { conn.Exec(ctx, "DELETE FROM otps WHERE email=$1 AND purpose=$2", email, purpose) }
+	clear := func() {
+		conn.Exec(ctx, "DELETE FROM otps WHERE email=$1 AND purpose=$2", email, purpose)
+		conn.Exec(ctx, "DELETE FROM email_outbox WHERE kind='otp' AND email=$1", email)
+	}
 	clear()
 	defer clear()
 
-	if err := repo.SaveOTP(ctx, email, "123456", purpose, 5*time.Minute); err != nil {
+	if err := repo.SaveOTP(ctx, email, "123456", purpose, "pt-BR", 5*time.Minute); err != nil {
 		t.Fatalf("Failed to save OTP: %v", err)
 	}
 
@@ -130,16 +136,19 @@ func TestOTPFalhasSomamEntreReenvios(t *testing.T) {
 
 	email := "test_otp_resend_bruteforce@example.com"
 	purpose := OTPPurposeResetPassword
-	clear := func() { conn.Exec(ctx, "DELETE FROM otps WHERE email=$1 AND purpose=$2", email, purpose) }
+	clear := func() {
+		conn.Exec(ctx, "DELETE FROM otps WHERE email=$1 AND purpose=$2", email, purpose)
+		conn.Exec(ctx, "DELETE FROM email_outbox WHERE kind='otp' AND email=$1", email)
+	}
 	clear()
 	defer clear()
 	// O reenvio de verdade espera OTPResendCooldown; o teste empurra o envio para trás.
 	resend := func(code string) error {
 		conn.Exec(ctx, "UPDATE otps SET sent_at = sent_at - interval '2 minutes' WHERE email=$1 AND purpose=$2", email, purpose)
-		return repo.SaveOTP(ctx, email, code, purpose, 5*time.Minute)
+		return repo.SaveOTP(ctx, email, code, purpose, "pt-BR", 5*time.Minute)
 	}
 
-	if err := repo.SaveOTP(ctx, email, "100000", purpose, 5*time.Minute); err != nil {
+	if err := repo.SaveOTP(ctx, email, "100000", purpose, "pt-BR", 5*time.Minute); err != nil {
 		t.Fatalf("primeiro código: %v", err)
 	}
 	cycles := OTPMaxFailuresPerWindow / OTPMaxAttempts
@@ -199,7 +208,10 @@ func TestOTPTetoGlobalPorHora(t *testing.T) {
 
 	email := "test_otp_send_cap@example.com"
 	purpose := OTPPurposeVerifyEmail
-	clear := func() { conn.Exec(ctx, "DELETE FROM otps WHERE email=$1 AND purpose=$2", email, purpose) }
+	clear := func() {
+		conn.Exec(ctx, "DELETE FROM otps WHERE email=$1 AND purpose=$2", email, purpose)
+		conn.Exec(ctx, "DELETE FROM email_outbox WHERE kind='otp' AND email=$1", email)
+	}
 	clear()
 	defer clear()
 
@@ -212,7 +224,7 @@ func TestOTPTetoGlobalPorHora(t *testing.T) {
 	OTPHourlySendCap = sent
 	defer func() { OTPHourlySendCap = previous }()
 
-	if err := repo.SaveOTP(ctx, email, "123456", purpose, 5*time.Minute); !errors.Is(err, ErrOTPSendCapReached) {
+	if err := repo.SaveOTP(ctx, email, "123456", purpose, "pt-BR", 5*time.Minute); !errors.Is(err, ErrOTPSendCapReached) {
 		t.Fatalf("esperava ErrOTPSendCapReached, veio %v", err)
 	}
 	var rows int

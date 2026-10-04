@@ -71,10 +71,12 @@ func (f *socialFixture) email(name string) string {
 	return name + "-" + f.tag + "@example.com"
 }
 
-// cleanupEmail apaga a conta criada pelo teste; a identidade sai em cascata.
+// cleanupEmail apaga a conta criada pelo teste e os e-mails de código do endereço; a
+// identidade e as boas-vindas da caixa de saída saem em cascata.
 func (f *socialFixture) cleanupEmail(t *testing.T, addr string) {
 	t.Cleanup(func() {
 		f.pool.Exec(context.Background(), `DELETE FROM users WHERE email = $1`, addr)
+		f.pool.Exec(context.Background(), `DELETE FROM email_outbox WHERE kind = 'otp' AND email = $1`, addr)
 	})
 }
 
@@ -84,7 +86,7 @@ func (f *socialFixture) seedPasswordUser(t *testing.T, addr string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	id, err := f.s.repo.CreateUser(context.Background(), addr, hash, true, "BR", nil, domain.ClientInfo{})
+	id, err := f.s.repo.CreateUser(context.Background(), addr, hash, true, "BR", nil, domain.ClientInfo{}, "pt-BR")
 	if err != nil {
 		t.Fatalf("usuário: %v", err)
 	}
@@ -358,7 +360,7 @@ func TestPasswordlessAccountCanSetAPasswordByEmailCode(t *testing.T) {
 	userID := sessionUser(t, f.post(t, f.signupBody("t")))
 
 	const code = "123456"
-	if err := f.s.repo.SaveOTP(context.Background(), addr, code, domain.OTPPurposeResetPassword, time.Minute); err != nil {
+	if err := f.s.repo.SaveOTP(context.Background(), addr, code, domain.OTPPurposeResetPassword, "pt-BR", time.Minute); err != nil {
 		t.Fatalf("código: %v", err)
 	}
 	t.Cleanup(func() { f.pool.Exec(context.Background(), `DELETE FROM otps WHERE email = $1`, addr) })
@@ -382,7 +384,7 @@ func TestEmailSignupRefusesABadClientWithoutSpendingTheCode(t *testing.T) {
 	addr := f.email("cadastro-email-client")
 	f.cleanupEmail(t, addr)
 	const code = "654321"
-	if err := f.s.repo.SaveOTP(context.Background(), addr, code, domain.OTPPurposeVerifyEmail, time.Minute); err != nil {
+	if err := f.s.repo.SaveOTP(context.Background(), addr, code, domain.OTPPurposeVerifyEmail, "pt-BR", time.Minute); err != nil {
 		t.Fatalf("código: %v", err)
 	}
 	t.Cleanup(func() { f.pool.Exec(context.Background(), `DELETE FROM otps WHERE email = $1`, addr) })
@@ -423,7 +425,7 @@ func TestEmailSignupWithoutOrWithPartialClient(t *testing.T) {
 		addr := f.email(name)
 		f.cleanupEmail(t, addr)
 		const code = "112233"
-		if err := f.s.repo.SaveOTP(context.Background(), addr, code, domain.OTPPurposeVerifyEmail, time.Minute); err != nil {
+		if err := f.s.repo.SaveOTP(context.Background(), addr, code, domain.OTPPurposeVerifyEmail, "pt-BR", time.Minute); err != nil {
 			t.Fatalf("código: %v", err)
 		}
 		t.Cleanup(func() { f.pool.Exec(context.Background(), `DELETE FROM otps WHERE email = $1`, addr) })

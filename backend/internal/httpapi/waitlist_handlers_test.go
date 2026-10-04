@@ -22,8 +22,7 @@ const (
 	testAPI     = "https://api.example.com"
 )
 
-// fakeWaitlistMailer guarda o que seria enviado. O envio sai numa goroutine, então o
-// teste espera por `sent`.
+// fakeWaitlistMailer guarda o que seria enviado, em `sent`.
 type fakeWaitlistMailer struct {
 	mu   sync.Mutex
 	sent chan waitlistMail
@@ -70,7 +69,7 @@ type waitlistHarness struct {
 	t      *testing.T
 	repo   *domain.Repository
 	mailer *fakeWaitlistMailer
-	mux    *http.ServeMux
+	mux    http.Handler
 }
 
 func newWaitlistHarness(t *testing.T) *waitlistHarness {
@@ -84,7 +83,8 @@ func newWaitlistHarness(t *testing.T) *waitlistHarness {
 	}
 	mux := http.NewServeMux()
 	s.registerWaitlistRoutes(mux)
-	return &waitlistHarness{t: t, repo: repo, mailer: mailer, mux: mux}
+	// Sem fila, a caixa de saída envia na hora, quando o pedido termina (ADR 0026).
+	return &waitlistHarness{t: t, repo: repo, mailer: mailer, mux: s.withOutbox(mux)}
 }
 
 // join posta o formulário de um IP, como o navegador na landing: `Origin: null` (a
@@ -330,20 +330,13 @@ func TestWaitlistMailFailureReleasesCooldown(t *testing.T) {
 
 	expectRedirect(t, h.join("192.0.2.15", url.Values{"email": {addr}, "locale": {"pt-BR"}}), testLanding+"/waitlist/thanks/")
 	h.mailer.next(t)
-	// A goroutine libera o reenvio depois da falha.
-	deadline := time.Now().Add(2 * time.Second)
-	for {
-		_, send, err := h.repo.JoinWaitlist(context.Background(), addr, "pt-BR")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if send {
-			return
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("o envio falhou e o reenvio continuou travado")
-		}
-		time.Sleep(20 * time.Millisecond)
+	// Sem fila, o envio é a última tentativa, e a falha libera o reenvio.
+	_, send, err := h.repo.JoinWaitlist(context.Background(), addr, "pt-BR")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !send {
+		t.Fatal("o envio falhou e o reenvio continuou travado")
 	}
 }
 

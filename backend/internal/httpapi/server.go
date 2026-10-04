@@ -42,6 +42,10 @@ type Server struct {
 	// Lista de espera do iPhone (ADR 0022). Nula, as rotas não existem.
 	waitlist       *WaitlistConfig
 	waitlistMailer WaitlistMailer
+	// A caixa de saída de e-mail (ADR 0026): a fila do Cloud Tasks, nula em
+	// desenvolvimento, e o mailer do código e das boas-vindas.
+	outboxQueue  OutboxQueue
+	outboxMailer OutboxMailer
 	// Sync por conta, além do limite por IP da rota. Nulo nos testes que chamam o
 	// handler direto.
 	syncUserLimiter *rateLimiter

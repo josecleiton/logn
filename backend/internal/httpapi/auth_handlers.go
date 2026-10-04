@@ -370,7 +370,9 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, err := s.repo.CreateUser(ctx, email, hashedPassword, req.AgeConfirmed, country, acceptances, client)
+	// As boas-vindas entram na caixa de saída com a conta, e só com ela: e-mail que
+	// falha não desfaz cadastro (ADR 0026).
+	userID, err := s.repo.CreateUser(ctx, email, hashedPassword, req.AgeConfirmed, country, acceptances, client, locale.Negotiate(r))
 	if err != nil {
 		// E-mail já cadastrado, inclusive o de uma conta na carência de exclusão. A
 		// mensagem não muda para esse caso: dizer "entre para recuperar" contaria a
@@ -378,16 +380,6 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, codeEmailTaken)
 		return
 	}
-
-	// Boas-vindas só depois da conta criada, e fora do caminho da resposta: e-mail que
-	// falha não desfaz cadastro. A língua é negociada aqui porque o pedido já terá
-	// acabado quando a goroutine rodar.
-	lang := locale.Negotiate(r)
-	go func(email, lang string) {
-		if err := s.mailer.SendWelcome(email, lang); err != nil {
-			log.Printf("boas-vindas não enviadas: user=%s erro=%v", userID, err)
-		}
-	}(email, lang)
 
 	s.issueSession(ctx, w, userID, email, false)
 }
