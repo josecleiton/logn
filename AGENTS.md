@@ -31,7 +31,7 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    no `SET` de todo `UPDATE`. Coluna que nasce com a linha e nunca mais anda mente pior
    que coluna nenhuma.
 
-   **Estado atual, para quem for mexer:** a regra está cumprida desde a `0013_carimbos_de_tempo.sql`. Toda tabela tem `created_at` (agora com `NOT NULL` aplicado pela 0034). `users`, `skill_nodes`, `refresh_tokens`, `otps`, `user_progress`, `challenges`, `user_sync_state`, `skill_node_translations`, `challenge_translations` (0043), `challenge_origins` e `challenge_origin_translations` (0046), `tracks`, `track_translations`, `entitlements` e `entitlement_devices` (0049), `manual_revocations` (0063), `waitlist_entries` (0065), `login_failures` (0069) têm `updated_at` mantido pelo trigger `trg_<tabela>_updated_at`, que chama `set_updated_at()` — a função já existe, tabela nova só cria o trigger dela. Ficam só com `created_at` as que nunca sofrem `UPDATE`: `game_events` (append-only por desenho, ADR 0002), `user_paid_challenges` (0032), `track_keys` (a chave de uma versão não muda), `store_transactions` e `revoked_transactions` (0050; a revogação sai por `DELETE`, nunca por `UPDATE`), `track_previewers` (0051; entra e sai por `INSERT` e `DELETE`), `user_identities` (0055; idem), `legal_documents`, `legal_acceptances` e `legal_document_changes` (0059; versão publicada não se edita, corrigir é publicar a próxima), `license_actions` (0063; só recebe `INSERT`), `leaderboard_actions` e `blocked_nicknames` (0070; idem). `schema_migrations` resolve com `applied_at`. Em `otps` o `updated_at` anda a cada tentativa errada; por isso o intervalo entre envios usa `sent_at` (0031), não ele.
+   **Estado atual, para quem for mexer:** a regra está cumprida desde a `0013_carimbos_de_tempo.sql`. Toda tabela tem `created_at` (agora com `NOT NULL` aplicado pela 0034). `users`, `skill_nodes`, `refresh_tokens`, `otps`, `user_progress`, `challenges`, `user_sync_state`, `skill_node_translations`, `challenge_translations` (0043), `challenge_origins` e `challenge_origin_translations` (0046), `tracks`, `track_translations`, `entitlements` e `entitlement_devices` (0049), `manual_revocations` (0063), `waitlist_entries` (0065), `login_failures` (0069), `email_outbox` (0073) têm `updated_at` mantido pelo trigger `trg_<tabela>_updated_at`, que chama `set_updated_at()` — a função já existe, tabela nova só cria o trigger dela. Ficam só com `created_at` as que nunca sofrem `UPDATE`: `game_events` (append-only por desenho, ADR 0002), `user_paid_challenges` (0032), `track_keys` (a chave de uma versão não muda), `store_transactions` e `revoked_transactions` (0050; a revogação sai por `DELETE`, nunca por `UPDATE`), `track_previewers` (0051; entra e sai por `INSERT` e `DELETE`), `user_identities` (0055; idem), `legal_documents`, `legal_acceptances` e `legal_document_changes` (0059; versão publicada não se edita, corrigir é publicar a próxima), `license_actions` (0063; só recebe `INSERT`), `leaderboard_actions` e `blocked_nicknames` (0070; idem). `schema_migrations` resolve com `applied_at`. Em `otps` o `updated_at` anda a cada tentativa errada; por isso o intervalo entre envios usa `sent_at` (0031), não ele.
 
 6. **Todo texto que o jogador lê ou ouve sai do catálogo de i18n, nunca de literal no código.**
    Vale para rótulo, botão, legenda, veredito e `accessibilityLabel`, em qualquer cliente.
@@ -51,8 +51,9 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    passa por `just content-check` e vira migração por `gen_conteudo.py`.
 
 7. **Erro de rota que o app lê é `writeError(w, status, code)`, nunca `http.Error`
-   com frase.** Ficam fora a rota interna de purga, o `/ready` e as páginas HTML de
-   `/legal`, que ninguém do app lê. O corpo é `{"code", "message"}`; o código está em `backend/internal/httpapi/api_errors.go` e é
+   com frase.** Ficam fora a rota interna de purga, as de e-mail (`/internal/email/*`,
+   que só a fila e o Scheduler chamam), o `/ready` e as páginas HTML de `/legal`, que
+   ninguém do app lê. O corpo é `{"code", "message"}`; o código está em `backend/internal/httpapi/api_errors.go` e é
    contrato com app instalado — acrescente, não renomeie. O Core decide pelo código
    (`api_code` em `app.rs`), e erro que o jogador pode corrigir ganha `StatusKey`
    próprio.
@@ -120,7 +121,8 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    a conta não existe, para o tempo não denunciar e-mail. Erro de credencial, de OTP e
    de reset devolve o **mesmo código** para conta inexistente e senha errada; nada de
    "e-mail não cadastrado". OTP guardado como HMAC, nunca em claro, com
-   `OTPMaxAttempts`, `OTPResendCooldown` e consumo atômico; refresh token guardado como
+   `OTPMaxAttempts`, `OTPResendCooldown` e consumo atômico; até o e-mail sair, o código
+   espera em `email_outbox` só cifrado, e some da linha no envio (ADR 0026); refresh token guardado como
    SHA-256, rotacionado a cada uso, e reuso de token já rotacionado derruba todas as
    sessões da conta. JWT com `exp` verificado e algoritmo fixo; nunca aceite `none`
    nem leia o `alg` do token. No iOS, credencial vai ao Keychain (`keychainKeys` e o
@@ -130,9 +132,10 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
    `/sync` sobrescreve `payload.UserID`, e é assim que toda rota nova se comporta.
    Exclusão de conta, aceite de termos, progresso e qualquer leitura por id só do
    próprio usuário. Rota interna (`/api/v1/internal/*`) só com OIDC do Google
-   validando emissor, `CLOUD_SCHEDULER_AUDIENCE` **e a conta que assinou**: a purga só
-   aceita `CLOUD_SCHEDULER_SERVICE_ACCOUNT`, as de licença só `ADMIN_SERVICE_ACCOUNT`
-   (ADR 0021). Audiência sozinha não basta, porque qualquer conta de serviço emite token
+   validando emissor, `CLOUD_SCHEDULER_AUDIENCE` **e a conta que assinou**: a purga e a
+   varredura de e-mail só aceitam `CLOUD_SCHEDULER_SERVICE_ACCOUNT`, as de licença só
+   `ADMIN_SERVICE_ACCOUNT` (ADR 0021), a entrega de e-mail só
+   `CLOUD_TASKS_SERVICE_ACCOUNT` (ADR 0026). Audiência sozinha não basta, porque qualquer conta de serviço emite token
    com ela. Falha fechada (403) se uma variável faltar; token estático compartilhado não
    é opção, e rota interna nova escolhe a sua conta.
 
