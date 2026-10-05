@@ -183,12 +183,63 @@ h1 {
 .kw { color: var(--synKw); }
 .fn { color: var(--infoInk); }
 .indent { padding-left: 22px; }
-.ph-slot { display: inline-block; width: 64px; height: 20px; margin: 0 8px; border: 1px dashed var(--accent); border-radius: 2px; }
+.ph-slot { display: inline-flex; align-items: center; justify-content: center; min-width: 64px; height: 20px; margin: 0 8px; padding: 0 6px; border: 1px dashed var(--accent); border-radius: 2px; color: var(--accentInk); white-space: pre; }
+.ph-slot.is-filled { border-style: solid; }
 .ph-drag { margin-top: 14px; font-size: 9.5px; letter-spacing: 0.14em; color: var(--text3); padding: 0 2px; }
-.ph-drop { margin-top: 10px; height: 40px; border: 1px dashed var(--lineDim); border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text3); }
+/* `:where` zera a especificidade: o reset não passa por cima do tamanho de cada botão. */
+:where(.phone) button { font: inherit; color: inherit; margin: 0; -webkit-tap-highlight-color: transparent; }
+.phone button:enabled { cursor: pointer; }
+.phone button:focus-visible, .phone a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.phone [hidden] { display: none !important; }
+.ph-drop { margin-top: 10px; height: 40px; width: 100%; padding: 0; border: 1px dashed var(--lineDim); border-radius: 2px; background: none; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text3); white-space: pre; }
+.ph-drop.is-over { border-color: var(--accent); background: var(--tint); }
+.ph-drop.is-filled { border: 1px solid var(--lineDim); background: var(--surface2); color: var(--text); }
 .ph-chips { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
-.ph-chips span { padding: 11px 12px; border: 1px solid var(--line2); border-radius: 2px; background: var(--surface); font-size: 11px; white-space: pre; }
-.ph-confirm { margin-top: auto; margin-bottom: 24px; height: 42px; border-radius: 4px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: var(--text3); }
+/* `touch-action: none` só no bloco: arrastar o bloco não rola a página, e o resto rola. */
+.ph-chip { padding: 11px 12px; border: 1px solid var(--line2); border-radius: 2px; background: var(--surface); font-size: 11px; white-space: pre; touch-action: none; }
+.ph-chip:enabled:hover { border-color: var(--lineDim); }
+.ph-chip.is-placed { visibility: hidden; }
+.ph-chip.is-lifted { opacity: 0.35; }
+/* O bloco que segue o dedo. Posição por CSSOM (site.js), fora do celular. */
+.ph-ghost { position: fixed; z-index: 60; pointer-events: none; margin: 0; padding: 11px 12px; border: 1px solid var(--accent); border-radius: 2px; background: var(--surface); color: var(--text); font-family: var(--mono); font-size: 11px; white-space: pre; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35); -webkit-user-select: none; user-select: none; }
+.ph-confirm { margin-top: auto; margin-bottom: 24px; height: 42px; width: 100%; border: 0; border-radius: 4px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: var(--text3); }
+.phone .ph-confirm { color: var(--text3); }
+.phone .ph-confirm:enabled { background: var(--accent); color: var(--on-accent); }
+.phone .ph-confirm:enabled:hover { background: var(--accent-hover); }
+.ph-clock.is-low { color: var(--wrongInk); }
+.b-done { fill: #FF6FB5; stroke: none; }
+
+/* Veredito: toma a tela, como o `MatchVerdictScreen` do app. */
+.ph-verdict { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ph-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px; text-align: center; }
+.ph-stage-ok { background: var(--tintOk); }
+.ph-stage-ok svg { overflow: visible; }
+.ph-stage-err { background: var(--tintErr); }
+.ph-ac { margin-top: 10px; font-size: 54px; font-weight: 500; letter-spacing: -0.03em; line-height: 1; color: var(--correctInk); }
+.ph-up { font-size: 12px; letter-spacing: 0.12em; color: var(--correctInk); }
+.ph-xp { margin-top: 18px; font-size: 20px; font-weight: 500; }
+.ph-miss { font-size: 76px; font-weight: 500; letter-spacing: -0.03em; line-height: 1; color: var(--wrongInk); }
+.ph-meaning { font-size: 12px; letter-spacing: 0.12em; color: var(--wrongInk); }
+.ph-cost { margin-top: 22px; display: flex; gap: 16px; font-size: 12px; }
+.ph-dim { color: var(--text3); }
+.ph-panel { flex: 0 0 auto; display: flex; flex-direction: column; gap: 10px; padding: 20px 16px 24px; background: var(--surface2); border-top: 1px solid var(--line2); box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.4); }
+.ph-trap { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+.ph-trap-cat { font-size: 10px; letter-spacing: 0.14em; color: var(--wrongInk); }
+.ph-judge { font-size: 12px; line-height: 1.5; color: var(--text); white-space: pre-wrap; }
+.ph-trap-body { font-size: 13px; line-height: 1.55; color: var(--text2); text-wrap: pretty; }
+.ph-btn { height: 42px; width: 100%; border: 0; border-radius: 4px; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; }
+.phone .ph-btn { color: var(--on-accent); }
+.ph-btn:hover, .phone .ph-btn:hover { background: var(--accent-hover); color: var(--on-accent); }
+.ph-again { height: 32px; border: 0; background: none; font-size: 12px; letter-spacing: 0.08em; }
+.phone .ph-again { color: var(--text2); }
+.phone .ph-again:hover { color: var(--text); }
+
+/* Erro: o cabeçalho treme 240ms; com movimento reduzido, vira um risco vermelho. */
+.ph-bar { position: relative; }
+.ph-bar.is-shaking { animation: phShake 240ms ease-out; }
+.ph-bar.is-flashing::after { content: ""; position: absolute; left: 0; right: 0; bottom: -8px; height: 2px; background: var(--wrong); animation: phFlash 480ms ease-out both; }
+@keyframes phShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(2px); } }
+@keyframes phFlash { 0%, 50% { opacity: 1; } 100% { opacity: 0; } }
 
 /* --- Seções ------------------------------------------------------------ */
 

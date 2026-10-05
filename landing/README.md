@@ -117,6 +117,11 @@ línguas de propósito — é o vocabulário de maratona que o app também usa.
 
 ## Conteúdo e marca
 
+O celular do topo é jogável (`site.js`): arrastar ou tocar num bloco, confirmar, e o
+veredito sai como no app — AC, WA com a saída do teste `a = 2, b = 3`, ou TLE quando
+os 20 segundos da questão zeram. O relógio começa no primeiro toque e para com o celular
+fora da tela ou a aba escondida. Tudo local, sem rede; sem JS, fica a imagem estática.
+
 Esta pasta é pública como o resto do repositório. O desafio na tela do celular, os
 trechos dos formatos e os times do placar são **inventados** — nenhum vem da trilha real
 (AGENTS.md, regra 8). O mapa de técnicas é ilustrativo e não reproduz o grafo real.

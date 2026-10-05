@@ -94,40 +94,71 @@
   </div>
 
   <div class="phone-wrap">
-    <div class="phone" role="img" aria-label="{{phone.label}}">
+    <!-- Sem JS, é a imagem de sempre. Com JS (site.js), vira o teste: os botões
+         acendem, o celular deixa de ser `img` e o veredito sai da própria tela. -->
+    <div class="phone" role="img" aria-label="{{phone.label}}"
+      data-play-label="{{phone.play_label}}" data-lives-two="{{phone.lives}}" data-lives-one="{{phone.lives_one}}" data-lives-zero="{{phone.lives_zero}}"
+      data-drop-filled="{{phone.drop_filled}}" data-wa-cat="{{phone.wa_cat}}" data-wa-judge="{{phone.wa_judge}}"
+      data-tle-cat="{{phone.tle_cat}}" data-tle-judge="{{phone.tle_judge}}" data-tle-body="{{phone.tle_body}}">
       <div class="phone-screen" aria-hidden="true">
-        <div class="ph-status"><span>16:58</span><span class="ph-island"></span><span class="mono ph-net">5G</span></div>
+        <div class="ph-status" aria-hidden="true"><span>16:58</span><span class="ph-island"></span><span class="mono ph-net">5G</span></div>
         <div class="ph-bar">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="ph-close"><path d="M6 6l12 12M18 6L6 18"/></svg>
-          <svg viewBox="0 0 96 122" width="11" height="14" fill="#FF6FB5" color="#FF6FB5"><use href="#b-full"/></svg>
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="ph-close" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          <svg viewBox="0 0 96 122" width="11" height="14" fill="#FF6FB5" color="#FF6FB5" aria-hidden="true"><use href="#b-full"/></svg>
           <span class="mono ph-problem">{{phone.problem}}</span>
-          <span class="mono ph-clock">00:51</span>
+          <span class="mono ph-clock" aria-hidden="true">00:20</span>
           <span class="ph-lives" title="{{phone.lives}}"><span>♥</span><span>♥</span><span class="ph-lost">♥</span></span>
         </div>
-        <div class="ph-letters">
+        <div class="ph-letters" aria-hidden="true">
           <span class="ph-l"><svg viewBox="0 0 96 95" width="11" height="12" fill="#E4572E"><use href="#b-head"/></svg><span>A</span></span>
           <span class="ph-l"><svg viewBox="0 0 96 95" width="11" height="12" fill="#F5C451"><use href="#b-head"/></svg><span>B</span></span>
           <span class="ph-l"><svg viewBox="0 0 96 95" width="11" height="12" fill="#3DB2FF"><use href="#b-head"/></svg><span>C</span></span>
           <span class="ph-l"><svg viewBox="0 0 96 95" width="11" height="12" class="b-open"><use href="#b-head"/></svg><span>D</span></span>
           <span class="ph-l"><svg viewBox="0 0 96 95" width="11" height="12" fill="#C77DFF"><use href="#b-head"/></svg><span>E</span></span>
-          <span class="ph-l"><svg viewBox="0 0 96 95" width="11" height="12" class="b-current"><use href="#b-head"/></svg><span>F</span></span>
+          <span class="ph-l"><svg viewBox="0 0 96 95" width="11" height="12" class="b-current" data-letter><use href="#b-head"/></svg><span>F</span></span>
         </div>
-        <div class="ph-body">
+        <div class="ph-body" data-problem>
           <div class="mono ph-title">{{phone.title}}</div>
           <p class="ph-statement">{{phone.statement}}</p>
           <div class="ph-code mono">
             <div class="ph-line"><span class="ln">1</span><span><span class="kw">int</span> <span class="fn">{{phone.fn}}</span>(<span class="kw">int</span> a, <span class="kw">int</span> b) {</span></div>
-            <div class="ph-line"><span class="ln">2</span><span class="indent"><span class="kw">return</span></span><span class="ph-slot"></span><span>;</span></div>
+            <div class="ph-line"><span class="ln">2</span><span class="indent"><span class="kw">return</span></span><span class="ph-slot" data-slot></span><span>;</span></div>
             <div class="ph-line"><span class="ln">3</span><span>}</span></div>
           </div>
           <div class="mono ph-drag">{{phone.drag}}</div>
-          <div class="mono ph-drop">{{phone.drop}}</div>
+          <button type="button" class="mono ph-drop" data-drop disabled>{{phone.drop}}</button>
+          <!-- O teste é `a = 2, b = 3`: `data-out` é a saída de cada bloco, e só o
+               certo tem `data-ok`. Problema inventado (AGENTS.md, regra 8). -->
           <div class="ph-chips mono">
-            <span>a + b</span><span>a - b</span><span>a * b</span><span>b - a</span>
+            <button type="button" class="ph-chip" data-out="5" data-ok disabled>a + b</button><button type="button" class="ph-chip" data-out="-1" disabled>a - b</button><button type="button" class="ph-chip" data-out="6" disabled>a * b</button><button type="button" class="ph-chip" data-out="1" disabled>b - a</button>
           </div>
-          <div class="ph-confirm">{{phone.confirm}}</div>
+          <button type="button" class="ph-confirm" data-confirm disabled>{{phone.confirm}}</button>
+        </div>
+        <div class="ph-verdict" data-verdict hidden>
+          <div class="ph-stage ph-stage-ok" data-stage-ok hidden>
+            <svg viewBox="0 0 96 122" width="52" height="66" fill="#FF6FB5" color="#FF6FB5" aria-hidden="true"><use href="#b-full"/></svg>
+            <span class="mono ph-ac">AC</span>
+            <span class="mono ph-up">{{phone.balloon_up}}</span>
+            <span class="mono ph-xp">{{phone.xp}}</span>
+          </div>
+          <div class="ph-stage ph-stage-err" data-stage-err hidden>
+            <span class="mono ph-miss" data-code>WA</span>
+            <span class="mono ph-meaning" data-meaning data-wa="WRONG ANSWER" data-tle="TIME LIMIT EXCEEDED">WRONG ANSWER</span>
+            <span class="mono ph-cost"><span>{{phone.penalty}}</span> <span class="t-err">{{phone.lost_life}}</span> <span class="ph-dim">{{phone.zero_xp}}</span></span>
+          </div>
+          <div class="ph-panel">
+            <div class="ph-trap" data-trap hidden>
+              <p class="mono ph-trap-cat" data-trap-cat></p>
+              <p class="mono ph-judge" data-trap-judge></p>
+              <p class="ph-trap-body" data-trap-body hidden></p>
+            </div>
+            <button type="button" class="ph-btn" data-continue hidden>{{phone.keep_going}}</button>
+            <a class="ph-btn" href="{{cta.href}}" data-store data-ac="{{phone.store_ac}}" data-over="{{phone.store_over}}" hidden></a>
+            <button type="button" class="mono ph-again" data-restart hidden>{{phone.restart}}</button>
+          </div>
         </div>
       </div>
+      <p class="sr" aria-live="polite" data-live></p>
     </div>
   </div>
 </section>
