@@ -36,19 +36,19 @@ type commonCopy struct {
 
 var commonCopies = map[string]commonCopy{
 	locale.PtBR: {
-		Expires:     "EXPIRA EM %d:00",
+		Expires:     "EXPIRA EM %d MIN",
 		RequestedAt: "solicitado em %s",
 		DateLayout:  "02/01/2006, 15:04",
 		Footer:      "E-mail automático de segurança do LogN. Nunca pedimos seu código por telefone, chat ou resposta a esta mensagem.",
 	},
 	locale.En: {
-		Expires:     "EXPIRES IN %d:00",
+		Expires:     "EXPIRES IN %d MIN",
 		RequestedAt: "requested on %s",
 		DateLayout:  "Jan 2, 2006, 15:04",
 		Footer:      "Automated security email from LogN. We never ask for your code by phone, chat or in a reply to this message.",
 	},
 	locale.Es: {
-		Expires:     "EXPIRA EN %d:00",
+		Expires:     "EXPIRA EN %d MIN",
 		RequestedAt: "solicitado el %s",
 		DateLayout:  "02/01/2006, 15:04",
 		Footer:      "Correo automático de seguridad de LogN. Nunca pedimos tu código por teléfono, chat ni respondiendo a este mensaje.",

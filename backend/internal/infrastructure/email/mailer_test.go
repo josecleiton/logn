@@ -40,9 +40,10 @@ func TestOTPTemplatesShowTheRealCode(t *testing.T) {
 	// Fora do estilo, seis dígitos seguidos só podem ser o código.
 	hexColor := regexp.MustCompile(`#[0-9A-Fa-f]{6}\b`)
 	sixDigits := regexp.MustCompile(`\d{6}`)
-	// Prazo por extenso ("15 minutos", "15 minutes") e no selo ("15:00").
+	// Prazo por extenso ("15 minutos", "15 minutes") e no selo ("15 MIN"). O selo era
+	// "15:00", que se lia como horário.
 	deadline := regexp.MustCompile(`(\d+) minut[oe]s`)
-	badge := regexp.MustCompile(`(\d+):00\b`)
+	badge := regexp.MustCompile(`(\d+) MIN\b`)
 	minutes := fmt.Sprint(domain.OTPValidityMinutes())
 
 	for _, lang := range locale.Supported {

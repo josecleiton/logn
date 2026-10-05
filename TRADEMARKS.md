@@ -30,7 +30,6 @@ These files are **outside** the Apache 2.0:
 - `ios/LogNiOS/LogNiOS/Assets.xcassets/BrandSymbol.imageset/`
 - `android/app/src/main/res/drawable/ic_splash_symbol.xml`
 - `android/app/src/main/res/mipmap-anydpi/ic_launcher.xml`
-- `backend/internal/infrastructure/email/templates/assets/logo.jpg`
 - `landing/src/assets/icons/`
 
 They are here because whoever clones the repository needs them for the app to build and

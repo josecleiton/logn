@@ -5,7 +5,6 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
-	"io"
 	"os"
 	"strings"
 	"time"
@@ -15,7 +14,7 @@ import (
 	"github.com/josecleiton/logn/backend/internal/domain"
 )
 
-//go:embed templates/*.html templates/assets/*
+//go:embed templates/*.html
 var templatesFS embed.FS
 
 type Mailer struct {
@@ -199,16 +198,6 @@ func (m *Mailer) sendWithHeaders(to, subject, templateName string, data interfac
 	for k, v := range headers {
 		msg.SetHeader(k, v)
 	}
-
-	// Embed logo via CID
-	msg.Embed("logo.jpg", gomail.SetCopyFunc(func(w io.Writer) error {
-		fileBytes, err := templatesFS.ReadFile("templates/assets/logo.jpg")
-		if err != nil {
-			return err
-		}
-		_, err = w.Write(fileBytes)
-		return err
-	}))
 
 	msg.SetBody("text/html", body.String())
 
