@@ -169,3 +169,15 @@ resource "cloudflare_zone_setting" "email_obfuscation" {
   setting_id = "email_obfuscation"
   value      = "off"
 }
+
+# Always Use HTTPS: pedido em http:// leva 301 para https:// na borda, antes do Worker e
+# da API. Sem isso, `http://logn.sh` respondia 200 com a página, e quem digitava só o
+# domínio num navegador que não tenta HTTPS primeiro (o Firefox do iPhone) ficava em
+# conexão sem cadeado. O HSTS do `_headers` não cobre essa primeira visita: o navegador
+# só o aceita quando ele chega por HTTPS.
+resource "cloudflare_zone_setting" "always_use_https" {
+  count      = var.enable_cloudflare ? 1 : 0
+  zone_id    = data.cloudflare_zone.logn[0].zone_id
+  setting_id = "always_use_https"
+  value      = "on"
+}
