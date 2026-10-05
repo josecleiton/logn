@@ -1,7 +1,10 @@
 # Cabeçalhos dos assets estáticos (Cloudflare Workers Static Assets).
 #
-# A página não tem script nem estilo inline, nem nada de terceiro: fonte, CSS e JS
-# saem do próprio domínio. Por isso a CSP fecha em `'self'` sem hash nem nonce.
+# A página não tem script nem estilo inline: fonte, CSS e JS saem do próprio domínio.
+# Por isso a CSP fecha em `'self'` sem hash nem nonce. A única exceção é o beacon do
+# Cloudflare Web Analytics, que a borda injeta no HTML (com SRI) e que posta as métricas
+# em `cloudflareinsights.com` — sem essas duas origens a CSP o bloqueia e ele só suja o
+# console.
 # `/legal/*` não passa por aqui — sai do Worker com os cabeçalhos do backend.
 #
 # O build troca o `form-action` da CSP por `'self'` e o domínio da API quando a lista de
@@ -9,7 +12,7 @@
 # para cá com um 303. Nenhum outro destino.
 
 /*
-  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src https://cloudflareinsights.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
   Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
