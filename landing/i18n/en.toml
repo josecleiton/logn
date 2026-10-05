@@ -48,7 +48,7 @@ lead = "Algorithms, DevOps and AI engineering practice with the grammar of a pro
 balloons_label = "Thirteen balloons, one per problem"
 
 [phone]
-label = "The app during a question"
+label = "The app during a complete-the-line question: the sum function returns the sum of a and b, and the player drags one of four blocks (a + b, a - b, a * b, b - a) into the gap, with the timer and lives at the top"
 problem = "PROBLEM F"
 lives = "Two lives out of three"
 title = "F · SUM OF TWO NUMBERS"

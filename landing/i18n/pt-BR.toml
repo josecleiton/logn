@@ -56,7 +56,7 @@ lead = "Treino de algoritmos, DevOps e engenharia com IA na gramática de uma ma
 balloons_label = "Treze balões, um por problema"
 
 [phone]
-label = "Tela do app durante uma questão"
+label = "Tela do app numa questão de completar a linha: a função soma devolve a soma de a e b, e o jogador arrasta para a lacuna um de quatro blocos (a + b, a - b, a * b, b - a), com o cronômetro e as vidas no topo"
 problem = "PROBLEM F"
 lives = "Duas vidas de três"
 title = "F · SOMA DE DOIS NÚMEROS"

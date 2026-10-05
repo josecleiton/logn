@@ -156,6 +156,8 @@ h1 {
 .phone {
   width: 316px; max-width: 100%; border-radius: 48px; padding: 9px;
   background: #1C1E21; border: 1px solid #2E3237; box-shadow: 0 30px 70px rgba(0, 0, 0, 0.28);
+  /* É uma imagem feita de HTML: o texto da tela não entra na seleção nem no Ctrl+C. */
+  -webkit-user-select: none; user-select: none;
 }
 .phone-screen { height: 680px; border-radius: 40px; overflow: hidden; background: var(--canvas); display: flex; flex-direction: column; }
 .ph-status { height: 46px; flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 0 28px 0 30px; font-size: 14px; font-weight: 600; }
@@ -241,7 +243,7 @@ h2 { font-size: clamp(30px, 4vw, 44px); line-height: 1.05; font-weight: 600; let
 .fam-name { font-size: 16px; font-weight: 600; }
 .fam-topics { font-size: 13px; color: var(--text2); }
 
-.map-frame { border: 1px solid var(--line2); border-radius: 4px; background: var(--canvas); padding: 10px 0 18px; display: flex; justify-content: center; overflow: hidden; }
+.map-frame { border: 1px solid var(--line2); border-radius: 4px; background: var(--canvas); padding: 10px 0 18px; display: flex; justify-content: center; overflow: hidden; -webkit-user-select: none; user-select: none; }
 .map { position: relative; width: 340px; height: 430px; flex: 0 0 auto; }
 @media (max-width: 380px) { .map { transform: scale(0.85); transform-origin: top center; margin-bottom: -64px; } }
 .map-edges { position: absolute; inset: 0; }
@@ -269,7 +271,7 @@ h2 { font-size: clamp(30px, 4vw, 44px); line-height: 1.05; font-weight: 600; let
 
 /* --- Placar ------------------------------------------------------------ */
 
-.board-frame { border: 1px solid var(--line2); border-radius: 4px; background: var(--canvas); overflow-x: auto; min-width: 0; }
+.board-frame { border: 1px solid var(--line2); border-radius: 4px; background: var(--canvas); overflow-x: auto; min-width: 0; -webkit-user-select: none; user-select: none; }
 .board { width: 100%; min-width: 500px; border-collapse: collapse; }
 .board caption { caption-side: top; text-align: left; }
 .board-cap {
