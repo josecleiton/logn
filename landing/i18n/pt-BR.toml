@@ -32,6 +32,10 @@ note_live = "ANDROID · GRÁTIS · IPHONE A CAMINHO"
 note_soon = "CHEGANDO AO GOOGLE PLAY · IPHONE A CAMINHO"
 note_all = "ANDROID E IPHONE · GRÁTIS"
 read_code = "ler o código"
+# No iPhone e no iPad, enquanto a lista de espera existe, os botões de baixar levam a ela.
+ios_short = "Me avise"
+ios_over = "Para iPhone"
+ios_name = "Me avise"
 
 [waitlist]
 title = "Tem iPhone?"
@@ -83,6 +87,7 @@ tle_body = "O relógio da questão zerou. No contest o tempo conta como resposta
 keep_going = "Continuar"
 store_ac = "Jogar os outros no app"
 store_over = "Jogar no app"
+store_ios = "Me avise quando sair para iPhone"
 restart = "Recomeçar"
 
 [session]

@@ -24,6 +24,10 @@ note_live = "ANDROID · FREE · IPHONE ON THE WAY"
 note_soon = "COMING TO GOOGLE PLAY · IPHONE ON THE WAY"
 note_all = "ANDROID AND IPHONE · FREE"
 read_code = "read the code"
+# No iPhone e no iPad, enquanto a lista de espera existe, os botões de baixar levam a ela.
+ios_short = "Notify me"
+ios_over = "For iPhone"
+ios_name = "Notify me"
 
 [waitlist]
 title = "On iPhone?"
@@ -75,6 +79,7 @@ tle_body = "The problem clock ran out. In a contest, time counts as a wrong answ
 keep_going = "Continue"
 store_ac = "Play the rest in the app"
 store_over = "Play in the app"
+store_ios = "Tell me when it's on iPhone"
 restart = "Start over"
 
 [session]

@@ -11,7 +11,7 @@
   const SVG = "http://www.w3.org/2000/svg";
 
   const party = document.querySelector(".party");
-  const end = document.getElementById("fim");
+  const end = document.getElementById("end");
   if (!party || !end || !("IntersectionObserver" in window)) return;
 
   const seen = () => { try { return localStorage.getItem(KEY) === "1"; } catch (e) { return false; } };
@@ -73,6 +73,41 @@
     timer = setTimeout(() => party.replaceChildren(), LIFETIME_MS);
   }, { threshold: 0.6 });
   observer.observe(end);
+})();
+
+// iPhone e iPad: o app ainda não está na App Store, então os botões de baixar levam à
+// lista de espera do fim da página, com o e-mail já focado. Só enquanto o formulário
+// existir — com a App Store no ar, o build o tira e tudo volta ao link da loja. Devolve
+// o que desvia um botão, que o teste do celular usa no do veredito; fora do iPhone, `null`.
+const toWaitlist = (() => {
+  const email = document.getElementById("waitlist-email");
+  // O iPad se apresenta como Mac; o que o entrega é a tela de toque.
+  const apple = /iPhone|iPad|iPod/.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (!email || !apple) return null;
+
+  const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const scroll = (e) => {
+    e.preventDefault();
+    email.form.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+    email.focus({ preventScroll: true });
+  };
+  // O `href` muda junto, para o "abrir link" do toque longo não cair no Google Play.
+  const go = (el) => {
+    el.setAttribute("href", "#end");
+    el.addEventListener("click", scroll);
+  };
+  // O selo do Google Play fica, para mostrar que o app existe; o botão "Me avise" entra
+  // ao lado dele. Só o botão do topo, que é texto, troca de texto e de destino.
+  for (const el of document.querySelectorAll('[data-shop="play"][data-ios]')) {
+    el.textContent = el.dataset.ios;
+    go(el);
+  }
+  for (const el of document.querySelectorAll('[data-shop="waitlist"]')) {
+    el.hidden = false;
+    go(el);
+  }
+  return go;
 })();
 
 // O celular do topo vira o teste: arrastar (ou tocar) um bloco, confirmar e receber AC,
@@ -251,7 +286,7 @@
     // Erro com vida sobrando volta ao problema; acerto ou fim das vidas leva ao app.
     next.hidden = ok || over;
     store.hidden = !(ok || over);
-    store.textContent = ok ? store.dataset.ac : store.dataset.over;
+    store.textContent = toWaitlist ? store.dataset.ios : ok ? store.dataset.ac : store.dataset.over;
     restart.hidden = !(ok || over);
 
     const said = (ok ? stageOk : stageErr).textContent + " " + (ok ? "" : trap.textContent);
@@ -348,6 +383,7 @@
     if (!placed || judging) return;
     judge("ok" in placed.dataset ? "AC" : "WA", placed.dataset.out);
   });
+  if (toWaitlist) toWaitlist(store);
   next.addEventListener("click", resetProblem);
   restart.addEventListener("click", resetSession);
 

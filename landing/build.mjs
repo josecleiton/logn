@@ -76,16 +76,26 @@ function badgeSize(file) {
 }
 
 // Com o app na loja, o selo oficial com o link. Antes disso, o botão só com texto.
+// `data-shop` diz de que loja é o botão: no iPhone, o `site.js` troca o do Google Play
+// pelo da lista de espera.
 function storeButton(store, over, home, tag) {
   if (store.link) {
     const { w, h } = store.sizes.get(tag);
     const width = Math.round(BADGE_HEIGHT * (w / h));
-    return `<a class="store-badge" href="${escapeHtml(store.link)}">`
+    return `<a class="store-badge" href="${escapeHtml(store.link)}" data-shop="${store.id}">`
       + `<img src="${store.badge(tag)}" alt="${escapeHtml(`${over} ${store.name}`)}" width="${width}" height="${BADGE_HEIGHT}"></a>`;
   }
-  return `<a class="store" href="${home}#fim">`
+  return `<a class="store" href="${home}#end" data-shop="${store.id}">`
     + `<span class="store-text"><span class="store-over">${escapeHtml(over)}</span>`
     + `<span class="store-name">${escapeHtml(store.name)}</span></span></a>`;
+}
+
+// O botão da lista de espera no lugar do selo, para quem chega de iPhone ou iPad. Sai
+// escondido; o `site.js` mostra. Sem lista de espera, não existe.
+function waitlistButton(s, home) {
+  return `<a class="store" href="${home}#end" data-shop="waitlist" hidden>`
+    + `<span class="store-text"><span class="store-over">${escapeHtml(s("cta.ios_over"))}</span>`
+    + `<span class="store-name">${escapeHtml(s("cta.ios_name"))}</span></span></a>`;
 }
 
 // A lista de espera do iPhone (ADR 0022): só existe enquanto o app não está na App
@@ -284,11 +294,11 @@ for (const { locale, strings } of catalogs) {
   values.set("page.js", js.path);
   values.set("page.board_rows", boardRows(s("board.you")));
   // Sem link de loja ainda, os botões levam ao fim da página e dizem "em breve".
-  values.set("cta.href", live[0]?.link ?? `${home}#fim`);
+  values.set("cta.href", live[0]?.link ?? `${home}#end`);
   values.set("cta.short", s(live.length ? "cta.short_live" : "cta.short_soon"));
   values.set("page.store", [launch, ...STORES.slice(1).filter((store) => store.link)]
     .map((store) => storeButton(store, s(store.over[store.link ? "live" : "soon"]), home, locale.tag))
-    .join(""));
+    .join("") + (waitlist ? waitlistButton(s, home) : ""));
   values.set("cta.note", s(!launch.link ? "cta.note_soon" : apple.link ? "cta.note_all" : "cta.note_live"));
   values.set("page.waitlist", waitlist ? waitlistForm(api, s, locale.tag) : "");
 
