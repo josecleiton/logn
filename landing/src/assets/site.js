@@ -245,6 +245,15 @@ const toWaitlist = (() => {
     return chip;
   }
 
+  // Embaralha os blocos a cada problema: o certo não pode morar sempre no primeiro.
+  function shuffle() {
+    for (let i = chips.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [chips[i], chips[j]] = [chips[j], chips[i]];
+    }
+    chips[0].parentElement.append(...chips);
+  }
+
   // --- Veredito -------------------------------------------------------------
 
   function shake() {
@@ -305,6 +314,7 @@ const toWaitlist = (() => {
     letters.hidden = false;
     live.textContent = "";
     sync();
+    shuffle();
     focus(chips[0]);
   }
 
@@ -402,6 +412,7 @@ const toWaitlist = (() => {
   screen.removeAttribute("aria-hidden");
   livesBox.setAttribute("role", "img");
   for (const chip of chips) chip.disabled = false;
+  shuffle();
   paintLives();
   paintClock();
 })();
