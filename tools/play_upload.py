@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Sobe o .aab do `just android/release` ao teste interno do Google Play.
+"""Sobe o .aab do `just android/release` ao teste interno do Google Play, e de lá à produção.
 
     python3 tools/play_upload.py check               # confere notas, versão e .aab; não sai pedido
     python3 tools/play_upload.py upload [completed|draft]
+    python3 tools/play_upload.py promote             # o build do teste interno vai à produção
 
 As notas da versão saem de `android/release-notes.txt`, no formato que o Play Console
 aceita colar, uma tag por língua:
@@ -144,19 +145,11 @@ def access_token() -> str:
     return token
 
 
-def upload(status: str) -> None:
-    name, build, notes = check()
-    token = access_token()
+def in_edit(token: str, steps) -> None:
+    """Roda `steps(edit)` numa edição nova e faz o commit; se algo falha, a edição some."""
     edit = request("POST", f"{API}/edits", token, body={})["id"]
     try:
-        print(f"Enviando {os.path.relpath(AAB, ROOT)} ({os.path.getsize(AAB) // 1_000_000} MB)…")
-        with open(AAB, "rb") as f:
-            bundle = request("POST", f"{UPLOAD_API}/edits/{edit}/bundles?uploadType=media", token, data=f.read())
-        code = int(bundle.get("versionCode", 0))
-        if code != build:
-            raise HttpError(f"o .aab tem versionCode {code}, e version.properties diz {build}: rode `just android/release` de novo")
-        release = {"name": f"{name} ({build})", "versionCodes": [str(build)], "status": status, "releaseNotes": notes}
-        request("PUT", f"{API}/edits/{edit}/tracks/{TRACK}", token, body={"track": TRACK, "releases": [release]})
+        steps(edit)
         request("POST", f"{API}/edits/{edit}:commit", token)
     except HttpError as e:
         # A edição aberta prende o app: outra edição só depois de esta expirar.
@@ -166,8 +159,52 @@ def upload(status: str) -> None:
             pass
         hint = "\nApp sem versão publicada aceita só rascunho: rode com status=draft." if "draft" in str(e).lower() else ""
         sys.exit(f"{e}{hint}")
+
+
+def upload(status: str) -> None:
+    name, build, notes = check()
+    token = access_token()
+
+    def steps(edit: str) -> None:
+        print(f"Enviando {os.path.relpath(AAB, ROOT)} ({os.path.getsize(AAB) // 1_000_000} MB)…")
+        with open(AAB, "rb") as f:
+            bundle = request("POST", f"{UPLOAD_API}/edits/{edit}/bundles?uploadType=media", token, data=f.read())
+        code = int(bundle.get("versionCode", 0))
+        if code != build:
+            raise HttpError(f"o .aab tem versionCode {code}, e version.properties diz {build}: rode `just android/release` de novo")
+        release = {"name": f"{name} ({build})", "versionCodes": [str(build)], "status": status, "releaseNotes": notes}
+        request("PUT", f"{API}/edits/{edit}/tracks/{TRACK}", token, body={"track": TRACK, "releases": [release]})
+
+    in_edit(token, steps)
     state = "publicada para os testadores" if status == "completed" else "em rascunho no Console"
     print(f"Pronto: {name} ({build}) no teste interno, {state}, com notas em {', '.join(LANGUAGES)}.")
+
+
+def promote() -> None:
+    """Leva a produção a versão do teste interno que tem o build de version.properties.
+
+    Nada sobe de novo: o .aab é o mesmo que os testadores receberam, com as mesmas notas.
+    A produção passa pela revisão do Play antes de chegar à loja.
+    """
+    name, build = version()
+    token = access_token()
+
+    def steps(edit: str) -> None:
+        internal = request("GET", f"{API}/edits/{edit}/tracks/{TRACK}", token)
+        found = [r for r in internal.get("releases", []) if str(build) in r.get("versionCodes", [])]
+        if not found:
+            raise HttpError(f"o build {build} não está no teste interno: rode `just android/play-internal` antes")
+        tested = found[0]
+        release = {
+            "name": tested.get("name", f"{name} ({build})"),
+            "versionCodes": [str(build)],
+            "status": "completed",
+            "releaseNotes": tested.get("releaseNotes", []),
+        }
+        request("PUT", f"{API}/edits/{edit}/tracks/production", token, body={"track": "production", "releases": [release]})
+
+    in_edit(token, steps)
+    print(f"Pronto: {name} ({build}) enviada à produção; chega à loja depois da revisão do Play.")
 
 
 def main() -> None:
@@ -180,6 +217,8 @@ def main() -> None:
         if status not in ("completed", "draft"):
             sys.exit("status é completed ou draft")
         upload(status)
+    elif args == ["promote"]:
+        promote()
     else:
         sys.exit(__doc__)
 
