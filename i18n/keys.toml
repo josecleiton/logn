@@ -74,6 +74,8 @@ nickname_invalid = {}
 nickname_reserved = {}
 nickname_taken = {}
 nickname_locked = {}
+# Link do e-mail de código sem pedido aberto no app para aquele e-mail (ADR 0028).
+code_link_ignored = {}
 # Sair da partida. O Core decide se pergunta; a cópia mora aqui.
 
 [groups.leave.keys]

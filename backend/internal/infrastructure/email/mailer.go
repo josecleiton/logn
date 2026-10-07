@@ -12,6 +12,7 @@ import (
 	"html/template"
 	"net"
 	"net/mail"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	gomail "github.com/wneessen/go-mail"
 
 	"github.com/josecleiton/logn/backend/internal/domain"
+	"github.com/josecleiton/logn/backend/internal/locale"
 )
 
 //go:embed templates/*.html
@@ -119,6 +121,8 @@ type OTPData struct {
 	CodeSpaced             string
 	D1, D2, D3, D4, D5, D6 string
 	Purpose                string
+	// Link é o destino do botão (ver appLink).
+	Link string
 	// Lang é a língua do e-mail, já resolvida para uma das servidas.
 	Lang string
 	// T é o texto do e-mail na língua, com código, prazo e data já preenchidos.
@@ -165,6 +169,7 @@ func newOTPData(email, code, purpose, lang string) OTPData {
 		D1:         digits[0], D2: digits[1], D3: digits[2],
 		D4: digits[3], D5: digits[4], D6: digits[5],
 		Purpose: purpose,
+		Link:    appLink(email, code, purpose, lang),
 		Lang:    lang,
 		T: OTPText{
 			Subject:     c.Subject,
@@ -181,6 +186,26 @@ func newOTPData(email, code, purpose, lang string) OTPData {
 			Footer:      common.Footer,
 		},
 	}
+}
+
+// appLinkOrigin é o domínio que o `assetlinks.json` liga ao app Android. O
+// `AndroidManifest.xml` repete o host; mudar um é mudar os três.
+const appLinkOrigin = "https://logn.sh"
+
+// landingPrefix é o prefixo da língua na landing: pt-BR na raiz.
+var landingPrefix = map[string]string{locale.PtBR: "", locale.En: "en/", locale.Es: "es/"}
+
+// appLink é o link do botão do e-mail (ADR 0028): `https://logn.sh/app/verify` ou
+// `/app/reset-password`, que o Android verificado abre direto no app e o resto abre na
+// página da landing. Código e e-mail vão no fragmento, que o navegador não manda ao
+// servidor: nem a borda nem o analytics da landing veem o OTP.
+func appLink(email, code, purpose, lang string) string {
+	action := "verify"
+	if purpose == domain.OTPPurposeResetPassword {
+		action = "reset-password"
+	}
+	params := url.Values{"code": {code}, "email": {email}, "purpose": {purpose}}
+	return appLinkOrigin + "/" + landingPrefix[lang] + "app/" + action + "#" + params.Encode()
 }
 
 // otpTemplate é o HTML de cada propósito de código.

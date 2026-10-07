@@ -1,11 +1,17 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "sh.logn.app",
-      "sha256_cert_fingerprints":
-        ["D2:DA:51:4F:BC:4E:D9:D8:3D:F1:1C:EF:1F:F1:E8:05:3C:79:4D:B9:3A:C8:33:E9:64:B1:CE:0B:44:0B:52:9F"]
+      "sha256_cert_fingerprints": [
+        "D2:DA:51:4F:BC:4E:D9:D8:3D:F1:1C:EF:1F:F1:E8:05:3C:79:4D:B9:3A:C8:33:E9:64:B1:CE:0B:44:0B:52:9F",
+        "08:14:1F:9D:D2:35:34:B8:AB:FD:20:AF:51:93:8D:A6:CA:3C:7C:75:F8:59:68:C6:E2:28:ED:9B:5B:DC:B0:36",
+        "E1:F6:F1:6B:52:FB:87:2F:F8:3A:16:B6:86:D6:2A:C0:6A:79:71:F1:1C:66:46:44:30:44:AF:DB:43:CE:EE:47"
+      ]
     }
   }
 ]

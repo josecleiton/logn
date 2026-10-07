@@ -182,3 +182,9 @@ title = "Página não encontrada — LogN"
 heading = "Wrong Answer."
 lead = "Esta página não existe. Volte ao início e tente de novo — sem penalidade."
 back = "voltar ao início"
+
+# app/verify e app/reset-password: o botão do e-mail de código aberto no navegador.
+[applink]
+title = "Abra no celular."
+lead = "Este link abre o LogN no celular em que ele está instalado. No computador, digite no app o código de seis dígitos do e-mail."
+open = "Abrir no LogN"

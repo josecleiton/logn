@@ -327,6 +327,23 @@ pub enum StatusKey {
     NicknameTaken,
     /// A conta já escolheu o apelido, ou perdeu a chance.
     NicknameLocked,
+    /// Chegou link de código sem pedido aberto neste app para aquele e-mail e
+    /// propósito (ADR 0028). O app não usa o código; a pessoa digita o do e-mail.
+    CodeLinkIgnored,
+}
+
+/// O link do e-mail de código que o Core aceitou (ADR 0028): bate com o pedido aberto
+/// neste app, no e-mail e no propósito. O cadastro manda o código no `Register`; a
+/// redefinição abre a tela de senha nova com ele.
+#[derive(Facet, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[facet(fg::namespace = "LogN")]
+pub struct OtpLink {
+    pub email: String,
+    pub code: String,
+    pub purpose: String,
+    /// Conta os links aceitos no pedido. O mesmo link tocado de novo, com a tela de
+    /// senha nova já fechada, chega igual; sem isto a tela não via mudança e não reabria.
+    pub seq: u32,
 }
 
 /// Uma das verificações que a abertura roda antes de soltar o jogador no app.

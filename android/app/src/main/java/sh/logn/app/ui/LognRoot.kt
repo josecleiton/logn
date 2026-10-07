@@ -76,6 +76,10 @@ fun LognRoot(
 
     // Quem já estava logado não vê token chegar: o Core avisa que a senha trocou.
     LaunchedEffect(view.hasAccessToken) { if (view.hasAccessToken) ShellState.resetLink = null }
+    // O link de redefinição que o Core aceitou (ADR 0028) sobe a tela de senha nova.
+    LaunchedEffect(view.otpLink) {
+        view.otpLink?.takeIf { it.purpose == "reset_password" }?.let { ShellState.resetLink = ResetLink(it.email, it.code) }
+    }
     // O pedido de cadastro do visitante vale até a conta abrir; depois, o próximo logout
     // cairia no cadastro em vez da despedida.
     LaunchedEffect(view.hasSession) { if (view.hasSession) ShellState.wantsRegistration = false }

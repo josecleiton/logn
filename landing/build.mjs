@@ -234,6 +234,7 @@ function hashed(source, name) {
 }
 const css = hashed("src/assets/site.css", "site.css");
 const js = hashed("src/assets/site.js", "site.js");
+const appJs = hashed("src/assets/app-link.js", "app-link.js");
 
 const api = apiOrigin();
 const live = STORES.filter((store) => store.link);
@@ -255,6 +256,13 @@ const indexTemplate = template("index.html");
 const notFoundTemplate = template("404.html");
 const deleteTemplate = template("account-delete.html");
 const waitlistTemplate = template("waitlist.html");
+const appLinkTemplate = template("app-link.html");
+
+// O botão dos e-mails de código é App Link (ADR 0028): `app/<ação>`, sem barra no fim,
+// como o `AndroidManifest.xml` e o mailer escrevem. Sai como `app/<ação>.html`, que o
+// `auto-trailing-slash` serve no caminho sem `.html` e sem redirect. A ação é o host do
+// `logn://` para onde o botão da página leva.
+const APP_LINKS = ["verify", "reset-password"];
 
 // As páginas de volta do formulário. O selo é o veredito de maratona, igual nas três
 // línguas, como o `404 · WA`.
@@ -323,6 +331,9 @@ for (const { locale, strings } of catalogs) {
       "page.state_tone": state.tone,
     });
   }
+  for (const action of APP_LINKS) {
+    write("app/", `${action}.html`, appLinkTemplate, { "page.app": action, "page.app_js": appJs.path });
+  }
 }
 
 // O formulário posta na API, e a CSP só deixa se ela estiver no `form-action`. `'self'`
@@ -335,6 +346,7 @@ if (!csp.test(headers)) fail("src/_headers: a CSP tem de ter `form-action 'none'
 writeFileSync(join(DIST, "_headers"), waitlist ? headers.replace(csp, `$1form-action 'self' ${api}$2`) : headers);
 writeFileSync(join(DIST, css.path), css.body);
 writeFileSync(join(DIST, js.path), js.body);
+writeFileSync(join(DIST, appJs.path), appJs.body);
 mkdirSync(join(DIST, "assets/icons"), { recursive: true });
 for (const icon of ICONS) {
   copyFileSync(join(ROOT, "src/assets/icons", icon), join(DIST, "assets/icons", icon));
@@ -353,7 +365,7 @@ copyFileSync(join(FONTS_DIR, "OFL.txt"), join(DIST, "fonts", "OFL.txt"));
 mkdirSync(join(DIST, ".well-known"), { recursive: true });
 copyFileSync(join(ROOT, "src/.well-known/assetlinks.json"), join(DIST, ".well-known/assetlinks.json"));
 
-// As páginas de `waitlist/` saem com `noindex` e ficam fora do mapa.
+// As páginas de `waitlist/` e `app/` saem com `noindex` e ficam fora do mapa.
 const INDEXED = ["", "account/delete/"];
 writeFileSync(join(DIST, "robots.txt"), `User-agent: *\nAllow: /\nSitemap: ${ORIGIN}/sitemap.xml\n`);
 writeFileSync(join(DIST, "sitemap.xml"), [

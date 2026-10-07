@@ -263,8 +263,9 @@ Reusados: `otp_invalid`, mas com **422**, nunca 401. O Core trata qualquer 401 n
 autenticada como token vencido e dispara `AttemptRefresh`. `otp_resend_too_soon` (429,
 com `Retry-After`) e `rate_limited` (429) para o teto diário e o limite por IP.
 
-**E-mail:** template `institution_otp.html` e `Mailer.SendInstitutionOTP`, com deep link
-`logn://verify?purpose=verify_institution` levado por `handleIncomingURL`. O `mailer.go`
+**E-mail:** template `institution_otp.html` e `Mailer.SendInstitutionOTP`, com o botão
+saído de `appLink` (`https://logn.sh/app/verify#…&purpose=verify_institution`, ADR 0028)
+e levado por `handleIncomingURL`. O `mailer.go`
 só manda em pt-BR; o código institucional herda essa dívida (seção 12).
 
 ## 6. Core

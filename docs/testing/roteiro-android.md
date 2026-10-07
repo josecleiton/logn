@@ -84,6 +84,20 @@ adb shell am start -a android.intent.action.VIEW -d 'logn://verify?email=a@examp
 
 Os códigos saem do Mailpit (`localhost:8025`), como no iOS.
 
+O link só vale com um pedido de código aberto no app, para o mesmo e-mail e propósito: peça
+o código pela tela primeiro (cadastro ou "Esqueci a senha"). Sem isso, o Core ignora o link
+e a linha de status diz para digitar o código do e-mail (ADR 0028).
+
+O botão do e-mail é App Link (ADR 0028): `https://logn.sh/app/verify#code=…&email=…`. Só o
+build da Play passa na verificação. No de debug, assinado com outra chave, o link abre a
+página de logn.sh no Chrome, e o "Abrir no LogN" dela leva ao app pelo `logn://`, que é o
+caminho de quem lê o e-mail no iPhone. Para ver o estado da verificação:
+
+```bash
+adb shell pm get-app-links sh.logn.app      # logn.sh: verified no build da loja
+adb shell am start -a android.intent.action.VIEW -d 'https://logn.sh/app/verify#code=123456&email=a%40example.com'
+```
+
 ---
 
 ## 2 · Abertura
@@ -135,11 +149,14 @@ adb shell input text 123456      # as seis caixas sobem sozinhas no sexto dígit
 
 - Com o código aceito, o passo vira "Definir Senha". Senhas diferentes pintam a borda.
 - Conta criada: o app entra, e o Android oferece salvar a senha (esta sim).
+- Pelo link, no passo do código: `logn://verify?email=android1@example.com&code=<código>`
+  pula para "Definir Senha", e "Criar conta" passa com o código do link. Com outro e-mail
+  no link, nada avança e a linha de status pede o código.
 
 **Documentos.** "Termos de uso" no pé do login abre o documento com "Versão N · vigente
 desde …". Com o backend parado, abre a cópia dos assets com "Cópia salva no aparelho".
 
-**Link de redefinição.**
+**Link de redefinição.** Depois de "Esqueci a senha" com o mesmo e-mail:
 
 ```bash
 adb shell am start -a android.intent.action.VIEW -d 'logn://reset-password?email=jogador@example.com&code=123456'

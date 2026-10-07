@@ -63,6 +63,13 @@ struct RegisterView: View {
                 step = .password
             }
         }
+        // Verificado pelo link do e-mail, nada foi digitado: o código do `register` vem
+        // do link que o Core aceitou.
+        .onChange(of: core.viewModel.otpLink) { link in
+            if let link, link.purpose == "verify_email" {
+                otpCode = link.code
+            }
+        }
         .onChange(of: core.viewModel.hasAccessToken) { hasToken in
             if hasToken {
                 dismiss()
