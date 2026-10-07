@@ -42,6 +42,7 @@ fun StatusKey.copy(context: Context): String? =
         StatusKey.NICKNAMERESERVED -> Str.Status.nickname_reserved(context)
         StatusKey.NICKNAMETAKEN -> Str.Status.nickname_taken(context)
         StatusKey.NICKNAMELOCKED -> Str.Status.nickname_locked(context)
+        StatusKey.CODELINKIGNORED -> Str.Status.code_link_ignored(context)
         StatusKey.INVALIDEMAIL -> Str.Status.invalid_email(context)
         StatusKey.PASSWORDTOOSHORT -> Str.Status.password_too_short(context)
         StatusKey.PASSWORDTOOLONG -> Str.Status.password_too_long(context)

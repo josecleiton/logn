@@ -26,6 +26,9 @@
 /assets/site.*
   Cache-Control: public, max-age=31536000, immutable
 
+/assets/app-link.*
+  Cache-Control: public, max-age=31536000, immutable
+
 /assets/icons/*
   Cache-Control: public, max-age=86400
 

@@ -63,6 +63,7 @@ nickname_invalid = "Usa de 3 a 20 caracteres: letras sin tilde, números y _."
 nickname_reserved = "Ese apodo está reservado. Elige otro."
 nickname_taken = "Ese apodo ya está en uso."
 nickname_locked = "Esta cuenta ya eligió su apodo."
+code_link_ignored = "Este enlace no es de una solicitud abierta en la app. Escribe el código del correo."
 
 [leave]
 eyebrow = "Salir de la partida"

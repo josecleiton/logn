@@ -21,10 +21,11 @@ landing/
     ├── 404.html        "Wrong Answer." — um por língua, o Cloudflare serve o mais próximo
     ├── account-delete.html  /account/delete/, a URL de exclusão da ficha do Google Play
     ├── waitlist.html   as quatro páginas de volta da lista de espera do iPhone
+    ├── app-link.html   app/verify e app/reset-password, o botão do e-mail de código aberto no navegador
     ├── _headers        CSP e demais cabeçalhos dos assets
     ├── worker.js       redirect de /legal/terms e /legal/privacy para o backend
     ├── .well-known/    assetlinks.json, o Digital Asset Links do app Android (Play App Signing)
-    └── assets/         site.css, site.js, icons/ (favicon SVG, PNG 32, apple-touch-icon)
+    └── assets/         site.css, site.js, app-link.js, icons/ (favicon SVG, PNG 32, apple-touch-icon)
 ```
 
 `dist/` não entra no git. As fontes IBM Plex são copiadas de onde o app já as tem
@@ -88,6 +89,15 @@ O backend responde com `303` para uma destas páginas, na língua do formulário
 | `/waitlist/error/` | link vencido, pedido recusado ou limite de pedidos |
 
 Com o prefixo `/en/` e `/es/` nas outras línguas. Saem com `noindex` e fora do sitemap.
+
+### Links do app
+
+`/app/verify` e `/app/reset-password` (e `/en/…`, `/es/…`) são o botão dos e-mails de
+código (ADR 0028). O Android com o App Link verificado abre o app sem passar por aqui. No
+navegador, a página diz para abrir no celular e o `app-link.js` monta o "Abrir no LogN"
+para `logn://`, com o código e o e-mail que vêm no fragmento, e tira o fragmento da barra
+de endereço. Os caminhos são fixos: o `AndroidManifest.xml` e o mailer os escrevem iguais.
+Saem com `noindex` e fora do sitemap.
 
 ### Exclusão de conta
 

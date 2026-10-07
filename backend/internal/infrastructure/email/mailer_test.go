@@ -168,18 +168,28 @@ func TestWelcomeEmail(t *testing.T) {
 	}
 }
 
-// Nenhum e-mail aponta para logn://security: a tela não existe, e o Gmail tira link
-// de esquema próprio. Quem não pediu a redefinição não precisa fazer nada.
-func TestResetEmailHasNoSecurityLink(t *testing.T) {
+// O botão é App Link (ADR 0028): o Gmail tira link de esquema próprio, e o `logn://`
+// deixava o botão morto. Código e e-mail vão no fragmento, nunca na query, para não
+// chegar ao servidor da landing.
+func TestOTPButtonIsAnAppLink(t *testing.T) {
 	mailer := NewMailer()
+	want := map[string]string{
+		domain.OTPPurposeVerifyEmail:   "app/verify#code=482913&amp;email=jogador%2Btag%40example.com&amp;purpose=verify_email",
+		domain.OTPPurposeResetPassword: "app/reset-password#code=482913&amp;email=jogador%2Btag%40example.com&amp;purpose=reset_password",
+	}
+	prefix := map[string]string{locale.PtBR: "/", locale.En: "/en/", locale.Es: "/es/"}
 	for _, lang := range locale.Supported {
-		html, err := mailer.Render(OTPTemplate(domain.OTPPurposeResetPassword),
-			NewOTPData("jogador@example.com", "482913", domain.OTPPurposeResetPassword, lang))
-		if err != nil {
-			t.Fatalf("Failed to render: %v", err)
-		}
-		if strings.Contains(html, "logn://security") {
-			t.Errorf("%s: a redefinição ainda aponta para logn://security", lang)
+		for _, purpose := range otpPurposes {
+			html, err := mailer.Render(OTPTemplate(purpose), NewOTPData("jogador+tag@example.com", "482913", purpose, lang))
+			if err != nil {
+				t.Fatalf("Failed to render: %v", err)
+			}
+			if link := `href="https://logn.sh` + prefix[lang] + want[purpose] + `" style=`; !strings.Contains(html, link) {
+				t.Errorf("%s/%s: o botão não aponta para %s", lang, purpose, link)
+			}
+			if strings.Contains(html, "logn://") {
+				t.Errorf("%s/%s: ainda tem link logn://", lang, purpose)
+			}
 		}
 	}
 }

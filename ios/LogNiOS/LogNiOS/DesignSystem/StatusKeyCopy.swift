@@ -43,6 +43,7 @@ extension LogN.StatusKey {
         case .nicknameReserved:  return Str.Status.nickname_reserved
         case .nicknameTaken:     return Str.Status.nickname_taken
         case .nicknameLocked:    return Str.Status.nickname_locked
+        case .codeLinkIgnored:   return Str.Status.code_link_ignored
         case .invalidEmail:      return Str.Status.invalid_email
         case .passwordTooShort:  return Str.Status.password_too_short
         case .passwordTooLong:   return Str.Status.password_too_long

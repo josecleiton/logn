@@ -43,8 +43,26 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- O botão dos e-mails de código (ADR 0028): App Link verificado pelo
+                 `assetlinks.json` de logn.sh, que só a Activity deste pacote, assinado
+                 pelo Play, recebe. Um caminho por língua da landing. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="logn.sh" />
+                <data android:path="/app/verify" />
+                <data android:path="/en/app/verify" />
+                <data android:path="/es/app/verify" />
+                <data android:path="/app/reset-password" />
+                <data android:path="/en/app/reset-password" />
+                <data android:path="/es/app/reset-password" />
+            </intent-filter>
             <!-- logn://verify, logn://reset-password e logn://oauth/github, os mesmos
-                 links de iOS. Um filtro por link: os <data> de um mesmo filtro se
+                 links de iOS. Os de e-mail ficam para o botão da página de logn.sh/app,
+                 quando o App Link abre no navegador (build de debug, verificação que
+                 não passou). Um filtro por link: os <data> de um mesmo filtro se
                  combinam, e o path do GitHub valeria para os links de e-mail também. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

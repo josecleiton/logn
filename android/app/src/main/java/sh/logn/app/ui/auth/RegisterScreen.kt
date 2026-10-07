@@ -80,6 +80,9 @@ fun RegisterScreen(
     // só o servidor sabe as duas.
     LaunchedEffect(Unit) { dispatch(Event.FetchLegalVersions(country)) }
     LaunchedEffect(view.otpVerified) { if (view.otpVerified) step = RegisterStep.Password }
+    // Verificado pelo link do e-mail, nada foi digitado: o código do `Register` vem do
+    // link que o Core aceitou.
+    LaunchedEffect(view.otpLink) { view.otpLink?.takeIf { it.purpose == "verify_email" }?.let { otp = it.code } }
     // A frase da caixa mudou de idade: quem marcou antes declarou outra coisa.
     LaunchedEffect(view.minAge) { ageConfirmed = false }
 

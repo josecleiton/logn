@@ -172,3 +172,8 @@ title = "Page not found — LogN"
 heading = "Wrong Answer."
 lead = "This page does not exist. Head back home and try again — no penalty."
 back = "back to home"
+
+[applink]
+title = "Open it on your phone."
+lead = "This link opens LogN on the phone where it is installed. On a computer, type the six-digit code from the e-mail into the app."
+open = "Open in LogN"

@@ -118,7 +118,8 @@ public class CoreWrapper: ObservableObject {
             profileAnonNumber: 0,
             profileNickname: nil,
             canChooseNickname: false,
-            nicknameFlow: NicknameFlowView(step: .input, draft: "", submitting: false, error: .silent)
+            nicknameFlow: NicknameFlowView(step: .input, draft: "", submitting: false, error: .silent),
+            otpLink: nil
         )
         updateViewModel()
         // A língua do app vai antes de qualquer pedido: é o `Accept-Language` de cada um

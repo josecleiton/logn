@@ -65,6 +65,7 @@ nickname_invalid = "Use 3 to 20 characters: unaccented letters, numbers and _."
 nickname_reserved = "That nickname is reserved. Pick another one."
 nickname_taken = "That nickname is already taken."
 nickname_locked = "This account already picked its nickname."
+code_link_ignored = "That link is not for a request open in the app. Type the code from the e-mail."
 
 [leave]
 eyebrow = "Leave the match"

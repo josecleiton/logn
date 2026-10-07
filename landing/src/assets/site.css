@@ -401,6 +401,8 @@ h2 { font-size: clamp(30px, 4vw, 44px); line-height: 1.05; font-weight: 600; let
 
 .nf { min-height: 70vh; display: flex; flex-direction: column; justify-content: center; gap: 22px; padding-top: 80px; padding-bottom: 80px; }
 .nf .verdict { align-self: flex-start; }
+/* O "Abrir no LogN" de app/ só aparece quando o app-link.js monta o destino. */
+.nf [hidden] { display: none; }
 
 /* --- Página de texto (account/delete) ---------------------------------- */
 

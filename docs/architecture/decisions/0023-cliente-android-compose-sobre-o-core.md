@@ -96,7 +96,8 @@ em `res/font`. Balão, mapa e placar são desenhados em `Canvas` a partir dos pa
 system, sem imagem e sem `material-icons-extended`.
 
 **Entrada.** Links `logn://verify`, `logn://reset-password` e `logn://oauth/github`, um
-`intent-filter` para cada um (os `<data>` de um filtro se combinam). Activity
+`intent-filter` para cada um (os `<data>` de um filtro se combinam), e o App Link
+`https://logn.sh/app/…` do botão dos e-mails (ADR 0028). Activity
 `singleTask`, e o retorno chega por `onNewIntent`.
 
 **Login social.** Sem Apple no Android.

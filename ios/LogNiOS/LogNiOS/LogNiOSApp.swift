@@ -111,6 +111,12 @@ struct LogNiOSApp: App {
                     resetLink = nil
                 }
             }
+            // O link de redefinição que o Core aceitou (ADR 0028) sobe a tela de senha nova.
+            .onChange(of: core.viewModel.otpLink) { link in
+                if let link, link.purpose == "reset_password" {
+                    resetLink = ResetLink(email: link.email, code: link.code)
+                }
+            }
             // O pedido de cadastro do visitante vale até a conta abrir. Sem isto ele
             // ficava ligado, e o próximo logout caía no cadastro em vez da despedida.
             .onChange(of: core.viewModel.hasSession) { hasSession in
@@ -137,18 +143,20 @@ struct LogNiOSApp: App {
         
         let code = queryItems.first(where: { $0.name == "code" })?.value ?? ""
         let email = queryItems.first(where: { $0.name == "email" })?.value ?? ""
-        let purpose = queryItems.first(where: { $0.name == "purpose" })?.value ?? "verify_email"
-        
-        if host == "verify" {
-            if !code.isEmpty && !email.isEmpty {
-                core.dispatch(event: LogN.Event.verifyOtp(email: email, code: code, purpose: purpose))
-            }
-        } else if host == "reset-password" {
-            if !code.isEmpty && !email.isEmpty {
-                // Ao invés de apenas validar, já subimos a tela para o usuário digitar a nova senha
-                resetLink = ResetLink(email: email, code: code)
-            }
+        guard !code.isEmpty, !email.isEmpty else { return }
+
+        let purpose: String
+        switch host {
+        case "verify":
+            purpose = queryItems.first(where: { $0.name == "purpose" })?.value ?? "verify_email"
+        case "reset-password":
+            purpose = "reset_password"
+        default:
+            return
         }
+        // Quem decide se o link vale é o Core: só com pedido aberto neste app para o mesmo
+        // e-mail e propósito (ADR 0028). Aceito, ele volta em `otpLink`, e a tela reage.
+        core.dispatch(event: LogN.Event.openOtpLink(email: email, code: code, purpose: purpose))
     }
 }
 

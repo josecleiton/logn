@@ -162,6 +162,10 @@ pub enum Event {
     RequestOTP { email: String, purpose: String },
     OTPRequested(HttpResult),
     VerifyOTP { email: String, code: String, purpose: String },
+    /// O botão do e-mail de código, como o shell o recebeu (ADR 0028). Só vale com
+    /// pedido aberto neste app para o mesmo e-mail e propósito: sem isso, qualquer
+    /// página com um link do código de outra conta punha o app nela.
+    OpenOTPLink { email: String, code: String, purpose: String },
     OTPVerified(HttpResult),
     /// `legal_accepted` é a caixa dos termos e da política. Quais versões e em que
     /// língua quem decide é o Core, com o que `FetchLegalVersions` trouxe: o shell não
@@ -547,6 +551,25 @@ fn arriving_from_login(model: &Model) -> bool {
     model.access_token.is_none() && !model.session_offline && !model.is_guest
 }
 
+/// O propósito do código de redefinição de senha, como o servidor o escreve.
+const OTP_PURPOSE_RESET_PASSWORD: &str = "reset_password";
+
+/// O mesmo endereço, do jeito que o servidor compara: sem espaço nas pontas e sem
+/// diferença de caixa. O link traz o e-mail como o servidor guardou; a tela, como a
+/// pessoa digitou.
+fn same_email(a: &str, b: &str) -> bool {
+    a.trim().to_lowercase() == b.trim().to_lowercase()
+}
+
+/// O pedido de código terminou (conta criada, senha trocada): um link dele que chegue
+/// depois não tem mais o que abrir.
+fn close_otp_request(model: &mut Model) {
+    model.otp_verified = false;
+    model.otp_email = String::new();
+    model.otp_purpose = String::new();
+    model.otp_link = None;
+}
+
 /// Dono da fila de quem joga sem conta.
 const GUEST_QUEUE_OWNER: &str = "guest";
 
@@ -680,6 +703,11 @@ pub struct Model {
     pub pending_retry_event: Option<Event>, // Para o interceptor 401
     /// E-mail em trânsito no fluxo de OTP. Vive só até o código ser verificado.
     pub otp_email: String,
+    /// O propósito do código pedido para `otp_email`. Com ele, o link de redefinição
+    /// não vale no meio de um cadastro, nem o contrário.
+    pub otp_purpose: String,
+    /// O link de código aceito para o pedido aberto, até o pedido fechar ou ser refeito.
+    pub otp_link: Option<crate::domain::OtpLink>,
     /// E-mail da sessão. Diferente do `otp_email`, sobrevive ao login e é reposto
     /// do armazenamento seguro quando o app abre direto pelo refresh token —
     /// sem ele o perfil de quem entrou por senha mostrava "?" como se fosse visitante.
@@ -1062,6 +1090,8 @@ pub struct ViewModel {
     /// Mostra "Escolher apelido": conta sem apelido e com a chance de pé.
     pub can_choose_nickname: bool,
     pub nickname_flow: crate::domain::NicknameFlowView,
+    /// O link do e-mail de código aceito para o pedido aberto (ver `OpenOTPLink`).
+    pub otp_link: Option<crate::domain::OtpLink>,
 }
 
 #[effect(facet_typegen)]
@@ -4018,6 +4048,9 @@ Event::FetchChallenges => {
                 }
                 model.is_authenticating = true;
                 model.otp_email = email.clone();
+                model.otp_purpose = purpose.clone();
+                // Código novo: o link do anterior não serve mais para a tela.
+                model.otp_link = None;
                 model.status = "Sending verification code".to_string();
                 model.status_key = StatusKey::SendingCode;
 
@@ -4083,6 +4116,30 @@ Event::FetchChallenges => {
                 Command::request_from_shell(request)
                     .then_send(Event::OTPVerified)
                     .and(render::render())
+            }
+            Event::OpenOTPLink { email, code, purpose } => {
+                let pending = !model.otp_email.is_empty()
+                    && same_email(&email, &model.otp_email)
+                    && purpose == model.otp_purpose;
+                if !pending {
+                    model.status_key = StatusKey::CodeLinkIgnored;
+                    return render::render();
+                }
+                // O e-mail do pedido, não o do link: é o que a tela tem no campo.
+                let email = model.otp_email.clone();
+                let seq = model.otp_link.as_ref().map_or(1, |l| l.seq.wrapping_add(1));
+                model.otp_link = Some(crate::domain::OtpLink {
+                    email: email.clone(),
+                    code: code.clone(),
+                    purpose: purpose.clone(),
+                    seq,
+                });
+                // A redefinição confere o código junto com a senha nova, na tela que
+                // o shell abre com o link.
+                if purpose == OTP_PURPOSE_RESET_PASSWORD {
+                    return render::render();
+                }
+                self.update(Event::VerifyOTP { email, code, purpose }, model)
             }
             Event::OTPVerified(result) => {
                 model.is_authenticating = false;
@@ -4154,8 +4211,7 @@ Event::FetchChallenges => {
                             }
                             model.session_offline = false;
                             model.is_guest = false;
-                            model.otp_verified = false;
-                            model.otp_email = String::new();
+                            close_otp_request(model);
                             // Conta criada: a prova é o app abrir. Status aqui vira
                             // ruído em vermelho na tela seguinte.
                             model.status_key = StatusKey::Silent;
@@ -4477,8 +4533,7 @@ Event::FetchChallenges => {
                             }
                             model.session_offline = false;
                             model.is_guest = false;
-                            model.otp_verified = false;
-                            model.otp_email = String::new();
+                            close_otp_request(model);
                             model.status_key = StatusKey::Silent;
                             model.password_reset_done = true;
                             // Trocar a senha também cancela uma exclusão pedida.
@@ -5633,6 +5688,7 @@ Event::FetchChallenges => {
             } else {
                 crate::domain::NicknameFlowView::default()
             },
+            otp_link: model.otp_link.clone(),
         }
     }
 }
@@ -8249,6 +8305,92 @@ mod tests {
         assert_eq!(model.pending_events.len(), 1);
     }
 
+
+    /// O link do e-mail de código só vale para o pedido aberto neste app (ADR 0028).
+    /// Sem isso, uma página com o link do código de outra conta punha o app nela.
+    #[test]
+    fn test_otp_link_without_open_request_is_ignored() {
+        let app = LogNApp::default();
+        let link = |email: &str, purpose: &str| Event::OpenOTPLink {
+            email: email.into(),
+            code: "123456".into(),
+            purpose: purpose.into(),
+        };
+        let sends_http = |cmd: &mut Command<Effect, Event>| cmd.effects().any(|e| matches!(e, Effect::Http(_)));
+
+        // Nenhum pedido aberto: o app acabou de abrir, ou nunca pediu código.
+        let mut model = Model::default();
+        let mut cmd = app.update(link("outro@example.com", "verify_email"), &mut model);
+        assert!(!sends_http(&mut cmd), "sem pedido, o código do link não vai ao servidor");
+        assert_eq!(model.status_key, StatusKey::CodeLinkIgnored);
+        assert!(app.view(&model).otp_link.is_none());
+
+        // Pedido aberto para outro e-mail.
+        let _ = app.update(Event::RequestOTP { email: "a@example.com".into(), purpose: "verify_email".into() }, &mut model);
+        let mut cmd = app.update(link("outro@example.com", "verify_email"), &mut model);
+        assert!(!sends_http(&mut cmd));
+        assert!(app.view(&model).otp_link.is_none());
+
+        // Mesmo e-mail, outro propósito: link de redefinição no meio do cadastro.
+        let mut cmd = app.update(link("a@example.com", "reset_password"), &mut model);
+        assert!(!sends_http(&mut cmd));
+        assert!(app.view(&model).otp_link.is_none());
+    }
+
+    /// O link do pedido aberto verifica o código e o deixa para a tela: o `Register`
+    /// manda o código, e a tela só tinha o que a pessoa digitou, que era nada.
+    #[test]
+    fn test_otp_link_for_open_request_verifies_and_keeps_the_code() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let _ = app.update(Event::RequestOTP { email: " Jogador@Example.com".into(), purpose: "verify_email".into() }, &mut model);
+
+        // O link traz o e-mail como o servidor guardou: minúsculo e sem espaço.
+        let mut cmd = app.update(Event::OpenOTPLink {
+            email: "jogador@example.com".into(),
+            code: "482913".into(),
+            purpose: "verify_email".into(),
+        }, &mut model);
+        match cmd.effects().find(|e| matches!(e, Effect::Http(_))) {
+            Some(Effect::Http(r)) => {
+                assert_eq!(r.operation.url, "/api/v1/auth/verify-otp");
+                assert!(String::from_utf8_lossy(&r.operation.body).contains("482913"));
+            }
+            _ => panic!("o link do pedido aberto tem de verificar o código"),
+        }
+        let accepted = app.view(&model).otp_link.expect("link aceito vai para a tela");
+        assert_eq!(accepted.code, "482913");
+        assert_eq!(accepted.email, " Jogador@Example.com", "o e-mail do pedido, que é o da tela");
+
+        // Pedir código de novo tira o link velho da tela.
+        let _ = app.update(Event::RequestOTP { email: "jogador@example.com".into(), purpose: "verify_email".into() }, &mut model);
+        assert!(app.view(&model).otp_link.is_none());
+    }
+
+    /// Na redefinição o link só abre a tela de senha nova: quem confere o código é o
+    /// `ResetPassword`, com a senha.
+    #[test]
+    fn test_reset_link_for_open_request_does_not_verify_alone() {
+        let app = LogNApp::default();
+        let mut model = Model::default();
+        let _ = app.update(Event::RequestOTP { email: "a@example.com".into(), purpose: "reset_password".into() }, &mut model);
+        let mut cmd = app.update(Event::OpenOTPLink {
+            email: "a@example.com".into(),
+            code: "482913".into(),
+            purpose: "reset_password".into(),
+        }, &mut model);
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))));
+        let accepted = app.view(&model).otp_link.expect("link aceito vai para a tela");
+        assert_eq!((accepted.code.as_str(), accepted.purpose.as_str()), ("482913", "reset_password"));
+
+        // O mesmo link de novo, com a tela fechada: o valor muda, e a tela reabre.
+        let _ = app.update(Event::OpenOTPLink {
+            email: "a@example.com".into(),
+            code: "482913".into(),
+            purpose: "reset_password".into(),
+        }, &mut model);
+        assert_ne!(app.view(&model).otp_link, Some(accepted));
+    }
 
     #[test]
     fn test_retry_after_is_read_and_bounded() {

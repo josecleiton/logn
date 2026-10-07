@@ -1,6 +1,7 @@
 # ADR 0003: Fluxo de Verificação OTP e Deep Linking
 
-**Status:** Aceito
+**Status:** Aceito; itens 2 e 3 substituídos pela ADR 0028. O botão do e-mail aponta
+para `https://logn.sh/app/…`, e o `logn://` ficou como destino da página de passagem.
 **Data:** 21 de Setembro de 2026
 
 ## Contexto
