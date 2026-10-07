@@ -1,18 +1,15 @@
 <pt-BR>
-• Placar de verdade: o XP da trilha gratuita, com a sua posição entre os jogadores.
-• Escolha um apelido no Perfil para aparecer no placar no lugar de "jogador #N".
-• O progresso feito sem internet sobe em partes, mesmo depois de muito tempo offline.
-• Mensagens mais claras quando há senhas ou códigos errados demais para um e-mail.
+• O botão do e-mail com o código abre o app direto, inclusive no Gmail.
+• O link do e-mail só vale para o código que você pediu neste aparelho.
+• Criar conta pelo link do e-mail agora vai até o fim.
 </pt-BR>
 <en-US>
-• A real leaderboard: your free track XP and your position among players.
-• Pick a nickname on your Profile to show on the leaderboard instead of "player #N".
-• Progress made offline goes up in parts, even after a long time without internet.
-• Clearer messages when an email gets too many wrong passwords or codes.
+• The button in the code email opens the app directly, Gmail included.
+• The email link only works for the code you asked for on this device.
+• Signing up through the email link now goes all the way through.
 </en-US>
 <es-419>
-• Una tabla de verdad: el XP de la ruta gratuita y tu puesto entre los jugadores.
-• Elige un apodo en el Perfil para aparecer en la tabla en lugar de "jugador #N".
-• El progreso hecho sin internet se sube por partes, incluso después de mucho tiempo sin conexión.
-• Mensajes más claros cuando un correo recibe demasiadas contraseñas o códigos incorrectos.
+• El botón del correo con el código abre la app directamente, también en Gmail.
+• El enlace del correo solo vale para el código que pediste en este dispositivo.
+• Crear una cuenta con el enlace del correo ahora llega hasta el final.
 </es-419>
