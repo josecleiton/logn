@@ -39,7 +39,7 @@ func newOriginVerifierFromEnv() (*originVerifier, error) {
 	cidrsRaw := os.Getenv("ORIGIN_TRUSTED_CIDRS")
 	secret := os.Getenv("ORIGIN_SHARED_SECRET")
 	if cidrsRaw == "" || secret == "" {
-		return nil, fmt.Errorf("ORIGIN_TRUSTED_CIDRS e ORIGIN_SHARED_SECRET são obrigatórios")
+		return nil, fmt.Errorf("ORIGIN_TRUSTED_CIDRS and ORIGIN_SHARED_SECRET are required")
 	}
 
 	headerName := os.Getenv("ORIGIN_SECRET_HEADER")
@@ -60,12 +60,12 @@ func newOriginVerifierFromEnv() (*originVerifier, error) {
 		}
 		_, ipnet, err := net.ParseCIDR(raw)
 		if err != nil {
-			return nil, fmt.Errorf("CIDR inválido em ORIGIN_TRUSTED_CIDRS: %q: %w", raw, err)
+			return nil, fmt.Errorf("invalid CIDR in ORIGIN_TRUSTED_CIDRS: %q: %w", raw, err)
 		}
 		cidrs = append(cidrs, ipnet)
 	}
 	if len(cidrs) == 0 {
-		return nil, fmt.Errorf("ORIGIN_TRUSTED_CIDRS não tem nenhum CIDR válido")
+		return nil, fmt.Errorf("ORIGIN_TRUSTED_CIDRS has no valid CIDR")
 	}
 
 	return &originVerifier{

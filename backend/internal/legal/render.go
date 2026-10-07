@@ -77,7 +77,7 @@ var endonyms = map[string]string{PtBR: "Português", En: "English", Es: "Españo
 func Render(doc Document, opts Options) (Page, error) {
 	ids, err := Validate(doc.Body)
 	if err != nil {
-		return Page{}, fmt.Errorf("documento %s/%s v%d inválido: %w", doc.Kind, doc.Locale, doc.Version, err)
+		return Page{}, fmt.Errorf("invalid document %s/%s v%d: %w", doc.Kind, doc.Locale, doc.Version, err)
 	}
 	draft := ContainsPlaceholder(doc.Body)
 	if draft && opts.Strict {

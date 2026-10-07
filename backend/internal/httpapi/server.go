@@ -219,7 +219,7 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	// (`Unwrap`, como o do gzip). Sem isso o prazo some calado, e o corpo pingado volta
 	// a segurar a vaga pelos 30 s do `ReadTimeout`.
 	if err := http.NewResponseController(w).SetReadDeadline(time.Now().Add(syncBodyReadTimeout)); err != nil {
-		log.Printf("sync sem prazo de leitura do corpo: erro=%v", err)
+		log.Printf("sync without a body read deadline: error=%v", err)
 	}
 
 	var payload domain.SyncPayload
@@ -228,7 +228,7 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := domain.CheckSyncShape(payload); err != nil {
-		log.Printf("sync recusado: user=%s eventos=%d motivo=%v", userID, len(payload.Events), err)
+		log.Printf("sync rejected: user=%s events=%d reason=%v", userID, len(payload.Events), err)
 		if errors.Is(err, domain.ErrSyncTooLarge) {
 			writeError(w, http.StatusRequestEntityTooLarge, codeSyncTooLarge)
 			return
@@ -242,7 +242,7 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	if payload.UserID != "" && payload.UserID != userID {
 		// O user_id do corpo é texto do cliente: vai cortado e entre aspas. Cru, um corpo
 		// de 2 MB virava 2 MB de log, e uma quebra de linha forjava outra entrada.
-		log.Printf("sync: tentativa de cheat interceptada (token_user=%s, payload_user=%q)", userID, clipForLog(payload.UserID))
+		log.Printf("sync: cheat attempt intercepted (token_user=%s, payload_user=%q)", userID, clipForLog(payload.UserID))
 	}
 	payload.UserID = userID
 
@@ -250,7 +250,7 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 
 	serverLastHash, err := s.repo.GetUserLastHash(ctx, payload.UserID)
 	if err != nil {
-		log.Printf("sync sem estado: user=%s erro=%v", payload.UserID, err)
+		log.Printf("sync state not read: user=%s error=%v", payload.UserID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
@@ -258,7 +258,7 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	valid, err := domain.ValidateSync(payload, serverLastHash)
 	if err != nil {
 		if err.Error() == "force_rebase" {
-			log.Printf("sync rebase: user=%s eventos=%d topo_servidor=%s primeiro_previous=%s",
+			log.Printf("sync rebase: user=%s events=%d server_top=%s first_previous=%s",
 				payload.UserID, len(payload.Events), serverLastHash, payload.Events[0].PreviousHash)
 			writeRebaseRequired(w, serverLastHash)
 			return
@@ -266,13 +266,13 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Sem este log, um sync recusado some: o cliente só vê o número do status e
 		// o servidor não conta o motivo a ninguém.
-		log.Printf("sync recusado: user=%s eventos=%d motivo=%v", payload.UserID, len(payload.Events), err)
+		log.Printf("sync rejected: user=%s events=%d reason=%v", payload.UserID, len(payload.Events), err)
 		writeError(w, http.StatusForbidden, codeSyncRejected)
 		return
 	}
 
 	if !valid {
-		log.Printf("sync recusado: user=%s cadeia inválida", payload.UserID)
+		log.Printf("sync rejected: user=%s invalid chain", payload.UserID)
 		writeError(w, http.StatusForbidden, codeSyncRejected)
 		return
 	}
@@ -288,17 +288,17 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 				// O topo que ele deixou é o ponto de onde o cliente refaz a fila.
 				top, topErr := s.repo.GetUserLastHash(ctx, payload.UserID)
 				if topErr == nil {
-					log.Printf("sync concorrente: user=%s eventos=%d topo=%s", payload.UserID, len(payload.Events), top)
+					log.Printf("concurrent sync: user=%s events=%d top=%s", payload.UserID, len(payload.Events), top)
 					writeRebaseRequired(w, top)
 					return
 				}
 				err = topErr
 			}
-			log.Printf("sync não gravado: user=%s eventos=%d erro=%v", payload.UserID, len(payload.Events), err)
+			log.Printf("sync not recorded: user=%s events=%d error=%v", payload.UserID, len(payload.Events), err)
 			writeError(w, http.StatusInternalServerError, codeInternal)
 			return
 		}
-		log.Printf("sync ok: user=%s eventos=%d topo=%s", payload.UserID, len(payload.Events), newTop)
+		log.Printf("sync ok: user=%s events=%d top=%s", payload.UserID, len(payload.Events), newTop)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -340,7 +340,7 @@ func (s *Server) challengesHandler(w http.ResponseWriter, r *http.Request) {
 	lang := locale.Negotiate(r)
 	challenges, err := s.repo.GetChallenges(r.Context(), lang, userID)
 	if err != nil {
-		log.Printf("desafios não lidos: locale=%s erro=%v", lang, err)
+		log.Printf("challenges not read: locale=%s error=%v", lang, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}

@@ -160,7 +160,7 @@ func NewLicenseData(kind LicenseNoticeKind, lang, trackName, reason string) (Lic
 	case "account_sharing":
 		why = c.ReasonAccountSharing
 	default:
-		return LicenseData{}, fmt.Errorf("motivo de revogação manual desconhecido: %q", reason)
+		return LicenseData{}, fmt.Errorf("unknown manual revocation reason: %q", reason)
 	}
 	f := func(s string) string { return fmt.Sprintf(s, trackName) }
 
@@ -205,7 +205,7 @@ func NewLicenseData(kind LicenseNoticeKind, lang, trackName, reason string) (Lic
 			Heading: c.AcceptedHeading, Lead: f(c.AcceptedRefundedLead),
 		}
 	default:
-		return LicenseData{}, fmt.Errorf("aviso de licença desconhecido: %d", kind)
+		return LicenseData{}, fmt.Errorf("unknown license notice: %d", kind)
 	}
 	t.Preheader = t.Lead
 	t.Footer = c.Footer

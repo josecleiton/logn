@@ -94,12 +94,12 @@ func (s *Server) requestOTPHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if errors.Is(err, domain.ErrOTPSendCapReached) {
-			log.Printf("otp: teto de %d envios por hora atingido", domain.OTPHourlySendCap)
+			log.Printf("otp: cap of %d sends per hour reached", domain.OTPHourlySendCap)
 			w.Header().Set("Retry-After", "300")
 			writeError(w, http.StatusTooManyRequests, codeOTPResendTooSoon)
 			return
 		}
-		log.Printf("otp não gravado: purpose=%s erro=%v", payload.Purpose, err)
+		log.Printf("otp not recorded: purpose=%s error=%v", payload.Purpose, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
@@ -154,7 +154,7 @@ func (s *Server) verifyOTPHandler(w http.ResponseWriter, r *http.Request) {
 		// Sem isto a causa some: código errado, expirado e e-mail inexistente
 		// devolvem a mesma coisa, e não há como diagnosticar em dev. O e-mail fica
 		// fora do log: é dado pessoal, e o propósito já basta para achar o fluxo.
-		log.Printf("verify-otp recusado: purpose=%q valid=%v err=%v", payload.Purpose, valid, err)
+		log.Printf("verify-otp rejected: purpose=%q valid=%v err=%v", payload.Purpose, valid, err)
 		writeError(w, http.StatusUnauthorized, codeOTPInvalid)
 		return
 	}

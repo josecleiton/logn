@@ -174,13 +174,13 @@ func New(d Deps) (http.Handler, error) {
 	if os.Getenv("K_SERVICE") != "" {
 		origin, err := newOriginVerifierFromEnv()
 		if err != nil {
-			return nil, fmt.Errorf("verificação de origem não configurada: %w", err)
+			return nil, fmt.Errorf("origin verification not configured: %w", err)
 		}
 		handler = origin.wrap(handler, originExempt)
 	} else if os.Getenv("ORIGIN_TRUSTED_CIDRS") != "" || os.Getenv("ORIGIN_SHARED_SECRET") != "" {
 		origin, err := newOriginVerifierFromEnv()
 		if err != nil {
-			return nil, fmt.Errorf("verificação de origem mal configurada: %w", err)
+			return nil, fmt.Errorf("origin verification misconfigured: %w", err)
 		}
 		handler = origin.wrap(handler, originExempt)
 	}

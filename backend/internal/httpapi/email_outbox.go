@@ -83,18 +83,18 @@ func (s *Server) dispatchOutbox(ctx context.Context, id string) bool {
 	defer cancel()
 	if s.outboxQueue == nil {
 		if _, err := s.deliverOutbox(ctx, id, true); err != nil {
-			log.Printf("caixa de saída: envio direto falhou: id=%s erro=%v", id, err)
+			log.Printf("outbox: direct send failed: id=%s error=%v", id, err)
 			return false
 		}
 		return true
 	}
 	if err := s.outboxQueue.Enqueue(ctx, id); err != nil {
-		log.Printf("caixa de saída: tarefa não criada, fica para a varredura: id=%s erro=%v", id, err)
+		log.Printf("outbox: task not created, left for the sweep: id=%s error=%v", id, err)
 		return false
 	}
 	if err := s.repo.MarkOutboxEnqueued(ctx, id); err != nil {
 		// A tarefa existe; a varredura vai tentar de novo e receber o 409 do nome repetido.
-		log.Printf("caixa de saída: tarefa criada sem registro: id=%s erro=%v", id, err)
+		log.Printf("outbox: task created but not recorded: id=%s error=%v", id, err)
 	}
 	return true
 }
@@ -110,16 +110,16 @@ func (s *Server) deliverOutbox(ctx context.Context, id string, final bool) (doma
 		case err == nil:
 			return nil
 		case errors.Is(err, context.DeadlineExceeded):
-			return errors.New("smtp sem resposta no prazo")
+			return errors.New("smtp did not respond in time")
 		}
 		return errors.New(redactEmails(err))
 	})
 	switch {
 	case err != nil:
 	case outcome == domain.OutboxRetry:
-		log.Printf("caixa de saída: envio falhou, a fila tenta de novo: id=%s", id)
+		log.Printf("outbox: send failed, the queue will retry: id=%s", id)
 	case outcome == domain.OutboxFailed:
-		log.Printf("caixa de saída: envio desistido na última tentativa: id=%s", id)
+		log.Printf("outbox: send given up on the last attempt: id=%s", id)
 	}
 	return outcome, err
 }
@@ -128,23 +128,23 @@ func (s *Server) sendOutbox(ctx context.Context, m domain.OutboxMessage) error {
 	switch m.Kind {
 	case domain.OutboxOTP:
 		if s.outboxMailer == nil {
-			return errors.New("mailer desligado")
+			return errors.New("mailer disabled")
 		}
 		return s.outboxMailer.SendOTP(ctx, m.Email, m.Purpose, m.Code, m.Locale)
 	case domain.OutboxWelcome:
 		if s.outboxMailer == nil {
-			return errors.New("mailer desligado")
+			return errors.New("mailer disabled")
 		}
 		return s.outboxMailer.SendWelcome(ctx, m.Email, m.Locale)
 	case domain.OutboxWaitlist:
 		if s.waitlist == nil || s.waitlistMailer == nil {
-			return errors.New("lista de espera desligada")
+			return errors.New("waitlist disabled")
 		}
 		confirmURL := s.waitlist.link(domain.WaitlistActionConfirm, m.WaitlistID)
 		leaveURL := s.waitlist.link(domain.WaitlistActionLeave, m.WaitlistID)
 		return s.waitlistMailer.SendWaitlistConfirmation(ctx, m.Email, m.Locale, confirmURL, leaveURL)
 	}
-	return errors.New("tipo de e-mail desconhecido: " + m.Kind)
+	return errors.New("unknown e-mail kind: " + m.Kind)
 }
 
 // emailSendHandler entrega uma linha da caixa de saída. Quem chama é o Cloud Tasks.
@@ -186,7 +186,7 @@ func (s *Server) emailSendHandler(w http.ResponseWriter, r *http.Request) {
 
 	outcome, err := s.deliverOutbox(r.Context(), req.ID, final)
 	if err != nil {
-		log.Printf("caixa de saída: entrega não gravada: id=%s erro=%v", req.ID, err)
+		log.Printf("outbox: delivery not recorded: id=%s error=%v", req.ID, err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
@@ -224,16 +224,16 @@ func (s *Server) emailSweepHandler(w http.ResponseWriter, r *http.Request) {
 	// Antes de pôr na fila, dá desfecho ao que a fila largou sem desfecho.
 	stuck, err := s.repo.ExpireStuckOutbox(r.Context())
 	if err != nil {
-		log.Printf("caixa de saída: varredura não fechou as perdidas: erro=%v", err)
+		log.Printf("outbox: sweep did not close the lost ones: error=%v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 	if stuck > 0 {
-		log.Printf("caixa de saída: %d e-mails sem desfecho da fila dados por perdidos", stuck)
+		log.Printf("outbox: %d e-mails with no outcome from the queue marked as lost", stuck)
 	}
 	ids, err := s.repo.UnqueuedOutbox(r.Context())
 	if err != nil {
-		log.Printf("caixa de saída: varredura não leu as pendentes: erro=%v", err)
+		log.Printf("outbox: sweep could not read the pending ones: error=%v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
@@ -249,7 +249,7 @@ func (s *Server) emailSweepHandler(w http.ResponseWriter, r *http.Request) {
 		dispatched++
 	}
 	if len(ids) > 0 {
-		log.Printf("caixa de saída: varredura levou %d de %d pendentes", dispatched, len(ids))
+		log.Printf("outbox: sweep dispatched %d of %d pending", dispatched, len(ids))
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"status": "ok", "dispatched": dispatched})

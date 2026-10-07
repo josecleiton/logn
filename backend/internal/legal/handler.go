@@ -31,7 +31,7 @@ func Handler(store Store, kind Kind, strict bool) http.HandlerFunc {
 			return
 		}
 		if err != nil {
-			log.Printf("documento legal não lido: kind=%s locale=%s erro=%v", kind, locale, err)
+			log.Printf("legal document not read: kind=%s locale=%s error=%v", kind, locale, err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
@@ -47,13 +47,13 @@ func Handler(store Store, kind Kind, strict bool) http.HandlerFunc {
 
 		page, err := Render(doc, opts)
 		if errors.Is(err, ErrDraft) {
-			log.Printf("DOCUMENTO LEGAL EM RASCUNHO NO AR: kind=%s locale=%s v%d — publique o texto final ou defina LEGAL_ALLOW_DRAFT=true",
+			log.Printf("DRAFT LEGAL DOCUMENT LIVE: kind=%s locale=%s v%d — publish the final text or set LEGAL_ALLOW_DRAFT=true",
 				kind, doc.Locale, doc.Version)
 			http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
 			return
 		}
 		if err != nil {
-			log.Printf("documento legal não montado: kind=%s locale=%s erro=%v", kind, doc.Locale, err)
+			log.Printf("legal document not rendered: kind=%s locale=%s error=%v", kind, doc.Locale, err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}

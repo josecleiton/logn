@@ -68,7 +68,7 @@ func (s *Server) issueSession(ctx context.Context, w http.ResponseWriter, userID
 
 	expiresAt := time.Now().Add(refreshTokenLifetime)
 	if err := s.repo.CreateRefreshToken(ctx, userID, hashRefreshToken(refreshToken), expiresAt); err != nil {
-		log.Printf("sessão não gravada: user=%s erro=%v", userID, err)
+		log.Printf("session not recorded: user=%s error=%v", userID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
@@ -129,7 +129,7 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 		// login social e a troca de senha pelo código continuam abertos.
 		allowed, noteErr := s.repo.NoteLoginAttempt(ctx, email, rateKey(requestIP(r)))
 		if noteErr != nil {
-			log.Printf("login: tentativa não contada: erro=%v", noteErr)
+			log.Printf("login: attempt not counted: error=%v", noteErr)
 			writeError(w, http.StatusInternalServerError, codeInternal)
 			return
 		}
@@ -158,14 +158,14 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Senha certa: as tentativas erradas de antes não contam mais contra a conta.
 	if err := s.repo.ClearLoginAttempts(ctx, email); err != nil {
-		log.Printf("login: contagem não zerada: user=%s erro=%v", user.ID, err)
+		log.Printf("login: counter not reset: user=%s error=%v", user.ID, err)
 	}
 
 	// Hash de parâmetros antigos é refeito agora, enquanto a senha está na mão.
 	if domain.NeedsRehash(user.PasswordHash) {
 		if rehashed, err := domain.HashPassword(req.Password); err == nil {
 			if err := s.repo.UpdatePasswordHash(ctx, user.ID, rehashed); err != nil {
-				log.Printf("rehash não gravado: user=%s erro=%v", user.ID, err)
+				log.Printf("rehash not recorded: user=%s error=%v", user.ID, err)
 			}
 		}
 	}
@@ -174,12 +174,12 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	// e tomava 401 em todo o resto, porque a conta seguia desativada.
 	restored, err := s.repo.CancelAccountDeletion(ctx, user.ID)
 	if err != nil {
-		log.Printf("exclusão não cancelada no login: user=%s erro=%v", user.ID, err)
+		log.Printf("deletion not canceled on login: user=%s error=%v", user.ID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 	if restored {
-		log.Printf("exclusão cancelada pelo login: user=%s", user.ID)
+		log.Printf("deletion canceled by login: user=%s", user.ID)
 	}
 
 	s.issueSession(ctx, w, user.ID, user.Email, restored)
@@ -226,7 +226,7 @@ func (s *Server) refreshHandler(w http.ResponseWriter, r *http.Request) {
 	// Conta desativada não renova sessão. O pedido de exclusão já revoga os tokens;
 	// isto fecha a porta para o que tiver escapado, como um token emitido no meio.
 	if !s.repo.IsUserActive(ctx, tokenRecord.UserID) {
-		log.Printf("refresh recusado: user=%s conta desativada", tokenRecord.UserID)
+		log.Printf("refresh rejected: user=%s account deactivated", tokenRecord.UserID)
 		writeError(w, http.StatusUnauthorized, codeSessionInvalid)
 		return
 	}
@@ -255,11 +255,11 @@ func (s *Server) refreshHandler(w http.ResponseWriter, r *http.Request) {
 		ctx, tokenHash, tokenRecord.UserID, hashRefreshToken(newRefresh), expiresAt,
 	); err != nil {
 		if errors.Is(err, domain.ErrRefreshTokenAlreadyUsed) {
-			log.Printf("refresh recusado: user=%s token já usado, sessões revogadas", tokenRecord.UserID)
+			log.Printf("refresh rejected: user=%s token already used, sessions revoked", tokenRecord.UserID)
 			writeError(w, http.StatusUnauthorized, codeSessionInvalid)
 			return
 		}
-		log.Printf("refresh não rotacionado: user=%s erro=%v", tokenRecord.UserID, err)
+		log.Printf("refresh not rotated: user=%s error=%v", tokenRecord.UserID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
@@ -339,7 +339,7 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	current, err := s.currentLegalVersions(ctx)
 	if err != nil {
-		log.Printf("cadastro sem versões legais: erro=%v", err)
+		log.Printf("signup without legal versions: error=%v", err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
@@ -450,17 +450,17 @@ func (s *Server) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusUnauthorized, codeOTPInvalid)
 			return
 		}
-		log.Printf("senha não trocada: erro=%v", err)
+		log.Printf("password not reset: error=%v", err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 	if restored {
-		log.Printf("exclusão cancelada pela troca de senha: user=%s", userID)
+		log.Printf("deletion canceled by password reset: user=%s", userID)
 	}
 	// Quem provou pelo código que é dono do e-mail volta a entrar por senha na hora:
 	// sem isto, um login travado por chute alheio seguia travado com a senha nova.
 	if err := s.repo.ClearLoginAttempts(ctx, email); err != nil {
-		log.Printf("troca de senha: contagem de login não zerada: user=%s erro=%v", userID, err)
+		log.Printf("password reset: login counter not reset: user=%s error=%v", userID, err)
 	}
 
 	s.issueSession(ctx, w, userID, email, restored)
@@ -536,7 +536,7 @@ func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if err := d.Discard(context.WithoutCancel(ctx), req.AuthorizationCode); err != nil {
-				log.Printf("token da exclusão recusada não apagado: provider=%s user=%s erro=%v", req.Provider, userID, err)
+				log.Printf("token from the refused deletion not discarded: provider=%s user=%s error=%v", req.Provider, userID, err)
 			}
 		}()
 	}
@@ -566,7 +566,7 @@ func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		owns, err := s.repo.HasIdentity(ctx, userID, req.Provider, id.Subject)
 		if err != nil {
-			log.Printf("identidade não conferida na exclusão: user=%s erro=%v", userID, err)
+			log.Printf("identity not checked on deletion: user=%s error=%v", userID, err)
 			writeError(w, http.StatusInternalServerError, codeInternal)
 			return
 		}
@@ -598,7 +598,7 @@ func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		linked, err := s.repo.HasProviderIdentity(ctx, userID, provider)
 		if err != nil {
-			log.Printf("identidades não conferidas na exclusão: user=%s erro=%v", userID, err)
+			log.Printf("identities not checked on deletion: user=%s error=%v", userID, err)
 			writeError(w, http.StatusInternalServerError, codeInternal)
 			return
 		}
@@ -612,18 +612,18 @@ func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 		// Provedor desligado depois de haver contas nele: sem como confirmar por ele,
 		// segurar a exclusão deixaria a pessoa sem saída. Sai, e o log avisa que falta
 		// revogar à mão.
-		log.Printf("exclusão sem revogação possível: provider=%s user=%s (provedor desligado)", provider, userID)
+		log.Printf("deletion with no possible revocation: provider=%s user=%s (provider disabled)", provider, userID)
 	}
 
 	purgeAfter, err := s.repo.MarkAccountForDeletion(ctx, userID)
 	if err != nil {
-		log.Printf("exclusão não pedida: user=%s erro=%v", userID, err)
+		log.Printf("deletion not requested: user=%s error=%v", userID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 	// Daqui em diante o token é da revogação, que o consome.
 	marked = true
-	log.Printf("exclusão pedida: user=%s expurgo_a_partir_de=%s", userID, purgeAfter.Format(time.RFC3339))
+	log.Printf("deletion requested: user=%s purge_after=%s", userID, purgeAfter.Format(time.RFC3339))
 
 	// Depois de a conta estar desativada: a Apple fora do ar não segura a exclusão, que
 	// é o que o jogador pediu. A falha fica no log para revogar à mão.
@@ -631,9 +631,9 @@ func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 	// único; cair a conexão agora não pode desperdiçá-lo.
 	if revoker, ok := s.revokers[req.Provider]; ok && provedSubject != "" {
 		if err := revoker.Revoke(context.WithoutCancel(ctx), req.AuthorizationCode, provedSubject); err != nil {
-			log.Printf("acesso não revogado no provedor: provider=%s user=%s erro=%v", req.Provider, userID, err)
+			log.Printf("access not revoked at the provider: provider=%s user=%s error=%v", req.Provider, userID, err)
 		} else {
-			log.Printf("acesso revogado no provedor: provider=%s user=%s", req.Provider, userID)
+			log.Printf("access revoked at the provider: provider=%s user=%s", req.Provider, userID)
 		}
 	}
 

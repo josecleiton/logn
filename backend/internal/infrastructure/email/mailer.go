@@ -73,7 +73,7 @@ func NewMailerFromEnv(getenv func(string) string, production bool) (*Mailer, err
 			}
 		}
 		if len(missing) > 0 {
-			return nil, fmt.Errorf("faltam %s", strings.Join(missing, ", "))
+			return nil, fmt.Errorf("missing %s", strings.Join(missing, ", "))
 		}
 	}
 
@@ -86,7 +86,7 @@ func NewMailerFromEnv(getenv func(string) string, production bool) (*Mailer, err
 	if s := getenv("SMTP_PORT"); s != "" {
 		p, err := strconv.Atoi(s)
 		if err != nil || p < 1 || p > 65535 {
-			return nil, fmt.Errorf("SMTP_PORT inválida: %q", s)
+			return nil, fmt.Errorf("invalid SMTP_PORT: %q", s)
 		}
 		port = p
 	}
@@ -97,7 +97,7 @@ func NewMailerFromEnv(getenv func(string) string, production bool) (*Mailer, err
 	}
 	addr, err := mail.ParseAddress(from)
 	if err != nil {
-		return nil, fmt.Errorf("SMTP_FROM inválido: %w", err)
+		return nil, fmt.Errorf("invalid SMTP_FROM: %w", err)
 	}
 
 	return &Mailer{
@@ -222,7 +222,7 @@ func (m *Mailer) SendWelcome(ctx context.Context, toEmail, lang string) error {
 func (m *Mailer) Render(templateName string, data interface{}) (string, error) {
 	var body bytes.Buffer
 	if err := m.templates.ExecuteTemplate(&body, templateName, data); err != nil {
-		return "", fmt.Errorf("falha ao renderizar template %s: %w", templateName, err)
+		return "", fmt.Errorf("failed to render template %s: %w", templateName, err)
 	}
 	return body.String(), nil
 }
@@ -249,17 +249,17 @@ func (m *Mailer) sendWithHeaders(ctx context.Context, to, subject, templateName 
 	var body bytes.Buffer
 
 	if err := m.templates.ExecuteTemplate(&body, templateName, data); err != nil {
-		return fmt.Errorf("falha ao renderizar template %s: %s", templateName, RedactAddresses(err.Error()))
+		return fmt.Errorf("failed to render template %s: %s", templateName, RedactAddresses(err.Error()))
 	}
 
 	// Sem User-Agent nem X-Mailer: diriam a quem recebe qual biblioteca, e qual versão,
 	// manda o e-mail.
 	msg := gomail.NewMsg(gomail.WithNoDefaultUserAgent())
 	if err := msg.From(m.from); err != nil {
-		return fmt.Errorf("remetente inválido: %s", RedactAddresses(err.Error()))
+		return fmt.Errorf("invalid sender: %s", RedactAddresses(err.Error()))
 	}
 	if err := msg.To(to); err != nil {
-		return fmt.Errorf("destinatário inválido: %s", RedactAddresses(err.Error()))
+		return fmt.Errorf("invalid recipient: %s", RedactAddresses(err.Error()))
 	}
 	msg.Subject(subject)
 	msg.SetDate()
@@ -273,9 +273,9 @@ func (m *Mailer) sendWithHeaders(ctx context.Context, to, subject, templateName 
 		redacted := RedactAddresses(err.Error())
 		// O fim do ctx segue na cadeia: quem chama distingue prazo de recusa.
 		if ctxErr := ctx.Err(); ctxErr != nil {
-			return fmt.Errorf("falha ao enviar e-mail smtp: %w: %s", ctxErr, redacted)
+			return fmt.Errorf("failed to send smtp e-mail: %w: %s", ctxErr, redacted)
 		}
-		return fmt.Errorf("falha ao enviar e-mail smtp: %s", redacted)
+		return fmt.Errorf("failed to send smtp e-mail: %s", redacted)
 	}
 	return nil
 }

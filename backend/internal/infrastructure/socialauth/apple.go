@@ -41,7 +41,7 @@ type AppleVerifier struct {
 // NewAppleVerifier recusa bundle vazio: sem ele, a audiência não seria conferida.
 func NewAppleVerifier(bundleID string, client *http.Client) (*AppleVerifier, error) {
 	if strings.TrimSpace(bundleID) == "" {
-		return nil, errors.New("socialauth: bundle vazio")
+		return nil, errors.New("socialauth: empty bundle")
 	}
 	if client == nil {
 		client = &http.Client{Timeout: fetchTimeout}
@@ -51,10 +51,10 @@ func NewAppleVerifier(bundleID string, client *http.Client) (*AppleVerifier, err
 
 func (a *AppleVerifier) Verify(ctx context.Context, idToken, rawNonce string) (Identity, error) {
 	if idToken == "" || len(idToken) > maxIDTokenLen {
-		return Identity{}, errors.New("token vazio ou grande demais")
+		return Identity{}, errors.New("token empty or too large")
 	}
 	if len(rawNonce) < minNonceLen || len(rawNonce) > maxNonceLen {
-		return Identity{}, errors.New("nonce fora do tamanho")
+		return Identity{}, errors.New("nonce length out of range")
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, fetchTimeout)
@@ -80,18 +80,18 @@ func (a *AppleVerifier) Verify(ctx context.Context, idToken, rawNonce string) (I
 
 	sub, _ := claims["sub"].(string)
 	if sub == "" {
-		return Identity{}, errors.New("token sem sub")
+		return Identity{}, errors.New("token without sub")
 	}
 	// Mesmo desenho do Google: o pedido à Apple leva o SHA-256 do nonce, e o token
 	// volta com ele.
 	tokenNonce, _ := claims["nonce"].(string)
 	if subtle.ConstantTimeCompare([]byte(tokenNonce), []byte(hashNonce(rawNonce))) != 1 {
-		return Identity{}, errors.New("nonce não confere")
+		return Identity{}, errors.New("nonce mismatch")
 	}
 
 	issuedAt, err := claims.GetIssuedAt()
 	if err != nil || issuedAt == nil {
-		return Identity{}, errors.New("token sem iat")
+		return Identity{}, errors.New("token without iat")
 	}
 	email, _ := claims["email"].(string)
 	return Identity{
@@ -159,9 +159,9 @@ func (c *jwksCache) key(ctx context.Context, kid string) (*rsa.PublicKey, error)
 		return k, nil
 	}
 	if known {
-		return nil, fmt.Errorf("chave vencida há demais: %q", clip(kid))
+		return nil, fmt.Errorf("key stale for too long: %q", clip(kid))
 	}
-	return nil, fmt.Errorf("kid desconhecido: %q", clip(kid))
+	return nil, fmt.Errorf("unknown kid: %q", clip(kid))
 }
 
 // refresh busca as chaves, ou espera a busca que já está no ar.
@@ -203,7 +203,7 @@ func (c *jwksCache) fetch(ctx context.Context) (map[string]*rsa.PublicKey, error
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("chaves: status %d", resp.StatusCode)
+		return nil, fmt.Errorf("keys: status %d", resp.StatusCode)
 	}
 	var doc struct {
 		Keys []struct {
@@ -230,7 +230,7 @@ func (c *jwksCache) fetch(ctx context.Context) (map[string]*rsa.PublicKey, error
 		keys[k.Kid] = &rsa.PublicKey{N: new(big.Int).SetBytes(n), E: int(new(big.Int).SetBytes(e).Int64())}
 	}
 	if len(keys) == 0 {
-		return nil, errors.New("chaves: nenhuma RSA válida")
+		return nil, errors.New("keys: no valid RSA key")
 	}
 	return keys, nil
 }
@@ -256,19 +256,19 @@ type AppleRevoker struct {
 // NewAppleRevoker lê a chave `.p8` (PKCS#8, PEM) do Sign in with Apple.
 func NewAppleRevoker(teamID, keyID, bundleID, privateKeyPEM string, client *http.Client) (*AppleRevoker, error) {
 	if teamID == "" || keyID == "" || bundleID == "" {
-		return nil, errors.New("socialauth: team, key ou bundle vazio")
+		return nil, errors.New("socialauth: empty team, key or bundle")
 	}
 	block, _ := pem.Decode([]byte(privateKeyPEM))
 	if block == nil {
-		return nil, errors.New("socialauth: chave da Apple não é PEM")
+		return nil, errors.New("socialauth: Apple key is not PEM")
 	}
 	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("socialauth: chave da Apple: %w", err)
+		return nil, fmt.Errorf("socialauth: Apple key: %w", err)
 	}
 	key, ok := parsed.(*ecdsa.PrivateKey)
 	if !ok {
-		return nil, errors.New("socialauth: chave da Apple não é ECDSA")
+		return nil, errors.New("socialauth: Apple key is not ECDSA")
 	}
 	if client == nil {
 		client = &http.Client{Timeout: fetchTimeout}
@@ -296,7 +296,7 @@ func (a *AppleRevoker) clientSecret() (string, error) {
 
 func (a *AppleRevoker) Revoke(ctx context.Context, authorizationCode, subject string) error {
 	if authorizationCode == "" || subject == "" {
-		return errors.New("sem authorization_code ou sub")
+		return errors.New("missing authorization_code or sub")
 	}
 	secret, err := a.clientSecret()
 	if err != nil {
@@ -316,13 +316,13 @@ func (a *AppleRevoker) Revoke(ctx context.Context, authorizationCode, subject st
 		"code":          {authorizationCode},
 		"grant_type":    {"authorization_code"},
 	}, &tokens); err != nil {
-		return fmt.Errorf("troca do código: %w", err)
+		return fmt.Errorf("code exchange: %w", err)
 	}
 
 	// O `id_token` desta resposta veio direto da Apple, por TLS, ao pedido do próprio
 	// servidor; dele só se lê de quem é o código.
 	if got := unverifiedSubject(tokens.IDToken); subtle.ConstantTimeCompare([]byte(got), []byte(subject)) != 1 {
-		return errors.New("código de outro sub; nada revogado")
+		return errors.New("code belongs to another sub; nothing revoked")
 	}
 
 	token, hint := tokens.RefreshToken, "refresh_token"
@@ -330,7 +330,7 @@ func (a *AppleRevoker) Revoke(ctx context.Context, authorizationCode, subject st
 		token, hint = tokens.AccessToken, "access_token"
 	}
 	if token == "" {
-		return errors.New("troca do código sem token")
+		return errors.New("code exchange returned no token")
 	}
 	if err := a.post(ctx, a.revokeURL, url.Values{
 		"client_id":       {a.bundleID},
@@ -338,7 +338,7 @@ func (a *AppleRevoker) Revoke(ctx context.Context, authorizationCode, subject st
 		"token":           {token},
 		"token_type_hint": {hint},
 	}, nil); err != nil {
-		return fmt.Errorf("revogação: %w", err)
+		return fmt.Errorf("revocation: %w", err)
 	}
 	return nil
 }

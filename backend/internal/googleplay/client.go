@@ -44,13 +44,13 @@ const (
 var (
 	// ErrNotFound é o token que a loja não reconhece: inventado, de outro app ou de
 	// outro produto.
-	ErrNotFound = errors.New("googleplay: compra não encontrada")
+	ErrNotFound = errors.New("googleplay: purchase not found")
 	// ErrPending é a compra que ainda não foi paga (boleto, dinheiro). Não libera nada.
-	ErrPending = errors.New("googleplay: compra pendente")
+	ErrPending = errors.New("googleplay: purchase pending")
 	// ErrNotPurchased é a compra cancelada, consumida ou de recompensa.
-	ErrNotPurchased = errors.New("googleplay: compra não vale")
+	ErrNotPurchased = errors.New("googleplay: purchase not valid")
 	// ErrBadInput é produto ou token fora do formato. Não sai pedido para a loja.
-	ErrBadInput = errors.New("googleplay: produto ou token fora do formato")
+	ErrBadInput = errors.New("googleplay: malformed product or token")
 )
 
 // O formato que o Play aceita para id de produto, e o do token de compra (base64url com
@@ -192,7 +192,7 @@ var packagePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$`)
 // NewClient monta o cliente de um pacote. `tokens` nulo usa o servidor de metadados.
 func NewClient(packageName, baseURL string, tokens TokenSource) (*Client, error) {
 	if !packagePattern.MatchString(packageName) {
-		return nil, fmt.Errorf("googleplay: nome de pacote inválido: %q", packageName)
+		return nil, fmt.Errorf("googleplay: invalid package name: %q", packageName)
 	}
 	httpClient := &http.Client{Timeout: 10 * time.Second}
 	if tokens == nil {
@@ -217,7 +217,7 @@ func (c *Client) Product(ctx context.Context, productID, purchaseToken string) (
 	}
 	var p ProductPurchase
 	if err := json.Unmarshal(body, &p); err != nil {
-		return ProductPurchase{}, fmt.Errorf("googleplay: resposta da compra ilegível: %w", err)
+		return ProductPurchase{}, fmt.Errorf("googleplay: unreadable purchase response: %w", err)
 	}
 	p.Raw = body
 	return p, nil
@@ -258,7 +258,7 @@ func (c *Client) Voided(ctx context.Context, since time.Time) ([]VoidedPurchase,
 			} `json:"tokenPagination"`
 		}
 		if err := json.Unmarshal(body, &resp); err != nil {
-			return nil, fmt.Errorf("googleplay: resposta das anuladas ilegível: %w", err)
+			return nil, fmt.Errorf("googleplay: unreadable voided purchases response: %w", err)
 		}
 		out = append(out, resp.VoidedPurchases...)
 		if resp.TokenPagination.NextPageToken == "" {
@@ -266,7 +266,7 @@ func (c *Client) Voided(ctx context.Context, since time.Time) ([]VoidedPurchase,
 		}
 		page = resp.TokenPagination.NextPageToken
 	}
-	return nil, fmt.Errorf("googleplay: mais de %d páginas de compras anuladas", maxVoidedPages)
+	return nil, fmt.Errorf("googleplay: more than %d pages of voided purchases", maxVoidedPages)
 }
 
 func (c *Client) do(ctx context.Context, method, target string) ([]byte, error) {
@@ -294,7 +294,7 @@ func (c *Client) do(ctx context.Context, method, target string) ([]byte, error) 
 		if errors.As(err, &ue) {
 			err = ue.Err
 		}
-		return nil, fmt.Errorf("googleplay: pedido falhou: %w", err)
+		return nil, fmt.Errorf("googleplay: request failed: %w", err)
 	}
 	defer resp.Body.Close()
 	out, err := io.ReadAll(io.LimitReader(resp.Body, maxResponse))
@@ -326,7 +326,7 @@ type APIError struct {
 }
 
 func (e *APIError) Error() string {
-	return fmt.Sprintf("googleplay: a API respondeu %d (%s)", e.Status, e.Reason)
+	return fmt.Sprintf("googleplay: the API responded %d (%s)", e.Status, e.Reason)
 }
 
 // apiReason tira o `reason` do corpo de erro da API. Só ele: a mensagem pode repetir
@@ -398,18 +398,18 @@ func (m *MetadataTokenSource) Token(ctx context.Context) (string, error) {
 	req.Header.Set("Metadata-Flavor", "Google")
 	resp, err := m.http.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("googleplay: servidor de metadados: %w", err)
+		return "", fmt.Errorf("googleplay: metadata server: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("googleplay: servidor de metadados respondeu %d", resp.StatusCode)
+		return "", fmt.Errorf("googleplay: metadata server responded %d", resp.StatusCode)
 	}
 	var t struct {
 		AccessToken string `json:"access_token"`
 		ExpiresIn   int    `json:"expires_in"`
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, maxResponse)).Decode(&t); err != nil || t.AccessToken == "" {
-		return "", errors.New("googleplay: token do servidor de metadados ilegível")
+		return "", errors.New("googleplay: unreadable metadata server token")
 	}
 	m.token = t.AccessToken
 	// Um minuto de folga para o token não vencer no meio do pedido.

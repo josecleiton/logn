@@ -63,7 +63,7 @@ func (s *Server) pendingLegalHandler(w http.ResponseWriter, r *http.Request) {
 
 	pending, err := s.repo.GetLegalPending(r.Context(), userID, locale.Negotiate(r))
 	if err != nil {
-		log.Printf("pendências legais não lidas: user=%s erro=%v", userID, err)
+		log.Printf("pending legal documents not read: user=%s error=%v", userID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
@@ -186,7 +186,7 @@ func (s *Server) acceptLegalHandler(w http.ResponseWriter, r *http.Request) {
 
 	pending, err := s.repo.GetLegalPending(r.Context(), userID, lang)
 	if err != nil {
-		log.Printf("aceite sem pendências: user=%s erro=%v", userID, err)
+		log.Printf("acceptance without pending documents: user=%s error=%v", userID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
@@ -252,7 +252,7 @@ func (s *Server) acceptLegalHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.repo.RecordLegalAcceptances(r.Context(), userID, records, shown, req.Client.App, req.Client.Platform, req.Source); err != nil {
-		log.Printf("aceite não gravado: user=%s erro=%v", userID, err)
+		log.Printf("acceptance not recorded: user=%s error=%v", userID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}

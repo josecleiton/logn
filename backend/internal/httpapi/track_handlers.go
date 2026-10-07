@@ -36,7 +36,7 @@ func (s *Server) tracksHandler(w http.ResponseWriter, r *http.Request) {
 	lang := locale.Negotiate(r)
 	tracks, err := s.repo.GetTracks(r.Context(), lang, userID)
 	if err != nil {
-		log.Printf("catálogo não lido: locale=%s erro=%v", lang, err)
+		log.Printf("catalog not read: locale=%s error=%v", lang, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
@@ -84,7 +84,7 @@ func (s *Server) trackLicenseHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		log.Printf("licença não emitida: user=%s trilha=%s erro=%v", userID, trackID, err)
+		log.Printf("license not issued: user=%s track=%s error=%v", userID, trackID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
@@ -127,7 +127,7 @@ func (s *Server) trackPackageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		log.Printf("pacote não montado: user=%s trilha=%s erro=%v", userID, trackID, err)
+		log.Printf("package not built: user=%s track=%s error=%v", userID, trackID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}

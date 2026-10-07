@@ -94,7 +94,7 @@ func writeWaitlistPage(w http.ResponseWriter, lang, action, formAction, landing 
 		Lang: lang, CSS: template.CSS(waitlistPageCSS), FormAction: formAction, T: copies[action],
 	})
 	if err != nil {
-		log.Printf("lista de espera: página não montada: erro=%v", err)
+		log.Printf("waitlist: page not rendered: error=%v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}

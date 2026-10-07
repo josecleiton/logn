@@ -26,11 +26,11 @@ type ChallengeText struct {
 func AssemblePayload(neutral json.RawMessage, text ChallengeText) (json.RawMessage, error) {
 	var payload map[string]map[string]json.RawMessage
 	if err := json.Unmarshal(neutral, &payload); err != nil {
-		return nil, fmt.Errorf("payload ilegível: %w", err)
+		return nil, fmt.Errorf("unreadable payload: %w", err)
 	}
 	content, validation := payload["content"], payload["validation"]
 	if content == nil || validation == nil {
-		return nil, fmt.Errorf("payload sem content ou validation")
+		return nil, fmt.Errorf("payload without content or validation")
 	}
 
 	set := func(m map[string]json.RawMessage, key, value string) {
@@ -52,7 +52,7 @@ func AssemblePayload(neutral json.RawMessage, text ChallengeText) (json.RawMessa
 			}
 			var options []string
 			if err := json.Unmarshal(raw, &options); err != nil {
-				return nil, fmt.Errorf("%s não é lista de texto: %w", key, err)
+				return nil, fmt.Errorf("%s is not a list of strings: %w", key, err)
 			}
 			for i, o := range options {
 				if label, ok := text.OptionLabels[o]; ok {

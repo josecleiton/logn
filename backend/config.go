@@ -33,12 +33,12 @@ func socialVerifiersFromEnv() (map[string]socialauth.Verifier, map[string]social
 	revokers := map[string]socialauth.Revoker{}
 	clients, err := googleClientsFromEnv(os.Getenv)
 	if err != nil {
-		log.Fatalf("Login com Google mal configurado: %v", err)
+		log.Fatalf("Google sign-in misconfigured: %v", err)
 	}
 	if len(clients) > 0 {
 		v, err := socialauth.NewGoogleVerifier(clients...)
 		if err != nil {
-			log.Fatalf("Login com Google mal configurado: %v", err)
+			log.Fatalf("Google sign-in misconfigured: %v", err)
 		}
 		verifiers[socialauth.ProviderGoogle] = v
 	} else {
@@ -105,19 +105,19 @@ func googleClientsFromEnv(getenv func(string) string) ([]socialauth.GoogleClient
 		seen := map[string]bool{web: true}
 		if ios != "" {
 			if seen[ios] {
-				return nil, errors.New("GOOGLE_IOS_CLIENT_ID e GOOGLE_WEB_CLIENT_ID têm de ser clients diferentes")
+				return nil, errors.New("GOOGLE_IOS_CLIENT_ID and GOOGLE_WEB_CLIENT_ID must be different clients")
 			}
 			seen[ios] = true
 		}
 		for _, android := range androids {
 			if seen[android] {
-				return nil, fmt.Errorf("GOOGLE_ANDROID_CLIENT_IDS repete um client: %q", android)
+				return nil, fmt.Errorf("GOOGLE_ANDROID_CLIENT_IDS repeats a client: %q", android)
 			}
 			seen[android] = true
 			clients = append(clients, socialauth.GoogleClient{Audience: web, AuthorizedParty: android})
 		}
 	case web != "" || len(androids) > 0:
-		return nil, errors.New("GOOGLE_WEB_CLIENT_ID e GOOGLE_ANDROID_CLIENT_IDS vêm juntos")
+		return nil, errors.New("GOOGLE_WEB_CLIENT_ID and GOOGLE_ANDROID_CLIENT_IDS must be set together")
 	}
 	return clients, nil
 }
@@ -132,7 +132,7 @@ func playFromEnv() httpapi.PlayVerifier {
 	}
 	c, err := googleplay.NewClient(pkg, googleplay.DefaultBaseURL, nil)
 	if err != nil {
-		log.Fatalf("PLAY_PACKAGE_NAME inválido: %v", err)
+		log.Fatalf("PLAY_PACKAGE_NAME is invalid: %v", err)
 	}
 	return c
 }

@@ -345,11 +345,11 @@ func TestSyncLogsAForeignUserIDClippedAndEscaped(t *testing.T) {
 	s.syncHandler(httptest.NewRecorder(), req)
 
 	out := buf.String()
-	if !strings.Contains(out, "tentativa de cheat") {
+	if !strings.Contains(out, "cheat attempt") {
 		t.Fatalf("o log da tentativa não saiu: %q", out)
 	}
 	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
-		if strings.Contains(line, "sync ok: user=admin") && !strings.Contains(line, "tentativa de cheat") {
+		if strings.Contains(line, "sync ok: user=admin") && !strings.Contains(line, "cheat attempt") {
 			t.Fatalf("a quebra de linha do cliente forjou uma entrada: %q", line)
 		}
 	}

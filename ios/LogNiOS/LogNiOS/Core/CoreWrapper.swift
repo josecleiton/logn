@@ -163,7 +163,7 @@ public class CoreWrapper: ObservableObject {
         guard let url = Bundle.main.url(forResource: "trail-seed", withExtension: "json"),
               let json = try? String(contentsOf: url, encoding: .utf8)
         else {
-            print("trail-seed.json não veio no bundle; rode `just seed-bundle`")
+            print("trail-seed.json is missing from the bundle; run `just seed-bundle`")
             return
         }
         dispatch(event: .bundledTrailLoaded(json: json))

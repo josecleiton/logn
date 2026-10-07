@@ -142,7 +142,7 @@ func TestValidateSet(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "terms.es.html"),
 		[]byte(`<article lang="en"><section id="quem-oferece"></section><section id="trilhas-pagas"></section><section id="extra"></section></article>`), 0o644)
 	got := fmt.Sprint(ValidateSet(dir, false))
-	for _, want := range []string{`lang="en"`, "ids de seção diferentes"} {
+	for _, want := range []string{`lang="en"`, "section ids differ"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("faltou %q em %s", want, got)
 		}

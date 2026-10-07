@@ -143,7 +143,7 @@ func (s *Server) grantPurchase(w http.ResponseWriter, r *http.Request, restore b
 		writeError(w, http.StatusForbidden, codePurchaseRevoked)
 		return
 	case err != nil:
-		log.Printf("compra não gravada: user=%s loja=%s produto=%s erro=%v", userID, grant.Provider, grant.ProductID, err)
+		log.Printf("purchase not recorded: user=%s store=%s product=%s error=%v", userID, grant.Provider, grant.ProductID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
@@ -154,7 +154,7 @@ func (s *Server) grantPurchase(w http.ResponseWriter, r *http.Request, restore b
 	// Se o app não mandar de novo, a rotina diária reconhece o que ficou (revokeVoidedPlay).
 	if play != nil && play.NeedsAcknowledge() {
 		if err := s.acknowledgePlay(r.Context(), req.ProductID, req.PurchaseToken); err != nil {
-			log.Printf("compra do Google Play não reconhecida: user=%s produto=%s erro=%v", userID, grant.ProductID, err)
+			log.Printf("Google Play purchase not acknowledged: user=%s product=%s error=%v", userID, grant.ProductID, err)
 			writeError(w, http.StatusBadGateway, codeInternal)
 			return
 		}
@@ -194,7 +194,7 @@ func (s *Server) verifyPlayPurchase(w http.ResponseWriter, r *http.Request, req 
 	}
 	known, err := s.repo.IsPaidProduct(r.Context(), req.ProductID)
 	if err != nil {
-		log.Printf("produto não conferido: erro=%v", err)
+		log.Printf("product not checked: error=%v", err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return domain.PurchaseGrant{}, nil, false
 	}
@@ -209,12 +209,12 @@ func (s *Server) verifyPlayPurchase(w http.ResponseWriter, r *http.Request, req 
 		return domain.PurchaseGrant{}, nil, false
 	}
 	if err != nil {
-		log.Printf("Google Play não respondeu: produto=%s erro=%v", req.ProductID, err)
+		log.Printf("Google Play did not respond: product=%s error=%v", req.ProductID, err)
 		writeError(w, http.StatusBadGateway, codeInternal)
 		return domain.PurchaseGrant{}, nil, false
 	}
 	if !p.ForProduct(req.ProductID) {
-		log.Printf("compra do Google Play de outro produto: pedido=%s loja=%.150s quantidade=%d",
+		log.Printf("Google Play purchase for another product: requested=%s store=%.150s quantity=%d",
 			req.ProductID, p.ProductID, p.Quantity)
 		writeError(w, http.StatusBadRequest, codePurchaseInvalid)
 		return domain.PurchaseGrant{}, nil, false
@@ -320,7 +320,7 @@ func (s *Server) appStoreNotificationHandler(w http.ResponseWriter, r *http.Requ
 		err = s.repo.RevokeTransaction(r.Context(), domain.ProviderAppleStoreKit, tx.OriginalTransactionID, "store_revoke", signedAt)
 	}
 	if err != nil {
-		log.Printf("notificação da App Store não aplicada: tipo=%s uuid=%s erro=%v", n.NotificationType, n.NotificationUUID, err)
+		log.Printf("App Store notification not applied: type=%s uuid=%s error=%v", n.NotificationType, n.NotificationUUID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}

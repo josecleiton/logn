@@ -338,7 +338,7 @@ func TestEmailSendHandlerGivesUpOnAHangingSMTP(t *testing.T) {
 	}
 	var status, lastErr string
 	f.pool.QueryRow(context.Background(), `SELECT status, last_error FROM email_outbox WHERE id = $1`, id).Scan(&status, &lastErr)
-	if status != "pending" || !strings.Contains(lastErr, "prazo") {
+	if status != "pending" || !strings.Contains(lastErr, "in time") {
 		t.Fatalf("linha: %s %q", status, lastErr)
 	}
 }

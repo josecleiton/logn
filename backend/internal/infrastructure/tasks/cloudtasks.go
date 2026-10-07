@@ -71,10 +71,10 @@ func NewWithClient(cfg Config, client *http.Client, endpoint string) (*CloudTask
 
 func (cfg Config) check() error {
 	if !queuePattern.MatchString(cfg.Queue) {
-		return fmt.Errorf("fila do Cloud Tasks fora do formato projects/P/locations/L/queues/Q: %q", cfg.Queue)
+		return fmt.Errorf("Cloud Tasks queue not in the format projects/P/locations/L/queues/Q: %q", cfg.Queue)
 	}
 	if cfg.TargetURL == "" || cfg.Audience == "" || cfg.ServiceAccount == "" {
-		return errors.New("fila do Cloud Tasks sem URL de destino, audiência ou conta de serviço")
+		return errors.New("Cloud Tasks queue missing target URL, audience or service account")
 	}
 	return nil
 }
@@ -146,6 +146,6 @@ func (c *CloudTasks) Enqueue(ctx context.Context, outboxID string) error {
 	default:
 		// O corpo de erro da API é dela, sem dado do pedido; vai cortado.
 		msg, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return fmt.Errorf("cloud tasks respondeu %d: %s", resp.StatusCode, bytes.TrimSpace(msg))
+		return fmt.Errorf("cloud tasks responded %d: %s", resp.StatusCode, bytes.TrimSpace(msg))
 	}
 }

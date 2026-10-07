@@ -81,11 +81,11 @@ type GoogleVerifier struct {
 // `aud` quando ela vem vazia, e aí qualquer token do Google para qualquer app passaria.
 func NewGoogleVerifier(clients ...GoogleClient) (*GoogleVerifier, error) {
 	if len(clients) == 0 {
-		return nil, errors.New("socialauth: nenhum client do Google")
+		return nil, errors.New("socialauth: no Google client")
 	}
 	for _, c := range clients {
 		if strings.TrimSpace(c.Audience) == "" || strings.TrimSpace(c.AuthorizedParty) == "" {
-			return nil, errors.New("socialauth: client do Google com audiência ou azp vazio")
+			return nil, errors.New("socialauth: Google client with empty audience or azp")
 		}
 	}
 	return &GoogleVerifier{clients: clients, validate: idtoken.Validate}, nil
@@ -98,16 +98,16 @@ var googleIssuers = map[string]bool{
 
 func (g *GoogleVerifier) Verify(ctx context.Context, idToken, rawNonce string) (Identity, error) {
 	if idToken == "" || len(idToken) > maxIDTokenLen {
-		return Identity{}, errors.New("token vazio ou grande demais")
+		return Identity{}, errors.New("token empty or too large")
 	}
 	if len(rawNonce) < minNonceLen || len(rawNonce) > maxNonceLen {
-		return Identity{}, errors.New("nonce fora do tamanho")
+		return Identity{}, errors.New("nonce length out of range")
 	}
 
 	// O algoritmo é fixo. `idtoken.Validate` também aceita ES256, conferido contra as
 	// chaves do IAP; um token assinado por elas não é de login e não tem o que fazer aqui.
 	if alg, err := headerAlg(idToken); err != nil || alg != "RS256" {
-		return Identity{}, fmt.Errorf("algoritmo recusado: %q", clip(alg))
+		return Identity{}, fmt.Errorf("algorithm rejected: %q", clip(alg))
 	}
 
 	// Assinatura contra as chaves públicas do Google, `aud` e `exp`, contra cada
@@ -133,10 +133,10 @@ func (g *GoogleVerifier) Verify(ctx context.Context, idToken, rawNonce string) (
 		return Identity{}, err
 	}
 	if !googleIssuers[payload.Issuer] {
-		return Identity{}, fmt.Errorf("emissor recusado: %q", clip(payload.Issuer))
+		return Identity{}, fmt.Errorf("issuer rejected: %q", clip(payload.Issuer))
 	}
 	if payload.Subject == "" {
-		return Identity{}, errors.New("token sem sub")
+		return Identity{}, errors.New("token without sub")
 	}
 	// `azp` é o client que pediu o token, e tem de ser o de um dos pares da audiência que
 	// conferiu (no Android, um por chave que assina o app). Ausente, só vale no par em
@@ -144,11 +144,11 @@ func (g *GoogleVerifier) Verify(ctx context.Context, idToken, rawNonce string) (
 	// nosso client de qualquer outro do projeto.
 	azp, _ := payload.Claims["azp"].(string)
 	if !g.authorized(audience, azp) {
-		return Identity{}, fmt.Errorf("azp recusado: %q", clip(azp))
+		return Identity{}, fmt.Errorf("azp rejected: %q", clip(azp))
 	}
 	issuedAt := time.Unix(payload.IssuedAt, 0)
 	if issuedAt.After(time.Now().Add(clockSkew)) {
-		return Identity{}, errors.New("token emitido no futuro")
+		return Identity{}, errors.New("token issued in the future")
 	}
 
 	// O pedido de login leva o SHA-256 do nonce, e o token volta com ele. O app guarda
@@ -157,7 +157,7 @@ func (g *GoogleVerifier) Verify(ctx context.Context, idToken, rawNonce string) (
 	tokenNonce, _ := payload.Claims["nonce"].(string)
 	want := hashNonce(rawNonce)
 	if subtle.ConstantTimeCompare([]byte(tokenNonce), []byte(want)) != 1 {
-		return Identity{}, errors.New("nonce não confere")
+		return Identity{}, errors.New("nonce mismatch")
 	}
 
 	email, _ := payload.Claims["email"].(string)
@@ -210,7 +210,7 @@ func claimTrue(v any) bool {
 func headerAlg(token string) (string, error) {
 	head, _, ok := strings.Cut(token, ".")
 	if !ok {
-		return "", errors.New("token sem cabeçalho")
+		return "", errors.New("token without header")
 	}
 	raw, err := base64.RawURLEncoding.DecodeString(head)
 	if err != nil {

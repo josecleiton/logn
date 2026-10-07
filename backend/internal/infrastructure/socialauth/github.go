@@ -58,13 +58,13 @@ type GitHub struct {
 // da sessão, não há como trocar o código nem assinar o bilhete.
 func NewGitHub(clientID, clientSecret, redirectURI string, sessionKey []byte, client *http.Client) (*GitHub, error) {
 	if strings.TrimSpace(clientID) == "" || strings.TrimSpace(clientSecret) == "" {
-		return nil, errors.New("socialauth: client ID ou secret do GitHub vazio")
+		return nil, errors.New("socialauth: empty GitHub client ID or secret")
 	}
 	if strings.TrimSpace(redirectURI) == "" {
-		return nil, errors.New("socialauth: redirect do GitHub vazio")
+		return nil, errors.New("socialauth: empty GitHub redirect")
 	}
 	if len(sessionKey) == 0 {
-		return nil, errors.New("socialauth: chave da sessão vazia")
+		return nil, errors.New("socialauth: empty session key")
 	}
 	if client == nil {
 		client = &http.Client{Timeout: fetchTimeout}
@@ -92,13 +92,13 @@ type Exchanged struct {
 // devolve, para a exclusão revogar a autorização com ele.
 func (g *GitHub) Exchange(ctx context.Context, code, verifier, nonceHash string, keepToken bool) (Exchanged, error) {
 	if code == "" || len(code) > maxGitHubCodeLen {
-		return Exchanged{}, errors.New("código vazio ou grande demais")
+		return Exchanged{}, errors.New("code empty or too large")
 	}
 	if len(verifier) < minCodeVerifierLen || len(verifier) > maxCodeVerifierLen {
-		return Exchanged{}, errors.New("verifier fora do tamanho")
+		return Exchanged{}, errors.New("verifier length out of range")
 	}
 	if !isHexSHA256(nonceHash) {
-		return Exchanged{}, errors.New("hash do nonce inválido")
+		return Exchanged{}, errors.New("invalid nonce hash")
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 3*fetchTimeout)
@@ -106,24 +106,24 @@ func (g *GitHub) Exchange(ctx context.Context, code, verifier, nonceHash string,
 
 	token, err := g.exchangeCode(ctx, code, verifier)
 	if err != nil {
-		return Exchanged{}, fmt.Errorf("troca do código: %w", err)
+		return Exchanged{}, fmt.Errorf("code exchange: %w", err)
 	}
 	// Daqui em diante o token existe no GitHub. Se algo falhar, ele sai junto; não
 	// sobra token vivo de um login que não aconteceu.
 	fail := func(err error) (Exchanged, error) {
 		if derr := g.deleteToken(context.WithoutCancel(ctx), token); derr != nil {
-			err = fmt.Errorf("%w (token não apagado: %v)", err, derr)
+			err = fmt.Errorf("%w (token not deleted: %v)", err, derr)
 		}
 		return Exchanged{}, err
 	}
 
 	subject, err := g.userID(ctx, token)
 	if err != nil {
-		return fail(fmt.Errorf("leitura do usuário: %w", err))
+		return fail(fmt.Errorf("reading the user: %w", err))
 	}
 	email, verified, err := g.primaryEmail(ctx, token)
 	if err != nil {
-		return fail(fmt.Errorf("leitura do e-mail: %w", err))
+		return fail(fmt.Errorf("reading the e-mail: %w", err))
 	}
 
 	ticket, err := g.signTicket(subject, email, verified, nonceHash, time.Now())
@@ -145,15 +145,15 @@ func (g *GitHub) Exchange(ctx context.Context, code, verifier, nonceHash string,
 
 // ErrTokenNotDeleted diz que a troca deu certo e o bilhete vale, mas o access token
 // continuou vivo no GitHub.
-var ErrTokenNotDeleted = errors.New("access token do GitHub não apagado")
+var ErrTokenNotDeleted = errors.New("GitHub access token not deleted")
 
 // Verify confere o bilhete que o próprio servidor assinou na troca (ADR 0019).
 func (g *GitHub) Verify(ctx context.Context, ticket, rawNonce string) (Identity, error) {
 	if ticket == "" || len(ticket) > maxIDTokenLen {
-		return Identity{}, errors.New("bilhete vazio ou grande demais")
+		return Identity{}, errors.New("ticket empty or too large")
 	}
 	if len(rawNonce) < minNonceLen || len(rawNonce) > maxNonceLen {
-		return Identity{}, errors.New("nonce fora do tamanho")
+		return Identity{}, errors.New("nonce length out of range")
 	}
 
 	claims := jwt.MapClaims{}
@@ -173,15 +173,15 @@ func (g *GitHub) Verify(ctx context.Context, ticket, rawNonce string) (Identity,
 
 	sub, _ := claims["sub"].(string)
 	if sub == "" {
-		return Identity{}, errors.New("bilhete sem sub")
+		return Identity{}, errors.New("ticket without sub")
 	}
 	tokenNonce, _ := claims["nonce"].(string)
 	if subtle.ConstantTimeCompare([]byte(tokenNonce), []byte(hashNonce(rawNonce))) != 1 {
-		return Identity{}, errors.New("nonce não confere")
+		return Identity{}, errors.New("nonce mismatch")
 	}
 	issuedAt, err := claims.GetIssuedAt()
 	if err != nil || issuedAt == nil {
-		return Identity{}, errors.New("bilhete sem iat")
+		return Identity{}, errors.New("ticket without iat")
 	}
 	email, _ := claims["email"].(string)
 	verified, _ := claims["email_verified"].(bool)
@@ -193,7 +193,7 @@ func (g *GitHub) Verify(ctx context.Context, ticket, rawNonce string) (Identity,
 // posse da conta, ou nada é revogado.
 func (g *GitHub) Revoke(ctx context.Context, accessToken, subject string) error {
 	if accessToken == "" || subject == "" {
-		return errors.New("sem access token ou sub")
+		return errors.New("missing access token or sub")
 	}
 	ctx, cancel := context.WithTimeout(ctx, 2*fetchTimeout)
 	defer cancel()
@@ -209,16 +209,16 @@ func (g *GitHub) Revoke(ctx context.Context, accessToken, subject string) error 
 		} `json:"user"`
 	}
 	if err := g.appCall(ctx, http.MethodPost, "/token", accessToken, http.StatusOK, &check); err != nil {
-		return fmt.Errorf("conferência do token: %w", err)
+		return fmt.Errorf("token check: %w", err)
 	}
 	if check.App.ClientID != g.clientID {
-		return errors.New("token de outro app; nada revogado")
+		return errors.New("token belongs to another app; nothing revoked")
 	}
 	if got := strconv.FormatInt(check.User.ID, 10); subtle.ConstantTimeCompare([]byte(got), []byte(subject)) != 1 {
-		return errors.New("token de outro usuário; nada revogado")
+		return errors.New("token belongs to another user; nothing revoked")
 	}
 	if err := g.appCall(ctx, http.MethodDelete, "/grant", accessToken, http.StatusNoContent, nil); err != nil {
-		return fmt.Errorf("revogação: %w", err)
+		return fmt.Errorf("revocation: %w", err)
 	}
 	return nil
 }
@@ -274,10 +274,10 @@ func (g *GitHub) exchangeCode(ctx context.Context, code, verifier string) (strin
 	if out.Error != "" {
 		// `bad_verification_code`, `incorrect_client_credentials`...: só um código, sem
 		// dado do jogador.
-		return "", fmt.Errorf("GitHub recusou: %s", clip(out.Error))
+		return "", fmt.Errorf("GitHub rejected: %s", clip(out.Error))
 	}
 	if out.AccessToken == "" || !strings.EqualFold(out.TokenType, "bearer") {
-		return "", errors.New("resposta sem access token")
+		return "", errors.New("response without access token")
 	}
 	return out.AccessToken, nil
 }
@@ -290,7 +290,7 @@ func (g *GitHub) userID(ctx context.Context, token string) (string, error) {
 		return "", err
 	}
 	if user.ID <= 0 {
-		return "", errors.New("usuário sem id")
+		return "", errors.New("user without id")
 	}
 	return strconv.FormatInt(user.ID, 10), nil
 }

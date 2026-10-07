@@ -69,7 +69,7 @@ func main() {
 	if runMigrations {
 		migratePool := pool
 		if migrationUrl := os.Getenv("DATABASE_MIGRATION_URL"); migrationUrl != "" {
-			log.Println("Usando DATABASE_MIGRATION_URL para aplicar as migrações...")
+			log.Println("Using DATABASE_MIGRATION_URL to apply migrations...")
 			migrationConfig, err := pgxpool.ParseConfig(migrationUrl)
 			if err != nil {
 				log.Fatalf("Invalid DATABASE_MIGRATION_URL: %v\n", err)
@@ -84,17 +84,17 @@ func main() {
 
 		applied, err := schema.Migrate(context.Background(), migratePool)
 		if err != nil {
-			log.Fatalf("Migração falhou: %v\n", err)
+			log.Fatalf("Migration failed: %v\n", err)
 		}
 		for _, name := range applied {
-			log.Printf("migração aplicada: %s", name)
+			log.Printf("migration applied: %s", name)
 		}
 	} else {
 		log.Println("Bypassing auto-migrations (RUN_MIGRATIONS != true)")
 	}
 
 	if os.Getenv("MIGRATE_ONLY") == "true" {
-		log.Println("Migrações concluídas com sucesso. Encerrando (MIGRATE_ONLY=true).")
+		log.Println("Migrations completed successfully. Exiting (MIGRATE_ONLY=true).")
 		return
 	}
 
@@ -112,11 +112,11 @@ func main() {
 	}
 	waitlist, err := httpapi.WaitlistConfigFromEnv(os.Getenv)
 	if err != nil {
-		log.Fatalf("Lista de espera mal configurada: %v", err)
+		log.Fatalf("Waitlist misconfigured: %v", err)
 	}
 	mailer, err := email.NewMailerFromEnv(os.Getenv, os.Getenv("K_SERVICE") != "")
 	if err != nil {
-		log.Fatalf("SMTP mal configurado: %v", err)
+		log.Fatalf("SMTP misconfigured: %v", err)
 	}
 	deps := httpapi.Deps{
 		Repo:           repo,
@@ -136,26 +136,26 @@ func main() {
 	}
 
 	if os.Getenv("PURGE_ONLY") == "true" {
-		log.Println("Rodando rotina de expurgo (PURGE_ONLY=true)...")
+		log.Println("Running purge routine (PURGE_ONLY=true)...")
 		purged, err := repo.PurgeDeletedAccounts(context.Background())
 		if err != nil {
-			log.Fatalf("Erro no expurgo depois de %d contas: %v", purged, err)
+			log.Fatalf("Purge failed after %d accounts: %v", purged, err)
 		}
 		pending, err := repo.PurgePendingWaitlist(context.Background())
 		if err != nil {
-			log.Fatalf("Erro no expurgo da lista de espera: %v", err)
+			log.Fatalf("Waitlist purge failed: %v", err)
 		}
 		outbox, err := repo.PruneOutbox(context.Background())
 		if err != nil {
-			log.Fatalf("Erro no expurgo da caixa de saída: %v", err)
+			log.Fatalf("Outbox purge failed: %v", err)
 		}
-		log.Printf("Expurgo concluído: %d contas, %d inscrições pendentes e %d e-mails da caixa de saída apagados. Encerrando.", purged, pending, outbox)
+		log.Printf("Purge completed: %d accounts, %d pending signups and %d outbox e-mails deleted. Exiting.", purged, pending, outbox)
 		return
 	}
 
 	handler, err := httpapi.New(deps)
 	if err != nil {
-		log.Fatalf("Servidor HTTP não montado: %v", err)
+		log.Fatalf("HTTP server not built: %v", err)
 	}
 
 	port := os.Getenv("PORT")

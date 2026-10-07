@@ -125,7 +125,7 @@ type PurchaseGrant struct {
 // reenviava o JWS de uma compra já reembolsada.
 func (r *Repository) GrantEntitlement(ctx context.Context, g PurchaseGrant) (string, error) {
 	if g.Provider != ProviderAppleStoreKit && g.Provider != ProviderGooglePlay {
-		return "", fmt.Errorf("provedor de compra desconhecido: %q", g.Provider)
+		return "", fmt.Errorf("unknown purchase provider: %q", g.Provider)
 	}
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -246,7 +246,7 @@ func (r *Repository) RecentPlayPurchases(ctx context.Context, since time.Time) (
 		}
 		var ref PlayPurchaseRef
 		if err := json.Unmarshal([]byte(raw), &ref); err != nil || ref.ProductID == "" || ref.PurchaseToken == "" {
-			return nil, fmt.Errorf("registro de compra do Play ilegível: %v", err)
+			return nil, fmt.Errorf("unreadable Play purchase record: %v", err)
 		}
 		out = append(out, ref)
 	}

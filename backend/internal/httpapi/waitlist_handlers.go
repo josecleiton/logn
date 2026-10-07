@@ -45,11 +45,11 @@ func WaitlistConfigFromEnv(getenv func(string) string) (*WaitlistConfig, error) 
 	}
 	for name, v := range map[string]string{"WAITLIST_LANDING_ORIGIN": landing, "WAITLIST_API_ORIGIN": api} {
 		if !originPattern.MatchString(v) {
-			return nil, fmt.Errorf("%s tem de ser https://domínio, sem caminho: %q", name, v)
+			return nil, fmt.Errorf("%s must be https://domain, with no path: %q", name, v)
 		}
 	}
 	if regexp.MustCompile(`\.run\.app$`).MatchString(api) {
-		return nil, errors.New("WAITLIST_API_ORIGIN não pode ser a URL .run.app")
+		return nil, errors.New("WAITLIST_API_ORIGIN cannot be the .run.app URL")
 	}
 	return &WaitlistConfig{LandingOrigin: landing, APIOrigin: api}, nil
 }
@@ -156,7 +156,7 @@ func (s *Server) joinWaitlistHandler(limiter *rateLimiter) http.HandlerFunc {
 		}
 		lang := formLocale(r.PostForm.Get("locale"))
 		if !s.waitlist.fromLanding(r) {
-			log.Printf("lista de espera: pedido de fora da landing recusado: origin=%.64q sec-fetch-site=%.16q",
+			log.Printf("waitlist: request from outside the landing refused: origin=%.64q sec-fetch-site=%.16q",
 				r.Header.Get("Origin"), r.Header.Get("Sec-Fetch-Site"))
 			s.waitlistRedirect(w, r, lang, waitlistError)
 			return
@@ -168,7 +168,7 @@ func (s *Server) joinWaitlistHandler(limiter *rateLimiter) http.HandlerFunc {
 		// A isca preenchida é robô. Ele recebe o mesmo "confira seu e-mail" de todo
 		// mundo, para não aprender qual campo o denunciou, e nada é gravado.
 		if r.PostForm.Get("website") != "" {
-			log.Printf("lista de espera: isca preenchida, pedido ignorado")
+			log.Printf("waitlist: honeypot filled, request ignored")
 			s.waitlistRedirect(w, r, lang, waitlistThanks)
 			return
 		}
@@ -180,12 +180,12 @@ func (s *Server) joinWaitlistHandler(limiter *rateLimiter) http.HandlerFunc {
 
 		_, _, err = s.repo.JoinWaitlist(r.Context(), addr, lang)
 		if errors.Is(err, domain.ErrWaitlistBusy) {
-			log.Printf("lista de espera: teto de %d envios por hora atingido", domain.WaitlistHourlySendCap)
+			log.Printf("waitlist: cap of %d sends per hour reached", domain.WaitlistHourlySendCap)
 			s.waitlistRedirect(w, r, lang, waitlistError)
 			return
 		}
 		if err != nil {
-			log.Printf("lista de espera: inscrição não gravada: erro=%v", err)
+			log.Printf("waitlist: signup not recorded: error=%v", err)
 			s.waitlistRedirect(w, r, lang, waitlistError)
 			return
 		}
@@ -227,7 +227,7 @@ func (s *Server) waitlistPageHandler(limiter *rateLimiter, action string) http.H
 		entry, err := s.repo.GetWaitlistEntry(r.Context(), id)
 		if err != nil {
 			if !errors.Is(err, domain.ErrWaitlistNotFound) {
-				log.Printf("lista de espera: inscrição não lida: id=%s erro=%v", id, err)
+				log.Printf("waitlist: signup not read: id=%s error=%v", id, err)
 			}
 			s.waitlistRedirect(w, r, locale.Default, waitlistError)
 			return
@@ -282,11 +282,11 @@ func (s *Server) waitlistActionHandler(limiter *rateLimiter, action string) http
 			return
 		}
 		if err != nil {
-			log.Printf("lista de espera: %s não gravado: id=%s erro=%v", action, id, err)
+			log.Printf("waitlist: %s not recorded: id=%s error=%v", action, id, err)
 			s.waitlistRedirect(w, r, locale.Default, waitlistError)
 			return
 		}
-		log.Printf("lista de espera: %s ok: id=%s", action, id)
+		log.Printf("waitlist: %s ok: id=%s", action, id)
 		s.waitlistRedirect(w, r, lang, state)
 	}
 }

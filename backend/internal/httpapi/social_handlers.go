@@ -45,7 +45,7 @@ func (s *Server) verifySocial(ctx context.Context, w http.ResponseWriter, provid
 	if err != nil {
 		// O motivo fica no log, sem o token. Para o app é um código só: dizer qual
 		// checagem falhou ensina a montar o próximo token.
-		log.Printf("token social recusado: provider=%s erro=%v", provider, err)
+		log.Printf("social token rejected: provider=%s error=%v", provider, err)
 		writeError(w, http.StatusUnauthorized, codeSocialTokenInvalid)
 		return socialauth.Identity{}, false
 	}
@@ -94,7 +94,7 @@ func (s *Server) socialLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	userID, err := s.repo.GetUserIDByIdentity(ctx, req.Provider, id.Subject)
 	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
-		log.Printf("identidade não lida: provider=%s erro=%v", req.Provider, err)
+		log.Printf("identity not read: provider=%s error=%v", req.Provider, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
@@ -119,35 +119,35 @@ func (s *Server) socialLoginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err != nil {
-			log.Printf("conta não lida no login social: erro=%v", err)
+			log.Printf("account not read on social login: error=%v", err)
 			writeError(w, http.StatusInternalServerError, codeInternal)
 			return
 		}
 		userID, err = s.repo.LinkIdentity(ctx, req.Provider, id.Subject, existing.ID)
 		if err != nil {
-			log.Printf("identidade não ligada: user=%s erro=%v", existing.ID, err)
+			log.Printf("identity not linked: user=%s error=%v", existing.ID, err)
 			writeError(w, http.StatusInternalServerError, codeInternal)
 			return
 		}
-		log.Printf("identidade ligada: provider=%s user=%s", req.Provider, userID)
+		log.Printf("identity linked: provider=%s user=%s", req.Provider, userID)
 	}
 
 	// Entrar dentro da carência cancela a exclusão, como no login por senha.
 	restored, err := s.repo.CancelAccountDeletion(ctx, userID)
 	if err != nil {
-		log.Printf("exclusão não cancelada no login social: user=%s erro=%v", userID, err)
+		log.Printf("deletion not canceled on social login: user=%s error=%v", userID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 	if restored {
-		log.Printf("exclusão cancelada pelo login social: user=%s", userID)
+		log.Printf("deletion canceled by social login: user=%s", userID)
 	}
 
 	// O e-mail da sessão é o da conta, não o do token: o do provedor pode ter mudado
 	// depois do vínculo, e a corrida no vínculo pode ter levado a outra conta.
 	account, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil {
-		log.Printf("conta não lida no login social: user=%s erro=%v", userID, err)
+		log.Printf("account not read on social login: user=%s error=%v", userID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
@@ -217,11 +217,11 @@ func (s *Server) githubExchangeHandler(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case errors.Is(err, socialauth.ErrTokenNotDeleted):
 		// O bilhete vale; só o token ficou vivo no GitHub. O login segue.
-		log.Printf("troca do GitHub: %v", err)
+		log.Printf("GitHub exchange: %v", err)
 	case err != nil:
 		// O motivo fica no log, sem código nem token. Para o app é o mesmo código do
 		// token recusado.
-		log.Printf("troca do GitHub recusada: erro=%v", err)
+		log.Printf("GitHub exchange rejected: error=%v", err)
 		writeError(w, http.StatusUnauthorized, codeSocialTokenInvalid)
 		return
 	}
@@ -255,7 +255,7 @@ func (s *Server) socialSignup(w http.ResponseWriter, r *http.Request, req Social
 	}
 	current, err := s.currentLegalVersions(ctx)
 	if err != nil {
-		log.Printf("cadastro social sem versões legais: erro=%v", err)
+		log.Printf("social signup without legal versions: error=%v", err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
@@ -279,12 +279,12 @@ func (s *Server) socialSignup(w http.ResponseWriter, r *http.Request, req Social
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		// Outro pedido criou a conta ou ligou a identidade no meio. O app tenta de
 		// novo e cai no caminho da conta existente.
-		log.Printf("cadastro social em corrida: provider=%s", req.Provider)
+		log.Printf("social signup race: provider=%s", req.Provider)
 		writeError(w, http.StatusConflict, codeEmailTaken)
 		return
 	}
 	if err != nil {
-		log.Printf("cadastro social não criado: provider=%s erro=%v", req.Provider, err)
+		log.Printf("social signup not created: provider=%s error=%v", req.Provider, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}

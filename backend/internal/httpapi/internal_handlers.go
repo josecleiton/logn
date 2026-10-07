@@ -51,7 +51,7 @@ func (s *Server) internalCaller(w http.ResponseWriter, r *http.Request, accountE
 	if !cloudauth.SameAccount(caller.Email, account) {
 		// Token válido do Google, de outra conta: é o caso que a audiência sozinha deixava
 		// passar. O e-mail de conta de serviço não é dado pessoal.
-		log.Printf("rota interna recusada: path=%s conta=%s", r.URL.Path, caller.Email)
+		log.Printf("internal route refused: path=%s account=%s", r.URL.Path, caller.Email)
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return "", false
 	}
@@ -84,38 +84,38 @@ func (s *Server) purgeHandler(w http.ResponseWriter, r *http.Request) {
 
 	purged, err := s.repo.PurgeDeletedAccounts(r.Context())
 	if err != nil {
-		log.Printf("expurgo interrompido depois de %d contas: erro=%v", purged, err)
+		log.Printf("purge interrupted after %d accounts: error=%v", purged, err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("expurgo ok: %d contas apagadas", purged)
+	log.Printf("purge ok: %d accounts deleted", purged)
 
 	// As inscrições pendentes da lista de espera vencem no mesmo passo diário (ADR 0022).
 	pending, err := s.repo.PurgePendingWaitlist(r.Context())
 	if err != nil {
-		log.Printf("expurgo da lista de espera falhou: erro=%v", err)
+		log.Printf("waitlist purge failed: error=%v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("expurgo ok: %d inscrições pendentes apagadas", pending)
+	log.Printf("purge ok: %d pending signups deleted", pending)
 
 	// As contagens de tentativa de login vencidas saem no mesmo passo.
 	attempts, err := s.repo.PurgeLoginAttempts(r.Context())
 	if err != nil {
-		log.Printf("expurgo das tentativas de login falhou: erro=%v", err)
+		log.Printf("login attempts purge failed: error=%v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("expurgo ok: %d contagens de login apagadas", attempts)
+	log.Printf("purge ok: %d login counters deleted", attempts)
 
 	// A caixa de saída guarda uma semana, para depuração (ADR 0026).
 	outbox, err := s.repo.PruneOutbox(r.Context())
 	if err != nil {
-		log.Printf("expurgo da caixa de saída falhou: erro=%v", err)
+		log.Printf("outbox purge failed: error=%v", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("expurgo ok: %d e-mails da caixa de saída apagados", outbox)
+	log.Printf("purge ok: %d outbox e-mails deleted", outbox)
 
 	// Reembolsos e estornos do Google Play, no mesmo passo diário (ADR 0022). Eram um job
 	// do Scheduler à parte, com a mesma conta; juntos, sobra um job do free tier. Erro da
@@ -125,11 +125,11 @@ func (s *Server) purgeHandler(w http.ResponseWriter, r *http.Request) {
 	if s.play != nil {
 		voided, acked, err = s.revokeVoidedPlay(r.Context())
 		if err != nil {
-			log.Printf("rotina do Google Play falhou: erro=%v", err)
+			log.Printf("Google Play routine failed: error=%v", err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
-		log.Printf("rotina do Google Play ok: %d anuladas na janela, %d reconhecidas", voided, acked)
+		log.Printf("Google Play routine ok: %d voided in the window, %d acknowledged", voided, acked)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -154,7 +154,7 @@ const playVoidedWindow = 29 * 24 * time.Hour
 func (s *Server) revokeVoidedPlay(ctx context.Context) (int, int, error) {
 	voided, err := s.play.Voided(ctx, time.Now().Add(-playVoidedWindow))
 	if err != nil {
-		return 0, 0, fmt.Errorf("compras anuladas não lidas: %w", err)
+		return 0, 0, fmt.Errorf("voided purchases not read: %w", err)
 	}
 	for _, v := range voided {
 		if v.PurchaseToken == "" {
@@ -170,7 +170,7 @@ func (s *Server) revokeVoidedPlay(ctx context.Context) (int, int, error) {
 		}
 		if err := s.repo.RevokeTransaction(ctx, domain.ProviderGooglePlay,
 			googleplay.TransactionKey(v.PurchaseToken), reason, at); err != nil {
-			return len(voided), 0, fmt.Errorf("compra anulada não revogada: %w", err)
+			return len(voided), 0, fmt.Errorf("voided purchase not revoked: %w", err)
 		}
 	}
 
@@ -178,7 +178,7 @@ func (s *Server) revokeVoidedPlay(ctx context.Context) (int, int, error) {
 	// estorna em 3 dias. O job reconhece o que ficou para trás nesse prazo.
 	acked, err := s.acknowledgePending(ctx)
 	if err != nil {
-		return len(voided), acked, fmt.Errorf("compras sem reconhecimento: %w", err)
+		return len(voided), acked, fmt.Errorf("unacknowledged purchases: %w", err)
 	}
 	return len(voided), acked, nil
 }
@@ -277,7 +277,7 @@ func (s *Server) manualLicenseAction(w http.ResponseWriter, r *http.Request, rev
 	}
 	// Sem como avisar, nada muda: a seção 10.5 promete o e-mail logo depois.
 	if s.licenseNotifier == nil {
-		log.Printf("licença manual recusada: e-mail não configurado")
+		log.Printf("manual license action refused: e-mail not configured")
 		writeError(w, http.StatusServiceUnavailable, codeInternal)
 		return
 	}
@@ -322,7 +322,7 @@ func (s *Server) manualLicenseAction(w http.ResponseWriter, r *http.Request, rev
 		writeError(w, http.StatusConflict, codeLicenseStoreRevoked)
 		return
 	case err != nil:
-		log.Printf("licença manual não gravada: user=%s track=%s revogar=%t erro=%v", req.UserID, req.TrackID, revoke, err)
+		log.Printf("manual license action not recorded: user=%s track=%s revoke=%t error=%v", req.UserID, req.TrackID, revoke, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
@@ -337,9 +337,9 @@ func (s *Server) manualLicenseAction(w http.ResponseWriter, r *http.Request, rev
 	defer cancel()
 	if err := s.licenseNotifier.SendLicenseNotice(sendCtx, notice.Email, kind, notice.Locale, notice.TrackName, notice.Reason); err != nil {
 		emailed = false
-		log.Printf("aviso de licença não enviado: user=%s track=%s erro=%s", req.UserID, req.TrackID, redactEmails(err))
+		log.Printf("license notice not sent: user=%s track=%s error=%s", req.UserID, req.TrackID, redactEmails(err))
 	}
-	log.Printf("licença manual: user=%s track=%s revogar=%t motivo=%s resultado=%s por=%s aviso=%t",
+	log.Printf("manual license action: user=%s track=%s revoke=%t reason=%s outcome=%s by=%s notified=%t",
 		req.UserID, req.TrackID, revoke, notice.Reason, notice.Outcome, actor, emailed)
 
 	status := "appeal_" + notice.Outcome

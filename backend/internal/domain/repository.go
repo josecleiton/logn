@@ -219,12 +219,12 @@ func (r *Repository) queryChallenges(ctx context.Context, locale, query string, 
 		}
 		if len(labels) > 0 {
 			if err := json.Unmarshal(labels, &text.OptionLabels); err != nil {
-				return nil, fmt.Errorf("rótulos de %s/%s: %w", ch.ID, locale, err)
+				return nil, fmt.Errorf("labels of %s/%s: %w", ch.ID, locale, err)
 			}
 		}
 		payload, err := AssemblePayload(ch.Payload, text)
 		if err != nil {
-			return nil, fmt.Errorf("desafio %s: %w", ch.ID, err)
+			return nil, fmt.Errorf("challenge %s: %w", ch.ID, err)
 		}
 		ch.Payload = payload
 		challenges = append(challenges, ch)
@@ -595,7 +595,7 @@ func createUserTx(ctx context.Context, tx pgx.Tx, email, passwordHash string, ag
 			return "", err
 		}
 		if tag.RowsAffected() != 1 {
-			return "", fmt.Errorf("aceite de documento inexistente: %s v%d %s", acc.Kind, acc.Version, acc.Locale)
+			return "", fmt.Errorf("acceptance of a nonexistent document: %s v%d %s", acc.Kind, acc.Version, acc.Locale)
 		}
 	}
 	return id, nil
@@ -634,7 +634,7 @@ func insertUserWithAnonNumber(ctx context.Context, tx pgx.Tx, email, passwordHas
 		}
 		return id, nil
 	}
-	return "", errors.New("sem número livre para o placar depois de todos os sorteios")
+	return "", errors.New("no free leaderboard number after all draws")
 }
 
 // ErrUserNotFound sinaliza e-mail sem conta.
@@ -792,7 +792,7 @@ func (r *Repository) PurgeDeletedAccounts(ctx context.Context) (int, error) {
 	for _, uid := range userIDs {
 		ok, err := r.purgeAccount(ctx, uid)
 		if err != nil {
-			return purged, fmt.Errorf("expurgo de %s: %w", uid, err)
+			return purged, fmt.Errorf("purging %s: %w", uid, err)
 		}
 		if ok {
 			purged++

@@ -33,12 +33,12 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) ([]string, error) {
 			applied_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 		)`)
 	if err != nil {
-		return nil, fmt.Errorf("criando schema_migrations: %w", err)
+		return nil, fmt.Errorf("creating schema_migrations: %w", err)
 	}
 
 	entries, err := fs.ReadDir(migrationFiles, "migrations")
 	if err != nil {
-		return nil, fmt.Errorf("lendo migrations: %w", err)
+		return nil, fmt.Errorf("reading migrations: %w", err)
 	}
 
 	names := make([]string, 0, len(entries))
@@ -53,20 +53,20 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) ([]string, error) {
 	// SELECT EXISTS por arquivo (21 round trips para conferir que nada mudou).
 	rows, err := pool.Query(ctx, `SELECT name FROM schema_migrations`)
 	if err != nil {
-		return nil, fmt.Errorf("lendo schema_migrations: %w", err)
+		return nil, fmt.Errorf("reading schema_migrations: %w", err)
 	}
 	alreadyApplied := make(map[string]bool, len(names))
 	for rows.Next() {
 		var n string
 		if err := rows.Scan(&n); err != nil {
 			rows.Close()
-			return nil, fmt.Errorf("lendo nome de migração: %w", err)
+			return nil, fmt.Errorf("reading migration name: %w", err)
 		}
 		alreadyApplied[n] = true
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterando schema_migrations: %w", err)
+		return nil, fmt.Errorf("iterating schema_migrations: %w", err)
 	}
 
 	var applied []string
@@ -77,25 +77,25 @@ func Migrate(ctx context.Context, pool *pgxpool.Pool) ([]string, error) {
 
 		body, err := migrationFiles.ReadFile("migrations/" + name)
 		if err != nil {
-			return applied, fmt.Errorf("lendo %s: %w", name, err)
+			return applied, fmt.Errorf("reading %s: %w", name, err)
 		}
 
 		tx, err := pool.Begin(ctx)
 		if err != nil {
-			return applied, fmt.Errorf("abrindo transação para %s: %w", name, err)
+			return applied, fmt.Errorf("opening transaction for %s: %w", name, err)
 		}
 
 		if _, err := tx.Exec(ctx, string(body)); err != nil {
 			_ = tx.Rollback(ctx)
-			return applied, fmt.Errorf("aplicando %s: %w", name, err)
+			return applied, fmt.Errorf("applying %s: %w", name, err)
 		}
 		if _, err := tx.Exec(ctx,
 			`INSERT INTO schema_migrations (name) VALUES ($1)`, name); err != nil {
 			_ = tx.Rollback(ctx)
-			return applied, fmt.Errorf("registrando %s: %w", name, err)
+			return applied, fmt.Errorf("recording %s: %w", name, err)
 		}
 		if err := tx.Commit(ctx); err != nil {
-			return applied, fmt.Errorf("fechando %s: %w", name, err)
+			return applied, fmt.Errorf("committing %s: %w", name, err)
 		}
 
 		applied = append(applied, name)

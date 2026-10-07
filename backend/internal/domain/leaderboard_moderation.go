@@ -21,8 +21,8 @@ const (
 )
 
 var (
-	ErrInvalidLeaderboardAction = errors.New("ação do placar inválida")
-	ErrLeaderboardNoChange      = errors.New("a ação não muda nada nesta conta")
+	ErrInvalidLeaderboardAction = errors.New("invalid leaderboard action")
+	ErrLeaderboardNoChange      = errors.New("the action changes nothing on this account")
 )
 
 // LeaderboardTarget é como quem opera acha a conta: exatamente um dos campos. A objeção

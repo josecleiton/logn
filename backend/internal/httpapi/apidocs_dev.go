@@ -45,7 +45,7 @@ const apiDocsPage = `<!doctype html>
 
 // errDevBuildInProduction barra o binário de desenvolvimento no Cloud Run: a
 // documentação nunca pode subir junto com o serviço de verdade.
-var errDevBuildInProduction = errors.New("binário de desenvolvimento (-tags dev) não sobe no Cloud Run")
+var errDevBuildInProduction = errors.New("development binary (-tags dev) does not run on Cloud Run")
 
 func registerAPIDocs(mux *http.ServeMux) error {
 	if os.Getenv("K_SERVICE") != "" {

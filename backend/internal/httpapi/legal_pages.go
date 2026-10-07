@@ -89,7 +89,7 @@ func (s *Server) currentLegalVersionsHandler(w http.ResponseWriter, r *http.Requ
 	}
 	versions, err := s.currentLegalVersions(r.Context())
 	if err != nil {
-		log.Printf("versões legais não lidas: erro=%v", err)
+		log.Printf("legal versions not read: error=%v", err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}

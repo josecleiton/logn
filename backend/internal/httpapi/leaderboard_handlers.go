@@ -89,12 +89,12 @@ func (s *Server) leaderboardActionHandler(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusConflict, codeLeaderboardNoChange)
 		return
 	case err != nil:
-		log.Printf("ação do placar não gravada: acao=%q erro=%v", clipForLog(req.Action), err)
+		log.Printf("leaderboard action not recorded: action=%q error=%v", clipForLog(req.Action), err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 	// O e-mail e o motivo não vão para o log; o motivo fica em leaderboard_actions.
-	log.Printf("placar moderado: user=%s acao=%s por=%s", userID, req.Action, actor)
+	log.Printf("leaderboard moderated: user=%s action=%s by=%s", userID, req.Action, actor)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "action": req.Action})
 }
@@ -150,7 +150,7 @@ func (s *Server) nicknameHandler(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, domain.ErrNicknameLocked):
 		writeError(w, http.StatusConflict, codeNicknameLocked)
 	case err != nil:
-		log.Printf("apelido não gravado: user=%s erro=%v", userID, err)
+		log.Printf("nickname not recorded: user=%s error=%v", userID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 	default:
 		w.Header().Set("Content-Type", "application/json")
@@ -182,7 +182,7 @@ func (s *Server) leaderboardHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		log.Printf("placar não lido: user=%s erro=%v", userID, err)
+		log.Printf("leaderboard not read: user=%s error=%v", userID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}

@@ -12,10 +12,10 @@ import (
 // O apelido do placar (docs/specs/logn_placar_spec.md, seção 5.3). É escolha única: a
 // conta escolhe uma vez e não troca; só a moderação o tira, e aí a chance acaba.
 var (
-	ErrNicknameInvalid  = errors.New("nickname: formato inválido")
-	ErrNicknameReserved = errors.New("nickname: reservado")
-	ErrNicknameTaken    = errors.New("nickname: em uso")
-	ErrNicknameLocked   = errors.New("nickname: a conta já escolheu ou perdeu a chance")
+	ErrNicknameInvalid  = errors.New("nickname: invalid format")
+	ErrNicknameReserved = errors.New("nickname: reserved")
+	ErrNicknameTaken    = errors.New("nickname: taken")
+	ErrNicknameLocked   = errors.New("nickname: the account already chose one or lost the chance")
 )
 
 var nicknamePattern = regexp.MustCompile(`^[a-z0-9_]{3,20}$`)

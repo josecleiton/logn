@@ -50,27 +50,27 @@ func Validate(body string) ([]string, error) {
 		switch n.Type {
 		case html.ElementNode:
 			if !allowedTags[n.DataAtom] {
-				return fmt.Errorf("tag não permitida: <%s>", n.Data)
+				return fmt.Errorf("tag not allowed: <%s>", n.Data)
 			}
 			for _, a := range n.Attr {
 				if !allowedAttrs[a.Key][n.DataAtom] {
-					return fmt.Errorf("atributo não permitido: %s em <%s>", a.Key, n.Data)
+					return fmt.Errorf("attribute not allowed: %s on <%s>", a.Key, n.Data)
 				}
 				if a.Key == "href" && !validHref(a.Val) {
-					return fmt.Errorf("link não permitido: %q", a.Val)
+					return fmt.Errorf("link not allowed: %q", a.Val)
 				}
 				if a.Key == "id" {
 					if !sectionIDPattern.MatchString(a.Val) {
-						return fmt.Errorf("id de seção fora do padrão: %q", a.Val)
+						return fmt.Errorf("section id out of pattern: %q", a.Val)
 					}
 					if slices.Contains(ids, a.Val) {
-						return fmt.Errorf("id de seção repetido: %q", a.Val)
+						return fmt.Errorf("repeated section id: %q", a.Val)
 					}
 					ids = append(ids, a.Val)
 				}
 			}
 		case html.CommentNode, html.DoctypeNode:
-			return fmt.Errorf("comentário ou doctype no fragmento")
+			return fmt.Errorf("comment or doctype in the fragment")
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			if err := walk(c); err != nil {
@@ -133,15 +133,15 @@ func ValidateSet(dir string, release bool) []error {
 				continue
 			}
 			if lang := articleLang(body); lang != locale {
-				errs = append(errs, fmt.Errorf("%s: <article lang=%q>, esperado %q", name, lang, locale))
+				errs = append(errs, fmt.Errorf("%s: <article lang=%q>, expected %q", name, lang, locale))
 			}
 			if release && (ContainsPlaceholder(body) || strings.Contains(body, "<mark")) {
-				errs = append(errs, fmt.Errorf("%s: ainda tem marcador de rascunho", name))
+				errs = append(errs, fmt.Errorf("%s: still has a draft marker", name))
 			}
 			if reference == nil {
 				reference = ids
 			} else if !slices.Equal(sorted(reference), sorted(ids)) {
-				errs = append(errs, fmt.Errorf("%s: ids de seção diferentes de %s.%s.html", name, kind, Locales[0]))
+				errs = append(errs, fmt.Errorf("%s: section ids differ from %s.%s.html", name, kind, Locales[0]))
 			}
 		}
 	}
@@ -159,7 +159,7 @@ func parseFragment(body string) ([]*html.Node, error) {
 	ctx := &html.Node{Type: html.ElementNode, Data: "body", DataAtom: atom.Body}
 	nodes, err := html.ParseFragment(strings.NewReader(body), ctx)
 	if err != nil {
-		return nil, fmt.Errorf("fragmento ilegível: %w", err)
+		return nil, fmt.Errorf("unreadable fragment: %w", err)
 	}
 	return nodes, nil
 }

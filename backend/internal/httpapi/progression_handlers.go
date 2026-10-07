@@ -37,13 +37,13 @@ func (s *Server) getNodesHandler(w http.ResponseWriter, r *http.Request) {
 	lang := locale.Negotiate(r)
 	nodes, err := s.repo.GetSkillNodes(r.Context(), lang, userID)
 	if err != nil {
-		log.Printf("nós não lidos: locale=%s erro=%v", lang, err)
+		log.Printf("nodes not read: locale=%s error=%v", lang, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
 	origins, err := s.repo.GetOriginCards(r.Context(), lang)
 	if err != nil {
-		log.Printf("origens não lidas: locale=%s erro=%v", lang, err)
+		log.Printf("origins not read: locale=%s error=%v", lang, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
@@ -71,7 +71,7 @@ func (s *Server) getUserProgressHandler(w http.ResponseWriter, r *http.Request) 
 
 	stats, err := s.repo.GetUserStats(r.Context(), userID)
 	if err != nil {
-		log.Printf("progresso não lido: user=%s erro=%v", userID, err)
+		log.Printf("progress not read: user=%s error=%v", userID, err)
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
 	}
