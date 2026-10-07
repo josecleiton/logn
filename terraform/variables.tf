@@ -80,10 +80,12 @@ variable "smtp_host" {
   default     = "smtp.gmail.com"
 }
 
+# 465 é TLS implícito. Em qualquer outra porta o gomail faz STARTTLS só se o servidor
+# oferecer, e quem estiver no meio tira a oferta e lê o OTP em claro.
 variable "smtp_port" {
   description = "Porta do servidor SMTP."
   type        = string
-  default     = "587"
+  default     = "465"
 }
 
 variable "github_client_id" {
