@@ -1,6 +1,7 @@
 package email
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/josecleiton/logn/backend/internal/locale"
@@ -213,10 +214,10 @@ func NewLicenseData(kind LicenseNoticeKind, lang, trackName, reason string) (Lic
 
 // SendLicenseNotice manda o aviso de revogação manual ou de resposta à contestação
 // (ADR 0021).
-func (m *Mailer) SendLicenseNotice(toEmail string, kind LicenseNoticeKind, lang, trackName, reason string) error {
+func (m *Mailer) SendLicenseNotice(ctx context.Context, toEmail string, kind LicenseNoticeKind, lang, trackName, reason string) error {
 	data, err := NewLicenseData(kind, lang, trackName, reason)
 	if err != nil {
 		return err
 	}
-	return m.send(toEmail, data.T.Subject, "license.html", data)
+	return m.send(ctx, toEmail, data.T.Subject, "license.html", data)
 }

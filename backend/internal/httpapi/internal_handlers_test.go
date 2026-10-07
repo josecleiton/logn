@@ -101,7 +101,7 @@ type sentNotice struct {
 	kind                    email.LicenseNoticeKind
 }
 
-func (n *fakeNotifier) SendLicenseNotice(to string, kind email.LicenseNoticeKind, lang, track, reason string) error {
+func (n *fakeNotifier) SendLicenseNotice(_ context.Context, to string, kind email.LicenseNoticeKind, lang, track, reason string) error {
 	if n.fail {
 		return errors.New("smtp fora")
 	}

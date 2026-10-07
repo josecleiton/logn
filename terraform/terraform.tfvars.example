@@ -19,7 +19,7 @@ github_deploy_repository_id = "123456789" # gh api repos/seu-usuario/seu-repo-de
 smtp_user = "seu-email-de-envio@example.com"
 smtp_from = "LogN App <seu-email-de-envio@example.com>"
 smtp_host = "smtp.example.com"
-smtp_port = "465" # 465 = TLS implícito; 587 = STARTTLS (o gomail escolhe pela porta)
+smtp_port = "465" # 465 = TLS implícito; outra = STARTTLS obrigatório (ADR 0027)
 # A senha SMTP não passa pelo Terraform: vai direto para o secret logn-smtp-pass, com
 #   printf '%s' "a-senha" | gcloud secrets versions add logn-smtp-pass --data-file=-
 

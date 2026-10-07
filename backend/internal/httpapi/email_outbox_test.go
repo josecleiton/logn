@@ -38,13 +38,18 @@ type fakeOutboxMailer struct {
 	otps     []sentOTP
 	welcomes []string
 	fail     bool
-	// Não nulo, o envio de código espera ele fechar: é o SMTP que segura a conexão.
+	// Não nulo, o envio de código espera ele fechar ou o ctx acabar: é o SMTP que segura
+	// a conexão, e o Mailer, que desiste com o ctx.
 	hang chan struct{}
 }
 
-func (m *fakeOutboxMailer) SendOTP(to, purpose, code, lang string) error {
+func (m *fakeOutboxMailer) SendOTP(ctx context.Context, to, purpose, code, lang string) error {
 	if m.hang != nil {
-		<-m.hang
+		select {
+		case <-m.hang:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -55,7 +60,7 @@ func (m *fakeOutboxMailer) SendOTP(to, purpose, code, lang string) error {
 	return nil
 }
 
-func (m *fakeOutboxMailer) SendWelcome(to, lang string) error {
+func (m *fakeOutboxMailer) SendWelcome(_ context.Context, to, lang string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.fail {
@@ -320,9 +325,9 @@ func TestEmailSendHandlerGivesUpOnAHangingSMTP(t *testing.T) {
 	f := newOutboxFixture(t, &fakeQueue{})
 	f.requestOTP(t)
 	id := f.outboxID(t)
-	saved := outboxSendTimeout
-	outboxSendTimeout = 50 * time.Millisecond
-	t.Cleanup(func() { outboxSendTimeout = saved })
+	saved := smtpSendTimeout
+	smtpSendTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { smtpSendTimeout = saved })
 	f.mailer.hang = make(chan struct{})
 	t.Cleanup(func() { close(f.mailer.hang) })
 

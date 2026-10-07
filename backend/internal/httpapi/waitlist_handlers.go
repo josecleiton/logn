@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/josecleiton/logn/backend/internal/domain"
+	"github.com/josecleiton/logn/backend/internal/infrastructure/email"
 	"github.com/josecleiton/logn/backend/internal/locale"
 )
 
@@ -54,7 +56,7 @@ func WaitlistConfigFromEnv(getenv func(string) string) (*WaitlistConfig, error) 
 
 // WaitlistMailer manda o e-mail de confirmação. É o Mailer; os testes trocam.
 type WaitlistMailer interface {
-	SendWaitlistConfirmation(toEmail, lang, confirmURL, leaveURL string) error
+	SendWaitlistConfirmation(ctx context.Context, toEmail, lang, confirmURL, leaveURL string) error
 }
 
 // O teto do corpo do formulário: e-mail, língua e a isca cabem em poucas centenas de bytes.
@@ -103,14 +105,12 @@ func (c *WaitlistConfig) fromLanding(r *http.Request) bool {
 	return false
 }
 
-// emailLike acha endereços dentro de uma mensagem de erro.
-var emailLike = regexp.MustCompile(`[^\s<>"'(),;:]+@[^\s<>"'(),;:]+`)
-
 // redactEmails é o erro pronto para o log, sem endereço de e-mail. O SMTP costuma
 // repetir o destinatário na recusa (`550 <x@y>: Recipient address rejected`), e o log
-// não guarda e-mail (política, seção 9).
+// não guarda e-mail (política, seção 9). O Mailer já devolve o erro limpo; isto cobre o
+// que vem de outro lugar.
 func redactEmails(err error) string {
-	return emailLike.ReplaceAllString(err.Error(), "<e-mail>")
+	return email.RedactAddresses(err.Error())
 }
 
 // formLocale é a língua do campo `locale`, de lista fechada; fora dela, a padrão.

@@ -1,6 +1,7 @@
 # ADR 0002: Envio de E-mails com Suporte a Imagens Inline (CID) e Gomail
 
-**Status:** Aceito
+**Status:** Substituída pela ADR 0027. As imagens por CID saíram dos templates antes
+disso, e gomail deu lugar a go-mail.
 **Data:** 21 de Setembro de 2026
 
 ## Contexto

@@ -35,7 +35,7 @@ func newFakeWaitlistMailer() *fakeWaitlistMailer {
 	return &fakeWaitlistMailer{sent: make(chan waitlistMail, 16)}
 }
 
-func (m *fakeWaitlistMailer) SendWaitlistConfirmation(to, lang, confirm, leave string) error {
+func (m *fakeWaitlistMailer) SendWaitlistConfirmation(_ context.Context, to, lang, confirm, leave string) error {
 	m.sent <- waitlistMail{to, lang, confirm, leave}
 	m.mu.Lock()
 	defer m.mu.Unlock()

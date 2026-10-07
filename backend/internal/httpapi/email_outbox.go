@@ -31,13 +31,13 @@ const OutboxMaxAttempts = 5
 // Passou disso, a varredura leva.
 const outboxDispatchTimeout = 5 * time.Second
 
-// outboxSendTimeout é quanto o envio pelo SMTP pode levar. O gomail só tem prazo para
-// conectar, não para ler nem escrever, e o envio roda com a linha travada e uma conexão
-// do pool presa: um SMTP que segura a conexão prendia as duas para sempre, e com uma
-// instância só o pool acabava para a API inteira. Passado o prazo, a entrega conta como
-// falha e a transação termina; o envio que ficou para trás ainda pode chegar, e aí o
-// e-mail sai duas vezes. É variável só para o teste.
-var outboxSendTimeout = 20 * time.Second
+// smtpSendTimeout é quanto um envio pelo SMTP pode levar, na caixa de saída e no aviso
+// de licença. O envio da caixa de saída roda com a linha travada e uma conexão do pool
+// presa: um SMTP que segurasse a conexão prendia as duas, e com uma instância só o pool
+// acabava para a API inteira. Passado o prazo, o Mailer fecha a conexão (ADR 0027) e a
+// entrega conta como falha. Se o servidor já tinha aceitado a mensagem quando o prazo
+// acabou, o e-mail sai duas vezes. É variável só para o teste.
+var smtpSendTimeout = 20 * time.Second
 
 // outboxSendBodyLimit é o teto do corpo da entrega: `{"id": "<uuid>"}`.
 const outboxSendBodyLimit = 1 << 10
@@ -50,8 +50,8 @@ type OutboxQueue interface {
 
 // OutboxMailer manda o e-mail de código e as boas-vindas. É o Mailer; os testes trocam.
 type OutboxMailer interface {
-	SendOTP(toEmail, purpose, code, lang string) error
-	SendWelcome(toEmail, lang string) error
+	SendOTP(ctx context.Context, toEmail, purpose, code, lang string) error
+	SendWelcome(ctx context.Context, toEmail, lang string) error
 }
 
 var outboxIDPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
@@ -103,19 +103,16 @@ func (s *Server) dispatchOutbox(ctx context.Context, id string) bool {
 // endereço.
 func (s *Server) deliverOutbox(ctx context.Context, id string, final bool) (domain.OutboxOutcome, error) {
 	outcome, err := s.repo.DeliverOutbox(ctx, id, final, func(m domain.OutboxMessage) error {
-		done := make(chan error, 1)
-		go func() { done <- s.sendOutbox(m) }()
-		timer := time.NewTimer(outboxSendTimeout)
-		defer timer.Stop()
-		select {
-		case err := <-done:
-			if err != nil {
-				return errors.New(redactEmails(err))
-			}
+		sendCtx, cancel := context.WithTimeout(ctx, smtpSendTimeout)
+		defer cancel()
+		err := s.sendOutbox(sendCtx, m)
+		switch {
+		case err == nil:
 			return nil
-		case <-timer.C:
+		case errors.Is(err, context.DeadlineExceeded):
 			return errors.New("smtp sem resposta no prazo")
 		}
+		return errors.New(redactEmails(err))
 	})
 	switch {
 	case err != nil:
@@ -127,25 +124,25 @@ func (s *Server) deliverOutbox(ctx context.Context, id string, final bool) (doma
 	return outcome, err
 }
 
-func (s *Server) sendOutbox(m domain.OutboxMessage) error {
+func (s *Server) sendOutbox(ctx context.Context, m domain.OutboxMessage) error {
 	switch m.Kind {
 	case domain.OutboxOTP:
 		if s.outboxMailer == nil {
 			return errors.New("mailer desligado")
 		}
-		return s.outboxMailer.SendOTP(m.Email, m.Purpose, m.Code, m.Locale)
+		return s.outboxMailer.SendOTP(ctx, m.Email, m.Purpose, m.Code, m.Locale)
 	case domain.OutboxWelcome:
 		if s.outboxMailer == nil {
 			return errors.New("mailer desligado")
 		}
-		return s.outboxMailer.SendWelcome(m.Email, m.Locale)
+		return s.outboxMailer.SendWelcome(ctx, m.Email, m.Locale)
 	case domain.OutboxWaitlist:
 		if s.waitlist == nil || s.waitlistMailer == nil {
 			return errors.New("lista de espera desligada")
 		}
 		confirmURL := s.waitlist.link(domain.WaitlistActionConfirm, m.WaitlistID)
 		leaveURL := s.waitlist.link(domain.WaitlistActionLeave, m.WaitlistID)
-		return s.waitlistMailer.SendWaitlistConfirmation(m.Email, m.Locale, confirmURL, leaveURL)
+		return s.waitlistMailer.SendWaitlistConfirmation(ctx, m.Email, m.Locale, confirmURL, leaveURL)
 	}
 	return errors.New("tipo de e-mail desconhecido: " + m.Kind)
 }
