@@ -1,6 +1,10 @@
 package email
 
-import "github.com/josecleiton/logn/backend/internal/locale"
+import (
+	"context"
+
+	"github.com/josecleiton/logn/backend/internal/locale"
+)
 
 // O texto do e-mail de confirmação da lista de espera do iPhone (ADR 0022), por língua.
 // Diz o que a pessoa assina: um e-mail só, no lançamento, e a saída a qualquer hora.
@@ -66,9 +70,9 @@ func NewWaitlistData(lang, confirmURL, leaveURL string) WaitlistData {
 }
 
 // SendWaitlistConfirmation manda o link de confirmação da lista de espera.
-func (m *Mailer) SendWaitlistConfirmation(toEmail, lang, confirmURL, leaveURL string) error {
+func (m *Mailer) SendWaitlistConfirmation(ctx context.Context, toEmail, lang, confirmURL, leaveURL string) error {
 	data := NewWaitlistData(lang, confirmURL, leaveURL)
-	return m.sendWithHeaders(toEmail, data.T.Subject, "waitlist.html", data, WaitlistHeaders(leaveURL))
+	return m.sendWithHeaders(ctx, toEmail, data.T.Subject, "waitlist.html", data, WaitlistHeaders(leaveURL))
 }
 
 // WaitlistHeaders são os cabeçalhos a mais do e-mail: o `List-Unsubscribe` com o link

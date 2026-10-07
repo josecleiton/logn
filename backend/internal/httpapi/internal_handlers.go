@@ -30,7 +30,7 @@ const (
 // LicenseNotifier manda o aviso de revogação ou devolução manual. É o Mailer; os
 // testes trocam.
 type LicenseNotifier interface {
-	SendLicenseNotice(toEmail string, kind email.LicenseNoticeKind, lang, trackName, reason string) error
+	SendLicenseNotice(ctx context.Context, toEmail string, kind email.LicenseNoticeKind, lang, trackName, reason string) error
 }
 
 // internalCaller confere o token da rota interna contra a conta esperada e devolve o
@@ -331,9 +331,13 @@ func (s *Server) manualLicenseAction(w http.ResponseWriter, r *http.Request, rev
 	// A mudança já está gravada. E-mail que falha não a desfaz: a resposta diz, e quem
 	// opera avisa por outro caminho. O endereço não vai para o log.
 	emailed := true
-	if err := s.licenseNotifier.SendLicenseNotice(notice.Email, kind, notice.Locale, notice.TrackName, notice.Reason); err != nil {
+	// Sem o cancelamento do pedido: a mudança já está gravada, e quem chama desconectar
+	// não deve derrubar o aviso dela no meio. Só o prazo do SMTP vale.
+	sendCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), smtpSendTimeout)
+	defer cancel()
+	if err := s.licenseNotifier.SendLicenseNotice(sendCtx, notice.Email, kind, notice.Locale, notice.TrackName, notice.Reason); err != nil {
 		emailed = false
-		log.Printf("aviso de licença não enviado: user=%s track=%s erro=%v", req.UserID, req.TrackID, err)
+		log.Printf("aviso de licença não enviado: user=%s track=%s erro=%s", req.UserID, req.TrackID, redactEmails(err))
 	}
 	log.Printf("licença manual: user=%s track=%s revogar=%t motivo=%s resultado=%s por=%s aviso=%t",
 		req.UserID, req.TrackID, revoke, notice.Reason, notice.Outcome, actor, emailed)

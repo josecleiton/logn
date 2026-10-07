@@ -56,7 +56,9 @@ e a fila tenta de novo; na quinta tentativa (`X-CloudTasks-TaskRetryCount`), a l
 - **Prazo do SMTP**: o envio roda com a linha travada e uma conexão do pool presa, e o
   gomail só tem prazo para conectar. A rota desiste dele em 20 s e conta como falha; o
   envio que ficou para trás ainda pode chegar, e o e-mail sai duas vezes. Sem o prazo, um
-  SMTP que segurasse a conexão esgotava o pool da instância única.
+  SMTP que segurasse a conexão esgotava o pool da instância única. Desde a ADR 0027 o
+  prazo vem do ctx, e o Mailer fecha a conexão quando ele acaba, em vez de deixar o envio
+  rodando por baixo.
 - **Pub/Sub ficou de fora.** Ele é para evento com vários consumidores; aqui é um
   comando com um destino, e o Cloud Tasks traz o que ele não tem: teto de vazão por fila,
   deduplicação pelo nome e entrega agendada.

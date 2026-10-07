@@ -114,9 +114,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("Lista de espera mal configurada: %v", err)
 	}
+	mailer, err := email.NewMailerFromEnv(os.Getenv, os.Getenv("K_SERVICE") != "")
+	if err != nil {
+		log.Fatalf("SMTP mal configurado: %v", err)
+	}
 	deps := httpapi.Deps{
 		Repo:           repo,
-		Mailer:         email.NewMailer(),
+		Mailer:         mailer,
 		CloudValidator: cloudauth.NewGoogleValidator(),
 		StoreKit:       storeKitValidatorFromEnv(),
 		Play:           playFromEnv(),
