@@ -199,4 +199,27 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
 1. Ao iniciar, revise sempre se as dependências do `Crux` e o pacote `boltffi` exigem recompilação (`cargo build --features codegen`).
 2. Atualize o `codegen` e rode-o se você tocar nas definições de tipagem (`shared_core/src/bin/codegen.rs`).
 3. Gere e atualize ADRs em `docs/architecture/decisions/` ao introduzir novas bibliotecas centrais (ex: Lib de Auth) ou mudar arquitetura.
+4. **Compile o Core uma vez, e antes.** Empacotar o Core é o que enche o disco:
+   `just build-ios-ffi` compila três alvos Apple e `just android/generate` dois Android,
+   e com o `debug` do `cargo test` e os metadados do boltffi o `shared_core/target/`
+   passa de 7 GB. As bibliotecas que saem dali moram *fora* dele
+   (`ios/LogNCoreFFI/LogNCoreFFI.xcframework` e `android/generated/`), então a ordem que
+   poupa disco e tempo é:
+   1. Mude o Core e deixe-o assentar (`just test-core`, regra 1).
+   2. Empacote uma vez: `just build-ios-ffi` e `just android/generate`.
+   3. `cd shared_core && cargo clean`. As bibliotecas sobrevivem. (`just clean` não serve
+      aqui: apaga também o `.xcodeproj`.)
+   4. Faça as telas com `just xcode-packaged` e `just android/build`, que compilam só
+      Swift e Kotlin contra o que já está empacotado.
+
+   Quem deixa o passo 4 seguro é a conferência de cada lado — `ios-ffi-fresh` no iOS,
+   `verifyGenerated` no Gradle —, que recusa quando algo em `shared_core/src`, nos
+   manifestos ou no `boltffi.toml` é mais novo que a biblioteca: os tipos de um Core
+   contra a biblioteca de outro morrem no primeiro evento sem nada no log. Recusou,
+   empacote de novo; não contorne. Mudou o Core de novo, o ciclo volta ao passo 1 — e é
+   alternar edição de Core com build de tela que enche disco, não um build sozinho.
+
+   Medido com o `target/` apagado: o iOS levou 64 s na primeira vez depois do
+   `cargo clean` e 9 s nas seguintes, o Android 11 s, e nenhum dos dois recriou o
+   `target/`; empacotar o iOS do zero custou 149 s.
 

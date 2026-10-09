@@ -52,6 +52,7 @@ val verifyGenerated = tasks.register("verifyGenerated") {
     val stamp = layout.projectDirectory.file("../generated/STAMP").asFile
     val sources = files(
         fileTree("../../shared_core/src"),
+        "../../shared_core/Cargo.toml",
         "../../shared_core/Cargo.lock",
         "../../shared_core/boltffi.toml",
         fileTree("../../i18n"),

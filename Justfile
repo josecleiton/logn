@@ -244,6 +244,37 @@ build-ios-ffi: codegen
 # Gera o projeto Xcode (.xcodeproj) usando o XcodeGen
 xcode: sync-env build-ios-ffi i18n xcodegen
 
+# O `xcode` sem recompilar o Core: o projeto sai contra o XCFramework já empacotado.
+# É para o trabalho que é só Swift. O `build-ios-ffi` compila o Core para três alvos e
+# deixa gigas em shared_core/target/, mas o XCFramework que ele produz fica em
+# ios/LogNCoreFFI/, fora dele. Empacote uma vez depois que o Core assentar, rode
+# `cargo clean` em shared_core/ e faça as telas com esta. Quem a deixa segura é o
+# `ios-ffi-fresh`.
+xcode-packaged: sync-env ios-ffi-fresh i18n xcodegen
+
+# Falha se o Core mudou depois que o XCFramework foi empacotado. Os tipos Swift de um
+# Core contra a biblioteca de outro trocam o índice das variantes de bincode, e o app
+# morre no primeiro evento sem nada no log que diga por quê — o mesmo que o
+# `verifyGenerated` do Android barra. A conferência é só "mais novo que a biblioteca":
+# grosseira e difícil de enganar. Trocar de branch toca os arquivos e faz recusar à toa;
+# nesse caso, empacote de novo.
+ios-ffi-fresh:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    lib=ios/LogNCoreFFI/LogNCoreFFI.xcframework/ios-arm64_x86_64-simulator/libshared_core.a
+    if [ ! -f "$lib" ]; then
+    	echo "✗ $lib não existe — empacote o Core antes: just build-ios-ffi" >&2
+    	exit 1
+    fi
+    newer=$(find shared_core/src shared_core/Cargo.toml shared_core/Cargo.lock shared_core/boltffi.toml -type f -newer "$lib" | head -3)
+    if [ -n "$newer" ]; then
+    	echo "✗ o Core mudou depois que $lib foi empacotado:" >&2
+    	echo "$newer" | sed 's/^/    /' >&2
+    	echo "  empacote de novo: just build-ios-ffi" >&2
+    	exit 1
+    fi
+    echo "✓ $lib é mais novo que o Core"
+
 # Só o XcodeGen, sem recompilar o Core. A versão vem de version.properties: o
 # project.yml não lê arquivo, só variável de ambiente, e é aqui que as duas se ligam.
 # Sem default: versão vazia vira CFBundleShortVersionString vazio, que a App Store

@@ -70,7 +70,7 @@ curl -s -X POST localhost:8080/api/v1/auth/register \
 SP=/tmp/logn-shots && mkdir -p "$SP"
 DEV=$(xcrun simctl list devices booted | grep -o '[0-9A-F-]\{36\}' | head -1)
 
-just build-ios-ffi                      # codegen + xcframework; obrigatório se tocou em Rust
+just xcode-packaged   # recusa se o Core mudou depois do último `just build-ios-ffi`
 xcodebuild -project ios/LogNiOS/LogNiOS.xcodeproj -scheme LogNiOS \
   -configuration Debug -destination "platform=iOS Simulator,id=$DEV" \
   -derivedDataPath "$SP/dd" build
