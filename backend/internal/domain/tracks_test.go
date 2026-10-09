@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -440,7 +441,7 @@ func processAnswer(t *testing.T, repo *Repository, conn *pgxpool.Pool, userID st
 		t.Fatal(err)
 	}
 	defer tx.Rollback(ctx)
-	if err := repo.ProcessEventXP(ctx, tx, userID, e); err != nil {
+	if err := repo.ProcessEventsXP(ctx, tx, userID, []GameEvent{e}); err != nil {
 		t.Fatal(err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -499,6 +500,105 @@ func TestTheSyncPaysAPaidTrackOnlyWithEntitlement(t *testing.T) {
 	conn.QueryRow(ctx, `SELECT current_xp FROM user_progress WHERE user_id = $1 AND node_id = $2`, a, p.sampleNode).Scan(&sampleProgress)
 	if sampleProgress != XPPerAcceptedAnswer {
 		t.Fatalf("progresso foi para o nó do evento, não o do desafio: %d", sampleProgress)
+	}
+}
+
+// Num lote misturado, cada resposta passa pelas mesmas portas que sozinha: o fechado sem
+// direito não credita, o id inventado também não, o nó vem do banco, vale o template da
+// primeira resposta certa, e trilha paga não anda o placar.
+func TestABatchFiltersEachAnswerLikeAlone(t *testing.T) {
+	conn := setupTestDB(t)
+	t.Cleanup(conn.Close)
+	repo := NewRepository(conn)
+	p := seedPaidTrack(t, conn)
+	ctx := context.Background()
+	a := seedUser(t, conn)
+
+	dryRun := answer(t, p.sampleCh, p.closed)
+	dryRun.PayloadJSON = strings.Replace(dryRun.PayloadJSON, "SPOT_THE_BUG", "DRY_RUN", 1)
+	batch := []GameEvent{
+		answer(t, p.closedCh, p.closed),         // trilha paga, sem direito
+		answer(t, "test_invented_id", p.closed), // não existe
+		answer(t, p.sampleCh, p.closed),         // amostra, com o nó do evento forjado
+		dryRun,                                  // a mesma, de novo, com outro template
+	}
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(ctx)
+	if err := repo.ProcessEventsXP(ctx, tx, a, batch); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	var xp, bugs, dryRuns, freeXP int
+	if err := conn.QueryRow(ctx, `SELECT global_xp, bugs_found, dry_runs_completed, free_xp FROM users WHERE id = $1`, a).
+		Scan(&xp, &bugs, &dryRuns, &freeXP); err != nil {
+		t.Fatal(err)
+	}
+	if xp != XPPerAcceptedAnswer || bugs != 1 || dryRuns != 0 || freeXP != 0 {
+		t.Fatalf("xp=%d bugs=%d dry_runs=%d free_xp=%d; esperava só a amostra, como SPOT_THE_BUG, fora do placar",
+			xp, bugs, dryRuns, freeXP)
+	}
+	var progress []string
+	rows, _ := conn.Query(ctx, `SELECT node_id::text FROM user_progress WHERE user_id = $1`, a)
+	for rows.Next() {
+		var n string
+		rows.Scan(&n)
+		progress = append(progress, n)
+	}
+	if len(progress) != 1 || progress[0] != p.sampleNode {
+		t.Fatalf("progresso em %v; esperava só o nó da amostra, %s", progress, p.sampleNode)
+	}
+}
+
+// Dois syncs validados contra o mesmo topo: o segundo volta com ErrStaleChain e não
+// credita nada. E um evento que não é JSON derruba o sync inteiro, XP junto.
+func TestTheSyncCreditsOnceAndAllOrNothing(t *testing.T) {
+	conn := setupTestDB(t)
+	t.Cleanup(conn.Close)
+	repo := NewRepository(conn)
+	p := seedPaidTrack(t, conn)
+	ctx := context.Background()
+	a := seedUser(t, conn)
+	t.Cleanup(func() {
+		conn.Exec(ctx, `DELETE FROM game_events WHERE user_id = $1`, a)
+		conn.Exec(ctx, `DELETE FROM user_sync_state WHERE user_id = $1`, a)
+	})
+
+	genesis, err := repo.GetUserLastHash(ctx, a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	event := func(top string, e GameEvent) GameEvent {
+		e.PreviousHash = top
+		e.CurrentHash = ComputeHash(e, top)
+		return e
+	}
+
+	broken := event(genesis, answer(t, p.sampleCh, p.sampleNode))
+	broken.PayloadJSON = `{"is_correct":true,"challenge_id":"` + p.sampleCh + `"`
+	ok := event(genesis, answer(t, p.sampleCh, p.sampleNode))
+	if err := repo.InsertSyncEvents(ctx, SyncPayload{UserID: a, Events: []GameEvent{ok, broken}}, genesis, broken.CurrentHash); err == nil {
+		t.Fatal("evento que não é JSON passou")
+	}
+	if xp := xpOf(t, conn, a); xp != 0 {
+		t.Fatalf("o sync caiu e o XP ficou: %d", xp)
+	}
+
+	first := event(genesis, answer(t, p.sampleCh, p.sampleNode))
+	second := event(genesis, answer(t, p.sampleCh, p.sampleNode))
+	if err := repo.InsertSyncEvents(ctx, SyncPayload{UserID: a, Events: []GameEvent{first}}, genesis, first.CurrentHash); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.InsertSyncEvents(ctx, SyncPayload{UserID: a, Events: []GameEvent{second}}, genesis, second.CurrentHash); !errors.Is(err, ErrStaleChain) {
+		t.Fatalf("o segundo sync do mesmo topo devia dar ErrStaleChain, veio %v", err)
+	}
+	if xp := xpOf(t, conn, a); xp != XPPerAcceptedAnswer {
+		t.Fatalf("dois syncs do mesmo topo creditaram %d", xp)
 	}
 }
 

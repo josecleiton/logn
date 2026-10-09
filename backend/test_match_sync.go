@@ -54,26 +54,18 @@ func main() {
 		EventType:   "MATCH_ANSWER",
 		PayloadJSON: `{"is_correct": true, "template_type": "SPOT_THE_BUG"}`,
 	}
-	if err := repo.ProcessEventXP(ctx, tx, userID, event1); err != nil {
-		log.Fatalf("Failed to process event1: %v", err)
-	}
-
 	event2 := domain.GameEvent{
 		ID:          "evt_2",
 		EventType:   "MATCH_ANSWER",
 		PayloadJSON: `{"is_correct": true, "template_type": "FILL_IN_THE_BLANK"}`,
 	}
-	if err := repo.ProcessEventXP(ctx, tx, userID, event2); err != nil {
-		log.Fatalf("Failed to process event2: %v", err)
-	}
-
 	event3 := domain.GameEvent{
 		ID:          "evt_3",
 		EventType:   "MATCH_END",
 		PayloadJSON: `{"solved": 2}`,
 	}
-	if err := repo.ProcessEventXP(ctx, tx, userID, event3); err != nil {
-		log.Fatalf("Failed to process event3: %v", err)
+	if err := repo.ProcessEventsXP(ctx, tx, userID, []domain.GameEvent{event1, event2, event3}); err != nil {
+		log.Fatalf("Failed to process events: %v", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {

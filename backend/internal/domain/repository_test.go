@@ -176,6 +176,18 @@ func TestRepository_InsertSyncEvents(t *testing.T) {
 	if err != nil || newHash != event1.CurrentHash {
 		t.Fatalf("Expected updated hash %s, got %s (err: %v)", event1.CurrentHash, newHash, err)
 	}
+	// O evento gravado é o que veio, com o payload como objeto JSON e não como texto
+	// entre aspas.
+	var kind, prev, curr string
+	var ts int64
+	if err := conn.QueryRow(ctx, `
+		SELECT jsonb_typeof(payload_json), timestamp, previous_hash, current_hash
+		FROM game_events WHERE user_id = $1 AND id = $2`, userID, event1.ID).Scan(&kind, &ts, &prev, &curr); err != nil {
+		t.Fatal(err)
+	}
+	if kind != "object" || ts != event1.Timestamp || prev != event1.PreviousHash || curr != event1.CurrentHash {
+		t.Fatalf("evento gravado diferente: %s %d %s %s", kind, ts, prev, curr)
+	}
 
 	// 4. Um segundo sync que validou contra o topo antigo não grava. É o que acontece
 	// com dois syncs em paralelo: o segundo contaria o XP de novo.

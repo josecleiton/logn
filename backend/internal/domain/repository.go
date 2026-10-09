@@ -97,16 +97,27 @@ func (r *Repository) InsertSyncEvents(ctx context.Context, payload SyncPayload, 
 		return ErrStaleChain
 	}
 
-	for _, event := range payload.Events {
-		query := `INSERT INTO game_events (id, user_id, event_type, payload_json, timestamp, previous_hash, current_hash)
-				  VALUES ($1, $2, $3, $4, $5, $6, $7)`
-		if err := r.ProcessEventXP(ctx, tx, payload.UserID, event); err != nil {
-			return fmt.Errorf("failed to process XP for event %s: %w", event.ID, err)
-		}
+	if err := r.ProcessEventsXP(ctx, tx, payload.UserID, payload.Events); err != nil {
+		return fmt.Errorf("failed to process XP: %w", err)
+	}
 
-		if _, err := tx.Exec(ctx, query, event.ID, payload.UserID, event.EventType, event.PayloadJSON, event.Timestamp, event.PreviousHash, event.CurrentHash); err != nil {
-			return fmt.Errorf("failed to insert event %s: %w", event.ID, err)
-		}
+	// Todos os eventos num comando só; eram um INSERT por evento. O texto vira `jsonb`
+	// no banco, como no VALUES de antes: payload que não é JSON derruba o sync inteiro.
+	n := len(payload.Events)
+	ids, types, bodies := make([]string, n), make([]string, n), make([]string, n)
+	timestamps := make([]int64, n)
+	previous, current := make([]string, n), make([]string, n)
+	for i, e := range payload.Events {
+		ids[i], types[i], bodies[i] = e.ID, e.EventType, e.PayloadJSON
+		timestamps[i], previous[i], current[i] = e.Timestamp, e.PreviousHash, e.CurrentHash
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO game_events (id, user_id, event_type, payload_json, timestamp, previous_hash, current_hash)
+		SELECT e.id, $1, e.event_type, e.body::jsonb, e.ts, e.previous_hash, e.current_hash
+		FROM unnest($2::text[], $3::text[], $4::text[], $5::bigint[], $6::text[], $7::text[])
+		     AS e(id, event_type, body, ts, previous_hash, current_hash)`,
+		payload.UserID, ids, types, bodies, timestamps, previous, current); err != nil {
+		return fmt.Errorf("failed to insert events: %w", err)
 	}
 
 	return tx.Commit(ctx)
