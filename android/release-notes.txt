@@ -1,15 +1,12 @@
 <pt-BR>
-• O botão do e-mail com o código abre o app direto, inclusive no Gmail.
-• O link do e-mail só vale para o código que você pediu neste aparelho.
-• Criar conta pelo link do e-mail agora vai até o fim.
+• O app abre mais rápido e gasta menos dados: a trilha só é baixada de novo quando muda.
+• O app não desconecta mais a sua conta quando o servidor está ocupado.
 </pt-BR>
 <en-US>
-• The button in the code email opens the app directly, Gmail included.
-• The email link only works for the code you asked for on this device.
-• Signing up through the email link now goes all the way through.
+• The app opens faster and uses less data: the trail is only downloaded again when it changes.
+• The app no longer signs you out when the server is busy.
 </en-US>
 <es-419>
-• El botón del correo con el código abre la app directamente, también en Gmail.
-• El enlace del correo solo vale para el código que pediste en este dispositivo.
-• Crear una cuenta con el enlace del correo ahora llega hasta el final.
+• La app abre más rápido y gasta menos datos: la ruta solo se descarga de nuevo cuando cambia.
+• La app ya no cierra tu sesión cuando el servidor está ocupado.
 </es-419>
