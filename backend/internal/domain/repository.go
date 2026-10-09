@@ -443,19 +443,43 @@ type UserStats struct {
 	NicknameLocked bool    `json:"nickname_locked"`
 }
 
+// GetUserStats lê as quatro partes do progresso numa ida só ao banco. Eram quatro
+// consultas em série; no `pgx.Batch` elas vão juntas. Cada uma ainda lê o banco no seu
+// instante, como antes: um sync que termine no meio pode aparecer numa e não na outra.
 func (r *Repository) GetUserStats(ctx context.Context, userID string) (UserStats, error) {
 	var stats UserStats
 
-	query := `
+	batch := &pgx.Batch{}
+	batch.Queue(`
 		SELECT global_xp, bugs_found, dry_runs_completed, anon_number, nickname, nickname_burned_at IS NOT NULL
-		FROM users WHERE id = $1`
-	err := r.db.QueryRow(ctx, query, userID).
-		Scan(&stats.GlobalXP, &stats.BugsFound, &stats.DryRunsCompleted, &stats.AnonNumber, &stats.Nickname, &stats.NicknameLocked)
-	if err != nil {
+		FROM users WHERE id = $1`, userID)
+	batch.Queue(`SELECT node_id, current_xp, unlocked, completed_at FROM user_progress WHERE user_id = $1`, userID)
+	batch.Queue(`SELECT challenge_id FROM user_paid_challenges WHERE user_id = $1 ORDER BY challenge_id`, userID)
+	batch.Queue(`
+		SELECT n.track_id, count(*)
+		FROM user_paid_challenges up
+		JOIN challenges c ON c.id = up.challenge_id
+		JOIN skill_nodes n ON n.id = c.node_id
+		JOIN tracks t ON t.id = n.track_id
+		WHERE up.user_id = $1 AND t.kind = 'paid'
+		GROUP BY n.track_id`, userID)
+	results := r.db.SendBatch(ctx, batch)
+	defer results.Close()
+
+	if err := results.QueryRow().
+		Scan(&stats.GlobalXP, &stats.BugsFound, &stats.DryRunsCompleted, &stats.AnonNumber, &stats.Nickname, &stats.NicknameLocked); err != nil {
 		return stats, err
 	}
 
-	nodes, err := r.GetUserProgress(ctx, userID)
+	rows, err := results.Query()
+	if err != nil {
+		return stats, err
+	}
+	nodes, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (UserProgress, error) {
+		var p UserProgress
+		err := row.Scan(&p.NodeID, &p.CurrentXP, &p.Unlocked, &p.CompletedAt)
+		return p, err
+	})
 	if err != nil {
 		return stats, err
 	}
@@ -465,51 +489,34 @@ func (r *Repository) GetUserStats(ctx context.Context, userID string) (UserStats
 		stats.Nodes = []UserProgress{}
 	}
 
-	rows, err := r.db.Query(ctx,
-		`SELECT challenge_id FROM user_paid_challenges WHERE user_id = $1 ORDER BY challenge_id`, userID)
+	rows, err = results.Query()
+	if err != nil {
+		return stats, err
+	}
+	paid, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return stats, err
+	}
+	stats.PaidChallengeIDs = paid
+	if stats.PaidChallengeIDs == nil {
+		stats.PaidChallengeIDs = []string{}
+	}
+
+	rows, err = results.Query()
 	if err != nil {
 		return stats, err
 	}
 	defer rows.Close()
-	stats.PaidChallengeIDs = []string{}
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return stats, err
-		}
-		stats.PaidChallengeIDs = append(stats.PaidChallengeIDs, id)
-	}
-	if err := rows.Err(); err != nil {
-		return stats, err
-	}
-
-	stats.PaidTrackXP, err = r.paidTrackXP(ctx, userID)
-	return stats, err
-}
-
-func (r *Repository) paidTrackXP(ctx context.Context, userID string) (map[string]int, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT n.track_id, count(*)
-		FROM user_paid_challenges up
-		JOIN challenges c ON c.id = up.challenge_id
-		JOIN skill_nodes n ON n.id = c.node_id
-		JOIN tracks t ON t.id = n.track_id
-		WHERE up.user_id = $1 AND t.kind = 'paid'
-		GROUP BY n.track_id`, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	xp := map[string]int{}
+	stats.PaidTrackXP = map[string]int{}
 	for rows.Next() {
 		var trackID string
-		var paid int
-		if err := rows.Scan(&trackID, &paid); err != nil {
-			return nil, err
+		var credited int
+		if err := rows.Scan(&trackID, &credited); err != nil {
+			return stats, err
 		}
-		xp[trackID] = paid * XPPerAcceptedAnswer
+		stats.PaidTrackXP[trackID] = credited * XPPerAcceptedAnswer
 	}
-	return xp, rows.Err()
+	return stats, rows.Err()
 }
 
 // GetSkillNodes devolve os nós publicados na língua, com o nome nela, das trilhas que a
@@ -560,25 +567,6 @@ func (r *Repository) GetSkillNodes(ctx context.Context, locale, userID string) (
 		nodes[i].Prerequisites = kept
 	}
 	return nodes, nil
-}
-
-func (r *Repository) GetUserProgress(ctx context.Context, userID string) ([]UserProgress, error) {
-	query := `SELECT node_id, current_xp, unlocked, completed_at FROM user_progress WHERE user_id = $1`
-	rows, err := r.db.Query(ctx, query, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var progress []UserProgress
-	for rows.Next() {
-		var p UserProgress
-		if err := rows.Scan(&p.NodeID, &p.CurrentXP, &p.Unlocked, &p.CompletedAt); err != nil {
-			return nil, err
-		}
-		progress = append(progress, p)
-	}
-	return progress, nil
 }
 
 // CreateUser cria a conta com a confirmação de idade, o país considerado nela (vazio
@@ -967,49 +955,62 @@ type LegalPending struct {
 // LegalKinds são os documentos, na ordem em que a tela os mostra.
 var LegalKinds = []string{"terms", "privacy"}
 
+// legalStanding é, para um documento, a vigente na língua servida e a última versão que
+// a conta aceitou.
+type legalStanding struct {
+	kind, locale string
+	version      int
+	effectiveAt  time.Time
+	bodySHA256   string
+	accepted     int
+}
+
 // GetLegalPending lê, para cada documento, a vigente, a última aceita pela conta e o
 // que mudou entre as duas, na língua pedida (o português quando faltar).
 func (r *Repository) GetLegalPending(ctx context.Context, userID, locale string) (LegalPending, error) {
-	var out LegalPending
-	for _, kind := range LegalKinds {
-		// A vigente sai do português, que sempre existe e prevalece. Depois vem o corpo
-		// dessa versão na língua pedida, e o português se ela faltar: escolher a vigente
-		// pela língua pedida deixaria quem lê em inglês numa versão velha, sem pendência.
-		doc, err := r.GetLatestLegalDocument(ctx, kind, legalFallbackLocale)
-		if errors.Is(err, pgx.ErrNoRows) {
-			continue
-		}
-		if err != nil {
-			return LegalPending{}, err
-		}
-		if locale != legalFallbackLocale {
-			var local LegalDocument
-			err := r.db.QueryRow(ctx, `
-				SELECT id, kind, locale, version, effective_at, material, body_html, created_at
-				FROM legal_documents WHERE kind = $1 AND locale = $2 AND version = $3
-			`, kind, locale, doc.Version).Scan(
-				&local.ID, &local.Kind, &local.Locale, &local.Version, &local.EffectiveAt, &local.Material, &local.BodyHTML, &local.CreatedAt,
-			)
-			if err == nil {
-				doc = &local
-			} else if !errors.Is(err, pgx.ErrNoRows) {
-				return LegalPending{}, err
-			}
-		}
+	// Uma consulta para todos os documentos. Eram até três por documento, e o corpo
+	// inteiro de cada vigente vinha ao Go só para tirar o hash, e era descartado quando a
+	// conta estava em dia, que é quase sempre.
+	//
+	// A vigente sai do português, que sempre existe e prevalece. Depois vem o corpo dessa
+	// versão na língua pedida, e o português se ela faltar: escolher a vigente pela língua
+	// pedida deixaria quem lê em inglês numa versão velha, sem pendência. O hash é o
+	// mesmo do aceite no cadastro, sobre os bytes UTF-8 do corpo.
+	rows, err := r.db.Query(ctx, `
+		SELECT k.kind, cur.version, COALESCE(loc.locale, cur.locale), COALESCE(loc.effective_at, cur.effective_at),
+		       encode(sha256(convert_to(COALESCE(loc.body_html, cur.body_html), 'UTF8')), 'hex'),
+		       COALESCE((SELECT MAX(a.version) FROM legal_acceptances a WHERE a.user_id = $1 AND a.kind = k.kind), 0)
+		FROM unnest($2::text[]) WITH ORDINALITY AS k(kind, ord)
+		JOIN LATERAL (
+			SELECT d.version, d.locale, d.effective_at, d.body_html
+			FROM legal_documents d
+			WHERE d.kind = k.kind AND d.locale = $3 AND d.effective_at <= CURRENT_TIMESTAMP
+			ORDER BY d.version DESC LIMIT 1
+		) cur ON true
+		LEFT JOIN legal_documents loc ON loc.kind = k.kind AND loc.locale = $4 AND loc.version = cur.version
+		ORDER BY k.ord`, userID, LegalKinds, legalFallbackLocale, locale)
+	if err != nil {
+		return LegalPending{}, err
+	}
+	standings, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (legalStanding, error) {
+		var s legalStanding
+		err := row.Scan(&s.kind, &s.version, &s.locale, &s.effectiveAt, &s.bodySHA256, &s.accepted)
+		return s, err
+	})
+	if err != nil {
+		return LegalPending{}, err
+	}
 
-		var accepted int
-		if err := r.db.QueryRow(ctx, `
-			SELECT COALESCE(MAX(version), 0) FROM legal_acceptances WHERE user_id = $1 AND kind = $2
-		`, userID, kind).Scan(&accepted); err != nil {
-			return LegalPending{}, err
-		}
-		if accepted >= doc.Version {
+	var out LegalPending
+	for _, s := range standings {
+		kind, accepted := s.kind, s.accepted
+		if accepted >= s.version {
 			continue
 		}
 
 		p := LegalPendingDoc{
-			Kind: kind, Version: doc.Version, Locale: doc.Locale, EffectiveAt: doc.EffectiveAt,
-			BodySHA256: SHA256Hex(doc.BodyHTML), AcceptedVersion: accepted,
+			Kind: kind, Version: s.version, Locale: s.locale, EffectiveAt: s.effectiveAt,
+			BodySHA256: s.bodySHA256, AcceptedVersion: accepted,
 		}
 		// Relevante é qualquer versão pulada, não só a vigente: pular uma relevante no
 		// meio não a torna menor.
@@ -1018,7 +1019,7 @@ func (r *Repository) GetLegalPending(ctx context.Context, userID, locale string)
 				SELECT 1 FROM legal_documents
 				WHERE kind = $1 AND locale = $2 AND version > $3 AND version <= $4 AND material
 			)
-		`, kind, legalFallbackLocale, accepted, doc.Version).Scan(&p.Material); err != nil {
+		`, kind, legalFallbackLocale, accepted, s.version).Scan(&p.Material); err != nil {
 			return LegalPending{}, err
 		}
 		if accepted > 0 {
@@ -1035,7 +1036,7 @@ func (r *Repository) GetLegalPending(ctx context.Context, userID, locale string)
 		}
 		out.Documents = append(out.Documents, p)
 
-		changes, err := r.legalChanges(ctx, kind, accepted, doc.Version, locale)
+		changes, err := r.legalChanges(ctx, kind, accepted, s.version, locale)
 		if err != nil {
 			return LegalPending{}, err
 		}

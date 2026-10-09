@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -231,5 +232,52 @@ func TestOTPTetoGlobalPorHora(t *testing.T) {
 	conn.QueryRow(ctx, "SELECT count(*) FROM otps WHERE email=$1 AND purpose=$2", email, purpose).Scan(&rows)
 	if rows != 0 {
 		t.Fatal("o teto atingido não deve gravar código")
+	}
+}
+
+// A purga leva o código que não segura mais nada, e deixa o que ainda conta no teto por
+// hora ou ainda trava o e-mail: apagar esses afrouxaria as duas defesas.
+func TestOTPPurgeKeepsWhatStillGuards(t *testing.T) {
+	ctx := context.Background()
+	repo, conn := otpTestRepo(t)
+
+	tag := time.Now().UnixNano()
+	email := func(name string) string { return fmt.Sprintf("purge-%s-%d@example.com", name, tag) }
+	rows := []struct {
+		name                        string
+		expires, sent, failingSince string // intervalos a somar a agora; vazio é NULL
+		failures                    int
+		gone                        bool
+	}{
+		{"spent", "-2 hours", "-2 hours", "", 0, true},
+		{"old-failures", "-2 days", "-2 days", "-2 days", OTPMaxFailuresPerWindow, true},
+		{"locked", "-2 hours", "-2 hours", "-1 hour", OTPMaxFailuresPerWindow, false}, // trava de 24 h valendo
+		{"counting", "-2 hours", "-2 hours", "-3 hours", 3, false},                    // falhas abaixo do teto, ainda somando
+		{"in-cap", "-5 minutes", "-20 minutes", "", 0, false},                         // ainda conta no teto
+		{"live", "10 minutes", "0 seconds", "", 0, false},
+	}
+	for _, r := range rows {
+		t.Cleanup(func() { conn.Exec(ctx, `DELETE FROM otps WHERE email = $1`, email(r.name)) })
+		if _, err := conn.Exec(ctx, `
+			INSERT INTO otps (email, purpose, code_hash, expires_at, attempts, sent_at, recent_failures, failures_since)
+			VALUES ($1, 'verify_email', 'x', CURRENT_TIMESTAMP + $2::interval, 0, CURRENT_TIMESTAMP + $3::interval,
+			        $5, CURRENT_TIMESTAMP + NULLIF($4, '')::interval)`,
+			email(r.name), r.expires, r.sent, r.failingSince, r.failures); err != nil {
+			t.Fatalf("%s: %v", r.name, err)
+		}
+	}
+
+	if _, err := repo.PurgeStaleOTPs(ctx); err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range rows {
+		var n int
+		conn.QueryRow(ctx, `SELECT count(*) FROM otps WHERE email = $1`, email(r.name)).Scan(&n)
+		if r.gone && n != 0 {
+			t.Errorf("%s devia ter saído", r.name)
+		}
+		if !r.gone && n != 1 {
+			t.Errorf("%s não podia sair", r.name)
+		}
 	}
 }

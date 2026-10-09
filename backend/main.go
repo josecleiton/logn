@@ -167,7 +167,11 @@ func main() {
 		if err != nil {
 			log.Fatalf("Refresh tokens purge failed: %v", err)
 		}
-		log.Printf("Purge completed: %d accounts, %d pending signups, %d outbox e-mails and %d refresh tokens deleted. Exiting.", purged, pending, outbox, refreshTokens)
+		otps, err := repo.PurgeStaleOTPs(context.Background())
+		if err != nil {
+			log.Fatalf("OTP purge failed: %v", err)
+		}
+		log.Printf("Purge completed: %d accounts, %d pending signups, %d outbox e-mails, %d refresh tokens and %d verification codes deleted. Exiting.", purged, pending, outbox, refreshTokens, otps)
 		return
 	}
 

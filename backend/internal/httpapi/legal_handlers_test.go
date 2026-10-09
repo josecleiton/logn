@@ -53,7 +53,9 @@ func (f *legalFixture) publish(t *testing.T, offset int, material bool, effectiv
 	ctx := context.Background()
 	for _, kind := range domain.LegalKinds {
 		for _, loc := range []string{"pt-BR", "en", "es"} {
-			body := fmt.Sprintf(`<article class="legal-doc"><section id="fixture"><h2>Fixture %s v%d %s</h2></section></article>`, kind, v, loc)
+			// O acento põe no corpo bytes que não são ASCII: o hash do banco e o do Go têm de
+			// bater sobre o UTF-8.
+			body := fmt.Sprintf(`<article class="legal-doc"><section id="fixture"><h2>Seção %s v%d %s</h2></section></article>`, kind, v, loc)
 			if _, err := f.pool.Exec(ctx, `
 				INSERT INTO legal_documents (kind, locale, version, effective_at, material, body_html)
 				VALUES ($1, $2, $3, $4, $5, $6)
@@ -97,6 +99,19 @@ func (f *legalFixture) pending(t *testing.T, lang string) pendingLegalResponse {
 		t.Fatal(err)
 	}
 	return out
+}
+
+// servedHash é o SHA-256 que o Go tira do corpo gravado, para conferir o que o banco
+// calcula na pendência sem passar pela própria pendência.
+func (f *legalFixture) servedHash(t *testing.T, kind, loc string, version int) string {
+	t.Helper()
+	var body string
+	if err := f.pool.QueryRow(context.Background(), `
+		SELECT body_html FROM legal_documents WHERE kind = $1 AND locale = $2 AND version = $3
+	`, kind, loc, version).Scan(&body); err != nil {
+		t.Fatal(err)
+	}
+	return domain.SHA256Hex(body)
 }
 
 func (f *legalFixture) accept(t *testing.T, body map[string]any) *httptest.ResponseRecorder {
@@ -155,6 +170,9 @@ func TestLegalPendingSumsSkippedVersionsAndBlocksOnAnyMaterial(t *testing.T) {
 	for _, d := range p.Documents {
 		if d.Version != top || d.Locale != "en" || len(d.SHA256) != 64 || d.AcceptedVersion == 0 || d.AcceptedEffectiveAt == "" {
 			t.Fatalf("documento pendente errado: %+v", d)
+		}
+		if want := f.servedHash(t, d.Kind, "en", top); d.SHA256 != want {
+			t.Fatalf("%s: hash %s, o corpo em inglês dá %s", d.Kind, d.SHA256, want)
 		}
 	}
 	if len(p.Changes) != 2 || p.Changes[0].Summary != "mudança do meio" || p.Changes[1].Summary != "top change" {
@@ -332,6 +350,11 @@ func TestLegalPendingFallsBackPerVersion(t *testing.T) {
 	p := f.pending(t, "en")
 	if len(p.Documents) != 2 || p.Documents[0].Version != v || p.Documents[0].Locale != "pt-BR" {
 		t.Fatalf("versão sem inglês tem de sair em português, e ainda pendente: %+v", p.Documents)
+	}
+	for _, d := range p.Documents {
+		if want := f.servedHash(t, d.Kind, "pt-BR", v); d.SHA256 != want {
+			t.Fatalf("%s: hash %s, o corpo em português dá %s", d.Kind, d.SHA256, want)
+		}
 	}
 }
 

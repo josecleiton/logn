@@ -111,6 +111,7 @@ backend/test_match_sync
 !backend/schema/migrations/0071_placar_reconcilia.sql
 !backend/schema/migrations/0073_caixa_de_saida_de_email.sql
 !backend/schema/migrations/0074_refresh_token_por_hash.sql
+!backend/schema/migrations/0075_indices_de_purga_e_cascata.sql
 
 # Termos e política no modo do app, para ler sem rede. `just legal-bundle` gera a partir
 # do servidor, como a trilha empacotada.

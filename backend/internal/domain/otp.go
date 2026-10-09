@@ -62,6 +62,10 @@ const OTPFailureWindow = 24 * time.Hour
 // `noreply`. É variável só para o teste.
 var OTPHourlySendCap = 200
 
+// otpSendCapWindow é a janela de OTPHourlySendCap. A purga não apaga linha enviada
+// dentro dela: o teto conta as linhas de `otps`, e apagar uma afrouxaria a contagem.
+const otpSendCapWindow = time.Hour
+
 // ErrOTPSendCapReached é o teto global de envios por hora atingido.
 var ErrOTPSendCapReached = errors.New("otp hourly send cap reached")
 
@@ -135,7 +139,8 @@ func saveOTPTx(ctx context.Context, tx pgx.Tx, email, code, purpose string, dura
 	// OTPResendCooldown, e o teto é sobre espalhar o envio por endereços.
 	var sent int
 	if err := tx.QueryRow(ctx, `
-		SELECT count(*) FROM otps WHERE sent_at > CURRENT_TIMESTAMP - interval '1 hour'`).Scan(&sent); err != nil {
+		SELECT count(*) FROM otps WHERE sent_at > CURRENT_TIMESTAMP - make_interval(secs => $1)`,
+		otpSendCapWindow.Seconds()).Scan(&sent); err != nil {
 		return err
 	}
 	if sent >= OTPHourlySendCap {
@@ -236,4 +241,23 @@ func (r *Repository) ConsumeOTP(ctx context.Context, email, code, purpose string
 		return false, err
 	}
 	return tag.RowsAffected() == 1, nil
+}
+
+// PurgeStaleOTPs apaga os códigos que não servem a mais nada. Roda na purga diária; sem
+// ela, `request-otp` deixava uma linha para todo endereço que alguém digitou, para sempre.
+//
+// A linha só sai quando as três coisas que ela ainda segura acabaram: o código venceu, o
+// envio saiu da janela do teto por hora (que conta estas linhas), e a janela de falhas
+// passou, ou a trava do e-mail sumiria junto com a linha.
+func (r *Repository) PurgeStaleOTPs(ctx context.Context) (int64, error) {
+	tag, err := r.db.Exec(ctx, `
+		DELETE FROM otps
+		WHERE expires_at <= CURRENT_TIMESTAMP
+		  AND sent_at <= CURRENT_TIMESTAMP - make_interval(secs => $1)
+		  AND (failures_since IS NULL OR failures_since <= CURRENT_TIMESTAMP - make_interval(secs => $2))`,
+		otpSendCapWindow.Seconds(), OTPFailureWindow.Seconds())
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
 }
