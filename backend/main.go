@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -81,10 +83,15 @@ func main() {
 			if err != nil {
 				log.Fatalf("Unable to connect to migration database: %v\n", err)
 			}
-			defer migratePool.Close()
 		}
 
 		applied, err := schema.Migrate(context.Background(), migratePool)
+		// O pool do migrador fecha aqui, não no fim do `main`: o servidor nunca chega ao
+		// fim, e as conexões dele ocupavam vagas do pooler do Supabase até o idle de 30
+		// minutos do pgx.
+		if migratePool != pool {
+			migratePool.Close()
+		}
 		if err != nil {
 			log.Fatalf("Migration failed: %v\n", err)
 		}
@@ -186,11 +193,33 @@ func main() {
 		MaxHeaderBytes:    16 << 10,
 	}
 
+	// O Cloud Run manda SIGTERM no deploy e no scale-down, e mata o processo 10 s depois.
+	// Sem tratar o sinal, o processo morria na hora e levava junto os pedidos em
+	// andamento: o banco desfazia as transações, mas o app via erro de rede num sync ou
+	// num login que estava dando certo.
+	sigCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
+	defer stop()
+	served := make(chan error, 1)
+	go func() { served <- httpServer.ListenAndServe() }()
 	log.Printf("Server starting on :%s...", port)
-	if err := httpServer.ListenAndServe(); err != nil {
+
+	select {
+	case err := <-served:
 		log.Fatal(err)
+	case <-sigCtx.Done():
+	}
+	stop()
+	log.Println("Shutting down: finishing requests in flight...")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
+	defer cancel()
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		log.Printf("shutdown cut requests in flight: %v", err)
 	}
 }
+
+// shutdownGrace é quanto o desligamento espera os pedidos em andamento, abaixo dos 10 s
+// que o Cloud Run dá entre o SIGTERM e o SIGKILL.
+const shutdownGrace = 8 * time.Second
 
 // Tamanho e prazos do pool do app. Sem `MaxConns`, o pgx usa max(4, CPUs): 4 conexões
 // com 1 vCPU, para 8 vagas de sync e 100 pedidos simultâneos, e quatro syncs longos

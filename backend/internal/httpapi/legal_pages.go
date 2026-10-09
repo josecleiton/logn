@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"slices"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/josecleiton/logn/backend/internal/domain"
@@ -52,8 +53,12 @@ func (s legalStore) Latest(ctx context.Context, kind legal.Kind, locale string) 
 //	@Router			/legal/terms [get]
 //	@Router			/legal/privacy [get]
 func registerLegalRoutes(mux *http.ServeMux, store legal.Store, strict bool) {
-	mux.HandleFunc("GET /legal/terms", legal.Handler(store, legal.Terms, strict))
-	mux.HandleFunc("GET /legal/privacy", legal.Handler(store, legal.Privacy, strict))
+	// Rota pública, e cada página custa uma consulta, dois parses do HTML e o template.
+	// Sem limite, era a rota mais barata de martelar. Sessenta por minuto sobra para quem
+	// lê, mesmo atrás de NAT.
+	pages := newRateLimiter(60, time.Minute)
+	mux.HandleFunc("GET /legal/terms", pages.wrap(legal.Handler(store, legal.Terms, strict)))
+	mux.HandleFunc("GET /legal/privacy", pages.wrap(legal.Handler(store, legal.Privacy, strict)))
 }
 
 type currentLegalVersion struct {

@@ -62,6 +62,30 @@ func TestLegalRoutes(t *testing.T) {
 	}
 }
 
+// A página é pública e cara de montar: passado o limite por IP, sai 429, e outro IP
+// segue lendo.
+func TestLegalPagesAreRateLimited(t *testing.T) {
+	h := legalMux()
+	get := func(remote string) int {
+		req := httptest.NewRequest(http.MethodGet, "/legal/terms", nil)
+		req.RemoteAddr = remote
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	for i := 1; i <= 60; i++ {
+		if code := get("203.0.113.9:1000"); code != http.StatusOK {
+			t.Fatalf("pedido %d dentro do limite: %d", i, code)
+		}
+	}
+	if code := get("203.0.113.9:1000"); code != http.StatusTooManyRequests {
+		t.Fatalf("passado o limite: %d, want 429", code)
+	}
+	if code := get("198.51.100.4:1000"); code != http.StatusOK {
+		t.Fatalf("outro IP: %d", code)
+	}
+}
+
 // Atrás do gzip, a página sai comprimida e os cabeçalhos de língua sobrevivem.
 func TestLegalRoutesBehindGzip(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/legal/terms?lang=es", nil)
