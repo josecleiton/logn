@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -50,7 +51,7 @@ func TestNeedsRehash(t *testing.T) {
 		t.Error("hash com parâmetros antigos devia pedir rehash")
 	}
 
-	atual, err := HashPassword("uma senha qualquer")
+	atual, err := HashPassword(context.Background(), "uma senha qualquer")
 	if err != nil {
 		t.Fatal(err)
 	}

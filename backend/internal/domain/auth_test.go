@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -8,10 +10,68 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// Com as vagas tomadas, a comparação desiste em vez de esperar para sempre, e devolve
+// as que tinha pegado.
+func TestArgonGivesUpWithoutSlot(t *testing.T) {
+	hold, err := acquireArgon(context.Background(), argonCfg.memory*argonSlotCount)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	if _, err := acquireArgon(ctx, argonCfg.memory); !errors.Is(err, ErrArgonBusy) {
+		t.Fatalf("esperava ErrArgonBusy com as vagas tomadas, veio %v", err)
+	}
+
+	hold()
+	if n := len(argonSlots); n != 0 {
+		t.Fatalf("%d vagas ficaram presas", n)
+	}
+}
+
+// Hash antigo de 64 MiB ocupa todas as vagas: com ele rodando, nem um de 19 MiB entra.
+func TestArgonWideHashTakesItsMemory(t *testing.T) {
+	release, err := acquireArgon(context.Background(), 64*1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := len(argonSlots); n != argonSlotCount {
+		t.Fatalf("hash de 64 MiB pegou %d vagas, esperava %d", n, argonSlotCount)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	if _, err := acquireArgon(ctx, argonCfg.memory); !errors.Is(err, ErrArgonBusy) {
+		t.Fatalf("hash novo entrou ao lado do de 64 MiB: %v", err)
+	}
+	release()
+
+	// Dois hashes largos ao mesmo tempo não se travam juntando vagas aos pedaços.
+	done := make(chan error, 2)
+	for range 2 {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			release, err := acquireArgon(ctx, 64*1024)
+			if err == nil {
+				time.Sleep(10 * time.Millisecond)
+				release()
+			}
+			done <- err
+		}()
+	}
+	for range 2 {
+		if err := <-done; err != nil {
+			t.Fatalf("hash largo não conseguiu vaga: %v", err)
+		}
+	}
+}
+
 func TestHashPasswordAndCompare(t *testing.T) {
 	password := "super_secure_password"
 
-	hash, err := HashPassword(password)
+	ctx := context.Background()
+	hash, err := HashPassword(ctx, password)
 	if err != nil {
 		t.Fatalf("Failed to hash password: %v", err)
 	}
@@ -20,7 +80,7 @@ func TestHashPasswordAndCompare(t *testing.T) {
 		t.Errorf("Expected hash to start with $argon2id$, got %s", hash)
 	}
 
-	match, err := ComparePasswordAndHash(password, hash)
+	match, err := ComparePasswordAndHash(ctx, password, hash)
 	if err != nil {
 		t.Fatalf("Failed to compare hash: %v", err)
 	}
@@ -28,7 +88,7 @@ func TestHashPasswordAndCompare(t *testing.T) {
 		t.Error("Expected password to match hash")
 	}
 
-	matchFalse, err := ComparePasswordAndHash("wrong_password", hash)
+	matchFalse, err := ComparePasswordAndHash(ctx, "wrong_password", hash)
 	if err != nil {
 		t.Fatalf("Failed to compare wrong password: %v", err)
 	}

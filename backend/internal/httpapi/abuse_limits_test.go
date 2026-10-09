@@ -60,7 +60,7 @@ func loginFixture(t *testing.T, prefix string) (*Server, string, string) {
 
 	uid := newTestUUID(t)
 	email := prefix + "-" + uid + "@example.com"
-	hash, err := domain.HashPassword("senha-certa-123")
+	hash, err := domain.HashPassword(context.Background(), "senha-certa-123")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,6 +118,53 @@ func TestLoginLockoutIsTheSameForAnyEmail(t *testing.T) {
 	// De outro IP, entra: o chute alheio não tranca a dona da conta para fora.
 	if rec := doLogin(s, existing, "senha-certa-123", "198.51.100.20:5000"); rec.Code != http.StatusOK {
 		t.Fatalf("senha certa de outro IP: status %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
+// Sem vaga no Argon2, o login responde 429 `rate_limited`, igual para conta que existe e
+// para a que não existe, e a tentativa não conta: uma rajada de servidor ocupado não
+// tranca a dona da conta.
+func TestLoginWithoutArgonSlotIsBusyAndDoesNotCount(t *testing.T) {
+	s, existing, _ := loginFixture(t, "argon-busy")
+	missing := "missing-" + existing
+	t.Cleanup(func() { s.repo.ClearLoginAttempts(context.Background(), missing) })
+
+	domain.DummyHash() // o boot aquece; aqui, antes de tomar as vagas
+	release, err := domain.HoldArgonSlots(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	busyLogin := func(email string) *httptest.ResponseRecorder {
+		ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+		defer cancel()
+		body, _ := json.Marshal(map[string]string{"email": email, "password": "senha-certa-123"})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(body)).WithContext(ctx)
+		rec := httptest.NewRecorder()
+		s.loginHandler(rec, req)
+		return rec
+	}
+
+	for _, email := range []string{existing, missing} {
+		rec := busyLogin(email)
+		if rec.Code != http.StatusTooManyRequests || decodeAPIError(t, rec).Code != codeRateLimited {
+			release()
+			t.Fatalf("%s sem vaga: status %d (%s)", email, rec.Code, rec.Body.String())
+		}
+		if rec.Header().Get("Retry-After") == "" {
+			t.Errorf("%s: 429 sem Retry-After", email)
+		}
+	}
+	// Mais do que o teto do IP, todas sem vaga: nenhuma pode ter contado.
+	for i := 0; i < domain.LoginMaxAttemptsPerSource; i++ {
+		if rec := busyLogin(existing); rec.Code != http.StatusTooManyRequests {
+			release()
+			t.Fatalf("tentativa %d sem vaga: status %d", i, rec.Code)
+		}
+	}
+	release()
+
+	if rec := doLogin(s, existing, "senha-certa-123", ""); rec.Code != http.StatusOK {
+		t.Fatalf("depois da rajada sem vaga, a senha certa não entrou: status %d (%s)", rec.Code, rec.Body.String())
 	}
 }
 

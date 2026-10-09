@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/josecleiton/logn/backend/internal/domain"
 	"github.com/josecleiton/logn/backend/internal/infrastructure/socialauth"
 	"github.com/josecleiton/logn/backend/internal/legal"
@@ -122,7 +123,8 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	var user *domain.User
 	email, err := domain.NormalizeEmail(req.Email)
-	if err == nil {
+	noted := err == nil
+	if noted {
 		// Antes do Argon2 e antes de saber se a conta existe: a contagem é por e-mail
 		// digitado, e o 429 sai igual para conta que existe e para a que não existe.
 		// Código próprio, e não `rate_limited`: o app trava só o login por senha, e o
@@ -150,7 +152,19 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 		hashToCompare = user.PasswordHash
 	}
 
-	match, compareErr := domain.ComparePasswordAndHash(req.Password, hashToCompare)
+	match, compareErr := domain.ComparePasswordAndHash(ctx, req.Password, hashToCompare)
+	if errors.Is(compareErr, domain.ErrArgonBusy) {
+		// A senha nem foi conferida: a tentativa volta, ou o servidor ocupado trancava
+		// a conta de quem só estava repetindo o pedido.
+		if noted {
+			// Sem o cancelamento do pedido: a espera pode ter vencido junto com ele.
+			if err := s.repo.ReturnLoginAttempt(context.WithoutCancel(ctx), email, rateKey(requestIP(r))); err != nil {
+				log.Printf("login: attempt not returned: error=%v", err)
+			}
+		}
+		writeArgonBusy(w)
+		return
+	}
 	if err != nil || user.PasswordHash == "" || compareErr != nil || !match {
 		writeError(w, http.StatusUnauthorized, codeInvalidCredentials)
 		return
@@ -163,7 +177,7 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Hash de parâmetros antigos é refeito agora, enquanto a senha está na mão.
 	if domain.NeedsRehash(user.PasswordHash) {
-		if rehashed, err := domain.HashPassword(req.Password); err == nil {
+		if rehashed, err := domain.HashPassword(ctx, req.Password); err == nil {
 			if err := s.repo.UpdatePasswordHash(ctx, user.ID, rehashed); err != nil {
 				log.Printf("rehash not recorded: user=%s error=%v", user.ID, err)
 			}
@@ -219,13 +233,25 @@ func (s *Server) refreshHandler(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	tokenRecord, err := s.repo.GetRefreshToken(ctx, tokenHash)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		// Banco fora não é sessão inválida: com 401 o app apagaria a sessão.
+		log.Printf("refresh not read: error=%v", err)
+		writeUnavailable(w)
+		return
+	}
 	if err != nil || tokenRecord.ExpiresAt.Before(time.Now()) {
 		writeError(w, http.StatusUnauthorized, codeSessionInvalid)
 		return
 	}
 	// Conta desativada não renova sessão. O pedido de exclusão já revoga os tokens;
 	// isto fecha a porta para o que tiver escapado, como um token emitido no meio.
-	if !s.repo.IsUserActive(ctx, tokenRecord.UserID) {
+	active, err := s.repo.IsUserActive(ctx, tokenRecord.UserID)
+	if err != nil {
+		log.Printf("refresh: account not checked: user=%s error=%v", tokenRecord.UserID, err)
+		writeUnavailable(w)
+		return
+	}
+	if !active {
 		log.Printf("refresh rejected: user=%s account deactivated", tokenRecord.UserID)
 		writeError(w, http.StatusUnauthorized, codeSessionInvalid)
 		return
@@ -259,8 +285,10 @@ func (s *Server) refreshHandler(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusUnauthorized, codeSessionInvalid)
 			return
 		}
+		// Erro aqui é do banco. O 500 deslogava como o 401; o 503 o app trata como
+		// servidor ocupado e mantém a sessão.
 		log.Printf("refresh not rotated: user=%s error=%v", tokenRecord.UserID, err)
-		writeError(w, http.StatusInternalServerError, codeInternal)
+		writeUnavailable(w)
 		return
 	}
 
@@ -364,7 +392,7 @@ func (s *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedPassword, err := domain.HashPassword(req.Password)
+	hashedPassword, err := domain.HashPassword(ctx, req.Password)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
@@ -433,7 +461,7 @@ func (s *Server) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedPassword, err := domain.HashPassword(req.Password)
+	hashedPassword, err := domain.HashPassword(ctx, req.Password)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, codeInternal)
 		return
@@ -582,7 +610,11 @@ func (s *Server) deleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		provedSubject = id.Subject
 	} else {
-		match, compareErr := domain.ComparePasswordAndHash(req.Password, user.PasswordHash)
+		match, compareErr := domain.ComparePasswordAndHash(ctx, req.Password, user.PasswordHash)
+		if errors.Is(compareErr, domain.ErrArgonBusy) {
+			writeArgonBusy(w)
+			return
+		}
 		if user.PasswordHash == "" || compareErr != nil || !match {
 			writeError(w, http.StatusUnauthorized, codeInvalidCredentials)
 			return

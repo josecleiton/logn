@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/josecleiton/logn/backend/internal/domain"
 	"github.com/josecleiton/logn/backend/internal/httpapi"
@@ -42,6 +43,7 @@ func main() {
 		log.Fatalf("Invalid DATABASE_URL: %v\n", err)
 	}
 	config.ConnConfig.ConnectTimeout = 15 * time.Second
+	tunePool(config)
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
@@ -100,6 +102,11 @@ func main() {
 
 	domain.TrackKeySecret = trackKeySecretFrom(keys)
 
+	// O hash descartável do login sai agora, antes do primeiro pedido. Feito no primeiro
+	// login, ele custava um Argon2 a mais, e os logins que chegassem juntos esperavam
+	// por ele sem prazo, fora da espera de vaga.
+	domain.DummyHash()
+
 	repo := domain.NewRepository(pool)
 	social, revokers := socialVerifiersFromEnv()
 	// O GitHub é verificador, revogador e a troca do código ao mesmo tempo. Desligado,
@@ -149,7 +156,11 @@ func main() {
 		if err != nil {
 			log.Fatalf("Outbox purge failed: %v", err)
 		}
-		log.Printf("Purge completed: %d accounts, %d pending signups and %d outbox e-mails deleted. Exiting.", purged, pending, outbox)
+		refreshTokens, err := repo.PurgeExpiredRefreshTokens(context.Background())
+		if err != nil {
+			log.Fatalf("Refresh tokens purge failed: %v", err)
+		}
+		log.Printf("Purge completed: %d accounts, %d pending signups, %d outbox e-mails and %d refresh tokens deleted. Exiting.", purged, pending, outbox, refreshTokens)
 		return
 	}
 
@@ -178,5 +189,31 @@ func main() {
 	log.Printf("Server starting on :%s...", port)
 	if err := httpServer.ListenAndServe(); err != nil {
 		log.Fatal(err)
+	}
+}
+
+// Tamanho e prazos do pool do app. Sem `MaxConns`, o pgx usa max(4, CPUs): 4 conexões
+// com 1 vCPU, para 8 vagas de sync e 100 pedidos simultâneos, e quatro syncs longos
+// paravam a API inteira.
+const (
+	// Abaixo do pool do pooler do Supabase, que também atende o migrador e o painel,
+	// e a revisão velha durante o deploy.
+	poolMaxConns = 10
+	// Conexão parada volta ao pooler. Com `cpu_idle`, a checagem de fundo do pgx quase
+	// não roda, e a conexão esquecida ocupava a vaga do pooler por 30 minutos.
+	poolMaxConnIdle = 5 * time.Minute
+	// Consulta que passa disto segurava uma das conexões até o fim do pedido.
+	statementTimeout = "15s"
+)
+
+func tunePool(config *pgxpool.Config) {
+	config.MaxConns = poolMaxConns
+	config.MaxConnIdleTime = poolMaxConnIdle
+	// Por SET a cada conexão, não pelo parâmetro de partida: o pooler do Supabase
+	// não repassa parâmetro de partida arbitrário. Fica só neste pool; as migrações
+	// de produção vêm por DATABASE_MIGRATION_URL, em pool próprio e sem prazo.
+	config.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		_, err := conn.Exec(ctx, "SET statement_timeout = '"+statementTimeout+"'")
+		return err
 	}
 }

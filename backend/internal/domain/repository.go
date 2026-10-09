@@ -303,9 +303,14 @@ func (r *Repository) RotateRefreshToken(
 		// Token já trocado apareceu de novo: um dos dois portadores é cópia, e daqui
 		// não dá para saber qual. Derruba todas as sessões do usuário, como pede o
 		// OAuth BCP; o dono de verdade faz login outra vez, e quem copiou perde o acesso.
-		if _, err := r.db.Exec(ctx,
+		// Na mesma transação: pela `r.db`, cada replay segurava uma conexão esperando
+		// outra, e quatro replays juntos travavam o pool inteiro.
+		if _, err := tx.Exec(ctx,
 			`UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1 AND revoked = FALSE`,
 			userID); err != nil {
+			return err
+		}
+		if err := tx.Commit(ctx); err != nil {
 			return err
 		}
 		return ErrRefreshTokenAlreadyUsed
@@ -318,6 +323,26 @@ func (r *Repository) RotateRefreshToken(
 	}
 
 	return tx.Commit(ctx)
+}
+
+// RefreshTokenPurgeGrace é quanto um refresh vencido fica na tabela antes da purga.
+const RefreshTokenPurgeGrace = 24 * time.Hour
+
+// PurgeExpiredRefreshTokens apaga os refresh tokens vencidos há mais de um dia. Roda na
+// purga diária; sem ela, cada renovação deixava uma linha para sempre.
+//
+// Só o vencido sai. O revogado que ainda está no prazo fica, porque é ele que denuncia
+// o reuso: reapresentado, derruba as outras sessões. O vencido já responde 401 antes da
+// rotação, com ou sem a linha.
+func (r *Repository) PurgeExpiredRefreshTokens(ctx context.Context) (int64, error) {
+	tag, err := r.db.Exec(ctx, `
+		DELETE FROM refresh_tokens
+		WHERE expires_at <= CURRENT_TIMESTAMP - make_interval(secs => $1)`,
+		RefreshTokenPurgeGrace.Seconds())
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
 }
 
 // OriginCard é o texto do selo de origem, na língua pedida: de onde um desafio veio,
@@ -749,13 +774,22 @@ func (r *Repository) CancelAccountDeletion(ctx context.Context, userID string) (
 	return tag.RowsAffected() == 1, nil
 }
 
-func (r *Repository) IsUserActive(ctx context.Context, userID string) bool {
+// IsUserActive diz se a conta existe e não pediu exclusão. Conta que não existe é
+// `false` sem erro; o erro fica para o banco que não respondeu.
+//
+// Antes, qualquer erro virava `false`, e o chamador respondia 401: com o pool cheio, toda
+// rota autenticada deslogava o jogador, e o refresh que o app tentava em seguida só
+// aumentava a carga.
+func (r *Repository) IsUserActive(ctx context.Context, userID string) (bool, error) {
 	var deletionRequestedAt *time.Time
 	err := r.db.QueryRow(ctx, "SELECT deletion_requested_at FROM users WHERE id = $1", userID).Scan(&deletionRequestedAt)
-	if err != nil {
-		return false
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
 	}
-	return deletionRequestedAt == nil
+	if err != nil {
+		return false, err
+	}
+	return deletionRequestedAt == nil, nil
 }
 
 // PurgeDeletedAccounts apaga de vez as contas que passaram da carência e devolve

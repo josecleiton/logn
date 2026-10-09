@@ -148,7 +148,13 @@ func (s *Server) authenticate(w http.ResponseWriter, r *http.Request) (string, b
 	}
 
 	// Ensure user exists and has not requested deletion
-	if !s.repo.IsUserActive(r.Context(), userID) {
+	active, err := s.repo.IsUserActive(r.Context(), userID)
+	if err != nil {
+		log.Printf("account not checked: user=%s error=%v", userID, err)
+		writeUnavailable(w)
+		return "", false
+	}
+	if !active {
 		writeError(w, http.StatusUnauthorized, codeUnauthenticated)
 		return "", false
 	}

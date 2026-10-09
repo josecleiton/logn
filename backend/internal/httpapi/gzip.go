@@ -2,8 +2,10 @@ package httpapi
 
 import (
 	"compress/gzip"
+	"io"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 // Cloud Run entrega a resposta como o servidor escreveu: sem gzip aqui, a trilha
@@ -14,6 +16,12 @@ import (
 // que economiza num "ok" de health check. Por isso o corpo fica num buffer até
 // passar do limite ou o handler terminar, e só então se decide.
 const gzipMinBytes = 1024
+
+// gzipWriters reaproveita os compressores. Cada `gzip.NewWriter` alocava uns 800 KB de
+// tabelas, por resposta, numa instância de 256 MiB.
+var gzipWriters = sync.Pool{
+	New: func() any { return gzip.NewWriter(nil) },
+}
 
 func withGzip(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -79,6 +87,12 @@ func (g *gzipResponseWriter) Write(p []byte) (int, error) {
 		g.raw = true
 		return len(p), g.flushRaw()
 	}
+	if strings.HasPrefix(h.Get("Content-Type"), "application/octet-stream") {
+		// Binário que já sai cifrado, como o pacote da trilha: não encolhe, e comprimir
+		// só gastava CPU e memória.
+		g.raw = true
+		return len(p), g.flushRaw()
+	}
 
 	// Sem Content-Type declarado, o net/http o adivinharia pelos primeiros bytes — que
 	// agora seriam do gzip, não do conteúdo. Adivinha-se antes, pelo corpo original.
@@ -89,7 +103,8 @@ func (g *gzipResponseWriter) Write(p []byte) (int, error) {
 	h.Del("Content-Length")
 	g.ResponseWriter.WriteHeader(g.status)
 
-	g.gz = gzip.NewWriter(g.ResponseWriter)
+	g.gz = gzipWriters.Get().(*gzip.Writer)
+	g.gz.Reset(g.ResponseWriter)
 	_, err := g.gz.Write(g.buf)
 	g.buf = nil
 	return len(p), err
@@ -114,6 +129,10 @@ func (g *gzipResponseWriter) finish() {
 	switch {
 	case g.gz != nil:
 		g.gz.Close()
+		// Solto da conexão antes de voltar ao pool, que guardaria a referência a ela.
+		g.gz.Reset(io.Discard)
+		gzipWriters.Put(g.gz)
+		g.gz = nil
 	case !g.raw:
 		// O handler terminou abaixo do limite: vai sem compressão.
 		g.flushRaw()

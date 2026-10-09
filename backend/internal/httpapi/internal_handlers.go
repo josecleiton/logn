@@ -108,6 +108,15 @@ func (s *Server) purgeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("purge ok: %d login counters deleted", attempts)
 
+	// Os refresh tokens vencidos também, ou a tabela crescia a cada renovação.
+	refreshTokens, err := s.repo.PurgeExpiredRefreshTokens(r.Context())
+	if err != nil {
+		log.Printf("refresh tokens purge failed: error=%v", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+	log.Printf("purge ok: %d expired refresh tokens deleted", refreshTokens)
+
 	// A caixa de saída guarda uma semana, para depuração (ADR 0026).
 	outbox, err := s.repo.PruneOutbox(r.Context())
 	if err != nil {
@@ -135,7 +144,7 @@ func (s *Server) purgeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
 		"status": "ok", "purged": purged, "waitlist_purged": pending, "login_attempts_purged": attempts,
-		"outbox_purged": outbox, "play_voided": voided, "play_acknowledged": acked,
+		"refresh_tokens_purged": refreshTokens, "outbox_purged": outbox, "play_voided": voided, "play_acknowledged": acked,
 	})
 }
 

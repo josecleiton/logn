@@ -56,6 +56,15 @@ func countRows(t *testing.T, repo *Repository, query string, arg string) int {
 	return n
 }
 
+func userActive(t *testing.T, repo *Repository, id string) bool {
+	t.Helper()
+	active, err := repo.IsUserActive(context.Background(), id)
+	if err != nil {
+		t.Fatalf("IsUserActive: %v", err)
+	}
+	return active
+}
+
 func TestCreateUserStoresCountry(t *testing.T) {
 	conn := setupTestDB(t)
 	// Cleanup, não defer: o defer fecharia o pool antes da limpeza de
@@ -92,7 +101,7 @@ func TestMarkAccountForDeletionRevokesSessions(t *testing.T) {
 	if purgeAfter.Before(before.Add(AccountDeletionGrace - time.Minute)) {
 		t.Errorf("purge_after = %v, esperava uns 30 dias à frente", purgeAfter)
 	}
-	if repo.IsUserActive(ctx, id) {
+	if userActive(t, repo, id) {
 		t.Error("conta segue ativa")
 	}
 	if n := countRows(t, repo, `SELECT count(*) FROM refresh_tokens WHERE user_id = $1 AND revoked = FALSE`, id); n != 0 {
@@ -124,7 +133,7 @@ func TestCancelAccountDeletion(t *testing.T) {
 	if restored, err := repo.CancelAccountDeletion(ctx, id); err != nil || !restored {
 		t.Fatalf("devia cancelar: %v %v", restored, err)
 	}
-	if !repo.IsUserActive(ctx, id) {
+	if !userActive(t, repo, id) {
 		t.Error("conta não voltou")
 	}
 }
@@ -146,7 +155,7 @@ func TestResetPasswordCancelsDeletion(t *testing.T) {
 	if err != nil || got != id || !restored {
 		t.Fatalf("got=%s restored=%v err=%v", got, restored, err)
 	}
-	if !repo.IsUserActive(ctx, id) {
+	if !userActive(t, repo, id) {
 		t.Error("conta não voltou")
 	}
 	if _, restored, _ := repo.ResetUserPassword(ctx, email, "outro-hash"); restored {

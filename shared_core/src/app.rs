@@ -3212,7 +3212,9 @@ impl App for LogNApp {
                     // sessão guardada pode estar perfeitamente válida — quem decide é o
                     // prazo. O 429 caía no braço de baixo e deslogava quem não tinha
                     // feito nada: bastava o limite por IP estourar num Wi-Fi cheio.
-                    HttpResult::Ok(response) if response.status == 429 => {
+                    // O 5xx é o mesmo caso: o servidor não conseguiu olhar a sessão (o
+                    // banco não respondeu), o que não diz nada sobre ela.
+                    HttpResult::Ok(response) if response.status == 429 || response.status >= 500 => {
                         // A espera da abertura já estourou e mandou pelo caminho sem
                         // rede: não há o que refazer.
                         if model.boot.active && model.boot.session_timed_out {
@@ -8519,6 +8521,35 @@ mod tests {
         let asked_expiry = cmd.effects().any(|e| matches!(e,
             Effect::SecureStore(r) if matches!(&r.operation, KeyValueOperation::Get { key } if key == "session_expires_at")));
         assert!(asked_expiry, "decide pelo prazo guardado, como sem rede");
+    }
+
+    /// 503 no refresh é o banco que não respondeu, não a sessão recusada: com o pool
+    /// cheio, o servidor não consegue olhar o token. O 401 continua encerrando a sessão.
+    #[test]
+    fn test_5xx_on_refresh_keeps_the_session_and_401_ends_it() {
+        let app = LogNApp::default();
+        let response = |status| HttpResult::Ok(crux_http::protocol::HttpResponse {
+            status,
+            headers: vec![],
+            body: br#"{"code":"internal","message":"Service Unavailable"}"#.to_vec(),
+        });
+
+        for status in [500, 503] {
+            let mut model = Model::default();
+            model.session_expires_at = 9_999_999_999;
+            let mut cmd = app.update(Event::RefreshCompleted(response(status)), &mut model);
+            assert_ne!(model.status_key, StatusKey::SessionExpired, "{status} deslogou");
+            assert_eq!(model.session_expires_at, 9_999_999_999);
+            let asked_expiry = cmd.effects().any(|e| matches!(e,
+                Effect::SecureStore(r) if matches!(&r.operation, KeyValueOperation::Get { key } if key == "session_expires_at")));
+            assert!(asked_expiry, "{status}: decide pelo prazo guardado, como sem rede");
+        }
+
+        let mut model = Model::default();
+        model.session_expires_at = 9_999_999_999;
+        let _ = app.update(Event::RefreshCompleted(response(401)), &mut model);
+        assert_eq!(model.status_key, StatusKey::SessionExpired, "401 é sessão recusada");
+        assert_eq!(model.session_expires_at, 0);
     }
 
     /// Desafios como o servidor manda: enunciado em texto livre, TAG com rótulos e DRY

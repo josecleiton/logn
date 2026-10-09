@@ -178,12 +178,12 @@ func TestGitHubSignupAndDeletionRevokesTheGrant(t *testing.T) {
 	// Sem o access token não há como revogar: a exclusão pelo GitHub não passa.
 	expect(t, f.deleteAs(t, userID, `{"provider":"github","id_token":"bilhete","nonce":"`+fakeNonce+`"}`),
 		http.StatusBadRequest, codeInvalidRequest)
-	if !f.s.repo.IsUserActive(context.Background(), userID) {
+	if !f.active(t, userID) {
 		t.Fatal("conta desativada sem revogação possível")
 	}
 
 	rec := f.deleteAs(t, userID, `{"provider":"github","id_token":"bilhete","nonce":"`+fakeNonce+`","authorization_code":"gho_da_exclusao"}`)
-	if rec.Code != http.StatusOK || f.s.repo.IsUserActive(context.Background(), userID) {
+	if rec.Code != http.StatusOK || f.active(t, userID) {
 		t.Fatalf("exclusão pelo GitHub: %d %s", rec.Code, rec.Body.String())
 	}
 	if want := "gho_da_exclusao@" + sub; len(rv.codes) != 1 || rv.codes[0] != want {
@@ -211,7 +211,7 @@ func TestGitHubStaleTicketDoesNotDelete(t *testing.T) {
 	github["velho"] = socialauth.Identity{Subject: sub, Email: addr, EmailVerified: true, IssuedAt: time.Now().Add(-6 * time.Minute)}
 	expect(t, f.deleteAs(t, userID, `{"provider":"github","id_token":"velho","nonce":"`+fakeNonce+`","authorization_code":"gho_velho"}`),
 		http.StatusUnauthorized, codeSocialTokenInvalid)
-	if !f.s.repo.IsUserActive(context.Background(), userID) || len(rv.codes) != 0 {
+	if !f.active(t, userID) || len(rv.codes) != 0 {
 		t.Fatal("bilhete velho apagou ou revogou")
 	}
 	if len(rv.discarded) != 1 || rv.discarded[0] != "gho_velho" {
@@ -240,7 +240,7 @@ func TestGitHubDeletionRefusedForAppleDiscardsTheToken(t *testing.T) {
 
 	expect(t, f.deleteAs(t, userID, `{"provider":"github","id_token":"g","nonce":"`+fakeNonce+`","authorization_code":"gho_x"}`),
 		http.StatusConflict, codeProviderReauthRequired)
-	if !f.s.repo.IsUserActive(context.Background(), userID) || len(appleRv.codes) != 0 || len(rv.codes) != 0 {
+	if !f.active(t, userID) || len(appleRv.codes) != 0 || len(rv.codes) != 0 {
 		t.Fatal("exclusão pelo GitHub passou sem a Apple")
 	}
 	if len(rv.discarded) != 1 || rv.discarded[0] != "gho_x" {
@@ -269,7 +269,7 @@ func TestGitHubDeletionNeedsItsOwnIdentity(t *testing.T) {
 
 	expect(t, f.deleteAs(t, userID, `{"provider":"github","id_token":"dele","nonce":"`+fakeNonce+`","authorization_code":"x"}`),
 		http.StatusUnauthorized, codeInvalidCredentials)
-	if !f.s.repo.IsUserActive(context.Background(), userID) || len(rv.codes) != 0 {
+	if !f.active(t, userID) || len(rv.codes) != 0 {
 		t.Fatal("bilhete de outra conta apagou ou revogou")
 	}
 }

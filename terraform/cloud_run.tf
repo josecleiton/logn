@@ -64,10 +64,14 @@ resource "google_cloud_run_v2_service" "logn" {
           path = "/ready"
           port = 8080
         }
+        # Uma sondagem por segundo: o boot conecta ao banco e confere as migrações antes
+        # de escutar a porta, e com 15 s entre sondagens a primeira que pegava o boot no
+        # meio deixava a instância fora até os ~17 s, num serviço que escala a zero. O
+        # prazo total segue em 2 + 1 × 90 s.
         initial_delay_seconds = 2
-        period_seconds        = 15
-        timeout_seconds       = 10
-        failure_threshold     = 6
+        period_seconds        = 1
+        timeout_seconds       = 1
+        failure_threshold     = 90
       }
 
       liveness_probe {
@@ -80,6 +84,13 @@ resource "google_cloud_run_v2_service" "logn" {
         failure_threshold = 3
       }
 
+      # Teto para o GC do Go, abaixo dos 256 MiB do contêiner. Sem ele, o heap cresce até
+      # o dobro do que está vivo antes de coletar, e uma rajada de login (Argon2 a
+      # 19 MiB por vaga), sync e gzip juntos passava do limite e derrubava a instância.
+      env {
+        name  = "GOMEMLIMIT"
+        value = "200MiB"
+      }
       env {
         name  = "SMTP_USER"
         value = var.smtp_user

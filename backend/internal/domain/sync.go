@@ -102,9 +102,13 @@ func ValidateSync(payload SyncPayload, serverLastHash string) (bool, error) {
 		currentHash = "0000000000000000000000000000000000000000000000000000000000000000"
 	}
 
-	for i, event := range payload.Events {
-		// Se o previous não bater, sinaliza necessidade de Rebase
-		if event.PreviousHash != currentHash && i == 0 {
+	for _, event := range payload.Events {
+		// No primeiro, é o cliente atrás do servidor. Nos outros, o hash é calculado a
+		// partir do topo do servidor e não pegava o furo: um `previous_hash` forjado com
+		// o `current_hash` certo passava e ia gravado como veio. Os dois pedem rebase, e
+		// não recusa: o rebase reencadeia a fila inteira, e uma fila gravada com furo no
+		// meio volta a subir em vez de ficar presa para sempre.
+		if event.PreviousHash != currentHash {
 			return false, errors.New("force_rebase")
 		}
 

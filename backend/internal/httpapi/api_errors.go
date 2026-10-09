@@ -105,6 +105,21 @@ func writeError(w http.ResponseWriter, status int, code string) {
 	json.NewEncoder(w).Encode(apiError{Code: code, Message: http.StatusText(status)})
 }
 
+// writeUnavailable responde 503 quando o banco não respondeu a uma checagem de sessão.
+// Não pode sair 401: o app leria sessão inválida e deslogaria o jogador por um pool cheio.
+func writeUnavailable(w http.ResponseWriter) {
+	w.Header().Set("Retry-After", "5")
+	writeError(w, http.StatusServiceUnavailable, codeInternal)
+}
+
+// writeArgonBusy responde a comparação de senha que não achou vaga a tempo, como o sync
+// sem vaga: 429 com `Retry-After`, e o app espera para tentar de novo. Não é credencial
+// errada: 401 aqui diria ao jogador que errou a senha que ele digitou certo.
+func writeArgonBusy(w http.ResponseWriter) {
+	w.Header().Set("Retry-After", "5")
+	writeError(w, http.StatusTooManyRequests, codeRateLimited)
+}
+
 // passwordErrorCode leva o erro de ValidatePassword ao código da API.
 func passwordErrorCode(err error) string {
 	if errors.Is(err, domain.ErrPasswordTooLong) {

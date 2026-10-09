@@ -85,4 +85,14 @@ func TestValidateSync(t *testing.T) {
 	if err == nil || err.Error() != "force_rebase" {
 		t.Fatalf("Expected force_rebase error, got: %v", err)
 	}
+
+	// 4. previous_hash forjado depois do primeiro: o current_hash está certo, porque foi
+	// calculado sobre o anterior de verdade, mas a coluna gravaria outro valor. Não
+	// passa, e pede rebase em vez de recusar a fila.
+	payload.Events[1].PayloadJSON = "{}"
+	payload.Events[1].PreviousHash = "2222222222222222222222222222222222222222222222222222222222222222"
+	valid, err = ValidateSync(payload, "0000000000000000000000000000000000000000000000000000000000000000")
+	if err == nil || valid || err.Error() != "force_rebase" {
+		t.Fatalf("previous_hash forjado no segundo evento devia pedir rebase, veio valid=%v err=%v", valid, err)
+	}
 }

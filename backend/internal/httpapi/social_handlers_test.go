@@ -67,6 +67,15 @@ func newSocialFixture(t *testing.T, tokens fakeVerifier) *socialFixture {
 	return f
 }
 
+func (f *socialFixture) active(t *testing.T, userID string) bool {
+	t.Helper()
+	active, err := f.s.repo.IsUserActive(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("IsUserActive: %v", err)
+	}
+	return active
+}
+
 func (f *socialFixture) email(name string) string {
 	return name + "-" + f.tag + "@example.com"
 }
@@ -82,7 +91,7 @@ func (f *socialFixture) cleanupEmail(t *testing.T, addr string) {
 
 func (f *socialFixture) seedPasswordUser(t *testing.T, addr string) string {
 	t.Helper()
-	hash, err := domain.HashPassword("senha-forte-do-teste")
+	hash, err := domain.HashPassword(context.Background(), "senha-forte-do-teste")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -325,7 +334,7 @@ func TestSocialLoginCancelsAPendingDeletion(t *testing.T) {
 	sessionUser(t, rec)
 	var resp AuthResponse
 	json.Unmarshal(rec.Body.Bytes(), &resp)
-	if !resp.AccountRestored || !f.s.repo.IsUserActive(context.Background(), userID) {
+	if !resp.AccountRestored || !f.active(t, userID) {
 		t.Fatalf("exclusão não cancelada: %s", rec.Body.String())
 	}
 }
@@ -344,7 +353,7 @@ func TestDeleteAccountWithPasswordRefusesAnUnlinkedIdentity(t *testing.T) {
 	rec := httptest.NewRecorder()
 	f.s.deleteAccountHandler(rec, req)
 	expect(t, rec, http.StatusUnauthorized, codeInvalidCredentials)
-	if !f.s.repo.IsUserActive(context.Background(), userID) {
+	if !f.active(t, userID) {
 		t.Fatal("conta desativada por identidade que não é dela")
 	}
 }
@@ -486,12 +495,12 @@ func TestDeleteAccountWithoutPasswordNeedsItsOwnIdentity(t *testing.T) {
 	stale.IssuedAt = time.Now().Add(-deleteReauthMaxAge - time.Minute)
 	tokens["dono-antigo"] = stale
 	expect(t, del(`{"provider":"google","id_token":"dono-antigo","nonce":"`+fakeNonce+`"}`), http.StatusUnauthorized, codeSocialTokenInvalid)
-	if !f.s.repo.IsUserActive(context.Background(), userID) {
+	if !f.active(t, userID) {
 		t.Fatal("conta desativada por pedido recusado")
 	}
 
 	rec := del(`{"provider":"google","id_token":"dono","nonce":"` + fakeNonce + `"}`)
-	if rec.Code != http.StatusOK || f.s.repo.IsUserActive(context.Background(), userID) {
+	if rec.Code != http.StatusOK || f.active(t, userID) {
 		t.Fatalf("exclusão com a própria identidade: %d %s", rec.Code, rec.Body.String())
 	}
 }
@@ -558,12 +567,12 @@ func TestAppleSignupAndDeletionRevokesTheGrant(t *testing.T) {
 	// Sem o código, não há como revogar: a exclusão não passa.
 	expect(t, f.deleteAs(t, userID, `{"provider":"apple","id_token":"t","nonce":"`+fakeNonce+`"}`),
 		http.StatusBadRequest, codeInvalidRequest)
-	if !f.s.repo.IsUserActive(context.Background(), userID) {
+	if !f.active(t, userID) {
 		t.Fatal("conta desativada sem revogação possível")
 	}
 
 	rec := f.deleteAs(t, userID, `{"provider":"apple","id_token":"t","nonce":"`+fakeNonce+`","authorization_code":"code-1"}`)
-	if rec.Code != http.StatusOK || f.s.repo.IsUserActive(context.Background(), userID) {
+	if rec.Code != http.StatusOK || f.active(t, userID) {
 		t.Fatalf("exclusão pela Apple: %d %s", rec.Code, rec.Body.String())
 	}
 	// O código vai com o `sub` que provou a posse: é ele que a revogação confere.
@@ -590,7 +599,7 @@ func TestGoogleDeletionOfAnAppleLinkedAccountGoesThroughApple(t *testing.T) {
 
 	expect(t, f.deleteAs(t, userID, `{"provider":"google","id_token":"g","nonce":"`+fakeNonce+`"}`),
 		http.StatusConflict, codeProviderReauthRequired)
-	if !f.s.repo.IsUserActive(context.Background(), userID) || len(rv.codes) != 0 {
+	if !f.active(t, userID) || len(rv.codes) != 0 {
 		t.Fatal("exclusão pelo Google passou sem revogar a Apple")
 	}
 }
@@ -621,7 +630,7 @@ func TestAppleOutageDoesNotBlockDeletion(t *testing.T) {
 	userID := sessionUser(t, f.post(t, f.appleBody("t")))
 
 	rec := f.deleteAs(t, userID, `{"provider":"apple","id_token":"t","nonce":"`+fakeNonce+`","authorization_code":"c"}`)
-	if rec.Code != http.StatusOK || f.s.repo.IsUserActive(context.Background(), userID) {
+	if rec.Code != http.StatusOK || f.active(t, userID) {
 		t.Fatalf("Apple fora do ar segurou a exclusão: %d %s", rec.Code, rec.Body.String())
 	}
 }
@@ -640,7 +649,7 @@ func TestPasswordDeletionOfAnAppleLinkedAccountGoesThroughApple(t *testing.T) {
 
 	expect(t, f.deleteAs(t, userID, `{"password":"senha-forte-do-teste"}`),
 		http.StatusConflict, codeProviderReauthRequired)
-	if !f.s.repo.IsUserActive(context.Background(), userID) {
+	if !f.active(t, userID) {
 		t.Fatal("conta desativada pela senha sem revogar a Apple")
 	}
 

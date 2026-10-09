@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
@@ -40,24 +41,87 @@ var argonCfg = &ArgonConfig{
 	keyLen:  32,
 }
 
-// argonSlots limita quantos hashes rodam ao mesmo tempo. O resto espera na fila, e a
-// memória de pico fica em slots × 19 MiB, qualquer que seja o tráfego.
-var argonSlots = make(chan struct{}, 4)
+// argonSlots limita a memória dos hashes que rodam ao mesmo tempo. Cada vaga vale
+// `argonCfg.memory`; o resto espera na fila, e o pico fica em argonSlotCount × 19 MiB,
+// qualquer que seja o tráfego.
+const argonSlotCount = 4
 
-func argonIDKey(password, salt []byte, timeCost, memory uint32, threads uint8, keyLen uint32) []byte {
-	argonSlots <- struct{}{}
-	defer func() { <-argonSlots }()
-	return argon2.IDKey(password, salt, timeCost, memory, threads, keyLen)
+var argonSlots = make(chan struct{}, argonSlotCount)
+
+// argonWide deixa um só hash de várias vagas juntando as dele por vez. Dois hashes
+// antigos pegando vagas aos poucos podiam ficar com metade cada um e travar os dois.
+var argonWide = make(chan struct{}, 1)
+
+// argonCompareWait é quanto a comparação espera por vaga. O login não consumiu nada
+// ainda, então desistir e mandar tentar de novo é barato; fila sem fim só empilha
+// pedido que o cliente já abandonou.
+const argonCompareWait = 10 * time.Second
+
+// ErrArgonBusy diz que o hash não rodou porque não houve vaga a tempo.
+var ErrArgonBusy = errors.New("argon2: no slot available")
+
+// acquireArgon reserva as vagas de um hash de `memory` KiB e devolve como soltá-las.
+//
+// Hash antigo, de 64 MiB, ocupava uma vaga só, como um de 19 MiB: quatro deles juntos
+// passavam dos 256 MiB da instância. Agora cada um pega as vagas da memória que usa.
+func acquireArgon(ctx context.Context, memory uint32) (func(), error) {
+	need := int((memory + argonCfg.memory - 1) / argonCfg.memory)
+	need = max(1, min(need, argonSlotCount))
+
+	held := 0
+	release := func() {
+		for ; held > 0; held-- {
+			<-argonSlots
+		}
+	}
+	if need > 1 {
+		select {
+		case argonWide <- struct{}{}:
+			defer func() { <-argonWide }()
+		case <-ctx.Done():
+			return nil, ErrArgonBusy
+		}
+	}
+	for held < need {
+		select {
+		case argonSlots <- struct{}{}:
+			held++
+		case <-ctx.Done():
+			release()
+			return nil, ErrArgonBusy
+		}
+	}
+	return release, nil
 }
 
-// GenerateFromPassword hashes a password using Argon2id.
-func HashPassword(password string) (string, error) {
+// HoldArgonSlots toma todas as vagas do Argon2 até `release`. É para os testes que
+// precisam do servidor ocupado; o código de produção não chama.
+func HoldArgonSlots(ctx context.Context) (release func(), err error) {
+	return acquireArgon(ctx, argonCfg.memory*argonSlotCount)
+}
+
+func argonIDKey(ctx context.Context, password, salt []byte, timeCost, memory uint32, threads uint8, keyLen uint32) ([]byte, error) {
+	release, err := acquireArgon(ctx, memory)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	return argon2.IDKey(password, salt, timeCost, memory, threads, keyLen), nil
+}
+
+// HashPassword hashes a password using Argon2id. Espera a vaga enquanto `ctx` valer, sem
+// prazo próprio: no cadastro e na troca de senha o código já foi consumido, e desistir
+// por fila obrigaria a pedir outro.
+func HashPassword(ctx context.Context, password string) (string, error) {
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
 
-	hash := argonIDKey([]byte(password), salt, argonCfg.time, argonCfg.memory, argonCfg.threads, argonCfg.keyLen)
+	hash, err := argonIDKey(ctx, []byte(password), salt, argonCfg.time, argonCfg.memory, argonCfg.threads, argonCfg.keyLen)
+	if err != nil {
+		return "", err
+	}
 
 	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
 	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
@@ -66,8 +130,9 @@ func HashPassword(password string) (string, error) {
 	return encodedHash, nil
 }
 
-// ComparePasswordAndHash compares a password with an Argon2id hash.
-func ComparePasswordAndHash(password, encodedHash string) (bool, error) {
+// ComparePasswordAndHash compares a password with an Argon2id hash. Sem vaga em
+// argonCompareWait, devolve ErrArgonBusy.
+func ComparePasswordAndHash(ctx context.Context, password, encodedHash string) (bool, error) {
 	vals := strings.Split(encodedHash, "$")
 	if len(vals) != 6 {
 		return false, ErrInvalidHash
@@ -100,7 +165,12 @@ func ComparePasswordAndHash(password, encodedHash string) (bool, error) {
 		return false, err
 	}
 
-	hashToCompare := argonIDKey([]byte(password), salt, timeCost, memory, threads, uint32(len(decodedHash)))
+	ctx, cancel := context.WithTimeout(ctx, argonCompareWait)
+	defer cancel()
+	hashToCompare, err := argonIDKey(ctx, []byte(password), salt, timeCost, memory, threads, uint32(len(decodedHash)))
+	if err != nil {
+		return false, err
+	}
 
 	if subtle.ConstantTimeCompare(decodedHash, hashToCompare) == 1 {
 		return true, nil
@@ -137,7 +207,7 @@ func DummyHash() string {
 	dummyHashOnce.Do(func() {
 		secret := make([]byte, 32)
 		_, _ = rand.Read(secret)
-		dummyHash, _ = HashPassword(base64.RawStdEncoding.EncodeToString(secret))
+		dummyHash, _ = HashPassword(context.Background(), base64.RawStdEncoding.EncodeToString(secret))
 	})
 	return dummyHash
 }

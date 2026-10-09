@@ -100,6 +100,17 @@ func (r *Repository) ClearLoginAttempts(ctx context.Context, email string) error
 	return err
 }
 
+// ReturnLoginAttempt devolve a tentativa que NoteLoginAttempt contou e que não chegou a
+// conferir a senha, porque o Argon2 não teve vaga. Uma rajada de servidor ocupado
+// trancava a conta de quem só estava tentando de novo.
+func (r *Repository) ReturnLoginAttempt(ctx context.Context, email, source string) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE login_failures SET failures = failures - 1
+		WHERE email_hmac = $1 AND scope IN ($2, '') AND failures > 0`,
+		loginKey(email), loginScope(source))
+	return err
+}
+
 // PurgeLoginAttempts apaga as contagens de janela vencida. Roda na purga diária; sem
 // ela, todo e-mail que alguém já digitou errado ficava na tabela para sempre.
 func (r *Repository) PurgeLoginAttempts(ctx context.Context) (int64, error) {

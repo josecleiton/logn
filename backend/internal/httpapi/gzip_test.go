@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -105,6 +106,37 @@ func TestGzipDeixaRespostaPequenaCrua(t *testing.T) {
 	}
 	if rec.Code != http.StatusServiceUnavailable || rec.Body.String() != "Database not ready" {
 		t.Errorf("resposta = %d %q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestGzipDeixaBinarioCifradoCru(t *testing.T) {
+	body := strings.Repeat("\x8f\x02", gzipMinBytes)
+	rec := serveGzip(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Write([]byte(body))
+	}, "gzip")
+
+	if got := rec.Header().Get("Content-Encoding"); got != "" {
+		t.Fatalf("Content-Encoding = %q, binário cifrado não se comprime", got)
+	}
+	if rec.Body.String() != body {
+		t.Errorf("corpo binário foi alterado")
+	}
+}
+
+// O compressor volta ao pool entre respostas: a segunda não pode levar resto da primeira.
+func TestGzipReaproveitaCompressorSemMisturarRespostas(t *testing.T) {
+	for i := range 3 {
+		handler, payload := bigJSON(http.StatusOK)
+		payload = strings.Repeat(strconv.Itoa(i), i+1) + payload
+		rec := serveGzip(t, func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(payload[:i+1]))
+			handler(w, r)
+		}, "gzip")
+		if got := gunzip(t, rec.Body.Bytes()); got != payload {
+			t.Fatalf("resposta %d saiu diferente do que o handler escreveu", i)
+		}
 	}
 }
 
