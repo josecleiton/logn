@@ -41,7 +41,7 @@ func (s *Server) tracksHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Com conta, a resposta diz o que ela comprou e o que foi revogado.
-	writeAccountContentJSON(w, lang, userID, tracks)
+	writeAccountContentJSON(w, r, lang, userID, tracks)
 }
 
 // trackLicenseHandler devolve a chave e o prazo offline, e registra o aparelho.

@@ -9,7 +9,9 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import sh.logn.core.LogN.HttpError
 import sh.logn.core.LogN.HttpHeader
 import sh.logn.core.LogN.HttpRequest
@@ -18,6 +20,8 @@ import java.util.concurrent.TimeUnit
 
 class OkHttpPortTest {
     private val server = MockWebServer()
+
+    @get:Rule val cacheDir = TemporaryFolder()
 
     @Before fun start() = server.start()
 
@@ -80,6 +84,46 @@ class OkHttpPortTest {
             val bad = listOf(HttpHeader("X-Bad", "line\nbreak"))
             val result = port().perform(HttpRequest("GET", "/ready", bad, Bytes(ByteArray(0))))
             assertTrue(result is HttpResult.Err && result.value is HttpError.Io)
+        }
+
+    /**
+     * Conteúdo da conta: o cache guarda a resposta `private, no-cache` mesmo com
+     * `Authorization`, pergunta de novo com o ETag (também depois do refresh, com outro
+     * token), e o 304 do servidor chega ao Core como 200 com o corpo guardado.
+     */
+    @Test
+    fun account_content_is_revalidated_by_etag_and_served_from_the_cache() =
+        runTest {
+            val etag = "W/\"abc\""
+            server.enqueue(
+                MockResponse
+                    .Builder()
+                    .code(200)
+                    .addHeader("ETag", etag)
+                    .addHeader("Cache-Control", "private, no-cache")
+                    .addHeader("Vary", "Accept-Language")
+                    .body("[\"desafio\"]")
+                    .build(),
+            )
+            server.enqueue(MockResponse.Builder().code(304).addHeader("ETag", etag).build())
+
+            val port = port(OkHttpPort.defaultClient(cacheDir.newFolder("http")))
+            val request = { token: String ->
+                HttpRequest(
+                    "GET",
+                    "/api/v1/challenges",
+                    listOf(HttpHeader("Authorization", "Bearer $token"), HttpHeader("Accept-Language", "pt-BR")),
+                    Bytes(ByteArray(0)),
+                )
+            }
+
+            port.perform(request("t1"))
+            assertEquals(null, server.takeRequest().headers["If-None-Match"])
+
+            val second = (port.perform(request("t2")) as HttpResult.Ok).value
+            assertEquals(etag, server.takeRequest().headers["If-None-Match"])
+            assertEquals(200.toUShort(), second.status)
+            assertEquals("[\"desafio\"]", second.body.content.decodeToString())
         }
 
     @Test

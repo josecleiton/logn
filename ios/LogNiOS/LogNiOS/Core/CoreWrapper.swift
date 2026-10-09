@@ -453,6 +453,11 @@ public class CoreWrapper: ObservableObject {
         case .delete(let key):
             let previous = storedBytes(forKey: key)
             removeStored(forKey: key)
+            // O Core só apaga o retrato offline ao tirar a conta do aparelho (sair, conta
+            // excluída). O cache HTTP é a outra cópia do conteúdo dela, e vai junto.
+            if key == "offline_snapshot" {
+                URLCache.shared.removeAllCachedResponses()
+            }
             result = .ok(response: LogN.KeyValueResponse.delete(previous: value(previous)))
         case .listKeys(_, _):
             result = .err(error: LogN.KeyValueError.io(message: "listKeys unsupported"))

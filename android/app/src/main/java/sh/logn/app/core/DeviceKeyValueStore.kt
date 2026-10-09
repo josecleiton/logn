@@ -37,6 +37,12 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 class DeviceKeyValueStore(
     private val context: Context,
+    /**
+     * Chamado quando o Core apaga o retrato offline, o que ele só faz ao tirar a conta do
+     * aparelho (sair, conta excluída). O app usa para esvaziar o cache HTTP, a outra cópia
+     * do conteúdo da conta.
+     */
+    private val onAccountWiped: () -> Unit = {},
 ) : KeyValuePort {
     private val mutex = Mutex()
     private val plain: SharedPreferences = context.getSharedPreferences(PLAIN_FILE, Context.MODE_PRIVATE)
@@ -72,6 +78,7 @@ class DeviceKeyValueStore(
             is KeyValueOperation.Delete -> {
                 val previous = read(operation.key)
                 remove(operation.key)
+                if (operation.key == ACCOUNT_SNAPSHOT_KEY) onAccountWiped()
                 ok(KeyValueResponse.Delete(value(previous)))
             }
             is KeyValueOperation.Exists -> ok(KeyValueResponse.Exists(read(operation.key) != null))
@@ -192,6 +199,9 @@ class DeviceKeyValueStore(
         private const val SECURE_FILE = "logn_secure"
         private const val PACKAGES_DIR = "TrackPackages"
         private const val PREPARED_KEY = "keychain_prepared"
+
+        /** O retrato offline da conta. O Core o apaga junto de tudo o que é dela. */
+        private const val ACCOUNT_SNAPSHOT_KEY = "offline_snapshot"
 
         private fun route(key: String): Route =
             when {

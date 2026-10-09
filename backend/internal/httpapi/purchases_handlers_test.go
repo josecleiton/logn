@@ -384,7 +384,8 @@ func TestTheContentRoutesHideAnUnavailableTrack(t *testing.T) {
 		"/api/v1/challenges": f.server.challengesHandler,
 	} {
 		expect(t, get(handler, path, "Bearer invalido"), http.StatusUnauthorized, codeUnauthenticated)
-		if cc := get(handler, path, bearer(t, f.alice)).Header().Get("Cache-Control"); cc != "private, no-store" {
+		// `private`: nunca num cache no caminho. Revalidada pelo ETag a cada uso (ADR 0029).
+		if cc := get(handler, path, bearer(t, f.alice)).Header().Get("Cache-Control"); cc != "private, no-cache" {
 			t.Errorf("%s com conta saiu com Cache-Control %q", path, cc)
 		}
 		if cc := get(handler, path, "").Header().Get("Cache-Control"); cc != "no-cache" {

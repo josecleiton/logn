@@ -48,7 +48,7 @@ func (s *Server) getNodesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeAccountContentJSON(w, lang, userID, nodesResponse{Nodes: nodes, Origins: origins})
+	writeAccountContentJSON(w, r, lang, userID, nodesResponse{Nodes: nodes, Origins: origins})
 }
 
 // getUserProgressHandler devolve o XP e o progresso da conta do token.

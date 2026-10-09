@@ -3,6 +3,7 @@ package sh.logn.app.core
 import com.novi.serde.Bytes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.Cache
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
@@ -14,6 +15,7 @@ import sh.logn.core.LogN.HttpRequest
 import sh.logn.core.LogN.HttpResponse
 import sh.logn.core.LogN.HttpResult
 import sh.logn.coreshell.HttpPort
+import java.io.File
 import java.io.InterruptedIOException
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.cancellation.CancellationException
@@ -76,16 +78,26 @@ class OkHttpPort(
             }
         }
 
-    private companion object {
-        const val NO_BASE_URL = "no API base URL configured"
+    companion object {
+        private const val NO_BASE_URL = "no API base URL configured"
 
-        fun defaultClient(): OkHttpClient =
+        /** Teto do cache HTTP em disco. A trilha inteira, em todas as rotas, cabe com folga. */
+        private const val HTTP_CACHE_BYTES = 10L * 1024 * 1024
+
+        /**
+         * O cliente do app. Com `cacheDir`, guarda as respostas de conteúdo e as revalida
+         * pelo ETag, como o `URLSession.shared` do iOS já fazia: o servidor responde 304 e o
+         * OkHttp entrega ao Core o corpo guardado, com status 200. Sem o cache, a trilha
+         * inteira descia a cada abertura do app.
+         */
+        fun defaultClient(cacheDir: File? = null): OkHttpClient =
             OkHttpClient
                 .Builder()
                 .connectTimeout(10, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 // Teto da chamada inteira: resposta que goteja não segura o Core para sempre.
                 .callTimeout(60, TimeUnit.SECONDS)
+                .apply { if (cacheDir != null) cache(Cache(cacheDir, HTTP_CACHE_BYTES)) }
                 .build()
     }
 }

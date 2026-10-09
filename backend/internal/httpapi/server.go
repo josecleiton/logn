@@ -6,7 +6,10 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"log"
@@ -159,6 +162,10 @@ func (s *Server) authenticate(w http.ResponseWriter, r *http.Request) (string, b
 		return "", false
 	}
 
+	// Resposta de conta não vai para disco nenhum, a não ser que a rota diga outra coisa,
+	// como o conteúdo revalidado por ETag (ADR 0029). Sem padrão, o `/progress` saía sem
+	// `Cache-Control`, e o cache HTTP do app gravava o XP da conta.
+	w.Header().Set("Cache-Control", "private, no-store")
 	return userID, true
 }
 
@@ -351,33 +358,79 @@ func (s *Server) challengesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeAccountContentJSON(w, lang, userID, challenges)
+	writeAccountContentJSON(w, r, lang, userID, challenges)
 }
 
 // writeContentJSON responde conteúdo da trilha numa língua. `Content-Language` diz ao
 // app em que língua o que chegou está — é o que ele grava junto da cópia offline —, e
 // `Vary` impede um cache no caminho de servir o espanhol a quem pediu português.
-func writeContentJSON(w http.ResponseWriter, lang string, body any) {
+func writeContentJSON(w http.ResponseWriter, r *http.Request, lang string, body any) {
 	h := w.Header()
-	h.Set("Content-Type", "application/json")
 	h.Set("Content-Language", lang)
 	h.Add("Vary", "Accept-Language")
 	h.Set("Cache-Control", "no-cache")
-	json.NewEncoder(w).Encode(body)
+	writeRevalidatedJSON(w, r, body)
 }
 
 // writeAccountContentJSON responde conteúdo que depende da conta: o visitante recebe o
 // de todos, e a conta recebe também o que só ela vê — a trilha comprada, a indisponível
 // que ela testa (ADR 0014). Essa não pode ficar num cache no caminho para servir a outra
-// pessoa.
-func writeAccountContentJSON(w http.ResponseWriter, lang, userID string, body any) {
+// pessoa: `private` proíbe o cache compartilhado, e só o do próprio aparelho guarda.
+//
+// Era `no-store`, e o app baixava tudo a cada abertura. Com `no-cache` o aparelho guarda
+// e pergunta toda vez, com o ETag; a resposta é sempre conferida contra o corpo da conta
+// que pede, então outra conta no mesmo aparelho nunca recebe o 304 da primeira.
+//
+// Sem `Vary: Authorization` de propósito: o access token troca a cada 15 minutos, e com
+// ele no `Vary` o cache do aparelho não casava depois de cada refresh, e a trilha descia
+// inteira de novo (ADR 0029).
+func writeAccountContentJSON(w http.ResponseWriter, r *http.Request, lang, userID string, body any) {
 	if userID == "" {
-		writeContentJSON(w, lang, body)
+		writeContentJSON(w, r, lang, body)
 		return
 	}
 	h := w.Header()
-	h.Set("Content-Type", "application/json")
 	h.Set("Content-Language", lang)
-	h.Set("Cache-Control", "private, no-store")
-	json.NewEncoder(w).Encode(body)
+	h.Add("Vary", "Accept-Language")
+	h.Set("Cache-Control", "private, no-cache")
+	writeRevalidatedJSON(w, r, body)
+}
+
+// writeRevalidatedJSON responde o corpo com um ETag tirado dele, e 304 sem corpo quando o
+// aparelho já tem esse mesmo corpo (`If-None-Match`). O banco roda igual; o que se poupa é
+// a banda e o parse no app, que a cada abertura baixava a trilha inteira de novo.
+//
+// Fraco (`W/`): o gzip muda os bytes que saem, e um ETag forte prometeria os mesmos bytes.
+func writeRevalidatedJSON(w http.ResponseWriter, r *http.Request, body any) {
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(body); err != nil {
+		log.Printf("content not encoded: error=%v", err)
+		writeError(w, http.StatusInternalServerError, codeInternal)
+		return
+	}
+	sum := sha256.Sum256(buf.Bytes())
+	etag := `W/"` + hex.EncodeToString(sum[:16]) + `"`
+	w.Header().Set("ETag", etag)
+	if etagMatches(r.Header.Get("If-None-Match"), etag) {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(buf.Bytes())
+}
+
+// etagMatches é a comparação fraca do `If-None-Match`: qualquer um da lista, com ou sem
+// `W/`, ou `*`.
+func etagMatches(header, etag string) bool {
+	if header == "" {
+		return false
+	}
+	want := strings.TrimPrefix(etag, "W/")
+	for _, candidate := range strings.Split(header, ",") {
+		c := strings.TrimSpace(candidate)
+		if c == "*" || strings.TrimPrefix(c, "W/") == want {
+			return true
+		}
+	}
+	return false
 }

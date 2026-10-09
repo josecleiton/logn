@@ -91,6 +91,11 @@ func TestNicknameRouteAnswersWithCodes(t *testing.T) {
 	if stats.AnonNumber != anon || stats.Nickname == nil || *stats.Nickname != nick || stats.NicknameLocked {
 		t.Fatalf("/progress: anon=%d nickname=%v locked=%v", stats.AnonNumber, stats.Nickname, stats.NicknameLocked)
 	}
+	// O XP da conta não vai para o cache HTTP do aparelho: toda rota autenticada nasce
+	// `no-store`.
+	if cc := prog.Header().Get("Cache-Control"); cc != "private, no-store" {
+		t.Fatalf("/progress saiu com Cache-Control %q", cc)
+	}
 }
 
 // Além do balde por IP, cada conta tem dez tentativas por minuto.

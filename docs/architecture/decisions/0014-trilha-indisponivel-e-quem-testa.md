@@ -14,7 +14,7 @@ Uma trilha paga entra no banco antes de estar pronta para venda: é preciso jog�
 
 **Uma regra, num lugar só.** `visibleTrack` em `repository.go`, ao lado de `openNode`: disponível, ou a conta testa, ou a conta tem direito ativo. Ela filtra o catálogo (`GET /api/v1/tracks`), os nós (`GET /api/v1/nodes`), os desafios abertos (`GET /api/v1/challenges`) e decide o XP da amostra no sync. Mudar uma é mudar as quatro.
 
-**As rotas de conteúdo passam a ler a conta.** `/nodes` e `/challenges` faziam como o visitante mesmo com token. Agora, como `/tracks` já fazia: sem cabeçalho é visitante; token válido vê o que a conta vê, e a resposta sai `private, no-store`; token presente e inválido é 401, para o app renovar a sessão em vez de receber a vitrine do visitante. O Core já mandava o token nessas rotas e já trata o 401 delas com refresh.
+**As rotas de conteúdo passam a ler a conta.** `/nodes` e `/challenges` faziam como o visitante mesmo com token. Agora, como `/tracks` já fazia: sem cabeçalho é visitante; token válido vê o que a conta vê, e a resposta sai `private, no-store` (hoje `private, no-cache` com ETag, ADR 0029); token presente e inválido é 401, para o app renovar a sessão em vez de receber a vitrine do visitante. O Core já mandava o token nessas rotas e já trata o 401 delas com refresh.
 
 **Testar não é comprar.** Quem está em `track_previewers` vê o catálogo, os nós e a amostra. O resto da trilha continua só no pacote cifrado, com direito ativo; para jogar tudo, quem testa compra em Sandbox, como a App Review.
 

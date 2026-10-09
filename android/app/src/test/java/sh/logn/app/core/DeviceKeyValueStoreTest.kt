@@ -42,6 +42,19 @@ class DeviceKeyValueStoreTest {
             assertEquals("WzEsMl0=", raw.getString("offline_queue", null))
         }
 
+    /** Apagar o retrato é a conta saindo do aparelho: o cache HTTP vai junto, e só ele. */
+    @Test
+    fun deleting_the_snapshot_wipes_the_account_and_nothing_else_does() =
+        runTest {
+            var wiped = 0
+            val store = DeviceKeyValueStore(context) { wiped++ }
+            store.perform(KeyValueOperation.Delete("offline_queue"))
+            store.perform(KeyValueOperation.Delete("refresh_token"))
+            assertEquals(0, wiped)
+            store.perform(KeyValueOperation.Delete("offline_snapshot"))
+            assertEquals(1, wiped)
+        }
+
     @Test
     fun credentials_never_reach_plain_preferences() =
         runTest {

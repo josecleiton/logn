@@ -36,11 +36,14 @@ class LognApplication : Application() {
         telemetry.start(analyticsEnabled = analyticsEnabled())
 
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        // Cache HTTP no diretório de cache: o sistema pode limpar, e o app só baixa de novo.
+        val httpClient = OkHttpPort.defaultClient(File(cacheDir, "http"))
         core =
             Core(
                 scope = scope,
-                http = OkHttpPort(BuildConfig.API_BASE_URL),
-                store = DeviceKeyValueStore(this),
+                http = OkHttpPort(BuildConfig.API_BASE_URL, httpClient),
+                // A conta saindo leva o cache HTTP: o conteúdo dela não fica no disco.
+                store = DeviceKeyValueStore(this) { httpClient.cache?.evictAll() },
                 telemetry = telemetry,
                 onBridgeFailure = { Log.e(TAG, "Core bridge returned no bytes on $it") },
             )
