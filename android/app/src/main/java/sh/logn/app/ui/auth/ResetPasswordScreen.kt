@@ -33,7 +33,7 @@ import sh.logn.app.ui.components.LognTextField
 import sh.logn.app.ui.components.StatusLine
 import sh.logn.app.ui.theme.FieldMetrics
 import sh.logn.app.ui.theme.IconMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Space
 import sh.logn.core.LogN.Event
@@ -70,7 +70,7 @@ fun ResetPasswordScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .background(LognDark.canvas)
+            .background(LognColors.canvas)
             .safeDrawingPadding()
             .imePadding()
             .verticalScroll(rememberScrollState())
@@ -79,12 +79,12 @@ fun ResetPasswordScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Azul é informação; o que a tela pede é ação, e ação é o acento.
-        Icon(LognIcon.KeyFill, LognDark.accentInk, IconMetrics.hero)
-        Text(Str.Reset.title(context), style = LognFont.headlineMedium, color = LognDark.textPrimary)
+        Icon(LognIcon.KeyFill, LognColors.accentInk, IconMetrics.hero)
+        Text(Str.Reset.title(context), style = LognFont.headlineMedium, color = LognColors.textPrimary)
         Text(
             if (asksForCode) Str.Reset.subtitle_with_code(context, email) else Str.Reset.subtitle(context, email),
             style = LognFont.bodyLarge,
-            color = LognDark.textSecondary,
+            color = LognColors.textSecondary,
             textAlign = TextAlign.Center,
         )
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Space.md)) {
@@ -98,7 +98,7 @@ fun ResetPasswordScreen(
                 )
                 LinkText(
                     if (resendLocked) Str.Status.wait_seconds(context, view.resendCooldownSeconds.toInt()) else Str.Otp.resend_code(context),
-                    if (resendLocked) LognDark.textDim else LognDark.textSecondary,
+                    if (resendLocked) LognColors.textDim else LognColors.textSecondary,
                     Modifier.align(Alignment.CenterHorizontally),
                     enabled = !resendLocked,
                     underline = !resendLocked,
@@ -111,7 +111,7 @@ fun ResetPasswordScreen(
                 Str.Reset.confirm_prompt(context),
                 FieldKind.NewPassword,
                 error = !passwordsMatch,
-                errorColor = LognDark.warn,
+                errorColor = LognColors.warn,
             )
             // Verde é veredito do juiz, não confirmação de formulário.
             LognButton(

@@ -202,9 +202,11 @@ lint:
     ktlint "android/app/src/**/*.kt" "android/core-shell/src/**/*.kt"
     cd android && ./gradlew :app:lintDebug :core-shell:lintDebug
 
-# Medida solta fora de ui/theme: número com .dp/.sp em tela é token que falta.
+# Medida ou cor solta fora de ui/theme: número com .dp/.sp em tela é token que falta, e
+# `Color(0x…)` é cor que não troca com o tema.
 tokens-gate:
     ! grep -rnE '[0-9]\.?[0-9]*\.(dp|sp)\b' android/app/src/main/java --include=*.kt | grep -v '/ui/theme/'
+    ! grep -rnE 'Color\(0x' android/app/src/main/java --include=*.kt | grep -v '/ui/theme/'
 
 # Os .so alinhados a 16 KB (exigência do Play para Android 15+).
 check-16kb:

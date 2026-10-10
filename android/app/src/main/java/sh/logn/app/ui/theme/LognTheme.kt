@@ -28,15 +28,15 @@ private val LognColorScheme =
 
 /**
  * O tema do app. Escuro sempre, como iOS com `.preferredColorScheme(.dark)`. As telas
- * leem `LognDark` e `LognFont` direto; o esquema de Material existe para os componentes
- * do sistema (folhas, seleção de texto) não saírem com as cores padrão.
+ * leem `LognColors` e `LognFont`; o esquema de Material existe para os componentes do
+ * sistema (folhas, seleção de texto) não saírem com as cores padrão.
  */
 @Composable
 fun LognTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
     val reduceMotion =
         Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
-    CompositionLocalProvider(LocalReduceMotion provides reduceMotion) {
+    CompositionLocalProvider(LocalReduceMotion provides reduceMotion, LocalLognPalette provides LognDark) {
         MaterialTheme(colorScheme = LognColorScheme, content = content)
     }
 }

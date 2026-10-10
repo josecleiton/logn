@@ -43,7 +43,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import sh.logn.app.ui.theme.FieldMetrics
 import sh.logn.app.ui.theme.LoginMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Radius
 import sh.logn.app.ui.theme.Space
@@ -65,7 +65,7 @@ fun LognTextField(
     kind: FieldKind,
     modifier: Modifier = Modifier,
     error: Boolean = false,
-    errorColor: Color = LognDark.wrong,
+    errorColor: Color = LognColors.wrong,
     textStyle: TextStyle = LognFont.mono(FieldMetrics.TEXT_SIZE),
     imeAction: ImeAction = ImeAction.Next,
     onDone: () -> Unit = {},
@@ -79,16 +79,16 @@ fun LognTextField(
     val border =
         when {
             error -> errorColor
-            focused -> LognDark.lineStrong
-            else -> LognDark.line
+            focused -> LognColors.lineStrong
+            else -> LognColors.line
         }
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
         interactionSource = interaction,
-        textStyle = textStyle.copy(color = LognDark.textPrimary),
-        cursorBrush = SolidColor(LognDark.accent),
+        textStyle = textStyle.copy(color = LognColors.textPrimary),
+        cursorBrush = SolidColor(LognColors.accent),
         visualTransformation = if (secret && !revealed) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions =
             KeyboardOptions(
@@ -124,13 +124,13 @@ fun LognTextField(
                 Modifier
                     .fillMaxWidth()
                     .height(FieldMetrics.height)
-                    .background(LognDark.surface, shape)
+                    .background(LognColors.surface, shape)
                     .border(Stroke.hairline, border, shape)
                     .padding(start = FieldMetrics.paddingH, end = if (secret) FieldMetrics.eyeEndPadding else FieldMetrics.paddingH),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                    if (value.isEmpty()) Text(placeholder, style = textStyle, color = LognDark.textDim)
+                    if (value.isEmpty()) Text(placeholder, style = textStyle, color = LognColors.textDim)
                     inner()
                 }
                 if (secret) PasswordEye(revealed) { revealed = !revealed }
@@ -154,7 +154,7 @@ private fun PasswordEye(
             .clickable(role = Role.Button, onClick = onToggle),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(if (revealed) LognIcon.EyeSlash else LognIcon.Eye, color = LognDark.textDim, size = FieldMetrics.eyeIcon)
+        Icon(if (revealed) LognIcon.EyeSlash else LognIcon.Eye, color = LognColors.textDim, size = FieldMetrics.eyeIcon)
     }
 }
 
@@ -178,10 +178,10 @@ fun LognCheckbox(
     ) {
         Icon(
             if (checked) LognIcon.CheckSquareFill else LognIcon.Square,
-            color = if (checked) LognDark.accent else LognDark.textDim,
+            color = if (checked) LognColors.accent else LognColors.textDim,
             size = FieldMetrics.checkbox,
-            knockout = LognDark.canvas,
+            knockout = LognColors.canvas,
         )
-        Text(label, style = LognFont.sans(LoginMetrics.CHECK_SIZE), color = LognDark.textSecondary)
+        Text(label, style = LognFont.sans(LoginMetrics.CHECK_SIZE), color = LognColors.textSecondary)
     }
 }

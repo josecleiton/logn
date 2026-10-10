@@ -48,7 +48,7 @@ import sh.logn.app.ui.components.LognIcon
 import sh.logn.app.ui.theme.HomeMetrics
 import sh.logn.app.ui.theme.IconMetrics
 import sh.logn.app.ui.theme.LocalReduceMotion
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Radius
 import sh.logn.app.ui.theme.Space
@@ -128,7 +128,7 @@ fun HomeScreen(
         Column(
             Modifier
                 .fillMaxSize()
-                .background(LognDark.canvas),
+                .background(LognColors.canvas),
         ) {
             Box(
                 Modifier
@@ -223,7 +223,7 @@ private fun TrailsHeader(
                     Text(
                         if (view.isFetching) Str.Dashboard.map_updating(context) else Str.Dashboard.balloons_up(context, balloons),
                         style = LognFont.sans(HomeMetrics.HEADER_SIZE, FontWeight.SemiBold, HomeMetrics.HEADER_TRACKING),
-                        color = LognDark.textPrimary,
+                        color = LognColors.textPrimary,
                     )
                 } else {
                     TrackSwitcher(view, onCatalog)
@@ -281,26 +281,26 @@ private fun TrackSwitcher(
                 Text(
                     track.name,
                     style = LognFont.sans(HomeMetrics.TRACK_NAME_SIZE, FontWeight.SemiBold),
-                    color = LognDark.textPrimary,
+                    color = LognColors.textPrimary,
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
-                Icon(LognIcon.ChevronDown, LognDark.textSecondary, IconMetrics.sm)
+                Icon(LognIcon.ChevronDown, LognColors.textSecondary, IconMetrics.sm)
                 if (badgeText != null) {
                     Text(
                         badgeText,
                         style = LognFont.mono(HomeMetrics.BADGE_SIZE, FontWeight.Medium, HomeMetrics.BADGE_TRACKING),
-                        color = LognDark.canvas,
+                        color = LognColors.canvas,
                         maxLines = 1,
                         modifier =
                             Modifier
-                                .background(if (badge.state == OfflineState.EXPIRED) LognDark.wrong else LognDark.warn, RoundedCornerShape(Radius.xs))
+                                .background(if (badge.state == OfflineState.EXPIRED) LognColors.wrong else LognColors.warn, RoundedCornerShape(Radius.xs))
                                 .padding(horizontal = HomeMetrics.badgePaddingH, vertical = HomeMetrics.badgePaddingV),
                     )
                 }
             }
-            Text(meta, style = LognFont.mono(HomeMetrics.META_SIZE), color = LognDark.textMuted, maxLines = 1)
+            Text(meta, style = LognFont.mono(HomeMetrics.META_SIZE), color = LognColors.textMuted, maxLines = 1)
         }
     }
 }
@@ -321,11 +321,11 @@ fun ProfileAvatar(
         Box(
             Modifier
                 .size(size)
-                .background(LognDark.accent.copy(alpha = HomeMetrics.AVATAR_FILL_ALPHA), CircleShape)
-                .border(Stroke.hairline, LognDark.accent, CircleShape),
+                .background(LognColors.accent.copy(alpha = HomeMetrics.AVATAR_FILL_ALPHA), CircleShape)
+                .border(Stroke.hairline, LognColors.accent, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Text(letter, style = LognFont.sans(size.value * HomeMetrics.AVATAR_TEXT_RATIO, FontWeight.SemiBold), color = LognDark.accentInk)
+            Text(letter, style = LognFont.sans(size.value * HomeMetrics.AVATAR_TEXT_RATIO, FontWeight.SemiBold), color = LognColors.accentInk)
         }
         if (hasPending) {
             Box(
@@ -333,9 +333,9 @@ fun ProfileAvatar(
                     .align(Alignment.TopEnd)
                     .offset(x = Stroke.hairline, y = -Stroke.hairline)
                     .size(HomeMetrics.avatarBadge)
-                    .background(LognDark.canvas, CircleShape)
+                    .background(LognColors.canvas, CircleShape)
                     .padding(HomeMetrics.avatarBadgeStroke)
-                    .background(LognDark.warn, CircleShape),
+                    .background(LognColors.warn, CircleShape),
             )
         }
     }
@@ -350,14 +350,14 @@ private fun WarnBar(
     Row(
         Modifier
             .fillMaxWidth()
-            .background(LognDark.warn)
+            .background(LognColors.warn)
             .padding(horizontal = Space.screenMargin, vertical = Space.sm),
         horizontalArrangement = Arrangement.spacedBy(Space.sm, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, LognDark.onAccent, HomeMetrics.warnIcon, knockout = LognDark.warn)
+        Icon(icon, LognColors.onAccent, HomeMetrics.warnIcon, knockout = LognColors.warn)
         // Com a fonte do sistema maior a frase quebra; sem o peso ela empurra o ícone para fora.
-        Text(text, style = LognFont.label, color = LognDark.onAccent, modifier = Modifier.weight(1f, fill = false))
+        Text(text, style = LognFont.label, color = LognColors.onAccent, modifier = Modifier.weight(1f, fill = false))
     }
 }
 
@@ -375,13 +375,13 @@ private fun BundledTrailNote(generatedAt: String) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(LognDark.surface)
+                .background(LognColors.surface)
                 .padding(horizontal = Space.lg, vertical = Space.sm),
             horizontalArrangement = Arrangement.spacedBy(Space.sm, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.Top,
         ) {
-            Icon(LognIcon.Box, LognDark.textMuted, HomeMetrics.warnIcon, Modifier.padding(top = Stroke.hairline))
-            Text(Str.Status.trail_from_bundle(context, date), style = LognFont.label, color = LognDark.textMuted, textAlign = TextAlign.Center)
+            Icon(LognIcon.Box, LognColors.textMuted, HomeMetrics.warnIcon, Modifier.padding(top = Stroke.hairline))
+            Text(Str.Status.trail_from_bundle(context, date), style = LognFont.label, color = LognColors.textMuted, textAlign = TextAlign.Center)
         }
         Divider()
     }
@@ -407,12 +407,12 @@ private fun EmptyState(
                     Modifier
                         .fillMaxWidth()
                         .height(HomeMetrics.skeletonRow)
-                        .background(LognDark.surface, RoundedCornerShape(Radius.sm))
-                        .border(Stroke.hairline, LognDark.line, RoundedCornerShape(Radius.sm)),
+                        .background(LognColors.surface, RoundedCornerShape(Radius.sm))
+                        .border(Stroke.hairline, LognColors.line, RoundedCornerShape(Radius.sm)),
                 )
             }
         } else {
-            Text(Str.Dashboard.map_failed(context), style = LognFont.bodyMedium, color = LognDark.textSecondary, textAlign = TextAlign.Center)
+            Text(Str.Dashboard.map_failed(context), style = LognFont.bodyMedium, color = LognColors.textSecondary, textAlign = TextAlign.Center)
             LognButton(Str.Dashboard.try_again(context), ButtonVariant.Secondary, onClick = onRetry)
         }
     }
@@ -427,13 +427,13 @@ private fun ArenaTab() {
             .padding(horizontal = Space.screenMargin),
         verticalArrangement = Arrangement.spacedBy(Space.md, Alignment.CenterVertically),
     ) {
-        Text(Str.Tabs.arena(context), style = LognFont.label, color = LognDark.textMuted)
+        Text(Str.Tabs.arena(context), style = LognFont.label, color = LognColors.textMuted)
         Text(
             Str.Dashboard.arena_desc(context),
             style = LognFont.sans(HomeMetrics.ARENA_TITLE_SIZE, FontWeight.SemiBold, HomeMetrics.HEADER_TRACKING),
-            color = LognDark.textPrimary,
+            color = LognColors.textPrimary,
         )
-        Text(Str.Dashboard.arena_sub(context), style = LognFont.bodyMedium, color = LognDark.textSecondary)
+        Text(Str.Dashboard.arena_sub(context), style = LognFont.bodyMedium, color = LognColors.textSecondary)
     }
 }
 
@@ -447,12 +447,14 @@ fun BottomNav(
     onSelect: (LognTab) -> Unit,
 ) {
     val context = LocalContext.current
+    val line = LognColors.line
+    val accent = LognColors.accent
     Row(
         Modifier
             .fillMaxWidth()
-            .background(LognDark.surface)
+            .background(LognColors.surface)
             .drawBehind {
-                drawLine(LognDark.line, Offset(0f, 0f), Offset(size.width, 0f), Stroke.hairline.toPx())
+                drawLine(line, Offset(0f, 0f), Offset(size.width, 0f), Stroke.hairline.toPx())
             }.navigationBarsPadding(),
     ) {
         for (item in LognTab.entries) {
@@ -471,7 +473,7 @@ fun BottomNav(
                     .drawBehind {
                         if (active) {
                             val h = HomeMetrics.navIndicator.toPx()
-                            drawRect(LognDark.accent, Offset(0f, -h / 2), androidx.compose.ui.geometry.Size(size.width, h))
+                            drawRect(accent, Offset(0f, -h / 2), androidx.compose.ui.geometry.Size(size.width, h))
                         }
                     }.padding(vertical = HomeMetrics.navPaddingV),
                 contentAlignment = Alignment.Center,
@@ -479,7 +481,7 @@ fun BottomNav(
                 Text(
                     title,
                     style = LognFont.mono(HomeMetrics.NAV_SIZE, tracking = HomeMetrics.NAV_TRACKING),
-                    color = if (active) LognDark.accentInk else LognDark.textMuted,
+                    color = if (active) LognColors.accentInk else LognColors.textMuted,
                 )
             }
         }
@@ -492,7 +494,7 @@ fun Divider(modifier: Modifier = Modifier) {
         modifier
             .fillMaxWidth()
             .height(Stroke.hairline)
-            .background(LognDark.line),
+            .background(LognColors.line),
     )
 }
 

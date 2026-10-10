@@ -24,7 +24,7 @@ import sh.logn.app.ui.components.StatusLine
 import sh.logn.app.ui.legal.LegalKind
 import sh.logn.app.ui.legal.LegalLinksRow
 import sh.logn.app.ui.theme.LoginMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.NoticeMetrics
 import sh.logn.app.ui.theme.Space
@@ -59,9 +59,9 @@ fun SocialSignupSheet(
             Text(
                 Str.Login.google_signup_title(context),
                 style = LognFont.sans(NoticeMetrics.TITLE_SIZE, FontWeight.SemiBold),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
             )
-            Text(Str.Login.google_signup_reason(context), style = LognFont.sans(NoticeMetrics.BODY_SIZE), color = LognDark.textSecondary)
+            Text(Str.Login.google_signup_reason(context), style = LognFont.sans(NoticeMetrics.BODY_SIZE), color = LognColors.textSecondary)
             LognCheckbox(ageConfirmed, Str.Register.age_confirmation(context, view.minAge.toInt())) { ageConfirmed = !ageConfirmed }
             LognCheckbox(termsAccepted, Str.Register.terms_confirmation(context)) {
                 termsAccepted = !termsAccepted
@@ -69,7 +69,7 @@ fun SocialSignupSheet(
             }
             LegalLinksRow(onOpen = onLegal)
             if (termsAccepted && !view.legalVersionsReady) {
-                Text(Str.Register.legal_pending(context), style = LognFont.sans(LoginMetrics.CHECK_SIZE), color = LognDark.textMuted)
+                Text(Str.Register.legal_pending(context), style = LognFont.sans(LoginMetrics.CHECK_SIZE), color = LognColors.textMuted)
             }
             StatusLine(view.status)
             val continueLabel =
@@ -85,7 +85,7 @@ fun SocialSignupSheet(
             ) { dispatch(Event.CompleteSocialSignup(ageConfirmed, termsAccepted)) }
             LinkText(
                 Str.Login.google_signup_cancel(context),
-                LognDark.textSecondary,
+                LognColors.textSecondary,
                 Modifier.fillMaxWidth(),
             ) { dispatch(Event.CancelSocialSignup) }
         }

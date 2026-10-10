@@ -45,7 +45,7 @@ import sh.logn.app.ui.components.LognIcon
 import sh.logn.app.ui.theme.IconMetrics
 import sh.logn.app.ui.theme.LegalMetrics
 import sh.logn.app.ui.theme.LoginMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Radius
 import sh.logn.app.ui.theme.Space
@@ -88,7 +88,7 @@ private fun LegalDocumentContent(
     val locale = remember { AppLocale.current(context) }
     BackHandler(onBack = onClose)
 
-    Column(Modifier.fillMaxSize().background(LognDark.surfaceRaised)) {
+    Column(Modifier.fillMaxSize().background(LognColors.surfaceRaised)) {
         Header(kind.title(context), meta, locale, onClose)
         Box(Modifier.weight(1f).fillMaxWidth()) {
             LegalWebView(
@@ -111,8 +111,8 @@ private fun LegalDocumentContent(
             // Só se aceita o que está na tela: nem rascunho, nem cópia offline que pode
             // estar velha.
             val canAccept = phase == LegalLoadPhase.Loaded && meta?.let { !it.draft && !it.offline } == true
-            Column(Modifier.fillMaxWidth().background(LognDark.surfaceRaised)) {
-                Box(Modifier.fillMaxWidth().height(Stroke.hairline).background(LognDark.line))
+            Column(Modifier.fillMaxWidth().background(LognColors.surfaceRaised)) {
+                Box(Modifier.fillMaxWidth().height(Stroke.hairline).background(LognColors.line))
                 LognButton(
                     Str.Legal.accept(context),
                     ButtonVariant.Primary,
@@ -146,13 +146,13 @@ private fun Header(
                     .semantics { contentDescription = back }
                     .clickable(role = Role.Button, onClick = onClose),
                 contentAlignment = Alignment.Center,
-            ) { Icon(LognIcon.ChevronLeft, LognDark.textSecondary, IconMetrics.md) }
+            ) { Icon(LognIcon.ChevronLeft, LognColors.textSecondary, IconMetrics.md) }
             Column(verticalArrangement = Arrangement.spacedBy(Space.xs)) {
-                Text(title, style = LognFont.sans(LegalMetrics.TITLE_SIZE, FontWeight.SemiBold), color = LognDark.textPrimary)
+                Text(title, style = LognFont.sans(LegalMetrics.TITLE_SIZE, FontWeight.SemiBold), color = LognColors.textPrimary)
                 MetaLine(meta, locale)
             }
         }
-        Box(Modifier.fillMaxWidth().height(Stroke.hairline).background(LognDark.line))
+        Box(Modifier.fillMaxWidth().height(Stroke.hairline).background(LognColors.line))
     }
 }
 
@@ -169,15 +169,15 @@ private fun MetaLine(
                 .padding(vertical = Space.xs)
                 .width(LegalMetrics.metaSkeletonWidth)
                 .height(LegalMetrics.metaSkeletonHeight)
-                .background(LognDark.line, RoundedCornerShape(Radius.xs))
+                .background(LognColors.line, RoundedCornerShape(Radius.xs))
                 .clearAndSetSemantics { },
         )
         return
     }
     val style = LognFont.mono(LegalMetrics.META_SIZE)
     // Uma linha cada: lado a lado, a data era cortada no meio em espanhol.
-    Text(Str.Legal.version_effective(context, meta.version, formattedDate(meta.effectiveAt, locale)), style = style, color = LognDark.textMuted)
-    if (meta.offline) Text(Str.Legal.offline_copy(context), style = style, color = LognDark.textMuted)
+    Text(Str.Legal.version_effective(context, meta.version, formattedDate(meta.effectiveAt, locale)), style = style, color = LognColors.textMuted)
+    if (meta.offline) Text(Str.Legal.offline_copy(context), style = style, color = LognColors.textMuted)
 }
 
 /** A vigência por extenso, na língua do app. A data vem pura, sem hora nem fuso. */
@@ -196,7 +196,7 @@ private fun Skeleton() {
     Column(
         Modifier
             .fillMaxSize()
-            .background(LognDark.surfaceRaised)
+            .background(LognColors.surfaceRaised)
             .padding(Space.screenMargin)
             .clearAndSetSemantics { contentDescription = label },
         verticalArrangement = Arrangement.spacedBy(Space.md),
@@ -209,7 +209,7 @@ private fun Skeleton() {
                 Modifier
                     .then(if (short) Modifier.width(LegalMetrics.skeletonShort) else Modifier.fillMaxWidth())
                     .height(if (title) LegalMetrics.skeletonTitle else LegalMetrics.skeletonLine)
-                    .background(LognDark.line, RoundedCornerShape(Radius.xs)),
+                    .background(LognColors.line, RoundedCornerShape(Radius.xs)),
             )
         }
     }
@@ -219,14 +219,14 @@ private fun Skeleton() {
 private fun Failure(onRetry: () -> Unit) {
     val context = LocalContext.current
     Column(
-        Modifier.fillMaxSize().background(LognDark.surfaceRaised).padding(horizontal = Space.xxl),
+        Modifier.fillMaxSize().background(LognColors.surfaceRaised).padding(horizontal = Space.xxl),
         verticalArrangement = Arrangement.spacedBy(Space.lg, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             Str.Legal.unavailable(context),
             style = LognFont.bodyMedium,
-            color = LognDark.textSecondary,
+            color = LognColors.textSecondary,
             textAlign = TextAlign.Center,
         )
         LognButton(
@@ -255,7 +255,7 @@ fun LegalLinksRow(
                 Text(
                     DOT,
                     style = LognFont.sans(LegalMetrics.LINK_SIZE),
-                    color = LognDark.textDim,
+                    color = LognColors.textDim,
                     modifier = Modifier.clearAndSetSemantics { },
                 )
             }
@@ -269,7 +269,7 @@ fun LegalLinksRow(
                 Text(
                     kind.title(context),
                     style = LognFont.sans(LegalMetrics.LINK_SIZE).copy(textDecoration = TextDecoration.Underline),
-                    color = LognDark.textSecondary,
+                    color = LognColors.textSecondary,
                 )
             }
         }

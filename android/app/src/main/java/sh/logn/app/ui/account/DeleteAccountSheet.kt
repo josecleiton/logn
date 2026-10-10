@@ -26,7 +26,7 @@ import sh.logn.app.ui.components.BottomSheet
 import sh.logn.app.ui.components.DestructiveButton
 import sh.logn.app.ui.components.FieldKind
 import sh.logn.app.ui.components.LognTextField
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.NoticeMetrics
 import sh.logn.app.ui.theme.Space
@@ -87,13 +87,13 @@ fun DeleteAccountSheet(
             Text(
                 Str.Logout.delete_account(context),
                 style = LognFont.sans(NoticeMetrics.TITLE_SIZE, FontWeight.SemiBold),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
             )
-            Text(Str.Logout.delete_desc(context, view.globalXp), style = LognFont.sans(NoticeMetrics.BODY_SIZE), color = LognDark.textSecondary)
+            Text(Str.Logout.delete_desc(context, view.globalXp), style = LognFont.sans(NoticeMetrics.BODY_SIZE), color = LognColors.textSecondary)
             Text(
                 Str.Logout.grace_period(context),
                 style = LognFont.sans(NoticeMetrics.BODY_SIZE, FontWeight.SemiBold),
-                color = LognDark.wrongInk,
+                color = LognColors.wrongInk,
             )
             LognTextField(password, { password = it }, Str.Login.password_prompt(context), FieldKind.Password)
             LognTextField(confirmation, { confirmation = it }, Str.Logout.delete_confirm_placeholder(context), FieldKind.Text)
@@ -130,7 +130,7 @@ private fun ProviderLink(
 ) {
     LinkText(
         title,
-        if (enabled) LognDark.textSecondary else LognDark.textDim,
+        if (enabled) LognColors.textSecondary else LognColors.textDim,
         Modifier.fillMaxWidth(),
         enabled = enabled,
         onClick = onClick,

@@ -29,7 +29,7 @@ import sh.logn.app.ui.components.Icon
 import sh.logn.app.ui.components.LognIcon
 import sh.logn.app.ui.components.balloonColor
 import sh.logn.app.ui.theme.IconMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.MatchMetrics
 import sh.logn.app.ui.theme.Space
@@ -67,9 +67,9 @@ fun LifeBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         for (i in 0 until maxLives) {
-            Icon(if (i < lives) LognIcon.HeartFill else LognIcon.Heart, if (i < lives) LognDark.wrong else LognDark.heartOff, heartSize)
+            Icon(if (i < lives) LognIcon.HeartFill else LognIcon.Heart, if (i < lives) LognColors.wrong else LognColors.heartOff, heartSize)
         }
-        if (showsCounter) Text("$lives / $maxLives", style = LognFont.label, color = LognDark.textSecondary)
+        if (showsCounter) Text("$lives / $maxLives", style = LognFont.label, color = LognColors.textSecondary)
     }
 }
 
@@ -93,17 +93,18 @@ fun MatchHeader(
     val context = LocalContext.current
     val clockColor =
         when {
-            remainingSeconds <= CRITICAL_SECONDS -> LognDark.wrongInk
-            isFrozen || remainingSeconds <= WARN_SECONDS -> LognDark.warnInk
-            else -> LognDark.textSecondary
+            remainingSeconds <= CRITICAL_SECONDS -> LognColors.wrongInk
+            isFrozen || remainingSeconds <= WARN_SECONDS -> LognColors.warnInk
+            else -> LognColors.textSecondary
         }
+    val line = LognColors.line
     Column(
         modifier
             .fillMaxWidth()
-            .background(LognDark.canvas)
+            .background(LognColors.canvas)
             .drawBehind {
                 val y = size.height - Stroke.hairline.toPx() / 2
-                drawLine(LognDark.line, Offset(0f, y), Offset(size.width, y), Stroke.hairline.toPx())
+                drawLine(line, Offset(0f, y), Offset(size.width, y), Stroke.hairline.toPx())
             }.padding(start = MatchMetrics.headerSide, end = MatchMetrics.headerSide, top = Space.lg, bottom = MatchMetrics.headerBottom),
         verticalArrangement = Arrangement.spacedBy(Space.md),
     ) {
@@ -117,17 +118,17 @@ fun MatchHeader(
                         .semantics { contentDescription = label }
                         .clickable(role = Role.Button, onClick = onLeave),
                     contentAlignment = Alignment.Center,
-                ) { Icon(LognIcon.Close, LognDark.textMuted, IconMetrics.md) }
+                ) { Icon(LognIcon.Close, LognColors.textMuted, IconMetrics.md) }
             }
             BalloonShape(
-                if (currentIsAlive) BalloonStyle.Filled(balloonColor(letter)) else BalloonStyle.Outline(LognDark.lineStrong, OUTLINE_DEAD),
+                if (currentIsAlive) BalloonStyle.Filled(balloonColor(letter)) else BalloonStyle.Outline(LognColors.lineStrong, OUTLINE_DEAD),
                 MatchMetrics.headerBalloon,
                 showString = true,
             )
             Text(
                 Str.Match.problem_letter(context, letter.toString()),
                 style = LognFont.mono(MatchMetrics.HEADER_LABEL_SIZE, tracking = MatchMetrics.HEADER_LABEL_TRACKING),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
             )
             Spacer(Modifier.weight(1f))
             val clockLabel = Str.Match.time_remaining(context, remainingSeconds)
@@ -171,11 +172,11 @@ private fun BalloonRow(
                     when {
                         accepted -> BalloonStyle.Filled(balloonColor(l))
                         l == current -> BalloonStyle.Outline(balloonColor(l), OUTLINE_ROW)
-                        else -> BalloonStyle.Outline(LognDark.lineStrong, OUTLINE_ROW)
+                        else -> BalloonStyle.Outline(LognColors.lineStrong, OUTLINE_ROW)
                     }
                 BalloonShape(style, MatchMetrics.rowBalloon)
                 // A paleta é certificada para 3:1 como forma, não 4.5:1 como texto.
-                Text(l.toString(), style = LognFont.mono(MatchMetrics.ROW_LETTER_SIZE), color = LognDark.textMuted)
+                Text(l.toString(), style = LognFont.mono(MatchMetrics.ROW_LETTER_SIZE), color = LognColors.textMuted)
             }
         }
     }

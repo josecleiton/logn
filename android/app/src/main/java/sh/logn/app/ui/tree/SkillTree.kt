@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,7 +45,7 @@ import sh.logn.app.ui.components.BalloonShape
 import sh.logn.app.ui.components.BalloonStyle
 import sh.logn.app.ui.components.Icon
 import sh.logn.app.ui.components.LognIcon
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Space
 import sh.logn.app.ui.theme.TreeMetrics
@@ -165,7 +166,7 @@ fun SkillTree(
         Text(
             Str.Tree.edge_legend(context),
             style = LognFont.mono(TreeMetrics.LEGEND_SIZE, tracking = TreeMetrics.LEGEND_TRACKING),
-            color = LognDark.textMuted,
+            color = LognColors.textMuted,
             modifier =
                 Modifier
                     .padding(horizontal = TreeMetrics.legendPaddingH)
@@ -180,6 +181,7 @@ fun SkillTree(
  */
 @Composable
 private fun Edges(layout: TreeLayout) {
+    val colors = LognColors.palette
     Canvas(Modifier.fillMaxSize()) {
         val dashed = PathEffect.dashPathEffect(floatArrayOf(TreeMetrics.dash.toPx(), TreeMetrics.dashGap.toPx()))
         for ((parent, child) in layout.edges) {
@@ -195,13 +197,13 @@ private fun Edges(layout: TreeLayout) {
                 }
             when {
                 parent.status != NodeStatus.COMPLETED ->
-                    drawPath(path, LognDark.lineDim, style = Stroke(TreeMetrics.edgeWidth.toPx(), cap = StrokeCap.Round, pathEffect = dashed))
+                    drawPath(path, colors.lineDim, style = Stroke(TreeMetrics.edgeWidth.toPx(), cap = StrokeCap.Round, pathEffect = dashed))
                 child.status == NodeStatus.ACTIVE ->
-                    drawPath(path, LognDark.accent, style = Stroke(TreeMetrics.activeEdgeWidth.toPx(), cap = StrokeCap.Round))
+                    drawPath(path, colors.accent, style = Stroke(TreeMetrics.activeEdgeWidth.toPx(), cap = StrokeCap.Round))
                 else ->
                     drawPath(
                         path,
-                        LognTopic.of(parent).color.copy(alpha = TreeMetrics.EDGE_ALPHA),
+                        LognTopic.of(parent).color(colors).copy(alpha = TreeMetrics.EDGE_ALPHA),
                         style = Stroke(TreeMetrics.edgeWidth.toPx(), cap = StrokeCap.Round),
                     )
             }
@@ -210,6 +212,8 @@ private fun Edges(layout: TreeLayout) {
 }
 
 /** O estilo do balão de um nó, o mesmo na árvore e na folha. */
+@Composable
+@ReadOnlyComposable
 fun nodeBalloonStyle(
     node: SkillNode,
     topic: LognTopic,
@@ -221,11 +225,13 @@ fun nodeBalloonStyle(
     }
 
 /** A tinta do ícone dentro do balão: escura sobre o corpo cheio. */
+@Composable
+@ReadOnlyComposable
 fun nodeIconColor(status: NodeStatus): Color =
     when (status) {
-        NodeStatus.COMPLETED -> LognDark.onAccent
-        NodeStatus.ACTIVE -> LognDark.accentInk
-        NodeStatus.LOCKED, NodeStatus.PAYWALLLOCKED -> LognDark.textSecondary
+        NodeStatus.COMPLETED -> LognColors.onAccent
+        NodeStatus.ACTIVE -> LognColors.accentInk
+        NodeStatus.LOCKED, NodeStatus.PAYWALLLOCKED -> LognColors.textSecondary
     }
 
 val SkillNode.isClosed: Boolean get() = status == NodeStatus.LOCKED || status == NodeStatus.PAYWALLLOCKED
@@ -277,11 +283,11 @@ private fun NodeView(
                         .align(Alignment.TopEnd)
                         .offset(x = TreeMetrics.degreeOffsetX, y = TreeMetrics.degreeOffsetY)
                         .size(TreeMetrics.degreeBadge)
-                        .background(LognDark.canvas, CircleShape)
-                        .border(LognStroke.hairline, LognDark.lineDim, CircleShape),
+                        .background(LognColors.canvas, CircleShape)
+                        .border(LognStroke.hairline, LognColors.lineDim, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("${node.prerequisites.size}", style = LognFont.mono(TreeMetrics.DEGREE_SIZE), color = LognDark.textSecondary)
+                    Text("${node.prerequisites.size}", style = LognFont.mono(TreeMetrics.DEGREE_SIZE), color = LognColors.textSecondary)
                 }
             }
         }
@@ -298,13 +304,13 @@ private fun NodeLabel(node: SkillNode) {
     val labelModifier =
         Modifier
             .wrapUnbounded()
-            .background(if (active) LognDark.accentTint else LognDark.canvas, shape)
-            .border(LognStroke.hairline, if (active) LognDark.accent else LognDark.line, shape)
+            .background(if (active) LognColors.accentTint else LognColors.canvas, shape)
+            .border(LognStroke.hairline, if (active) LognColors.accent else LognColors.line, shape)
             .padding(horizontal = TreeMetrics.labelPaddingH, vertical = TreeMetrics.labelPaddingV)
     val nameStyle = LognFont.sans(TreeMetrics.LABEL_SIZE, FontWeight.SemiBold)
     if (active) {
         Column(labelModifier, horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(node.name, style = nameStyle, color = LognDark.textPrimary, maxLines = 1, softWrap = false)
+            Text(node.name, style = nameStyle, color = LognColors.textPrimary, maxLines = 1, softWrap = false)
             Text(
                 if (node.problemsSolved.isEmpty()) {
                     Str.Node.active(context, node.requiredXp)
@@ -312,7 +318,7 @@ private fun NodeLabel(node: SkillNode) {
                     Str.Solved.inflating(context, node.solvedCount, node.problemsSolved.size)
                 },
                 style = LognFont.mono(TreeMetrics.LABEL_SUB_SIZE, tracking = TreeMetrics.LABEL_SUB_TRACKING),
-                color = LognDark.accentInk,
+                color = LognColors.accentInk,
                 maxLines = 1,
                 softWrap = false,
             )
@@ -320,11 +326,11 @@ private fun NodeLabel(node: SkillNode) {
         return
     }
     Row(labelModifier, horizontalArrangement = Arrangement.spacedBy(Space.xs), verticalAlignment = Alignment.CenterVertically) {
-        Text(node.name, style = nameStyle, color = if (node.isClosed) LognDark.textSecondary else LognDark.textPrimary, maxLines = 1, softWrap = false)
+        Text(node.name, style = nameStyle, color = if (node.isClosed) LognColors.textSecondary else LognColors.textPrimary, maxLines = 1, softWrap = false)
         // Quantos problemas do nó já renderam XP. No bloqueado, 0/5 é ruído.
         if (!node.isClosed && node.problemsSolved.isNotEmpty()) {
             val all = node.solvedCount == node.problemsSolved.size
-            val color = if (all) LognDark.correct else LognDark.textSecondary
+            val color = if (all) LognColors.correct else LognColors.textSecondary
             if (all) Icon(LognIcon.Check, color, TreeMetrics.checkIcon, strokeWidth = TreeMetrics.CHECK_STROKE)
             Text("${node.solvedCount}/${node.problemsSolved.size}", style = LognFont.mono(TreeMetrics.COUNT_SIZE), color = color)
         }

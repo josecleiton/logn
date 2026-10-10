@@ -30,7 +30,7 @@ import sh.logn.app.ui.components.Icon
 import sh.logn.app.ui.components.LognButton
 import sh.logn.app.ui.components.LognIcon
 import sh.logn.app.ui.theme.IconMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.NoticeMetrics
 import sh.logn.app.ui.theme.Radius
@@ -55,20 +55,20 @@ private fun NoticeScaffold(
     text: String,
     actions: @Composable () -> Unit,
 ) {
-    Column(Modifier.fillMaxSize().background(LognDark.canvas).safeDrawingPadding()) {
+    Column(Modifier.fillMaxSize().background(LognColors.canvas).safeDrawingPadding()) {
         Column(
             Modifier.weight(1f).fillMaxWidth().padding(horizontal = NoticeMetrics.sideMargin),
             verticalArrangement = Arrangement.spacedBy(Space.lg, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Icon(icon, LognDark.textMuted, IconMetrics.xl, strokeWidth = LIGHT_STROKE)
+            Icon(icon, LognColors.textMuted, IconMetrics.xl, strokeWidth = LIGHT_STROKE)
             Text(
                 title,
                 style = LognFont.sans(NoticeMetrics.TITLE_SIZE, FontWeight.SemiBold),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
                 textAlign = TextAlign.Center,
             )
-            Text(text, style = body(), color = LognDark.textSecondary, textAlign = TextAlign.Center)
+            Text(text, style = body(), color = LognColors.textSecondary, textAlign = TextAlign.Center)
         }
         Column(Modifier.padding(start = Space.screenMargin, end = Space.screenMargin, bottom = NoticeMetrics.bottom)) { actions() }
     }
@@ -97,8 +97,8 @@ fun LogoutNoticeScreen(view: ViewModel) {
             horizontalArrangement = Arrangement.spacedBy(Space.sm, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(LognIcon.ArrowCounterclockwise, LognDark.textMuted, IconMetrics.sm)
-            Text(Str.Logout.undo_logout(context), style = LognFont.mono(NoticeMetrics.UNDO_SIZE), color = LognDark.textSecondary)
+            Icon(LognIcon.ArrowCounterclockwise, LognColors.textMuted, IconMetrics.sm)
+            Text(Str.Logout.undo_logout(context), style = LognFont.mono(NoticeMetrics.UNDO_SIZE), color = LognColors.textSecondary)
         }
     }
 }
@@ -127,19 +127,19 @@ fun AccountRestoredCard(modifier: Modifier = Modifier) {
         Column(
             Modifier
                 .fillMaxWidth()
-                .background(LognDark.surfaceRaised, shape)
-                .border(Stroke.hairline, LognDark.lineStrong, shape)
+                .background(LognColors.surfaceRaised, shape)
+                .border(Stroke.hairline, LognColors.lineStrong, shape)
                 .padding(NoticeMetrics.cardPadding),
         ) {
             Text(
                 Str.Logout.restored_title(context),
                 style = LognFont.sans(NoticeMetrics.CARD_TITLE_SIZE, FontWeight.SemiBold),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
             )
             Text(
                 Str.Logout.restored_body(context),
                 style = LognFont.sans(NoticeMetrics.CARD_BODY_SIZE).merge(TextStyle(lineHeight = NoticeMetrics.CARD_BODY_LINE.sp)),
-                color = LognDark.textSecondary,
+                color = LognColors.textSecondary,
                 modifier = Modifier.padding(top = Space.sm),
             )
             LognButton(Str.Logout.notice_ok(context), ButtonVariant.Secondary, Modifier.padding(top = Space.md)) {

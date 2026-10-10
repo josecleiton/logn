@@ -71,7 +71,7 @@ import sh.logn.app.ui.legal.LegalLinksRow
 import sh.logn.app.ui.theme.FieldMetrics
 import sh.logn.app.ui.theme.IconMetrics
 import sh.logn.app.ui.theme.LoginMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Radius
 import sh.logn.app.ui.theme.Space
@@ -102,7 +102,7 @@ fun LoginScreen(
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
-            .background(LognDark.canvas)
+            .background(LognColors.canvas)
             .safeDrawingPadding()
             .imePadding(),
     ) {
@@ -198,7 +198,7 @@ private fun LoginForm(
         Text(
             Str.Login.slogan(context),
             style = LognFont.mono(LoginMetrics.SLOGAN_SIZE, tracking = LoginMetrics.SLOGAN_TRACKING),
-            color = LognDark.textSecondary,
+            color = LognColors.textSecondary,
         )
         Spacer(Modifier.height(LoginMetrics.brandToForm))
 
@@ -250,7 +250,7 @@ private fun LoginForm(
                     .padding(top = Space.xs),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                LinkText(Str.Login.create_account(context), LognDark.textSecondary, onClick = onRegister)
+                LinkText(Str.Login.create_account(context), LognColors.textSecondary, onClick = onRegister)
                 Spacer(Modifier.weight(1f))
                 // Só o intervalo de reenvio trava o link. Sem e-mail ele diz o que falta.
                 LinkText(
@@ -259,7 +259,7 @@ private fun LoginForm(
                     } else {
                         Str.Login.forgot_password(context)
                     },
-                    if (resendLocked) LognDark.textDim else LognDark.textSecondary,
+                    if (resendLocked) LognColors.textDim else LognColors.textSecondary,
                     enabled = !resendLocked,
                     onClick = ::requestReset,
                 )
@@ -287,7 +287,7 @@ private fun LoginFooter(
             Modifier
                 .fillMaxWidth()
                 .height(LognStroke.hairline)
-                .background(LognDark.line),
+                .background(LognColors.line),
         )
         GuestButton(onGuest)
         LegalLinksRow(onOpen = onLegal)
@@ -299,12 +299,12 @@ private fun LoginFooter(
             Box(
                 Modifier
                     .size(LoginMetrics.coreDot)
-                    .background(LognDark.correct, CircleShape),
+                    .background(LognColors.correct, CircleShape),
             )
             Text(
                 Str.Login.core_ready(context),
                 style = LognFont.mono(LoginMetrics.CORE_SIZE, tracking = LoginMetrics.CORE_TRACKING),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
             )
         }
     }
@@ -323,14 +323,14 @@ fun ProviderButton(
         Modifier
             .fillMaxWidth()
             .height(FieldMetrics.height)
-            .background(LognDark.surface, shape)
-            .border(LognStroke.hairline, LognDark.line, shape)
+            .background(LognColors.surface, shape)
+            .border(LognStroke.hairline, LognColors.line, shape)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         horizontalArrangement = Arrangement.spacedBy(Space.md, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         icon()
-        Text(title, style = LognFont.sans(LoginMetrics.PROVIDER_SIZE, FontWeight.Medium), color = LognDark.textPrimary)
+        Text(title, style = LognFont.sans(LoginMetrics.PROVIDER_SIZE, FontWeight.Medium), color = LognColors.textPrimary)
     }
 }
 
@@ -347,18 +347,18 @@ private fun OrDivider(label: String) {
             Modifier
                 .weight(1f)
                 .height(LognStroke.hairline)
-                .background(LognDark.line),
+                .background(LognColors.line),
         )
         Text(
             label,
             style = LognFont.mono(LoginMetrics.DIVIDER_SIZE, tracking = LoginMetrics.DIVIDER_TRACKING),
-            color = LognDark.textMuted,
+            color = LognColors.textMuted,
         )
         Box(
             Modifier
                 .weight(1f)
                 .height(LognStroke.hairline)
-                .background(LognDark.line),
+                .background(LognColors.line),
         )
     }
 }
@@ -392,6 +392,7 @@ fun LinkText(
 @Composable
 private fun GuestButton(onClick: () -> Unit) {
     val context = LocalContext.current
+    val line = LognColors.line
     Column(
         Modifier
             .fillMaxWidth()
@@ -399,7 +400,7 @@ private fun GuestButton(onClick: () -> Unit) {
             .drawBehind {
                 val dash = LoginMetrics.dash.toPx()
                 drawRoundRect(
-                    LognDark.line,
+                    line,
                     cornerRadius = CornerRadius(Radius.sm.toPx()),
                     style = Stroke(LognStroke.hairline.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash))),
                 )
@@ -410,8 +411,8 @@ private fun GuestButton(onClick: () -> Unit) {
         Text(
             Str.Login.guest_mode(context),
             style = LognFont.sans(LoginMetrics.GUEST_SIZE, FontWeight.SemiBold),
-            color = LognDark.textPrimary,
+            color = LognColors.textPrimary,
         )
-        Text(Str.Login.without_saving(context), style = LognFont.mono(LoginMetrics.GUEST_SUB_SIZE), color = LognDark.textMuted)
+        Text(Str.Login.without_saving(context), style = LognFont.mono(LoginMetrics.GUEST_SUB_SIZE), color = LognColors.textMuted)
     }
 }

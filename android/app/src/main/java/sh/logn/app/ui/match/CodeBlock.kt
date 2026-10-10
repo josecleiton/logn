@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -37,8 +38,9 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
+import sh.logn.app.ui.theme.LognPalette
 import sh.logn.app.ui.theme.MatchMetrics
 import sh.logn.app.ui.theme.Radius
 import sh.logn.app.ui.theme.Space
@@ -57,8 +59,8 @@ fun CodeBlock(
     lines: List<String>,
     modifier: Modifier = Modifier,
     selectedLine: Int? = null,
-    highlightColor: Color = LognDark.accent,
-    highlightInk: Color = LognDark.accentInk,
+    highlightColor: Color = LognColors.accent,
+    highlightInk: Color = LognColors.accentInk,
     fontSize: Float? = null,
     lineHeight: Dp? = null,
     fillsHeight: Boolean = false,
@@ -72,8 +74,8 @@ fun CodeBlock(
         modifier
             .fillMaxWidth()
             .then(if (fillsHeight) Modifier.fillMaxHeight() else Modifier)
-            .background(LognDark.surface, shape)
-            .border(LognStroke.hairline, LognDark.line, shape)
+            .background(LognColors.surface, shape)
+            .border(LognStroke.hairline, LognColors.line, shape)
             .padding(vertical = if (selectable) Space.none else Space.sm),
     ) {
         for ((index, line) in lines.withIndex()) {
@@ -107,6 +109,8 @@ private fun CodeLine(
 ) {
     val context = LocalContext.current
     val blank = code.indexOf(BLANK)
+    val rowLine = LognColors.rowLine
+    val accent = LognColors.accent
     Row(
         Modifier
             .fillMaxWidth()
@@ -120,7 +124,7 @@ private fun CodeLine(
                 if (selected) drawRect(highlightColor, size = size.copy(width = MatchMetrics.sideBar.toPx()))
                 if (showsDivider) {
                     val y = size.height - LognStroke.hairline.toPx()
-                    drawRect(LognDark.rowLine, topLeft = androidx.compose.ui.geometry.Offset(0f, y), size = size.copy(height = LognStroke.hairline.toPx()))
+                    drawRect(rowLine, topLeft = androidx.compose.ui.geometry.Offset(0f, y), size = size.copy(height = LognStroke.hairline.toPx()))
                 }
             }.padding(horizontal = Space.md),
         horizontalArrangement = Arrangement.spacedBy(Space.md),
@@ -129,7 +133,7 @@ private fun CodeLine(
         Text(
             "$number",
             style = LognFont.mono(fontSize),
-            color = if (selected) highlightInk else LognDark.textMuted,
+            color = if (selected) highlightInk else LognColors.textMuted,
             maxLines = 1,
             textAlign = TextAlign.End,
             modifier = Modifier.width(MatchMetrics.lineNumber),
@@ -148,7 +152,7 @@ private fun CodeLine(
                         .drawBehind {
                             val dash = MatchMetrics.blankDash.toPx()
                             drawRoundRect(
-                                LognDark.accent,
+                                accent,
                                 cornerRadius = CornerRadius(Radius.xs.toPx()),
                                 style = Stroke(LognStroke.hairline.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash))),
                             )
@@ -176,18 +180,26 @@ private val keywords =
  * Realce básico do pseudocódigo (sabor C/C++/Kotlin), como o `SyntaxHighlighter` de iOS:
  * palavra-chave em `synKeyword`, chamada em `synFunction`, número em `warnInk`.
  */
+@Composable
+@ReadOnlyComposable
 fun highlight(
     code: String,
     emphasised: Boolean = false,
+): AnnotatedString = highlight(code, emphasised, LognColors.palette)
+
+private fun highlight(
+    code: String,
+    emphasised: Boolean,
+    colors: LognPalette,
 ): AnnotatedString =
     buildAnnotatedString {
-        val base = if (emphasised) LognDark.textPrimary else LognDark.textSecondary
+        val base = if (emphasised) colors.textPrimary else colors.textSecondary
         var i = 0
 
         fun isWord(c: Char) = c.isLetterOrDigit() || c == '_' || c == '#'
         while (i < code.length) {
             if (code.startsWith(BLANK, i)) {
-                withStyle(SpanStyle(color = LognDark.accent)) { append(BLANK) }
+                withStyle(SpanStyle(color = colors.accent)) { append(BLANK) }
                 i += BLANK.length
                 continue
             }
@@ -197,9 +209,9 @@ fun highlight(
                 val word = code.substring(start, i)
                 val color =
                     when {
-                        word in keywords -> LognDark.synKeyword
-                        word.all(Char::isDigit) -> LognDark.warnInk
-                        i < code.length && code[i] == '(' -> LognDark.synFunction
+                        word in keywords -> colors.synKeyword
+                        word.all(Char::isDigit) -> colors.warnInk
+                        i < code.length && code[i] == '(' -> colors.synFunction
                         else -> base
                     }
                 withStyle(SpanStyle(color = color)) { append(word) }

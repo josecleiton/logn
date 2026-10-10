@@ -40,7 +40,7 @@ import sh.logn.app.ui.components.Icon
 import sh.logn.app.ui.components.LognButton
 import sh.logn.app.ui.components.LognIcon
 import sh.logn.app.ui.theme.IconMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.NoticeMetrics
 import sh.logn.app.ui.theme.ProfileMetrics
@@ -65,28 +65,29 @@ fun CriticalLogoutSheet(
     val dispatch = LocalDispatch.current
     val pending = view.pendingSyncCount.toInt()
     val xpAtRisk = view.xpIntoLevel
+    val warnLine = LognColors.warn
     BottomSheet(onDismiss = onStay, dismissible = !view.isSyncing) {
         Column(
             Modifier
                 .fillMaxWidth()
-                .drawBehind { drawLine(LognDark.warn, Offset(0f, 0f), Offset(size.width, 0f), Stroke.hairline.toPx()) }
+                .drawBehind { drawLine(warnLine, Offset(0f, 0f), Offset(size.width, 0f), Stroke.hairline.toPx()) }
                 .padding(start = Space.screenMargin, end = Space.screenMargin, top = Space.screenMargin, bottom = Space.xl),
         ) {
             Text(
                 Str.Logout.risk_summary(context, Str.Profile.queued_events(context, pending), xpAtRisk),
                 style = LognFont.mono(ProfileMetrics.META_SIZE, tracking = ProfileMetrics.TAG_TRACKING),
-                color = LognDark.warnInk,
+                color = LognColors.warnInk,
             )
             Text(
                 Str.Logout.save_before(context),
                 style = LognFont.sans(NoticeMetrics.TITLE_SIZE, FontWeight.SemiBold),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
                 modifier = Modifier.padding(top = ProfileMetrics.gap9),
             )
             Text(
                 Str.Logout.save_desc(context),
                 style = LognFont.sans(NoticeMetrics.BODY_SIZE).merge(TextStyle(lineHeight = NoticeMetrics.BODY_LINE.sp)),
-                color = LognDark.textSecondary,
+                color = LognColors.textSecondary,
                 modifier = Modifier.padding(top = ProfileMetrics.gap9),
             )
             // Um evento só: quem decide sair é o Core, depois da fila subir.
@@ -101,7 +102,7 @@ fun CriticalLogoutSheet(
             // no ar apagaria a fila que está subindo.
             LinkText(
                 Str.Logout.leave_and_drop(context, xpAtRisk),
-                if (view.isSyncing) LognDark.textDim else LognDark.wrongInk,
+                if (view.isSyncing) LognColors.textDim else LognColors.wrongInk,
                 Modifier
                     .fillMaxWidth()
                     .padding(top = Space.xs),
@@ -122,18 +123,19 @@ fun ManageAccountScreen(
 ) {
     val context = LocalContext.current
     var showsDelete by rememberSaveable { mutableStateOf(false) }
+    val line = LognColors.line
     BackHandler(onBack = onBack)
     Column(
         Modifier
             .fillMaxSize()
-            .background(LognDark.canvas),
+            .background(LognColors.canvas),
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .drawBehind {
                     val y = size.height - Stroke.hairline.toPx() / 2
-                    drawLine(LognDark.line, Offset(0f, y), Offset(size.width, y), Stroke.hairline.toPx())
+                    drawLine(line, Offset(0f, y), Offset(size.width, y), Stroke.hairline.toPx())
                 }.padding(start = Space.xs, end = Space.screenMargin, top = Space.md, bottom = Space.md),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -144,8 +146,8 @@ fun ManageAccountScreen(
                     .semantics { contentDescription = back }
                     .clickable(role = Role.Button, onClick = onBack),
                 contentAlignment = Alignment.Center,
-            ) { Icon(LognIcon.ChevronLeft, LognDark.textSecondary, IconMetrics.md) }
-            Text(Str.Account.manage(context), style = LognFont.sans(ProfileMetrics.HEADER_SIZE, FontWeight.SemiBold), color = LognDark.textPrimary)
+            ) { Icon(LognIcon.ChevronLeft, LognColors.textSecondary, IconMetrics.md) }
+            Text(Str.Account.manage(context), style = LognFont.sans(ProfileMetrics.HEADER_SIZE, FontWeight.SemiBold), color = LognColors.textPrimary)
         }
         Spacer(Modifier.weight(1f))
         val shape = RoundedCornerShape(Radius.sm)
@@ -153,32 +155,32 @@ fun ManageAccountScreen(
             Modifier
                 .padding(Space.screenMargin)
                 .fillMaxWidth()
-                .background(LognDark.tintErr, shape)
-                .border(Stroke.hairline, LognDark.wrong, shape)
+                .background(LognColors.tintErr, shape)
+                .border(Stroke.hairline, LognColors.wrong, shape)
                 .padding(Space.lg),
         ) {
             Text(
                 Str.Logout.grace_period(context),
                 style = LognFont.mono(ProfileMetrics.META_SIZE, tracking = ProfileMetrics.TAG_TRACKING),
-                color = LognDark.wrongInk,
+                color = LognColors.wrongInk,
             )
             Text(
                 Str.Logout.delete_account(context),
                 style = LognFont.sans(NoticeMetrics.CARD_TITLE_SIZE, FontWeight.SemiBold),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
                 modifier = Modifier.padding(top = Space.sm),
             )
             Text(
                 Str.Logout.delete_desc(context, view.globalXp),
                 style = LognFont.sans(ProfileMetrics.DESC_SIZE).merge(TextStyle(lineHeight = ProfileMetrics.DESC_LINE.sp)),
-                color = LognDark.textSecondary,
+                color = LognColors.textSecondary,
                 modifier = Modifier.padding(top = ProfileMetrics.gap7),
             )
             DestructiveButton(Str.Logout.delete_button(context), Modifier.padding(top = NoticeMetrics.cardPadding)) { showsDelete = true }
             Text(
                 Str.Logout.delete_prompt(context),
                 style = LognFont.mono(ProfileMetrics.META_SIZE),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
                 modifier =
                     Modifier
                         .align(Alignment.CenterHorizontally)

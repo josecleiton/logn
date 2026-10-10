@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,7 +45,7 @@ import sh.logn.app.ui.components.BalloonStyle
 import sh.logn.app.ui.components.ButtonVariant
 import sh.logn.app.ui.components.LognButton
 import sh.logn.app.ui.components.balloonColor
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.MatchMetrics
 import sh.logn.app.ui.theme.Radius
@@ -78,12 +79,13 @@ enum class VerdictCode(
 
     /** Tinta: a sigla e qualquer glifo. */
     val ink: Color
+        @Composable @ReadOnlyComposable
         get() =
             when (this) {
-                AC -> LognDark.correctInk
-                WA, TLE, MLE, RE -> LognDark.wrongInk
-                CE, PE -> LognDark.warnInk
-                JUDGING -> LognDark.textMuted
+                AC -> LognColors.correctInk
+                WA, TLE, MLE, RE -> LognColors.wrongInk
+                CE, PE -> LognColors.warnInk
+                JUDGING -> LognColors.textMuted
             }
 
     companion object {
@@ -155,6 +157,7 @@ fun MatchVerdictScreen(
             shake.animateTo(1f, tween(SHAKE_MILLIS))
         }
     }
+    val flashColor = LognColors.wrong
     Column(Modifier.fillMaxSize()) {
         MatchHeader(
             snapshot.letter,
@@ -172,7 +175,7 @@ fun MatchVerdictScreen(
                     .drawBehind {
                         if (flash) {
                             val h = MatchMetrics.flash.toPx()
-                            drawRect(LognDark.wrong, Offset(0f, size.height - h), size.copy(height = h))
+                            drawRect(flashColor, Offset(0f, size.height - h), size.copy(height = h))
                         }
                     },
             currentIsAlive = snapshot.isAccepted,
@@ -201,7 +204,7 @@ private fun HitStage(
     Column(
         Modifier
             .fillMaxSize()
-            .background(LognDark.tintOk)
+            .background(LognColors.tintOk)
             .clearAndSetSemantics { contentDescription = label },
         verticalArrangement = Arrangement.spacedBy(Space.sm, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -210,26 +213,26 @@ private fun HitStage(
         Text(
             VerdictCode.AC.raw,
             style = LognFont.mono(MatchMetrics.HIT_SIZE, FontWeight.SemiBold, MatchMetrics.HERO_TRACKING),
-            color = LognDark.correctInk,
+            color = LognColors.correctInk,
             modifier = Modifier.padding(top = Space.md),
         )
         Text(
             Str.Match.balloon_up(context, letter),
             style = LognFont.mono(MatchMetrics.STAGE_SIZE, tracking = MatchMetrics.LABEL_TRACKING),
-            color = LognDark.correctInk,
+            color = LognColors.correctInk,
         )
         if (xpAward > 0) {
             Text(
                 Str.Match.xp_earned(context, xpAward),
                 style = LognFont.mono(MatchMetrics.XP_SIZE, FontWeight.SemiBold),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
                 modifier = Modifier.padding(top = MatchMetrics.xpTop),
             )
         } else {
             Text(
                 Str.Solved.verdict(context),
                 style = LognFont.mono(MatchMetrics.STAGE_SIZE, tracking = MatchMetrics.LABEL_TRACKING),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
                 modifier = Modifier.padding(top = MatchMetrics.xpTop),
             )
         }
@@ -243,7 +246,7 @@ private fun MissStage(snapshot: VerdictSnapshot) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(LognDark.tintErr)
+            .background(LognColors.tintErr)
             .clearAndSetSemantics { contentDescription = label }
             .padding(vertical = Space.lg),
         verticalArrangement = Arrangement.spacedBy(Space.sm, Alignment.CenterVertically),
@@ -252,18 +255,18 @@ private fun MissStage(snapshot: VerdictSnapshot) {
         Text(
             snapshot.code.raw,
             style = LognFont.mono(MatchMetrics.MISS_SIZE, FontWeight.SemiBold, MatchMetrics.HERO_TRACKING),
-            color = LognDark.wrongInk,
+            color = LognColors.wrongInk,
         )
         Text(
             snapshot.code.meaning.uppercase(),
             style = LognFont.mono(MatchMetrics.MEANING_SIZE, tracking = MatchMetrics.LABEL_TRACKING),
-            color = LognDark.wrongInk,
+            color = LognColors.wrongInk,
         )
         Row(Modifier.padding(top = MatchMetrics.xpTop), horizontalArrangement = Arrangement.spacedBy(Space.screenMargin)) {
             val style = LognFont.mono(MatchMetrics.PENALTY_SIZE)
-            Text(Str.Match.penalty_minutes(context), style = style, color = LognDark.textPrimary)
-            Text(Str.Match.lost_life(context), style = style, color = LognDark.wrongInk)
-            Text(Str.Match.zero_xp(context), style = style, color = LognDark.textMuted)
+            Text(Str.Match.penalty_minutes(context), style = style, color = LognColors.textPrimary)
+            Text(Str.Match.lost_life(context), style = style, color = LognColors.wrongInk)
+            Text(Str.Match.zero_xp(context), style = style, color = LognColors.textMuted)
         }
     }
 }
@@ -277,12 +280,13 @@ private fun ExplanationPanel(
     onContinue: () -> Unit,
 ) {
     val matchOver = !mv.isActive
+    val lineStrong = LognColors.lineStrong
     Column(
         Modifier
             .fillMaxWidth()
             .shadow(MatchMetrics.panelShadow)
-            .background(LognDark.surfaceRaised)
-            .drawBehind { drawLine(LognDark.lineStrong, Offset(0f, 0f), Offset(size.width, 0f), Stroke.hairline.toPx()) }
+            .background(LognColors.surfaceRaised)
+            .drawBehind { drawLine(lineStrong, Offset(0f, 0f), Offset(size.width, 0f), Stroke.hairline.toPx()) }
             .navigationBarsPadding()
             .padding(start = MatchMetrics.headerSide, end = MatchMetrics.headerSide, top = Space.screenMargin, bottom = MatchMetrics.panelBottom),
     ) {
@@ -296,14 +300,14 @@ private fun ExplanationPanel(
                 Text(
                     TrapCopy.category(context, mv.trapKind).uppercase(),
                     style = LognFont.mono(MatchMetrics.LABEL_SIZE, tracking = MatchMetrics.TRAP_TRACKING),
-                    color = LognDark.wrongInk,
+                    color = LognColors.wrongInk,
                 )
                 val title = TrapCopy.title(context, mv.trapKind, mv.trapTitle)
                 if (title.isNotEmpty()) {
                     Text(
                         title,
                         style = LognFont.sans(MatchMetrics.TRAP_TITLE_SIZE).merge(TextStyle(lineHeight = MatchMetrics.TRAP_TITLE_LINE.sp)),
-                        color = LognDark.textPrimary,
+                        color = LognColors.textPrimary,
                         modifier = Modifier.padding(top = Space.md),
                     )
                 }
@@ -312,7 +316,7 @@ private fun ExplanationPanel(
                     Text(
                         explanation,
                         style = LognFont.sans(MatchMetrics.TRAP_BODY_SIZE).merge(TextStyle(lineHeight = MatchMetrics.TRAP_BODY_LINE.sp)),
-                        color = LognDark.textSecondary,
+                        color = LognColors.textSecondary,
                         modifier = Modifier.padding(top = Space.md),
                     )
                 }
@@ -335,7 +339,7 @@ private fun ExplanationPanel(
             Text(
                 if (all) Str.Arena.back_to_trail(context) else Str.Arena.back_to_trail_open(context),
                 style = LognFont.mono(MatchMetrics.LABEL_SIZE),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
                 modifier =
                     Modifier
                         .align(Alignment.CenterHorizontally)
@@ -356,31 +360,32 @@ fun MatchReport(
     bottom: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
+    val line = LognColors.line
     Column(Modifier.fillMaxSize()) {
         Column(
             Modifier
                 .fillMaxWidth()
-                .background(LognDark.canvas)
+                .background(LognColors.canvas)
                 .drawBehind {
                     val y = size.height - Stroke.hairline.toPx() / 2
-                    drawLine(LognDark.line, Offset(0f, y), Offset(size.width, y), Stroke.hairline.toPx())
+                    drawLine(line, Offset(0f, y), Offset(size.width, y), Stroke.hairline.toPx())
                 }.padding(start = Space.screenMargin, end = Space.screenMargin, top = MatchMetrics.reportTop, bottom = MatchMetrics.headerBottom),
         ) {
             Text(
                 Str.Match.contest_over(context),
                 style = LognFont.mono(MatchMetrics.LABEL_SIZE, tracking = MatchMetrics.TRAP_TRACKING),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
             )
             Row(Modifier.padding(top = Space.sm), horizontalArrangement = Arrangement.spacedBy(Space.md), verticalAlignment = Alignment.Bottom) {
                 Text(
                     "${mv.solvedCount}",
                     style = LognFont.sans(MatchMetrics.REPORT_COUNT_SIZE, FontWeight.SemiBold, MatchMetrics.HERO_TRACKING),
-                    color = LognDark.textPrimary,
+                    color = LognColors.textPrimary,
                 )
                 Text(
                     Str.Match.report_stats(context, mv.totalProblems, mv.penaltyMinutes),
                     style = LognFont.mono(MatchMetrics.REPORT_STATS_SIZE),
-                    color = LognDark.textMuted,
+                    color = LognColors.textMuted,
                     modifier = Modifier.padding(bottom = Space.sm),
                 )
             }
@@ -401,11 +406,11 @@ fun MatchReport(
                         verticalArrangement = Arrangement.spacedBy(Space.xs),
                     ) {
                         BalloonShape(
-                            if (accepted) BalloonStyle.Filled(balloonColor(letter)) else BalloonStyle.Outline(LognDark.lineStrong, REPORT_OUTLINE),
+                            if (accepted) BalloonStyle.Filled(balloonColor(letter)) else BalloonStyle.Outline(LognColors.lineStrong, REPORT_OUTLINE),
                             MatchMetrics.reportBalloon,
                             showString = true,
                         )
-                        Text(letter.toString(), style = LognFont.mono(MatchMetrics.ROW_LETTER_SIZE), color = LognDark.textMuted)
+                        Text(letter.toString(), style = LognFont.mono(MatchMetrics.ROW_LETTER_SIZE), color = LognColors.textMuted)
                     }
                 }
             }
@@ -416,7 +421,7 @@ fun MatchReport(
             Text(
                 xp,
                 style = LognFont.mono(MatchMetrics.LABEL_SIZE),
-                color = if (mv.xpEarned > 0) LognDark.textSecondary else LognDark.textMuted,
+                color = if (mv.xpEarned > 0) LognColors.textSecondary else LognColors.textMuted,
                 modifier = Modifier.padding(top = Space.md),
             )
         }
@@ -430,17 +435,17 @@ fun MatchReport(
             Text(
                 if (mv.errors.isEmpty()) Str.Match.review(context) else Str.Match.review_errors(context, mv.errors.size),
                 style = LognFont.mono(MatchMetrics.LABEL_SIZE, tracking = MatchMetrics.LABEL_TRACKING),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
             )
             if (mv.errors.isEmpty()) {
-                Text(Str.Match.no_errors(context), style = LognFont.bodyMedium, color = LognDark.textSecondary)
+                Text(Str.Match.no_errors(context), style = LognFont.bodyMedium, color = LognColors.textSecondary)
             } else {
                 for (error in mv.errors) ErrorReviewCard(error)
             }
         }
         Box(
             Modifier
-                .background(LognDark.canvas)
+                .background(LognColors.canvas)
                 .navigationBarsPadding()
                 .padding(start = Space.screenMargin, end = Space.screenMargin, top = Space.md, bottom = Space.xl),
         ) { bottom() }
@@ -461,8 +466,8 @@ private fun ErrorReviewCard(error: MatchError) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(LognDark.surface, shape)
-            .border(Stroke.hairline, LognDark.line, shape)
+            .background(LognColors.surface, shape)
+            .border(Stroke.hairline, LognColors.line, shape)
             .clearAndSetSemantics { contentDescription = "$label. $explanation" }
             .padding(MatchMetrics.cardPadding),
     ) {
@@ -470,7 +475,7 @@ private fun ErrorReviewCard(error: MatchError) {
             Text(
                 error.title,
                 style = LognFont.sans(MatchMetrics.CARD_TITLE_SIZE, FontWeight.SemiBold),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
                 modifier = Modifier.weight(1f),
             )
             Text(verdict.raw, style = LognFont.mono(MatchMetrics.LABEL_SIZE), color = verdict.ink)
@@ -479,7 +484,7 @@ private fun ErrorReviewCard(error: MatchError) {
             Text(
                 Str.Match.your_answer(context, given),
                 style = LognFont.mono(MatchMetrics.CARD_ANSWER_SIZE),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
                 modifier = Modifier.padding(top = Space.sm),
             )
         }
@@ -487,7 +492,7 @@ private fun ErrorReviewCard(error: MatchError) {
             Text(
                 explanation,
                 style = LognFont.sans(MatchMetrics.CARD_BODY_SIZE).merge(TextStyle(lineHeight = MatchMetrics.CARD_BODY_LINE.sp)),
-                color = LognDark.textSecondary,
+                color = LognColors.textSecondary,
                 modifier = Modifier.padding(top = Space.sm),
             )
         }

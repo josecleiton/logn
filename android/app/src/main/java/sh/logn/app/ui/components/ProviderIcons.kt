@@ -11,7 +11,7 @@ import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.ProviderColor
 
 // Os mesmos SVG do Assets.xcassets de iOS (GoogleIcon, GitHubIcon), com as bandeiras dos
@@ -59,6 +59,9 @@ fun GoogleIcon(
 fun GitHubIcon(
     size: Dp,
     modifier: Modifier = Modifier,
-) = FilledIcon(remember { listOf(LognDark.textPrimary to GITHUB) }, size, modifier)
+) {
+    val ink = LognColors.textPrimary
+    FilledIcon(remember(ink) { listOf(ink to GITHUB) }, size, modifier)
+}
 
 private const val GRID = 24f

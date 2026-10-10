@@ -38,7 +38,7 @@ import sh.logn.app.ui.LocalDispatch
 import sh.logn.app.ui.components.BottomSheet
 import sh.logn.app.ui.copy.copy
 import sh.logn.app.ui.leaderboard.leaderboardName
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.NicknameMetrics
 import sh.logn.app.ui.theme.Radius
@@ -72,7 +72,7 @@ fun NicknameSheet(
         onDismiss()
     }
     val anon = Str.Leaderboard.anon_name(context, view.profileAnonNumber.toString())
-    BottomSheet(onDismiss = close, dismissible = !flow.submitting, background = LognDark.surface) {
+    BottomSheet(onDismiss = close, dismissible = !flow.submitting, background = LognColors.surface) {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -88,7 +88,7 @@ fun NicknameSheet(
                 Modifier
                     .align(Alignment.CenterHorizontally)
                     .size(NicknameMetrics.handleWidth, NicknameMetrics.handleHeight)
-                    .background(LognDark.lineStrong, RoundedCornerShape(NicknameMetrics.handleHeight)),
+                    .background(LognColors.lineStrong, RoundedCornerShape(NicknameMetrics.handleHeight)),
             )
             when (flow.step) {
                 NicknameStep.INPUT -> InputStep(text, flow.error, anon, onChange = { text = it.take(MAX_NICKNAME) }) {
@@ -113,18 +113,18 @@ private fun InputStep(
     val hasError = error != StatusKey.SILENT
     val count = text.trim().length
     Column(verticalArrangement = Arrangement.spacedBy(NicknameMetrics.textGap)) {
-        Text(Str.Nickname.title(context), style = titleStyle(), color = LognDark.textPrimary)
-        Text(Str.Nickname.body(context, anon), style = bodyStyle(), color = LognDark.textSecondary)
+        Text(Str.Nickname.title(context), style = titleStyle(), color = LognColors.textPrimary)
+        Text(Str.Nickname.body(context, anon), style = bodyStyle(), color = LognColors.textSecondary)
     }
     Column(verticalArrangement = Arrangement.spacedBy(NicknameMetrics.textGap)) {
-        Text(Str.Nickname.label(context), style = labelStyle(), color = LognDark.textMuted)
+        Text(Str.Nickname.label(context), style = labelStyle(), color = LognColors.textMuted)
         val fieldLabel = Str.Nickname.field_accessibility(context)
         BasicTextField(
             value = text,
             onValueChange = onChange,
             singleLine = true,
-            textStyle = LognFont.mono(NicknameMetrics.FIELD_SIZE).copy(color = LognDark.textPrimary),
-            cursorBrush = SolidColor(LognDark.accent),
+            textStyle = LognFont.mono(NicknameMetrics.FIELD_SIZE).copy(color = LognColors.textPrimary),
+            cursorBrush = SolidColor(LognColors.accent),
             keyboardOptions =
                 KeyboardOptions(
                     capitalization = KeyboardCapitalization.None,
@@ -139,13 +139,13 @@ private fun InputStep(
                     Modifier
                         .fillMaxWidth()
                         .height(NicknameMetrics.field)
-                        .background(LognDark.canvas, shape)
-                        .border(LognStroke.hairline, if (hasError) LognDark.warn else LognDark.lineStrong, shape)
+                        .background(LognColors.canvas, shape)
+                        .border(LognStroke.hairline, if (hasError) LognColors.warn else LognColors.lineStrong, shape)
                         .padding(horizontal = NicknameMetrics.fieldPaddingH),
                     contentAlignment = Alignment.CenterStart,
                 ) {
                     if (text.isEmpty()) {
-                        Text(Str.Nickname.placeholder(context), style = LognFont.mono(NicknameMetrics.FIELD_SIZE), color = LognDark.lineDim)
+                        Text(Str.Nickname.placeholder(context), style = LognFont.mono(NicknameMetrics.FIELD_SIZE), color = LognColors.lineDim)
                     }
                     inner()
                 }
@@ -159,7 +159,7 @@ private fun InputStep(
                 if (hasError) {
                     sh.logn.app.ui.components.Icon(
                         sh.logn.app.ui.components.LognIcon.ExclamationCircle,
-                        LognDark.warnInk,
+                        LognColors.warnInk,
                         NicknameMetrics.errorIcon,
                         Modifier.padding(top = NicknameMetrics.errorIconTop),
                     )
@@ -167,13 +167,13 @@ private fun InputStep(
                 Text(
                     if (hasError) error.copy(context) ?: Str.Nickname.helper(context) else Str.Nickname.helper(context),
                     style = LognFont.sans(NicknameMetrics.HELPER_SIZE),
-                    color = if (hasError) LognDark.warnInk else LognDark.textMuted,
+                    color = if (hasError) LognColors.warnInk else LognColors.textMuted,
                 )
             }
             Text(
                 Str.Nickname.counter(context, count, MAX_NICKNAME),
                 style = LognFont.mono(NicknameMetrics.COUNTER_SIZE),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
             )
         }
     }
@@ -188,20 +188,20 @@ private fun ConfirmStep(
 ) {
     val context = LocalContext.current
     val dispatch = LocalDispatch.current
-    Text(Str.Nickname.confirm_eyebrow(context), style = labelStyle(), color = LognDark.accentInk)
+    Text(Str.Nickname.confirm_eyebrow(context), style = labelStyle(), color = LognColors.accentInk)
     val shape = RoundedCornerShape(Radius.sm)
     Column(
         Modifier
             .fillMaxWidth()
-            .background(LognDark.accentTint, shape)
-            .border(LognStroke.hairline, LognDark.accent, shape)
+            .background(LognColors.accentTint, shape)
+            .border(LognStroke.hairline, LognColors.accent, shape)
             .padding(horizontal = NicknameMetrics.cardPaddingH, vertical = NicknameMetrics.cardPaddingV),
         verticalArrangement = Arrangement.spacedBy(NicknameMetrics.cardGap),
     ) {
-        Text(draft, style = LognFont.sans(NicknameMetrics.CARD_NAME_SIZE, FontWeight.SemiBold), color = LognDark.textPrimary)
-        Text(Str.Nickname.confirm_sub(context, anon), style = LognFont.mono(NicknameMetrics.CARD_SUB_SIZE), color = LognDark.textSecondary)
+        Text(draft, style = LognFont.sans(NicknameMetrics.CARD_NAME_SIZE, FontWeight.SemiBold), color = LognColors.textPrimary)
+        Text(Str.Nickname.confirm_sub(context, anon), style = LognFont.mono(NicknameMetrics.CARD_SUB_SIZE), color = LognColors.textSecondary)
     }
-    Text(Str.Nickname.confirm_body(context), style = bodyStyle(), color = LognDark.textSecondary)
+    Text(Str.Nickname.confirm_body(context), style = bodyStyle(), color = LognColors.textSecondary)
     Column(verticalArrangement = Arrangement.spacedBy(NicknameMetrics.buttonGap)) {
         SheetButton(Str.Nickname.confirm(context, draft), filled = true, enabled = !submitting) {
             dispatch(Event.NicknameSubmitted(draft))
@@ -217,8 +217,8 @@ private fun DoneStep(
 ) {
     val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(NicknameMetrics.textGap)) {
-        Text(Str.Nickname.success(context, nickname), style = titleStyle(), color = LognDark.textPrimary)
-        Text(Str.Nickname.success_body(context), style = bodyStyle(), color = LognDark.textSecondary)
+        Text(Str.Nickname.success(context, nickname), style = titleStyle(), color = LognColors.textPrimary)
+        Text(Str.Nickname.success_body(context), style = bodyStyle(), color = LognColors.textSecondary)
     }
     SheetButton(Str.Nickname.close(context), filled = false, onClick = onClose)
 }
@@ -237,9 +237,9 @@ private fun SheetButton(
             .height(NicknameMetrics.button)
     val styled =
         if (filled) {
-            base.background(if (enabled) LognDark.accent else LognDark.buttonDisabled, shape)
+            base.background(if (enabled) LognColors.accent else LognColors.buttonDisabled, shape)
         } else {
-            base.border(LognStroke.hairline, LognDark.lineStrong, shape)
+            base.border(LognStroke.hairline, LognColors.lineStrong, shape)
         }
     Box(styled.clickable(enabled = enabled, role = Role.Button, onClick = onClick), contentAlignment = Alignment.Center) {
         Text(
@@ -247,9 +247,9 @@ private fun SheetButton(
             style = LognFont.sans(NicknameMetrics.BUTTON_SIZE, if (filled) FontWeight.SemiBold else FontWeight.Medium),
             color =
                 when {
-                    !enabled -> LognDark.textDim
-                    filled -> LognDark.onAccent
-                    else -> LognDark.textPrimary
+                    !enabled -> LognColors.textDim
+                    filled -> LognColors.onAccent
+                    else -> LognColors.textPrimary
                 },
         )
     }
@@ -268,7 +268,7 @@ fun ProfileName(view: ViewModel) {
             } else {
                 LognFont.mono(NicknameMetrics.ANON_SIZE, FontWeight.SemiBold)
             },
-        color = LognDark.textPrimary,
+        color = LognColors.textPrimary,
         maxLines = 1,
     )
 }
@@ -281,14 +281,14 @@ fun ChooseNicknameButton(onClick: () -> Unit) {
     Row(
         Modifier
             .height(NicknameMetrics.chooseButton)
-            .border(LognStroke.hairline, LognDark.accent, shape)
+            .border(LognStroke.hairline, LognColors.accent, shape)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = NicknameMetrics.choosePaddingH),
         horizontalArrangement = Arrangement.spacedBy(NicknameMetrics.chooseGap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        sh.logn.app.ui.components.Icon(sh.logn.app.ui.components.LognIcon.Pencil, LognDark.accentInk, NicknameMetrics.chooseIcon)
-        Text(Str.Nickname.choose(context), style = LognFont.sans(NicknameMetrics.CHOOSE_SIZE, FontWeight.SemiBold), color = LognDark.accentInk)
+        sh.logn.app.ui.components.Icon(sh.logn.app.ui.components.LognIcon.Pencil, LognColors.accentInk, NicknameMetrics.chooseIcon)
+        Text(Str.Nickname.choose(context), style = LognFont.sans(NicknameMetrics.CHOOSE_SIZE, FontWeight.SemiBold), color = LognColors.accentInk)
     }
 }
 
@@ -298,11 +298,11 @@ fun AnonAvatar(size: androidx.compose.ui.unit.Dp) {
     Box(
         Modifier
             .size(size)
-            .background(LognDark.surface, androidx.compose.foundation.shape.CircleShape)
-            .border(LognStroke.hairline, LognDark.lineStrong, androidx.compose.foundation.shape.CircleShape),
+            .background(LognColors.surface, androidx.compose.foundation.shape.CircleShape)
+            .border(LognStroke.hairline, LognColors.lineStrong, androidx.compose.foundation.shape.CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        Text("#", style = LognFont.mono(NicknameMetrics.ANON_AVATAR_SIZE), color = LognDark.textSecondary)
+        Text("#", style = LognFont.mono(NicknameMetrics.ANON_AVATAR_SIZE), color = LognColors.textSecondary)
     }
 }
 

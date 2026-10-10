@@ -41,7 +41,7 @@ import sh.logn.app.ui.terms.TermsNoticeBanner
 import sh.logn.app.ui.terms.TermsUpdateScreen
 import sh.logn.app.ui.terms.identity
 import sh.logn.app.ui.theme.LocalReduceMotion
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.RootMetrics
 import sh.logn.core.LogN.Event
 import sh.logn.core.LogN.PurchaseStage
@@ -109,7 +109,7 @@ fun LognRoot(
         LocalReadView provides { core.view.value },
         LocalStore provides store,
     ) {
-        Box(Modifier.fillMaxSize().background(LognDark.canvas)) {
+        Box(Modifier.fillMaxSize().background(LognColors.canvas)) {
             // A splash sai em fade: sem duração mínima, uma abertura rápida vira um piscar.
             Crossfade(
                 targetState = view.rootScreen(ShellState.wantsRegistration),
@@ -134,7 +134,7 @@ fun LognRoot(
             }
 
             ShellState.resetLink?.let { link ->
-                FullScreenSheet(onDismiss = { ShellState.resetLink = null }, background = LognDark.canvas) {
+                FullScreenSheet(onDismiss = { ShellState.resetLink = null }, background = LognColors.canvas) {
                     ResetPasswordScreen(view, link.email, link.code, onClose = { ShellState.resetLink = null })
                 }
             }
@@ -155,7 +155,7 @@ private fun AppHost(view: ViewModel) {
     LaunchedEffect(view.hasAccessToken, view.isGuest) {
         if (view.hasAccessToken && !view.isGuest && activity != null) store.continuePending(activity)
     }
-    Box(Modifier.fillMaxSize().background(LognDark.canvas)) {
+    Box(Modifier.fillMaxSize().background(LognColors.canvas)) {
         HomeScreen(view, rememberHomeSlots(view))
         // O passo a passo fica por cima de tudo enquanto houver compra, e não disputa com
         // o onboarding: duas capas de tela cheia não abrem juntas.

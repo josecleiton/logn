@@ -30,7 +30,7 @@ import sh.logn.app.ui.components.Icon
 import sh.logn.app.ui.components.LognButton
 import sh.logn.app.ui.components.LognIcon
 import sh.logn.app.ui.theme.IconMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.MatchMetrics
 import sh.logn.app.ui.theme.Radius
@@ -53,7 +53,7 @@ fun LeaveMatchSheet(
     onLeave: () -> Unit,
 ) {
     val context = LocalContext.current
-    BottomSheet(onDismiss = onStay, background = LognDark.surface) {
+    BottomSheet(onDismiss = onStay, background = LognColors.surface) {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -62,18 +62,18 @@ fun LeaveMatchSheet(
             Text(
                 Str.Leave.eyebrow(context).uppercase(),
                 style = LognFont.mono(MatchMetrics.LABEL_SIZE, tracking = MatchMetrics.LABEL_TRACKING),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
             )
             Text(
                 Str.Leave.solved(context, solved, total),
                 style = LognFont.sans(MatchMetrics.SHEET_TITLE_SIZE, FontWeight.SemiBold),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
                 modifier = Modifier.padding(top = Space.md),
             )
             Text(
                 Str.Leave.body(context),
                 style = LognFont.sans(MatchMetrics.SHEET_BODY_SIZE).merge(TextStyle(lineHeight = MatchMetrics.SHEET_BODY_LINE.sp)),
-                color = LognDark.textSecondary,
+                color = LognColors.textSecondary,
                 modifier = Modifier.padding(top = MatchMetrics.dryGap),
             )
             // O que fica para trás, desenhado: perda concreta em vez de adjetivo.
@@ -82,8 +82,8 @@ fun LeaveMatchSheet(
                 Row(Modifier.padding(top = MatchMetrics.xpTop), horizontalArrangement = Arrangement.spacedBy(Space.md)) {
                     for (letter in pending) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Space.xs)) {
-                            BalloonShape(BalloonStyle.Outline(LognDark.lineStrong, LEAVE_OUTLINE), MatchMetrics.headerBalloon)
-                            Text(letter.toString(), style = LognFont.mono(MatchMetrics.LEAVE_LETTER_SIZE), color = LognDark.textMuted)
+                            BalloonShape(BalloonStyle.Outline(LognColors.lineStrong, LEAVE_OUTLINE), MatchMetrics.headerBalloon)
+                            Text(letter.toString(), style = LognFont.mono(MatchMetrics.LEAVE_LETTER_SIZE), color = LognColors.textMuted)
                         }
                     }
                 }
@@ -106,7 +106,7 @@ fun OriginSheet(
     onClose: () -> Unit,
 ) {
     val context = LocalContext.current
-    FullScreenSheet(onDismiss = onClose, background = LognDark.surface) {
+    FullScreenSheet(onDismiss = onClose, background = LognColors.surface) {
         Column(Modifier.fillMaxSize()) {
             // O texto rola e o botão fica: a homenagem é longa.
             Column(
@@ -118,18 +118,18 @@ fun OriginSheet(
                 Text(
                     Str.Origin.eyebrow(context).uppercase(),
                     style = LognFont.mono(MatchMetrics.LABEL_SIZE, tracking = MatchMetrics.LABEL_TRACKING),
-                    color = LognDark.textMuted,
+                    color = LognColors.textMuted,
                 )
                 Text(
                     card.name,
                     style = LognFont.sans(MatchMetrics.ORIGIN_NAME_SIZE, FontWeight.SemiBold),
-                    color = LognDark.textPrimary,
+                    color = LognColors.textPrimary,
                     modifier = Modifier.padding(top = Space.md),
                 )
                 Text(
                     card.role,
                     style = LognFont.mono(MatchMetrics.CARD_ANSWER_SIZE, tracking = MatchMetrics.ROLE_TRACKING),
-                    color = LognDark.accent,
+                    color = LognColors.accent,
                     modifier = Modifier.padding(top = Space.xs),
                 )
                 Box(
@@ -137,12 +137,12 @@ fun OriginSheet(
                         .padding(top = Space.screenMargin)
                         .fillMaxWidth()
                         .height(Stroke.hairline)
-                        .background(LognDark.line),
+                        .background(LognColors.line),
                 )
                 Text(
                     card.body,
                     style = LognFont.sans(MatchMetrics.SHEET_BODY_SIZE).merge(TextStyle(lineHeight = MatchMetrics.SHEET_BODY_LINE.sp)),
-                    color = LognDark.textSecondary,
+                    color = LognColors.textSecondary,
                     modifier = Modifier.padding(top = Space.screenMargin),
                 )
                 if (clockPaused) PauseNotice(Modifier.padding(top = Space.xl))
@@ -165,13 +165,13 @@ private fun PauseNotice(modifier: Modifier) {
     Row(
         modifier
             .fillMaxWidth()
-            .background(LognDark.surfaceRaised, shape)
-            .border(Stroke.hairline, LognDark.info.copy(alpha = PAUSE_BORDER_ALPHA), shape)
+            .background(LognColors.surfaceRaised, shape)
+            .border(Stroke.hairline, LognColors.info.copy(alpha = PAUSE_BORDER_ALPHA), shape)
             .padding(MatchMetrics.cardPadding),
         horizontalArrangement = Arrangement.spacedBy(Space.md),
     ) {
-        Icon(LognIcon.PauseCircle, LognDark.info, IconMetrics.md)
-        Text(Str.Origin.pause_notice(context), style = LognFont.mono(MatchMetrics.CARD_ANSWER_SIZE), color = LognDark.textSecondary)
+        Icon(LognIcon.PauseCircle, LognColors.info, IconMetrics.md)
+        Text(Str.Origin.pause_notice(context), style = LognFont.mono(MatchMetrics.CARD_ANSWER_SIZE), color = LognColors.textSecondary)
     }
 }
 

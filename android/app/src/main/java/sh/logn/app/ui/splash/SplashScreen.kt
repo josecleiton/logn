@@ -45,7 +45,7 @@ import sh.logn.app.ui.copy.detailLabel
 import sh.logn.app.ui.copy.glyph
 import sh.logn.app.ui.copy.tone
 import sh.logn.app.ui.theme.LocalReduceMotion
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Radius
 import sh.logn.app.ui.theme.Space
@@ -77,7 +77,7 @@ fun SplashScreen(
         label = "rise",
     )
 
-    Box(Modifier.fillMaxSize().background(LognDark.canvas)) {
+    Box(Modifier.fillMaxSize().background(LognColors.canvas)) {
         Column(
             Modifier
                 .fillMaxSize()
@@ -97,7 +97,7 @@ fun SplashScreen(
                 Text(
                     Str.App.name(context),
                     style = LognFont.sans(SplashMetrics.TITLE_SIZE, FontWeight.SemiBold, SplashMetrics.TITLE_TRACKING),
-                    color = LognDark.textPrimary,
+                    color = LognColors.textPrimary,
                 )
             }
             Spacer(Modifier.weight(1f))
@@ -133,12 +133,12 @@ private fun BootLog(boot: BootViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(Space.sm),
             ) {
                 StatusGlyph(line.glyph, line.tone, SplashMetrics.lineIcon)
-                Text(check, style = LognFont.mono(SplashMetrics.LINE_TEXT_SIZE), color = LognDark.textPrimary)
+                Text(check, style = LognFont.mono(SplashMetrics.LINE_TEXT_SIZE), color = LognColors.textPrimary)
                 Spacer(Modifier.weight(1f))
                 Text(
                     detail,
                     style = LognFont.mono(SplashMetrics.LINE_TEXT_SIZE),
-                    color = LognDark.textMuted,
+                    color = LognColors.textMuted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -158,8 +158,8 @@ private fun ProgressBar(
         animationSpec = tween(if (reduceMotion) 0 else SplashMetrics.PROGRESS_MILLIS),
         label = "progress",
     )
-    Box(modifier.fillMaxWidth().height(SplashMetrics.progressHeight).background(LognDark.line)) {
-        Box(Modifier.fillMaxHeight().fillMaxWidth(fraction).background(LognDark.accent))
+    Box(modifier.fillMaxWidth().height(SplashMetrics.progressHeight).background(LognColors.line)) {
+        Box(Modifier.fillMaxHeight().fillMaxWidth(fraction).background(LognColors.accent))
     }
 }
 
@@ -174,12 +174,12 @@ private fun OfflineChoice(
         Text(
             Str.Boot.offline_notice(context),
             style = LognFont.sans(SplashMetrics.NOTICE_TEXT_SIZE),
-            color = LognDark.textPrimary,
+            color = LognColors.textPrimary,
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .background(LognDark.tintWarn, shape)
-                    .border(Stroke.hairline, LognDark.warn, shape)
+                    .background(LognColors.tintWarn, shape)
+                    .border(Stroke.hairline, LognColors.warn, shape)
                     .padding(Space.md),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {

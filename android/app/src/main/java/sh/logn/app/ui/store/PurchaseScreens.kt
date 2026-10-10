@@ -35,7 +35,7 @@ import sh.logn.app.ui.components.FullScreenSheet
 import sh.logn.app.ui.components.LognButton
 import sh.logn.app.ui.copy.copy
 import sh.logn.app.ui.theme.HomeMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Radius
 import sh.logn.app.ui.theme.Space
@@ -65,7 +65,7 @@ fun PurchaseProgressScreen(view: ViewModel) {
     val name = track?.name.orEmpty()
     val failed = flow.stage == PurchaseStage.FAILED
     val waiting = !failed && flow.stage != PurchaseStage.READY
-    FullScreenSheet(onDismiss = { dispatch(Event.ClosePurchaseFlow) }, background = LognDark.surface) {
+    FullScreenSheet(onDismiss = { dispatch(Event.ClosePurchaseFlow) }, background = LognColors.surface) {
         Column(
             Modifier
                 .fillMaxSize()
@@ -76,17 +76,17 @@ fun PurchaseProgressScreen(view: ViewModel) {
             Text(
                 stageLabel(context, flow.stage),
                 style = LognFont.mono(StoreMetrics.META_SIZE, tracking = StoreMetrics.EYEBROW_TRACKING),
-                color = if (failed) LognDark.wrongInk else LognDark.textMuted,
+                color = if (failed) LognColors.wrongInk else LognColors.textMuted,
             )
             Text(
                 stageTitle(context, flow.stage, name),
                 style = LognFont.sans(HomeMetrics.EXPIRED_TITLE_SIZE, FontWeight.SemiBold, HomeMetrics.HEADER_TRACKING),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
             )
             Text(
                 stageBody(context, flow),
                 style = LognFont.sans(StoreMetrics.BODY_SIZE).merge(TextStyle(lineHeight = StoreMetrics.BODY_LINE.sp)),
-                color = LognDark.textSecondary,
+                color = LognColors.textSecondary,
             )
             StepLog(flow.stage)
             Spacer(Modifier.weight(1f))
@@ -100,7 +100,7 @@ fun PurchaseProgressScreen(view: ViewModel) {
                 enabled = !waiting,
             ) { dispatch(Event.ClosePurchaseFlow) }
             if (waiting) {
-                LinkText(Str.Purchase.background(context), LognDark.textSecondary, Modifier.fillMaxWidth()) { dispatch(Event.ClosePurchaseFlow) }
+                LinkText(Str.Purchase.background(context), LognColors.textSecondary, Modifier.fillMaxWidth()) { dispatch(Event.ClosePurchaseFlow) }
             }
         }
     }
@@ -166,8 +166,8 @@ private fun StepLog(stage: PurchaseStage) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(LognDark.canvas, shape)
-            .border(Stroke.hairline, LognDark.line, shape)
+            .background(LognColors.canvas, shape)
+            .border(Stroke.hairline, LognColors.line, shape)
             .padding(StoreMetrics.cardPadding),
     ) {
         for ((i, step) in steps.withIndex()) {
@@ -176,15 +176,15 @@ private fun StepLog(stage: PurchaseStage) {
             val current = !failed && i == rank
             val (mark, ink) =
                 when {
-                    done -> MARK_DONE to LognDark.correctInk
-                    current -> MARK_CURRENT to LognDark.warnInk
-                    else -> MARK_LATER to LognDark.textMuted
+                    done -> MARK_DONE to LognColors.correctInk
+                    current -> MARK_CURRENT to LognColors.warnInk
+                    else -> MARK_LATER to LognColors.textMuted
                 }
             Row(Modifier.heightIn(min = StoreMetrics.logRow), verticalAlignment = Alignment.CenterVertically) {
                 val style = LognFont.mono(StoreMetrics.LOG_SIZE)
                 Text(mark, style = style, color = ink, modifier = Modifier.width(StoreMetrics.logMark))
-                Text(step.first, style = style, color = if (done) LognDark.textPrimary else LognDark.textMuted, modifier = Modifier.weight(1f))
-                Text(if (done) step.second else "", style = style, color = LognDark.textMuted)
+                Text(step.first, style = style, color = if (done) LognColors.textPrimary else LognColors.textMuted, modifier = Modifier.weight(1f))
+                Text(if (done) step.second else "", style = style, color = LognColors.textMuted)
             }
         }
     }
@@ -199,7 +199,7 @@ fun GuestPurchaseSheet(
     val context = LocalContext.current
     val store = LocalStore.current
     val track = view.tracks.firstOrNull { it.productId == productId }
-    BottomSheet(onDismiss = { store.guestPrompt = null }, background = LognDark.surface) {
+    BottomSheet(onDismiss = { store.guestPrompt = null }, background = LognColors.surface) {
         Column(
             Modifier.padding(start = StoreMetrics.side, end = StoreMetrics.side, top = StoreMetrics.side, bottom = Space.md),
             verticalArrangement = Arrangement.spacedBy(Space.md),
@@ -211,7 +211,7 @@ fun GuestPurchaseSheet(
                     Text(
                         track.name.uppercase() + (price?.let { " · ${it.formatted}" } ?: ""),
                         style = LognFont.mono(StoreMetrics.META_SIZE, tracking = StoreMetrics.EYEBROW_TRACKING),
-                        color = LognDark.textMuted,
+                        color = LognColors.textMuted,
                     )
                 }
                 price?.let { DiscountLine(it) }
@@ -219,12 +219,12 @@ fun GuestPurchaseSheet(
             Text(
                 Str.Guest_purchase.title(context),
                 style = LognFont.sans(StoreMetrics.SHEET_TITLE_SIZE, FontWeight.SemiBold, StoreMetrics.TITLE_TRACKING),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
             )
             Text(
                 Str.Guest_purchase.body_play(context),
                 style = LognFont.sans(StoreMetrics.NOTE_SIZE).merge(TextStyle(lineHeight = StoreMetrics.BODY_LINE.sp)),
-                color = LognDark.textSecondary,
+                color = LognColors.textSecondary,
             )
             LognButton(Str.Guest_purchase.create(context), ButtonVariant.Primary) {
                 store.continueAfterSignUp(productId, register = true) { ShellState.wantsRegistration = it }
@@ -235,7 +235,7 @@ fun GuestPurchaseSheet(
             Text(
                 Str.Guest_purchase.note(context),
                 style = LognFont.mono(StoreMetrics.SMALL_SIZE),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
         }
@@ -255,7 +255,7 @@ fun LockedNodeSheet(
     val index = track.nodes.indexOfFirst { it.id == node.id }.let { if (it < 0) 1 else it + 1 }
     LaunchedEffect(track.productId) { store.loadPrices(listOf(track.productId)) }
     val price = store.prices[track.productId]
-    BottomSheet(onDismiss = onDismiss, background = LognDark.surface) {
+    BottomSheet(onDismiss = onDismiss, background = LognColors.surface) {
         Column(
             Modifier.padding(start = StoreMetrics.side, end = StoreMetrics.side, top = StoreMetrics.side, bottom = Space.md),
             verticalArrangement = Arrangement.spacedBy(Space.md),
@@ -263,20 +263,20 @@ fun LockedNodeSheet(
             Text(
                 Str.Locked.eyebrow(context, index, node.name.uppercase()),
                 style = LognFont.mono(StoreMetrics.SMALL_SIZE, tracking = StoreMetrics.EYEBROW_TRACKING),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
             )
             Text(
                 Str.Locked.title(context),
                 style = LognFont.sans(StoreMetrics.SHEET_TITLE_SIZE, FontWeight.SemiBold, StoreMetrics.TITLE_TRACKING),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
             )
             // "Você terminou a amostra" só para quem terminou. Cada frase é uma chave inteira.
             Column(verticalArrangement = Arrangement.spacedBy(Space.xxs)) {
                 val style = LognFont.sans(StoreMetrics.NOTE_SIZE).merge(TextStyle(lineHeight = StoreMetrics.BODY_LINE.sp))
-                if (track.sampleDone) Text(Str.Locked.sample_done(context, track.sampleBalloons.toInt()), style = style, color = LognDark.textSecondary)
-                Text(Str.Locked.rest(context, track.closedNodeCount.toInt()), style = style, color = LognDark.textSecondary)
+                if (track.sampleDone) Text(Str.Locked.sample_done(context, track.sampleBalloons.toInt()), style = style, color = LognColors.textSecondary)
+                Text(Str.Locked.rest(context, track.closedNodeCount.toInt()), style = style, color = LognColors.textSecondary)
             }
-            store.problem?.let { Text(PlayStore.copy(context, it), style = LognFont.bodyMedium, color = LognDark.textSecondary) }
+            store.problem?.let { Text(PlayStore.copy(context, it), style = LognFont.bodyMedium, color = LognColors.textSecondary) }
             price?.let { DiscountLine(it) }
             // A folha fecha antes da compra: a tela do passo a passo abre da raiz.
             LognButton(
@@ -288,7 +288,7 @@ fun LockedNodeSheet(
                 onDismiss()
                 activity?.let { store.buy(it, track.productId) }
             }
-            LinkText(Str.Locked.not_now(context), LognDark.textSecondary, Modifier.fillMaxWidth(), onClick = onDismiss)
+            LinkText(Str.Locked.not_now(context), LognColors.textSecondary, Modifier.fillMaxWidth(), onClick = onDismiss)
         }
     }
 }
@@ -314,25 +314,25 @@ fun SampleOfferCard(
         Column(
             Modifier
                 .fillMaxWidth()
-                .background(LognDark.canvas, shape)
-                .border(Stroke.hairline, LognDark.lineStrong, shape)
+                .background(LognColors.canvas, shape)
+                .border(Stroke.hairline, LognColors.lineStrong, shape)
                 .padding(Space.lg),
             verticalArrangement = Arrangement.spacedBy(Space.md),
         ) {
             Text(
                 Str.Offer.eyebrow(context, offer.nextNodeIndex.toInt(), track?.nodeCount?.toInt() ?: 0),
                 style = LognFont.mono(StoreMetrics.SMALL_SIZE, tracking = StoreMetrics.EYEBROW_TRACKING),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
             )
-            Text(offer.nextNodeName, style = LognFont.sans(StoreMetrics.PRINCIPAL_NAME_SIZE, FontWeight.SemiBold), color = LognDark.textPrimary)
+            Text(offer.nextNodeName, style = LognFont.sans(StoreMetrics.PRINCIPAL_NAME_SIZE, FontWeight.SemiBold), color = LognColors.textPrimary)
             Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
                 val style = LognFont.mono(StoreMetrics.LOG_SIZE)
-                Text(Str.Offer.nodes(context, offer.remainingNodes.toInt()), style = style, color = LognDark.textSecondary)
-                Text(Str.Offer.problems(context, offer.remainingProblems.toInt()), style = style, color = LognDark.textSecondary)
+                Text(Str.Offer.nodes(context, offer.remainingNodes.toInt()), style = style, color = LognColors.textSecondary)
+                Text(Str.Offer.problems(context, offer.remainingProblems.toInt()), style = style, color = LognColors.textSecondary)
             }
-            Text(Str.Offer.tail(context), style = LognFont.sans(StoreMetrics.NOTE_SIZE), color = LognDark.textSecondary)
+            Text(Str.Offer.tail(context), style = LognFont.sans(StoreMetrics.NOTE_SIZE), color = LognColors.textSecondary)
         }
-        store.problem?.let { Text(PlayStore.copy(context, it), style = LognFont.bodyMedium, color = LognDark.textSecondary) }
+        store.problem?.let { Text(PlayStore.copy(context, it), style = LognFont.bodyMedium, color = LognColors.textSecondary) }
         price?.let { DiscountLine(it) }
         LognButton(
             price?.let { Str.Offer.continue_buy(context, name, it.formatted) } ?: Str.Offer.continue_buy_no_price(context, name),
@@ -340,7 +340,7 @@ fun SampleOfferCard(
             enabled = track != null,
             loading = store.isPurchasing,
         ) { if (track != null && activity != null) store.buy(activity, track.productId) }
-        LinkText(Str.Offer.back(context, free?.name.orEmpty()), LognDark.textSecondary, Modifier.fillMaxWidth()) {
+        LinkText(Str.Offer.back(context, free?.name.orEmpty()), LognColors.textSecondary, Modifier.fillMaxWidth()) {
             dispatch(Event.DismissSampleOffer(offer.trackId))
             if (free != null) dispatch(Event.SelectTrack(free.id))
             onDismiss()
@@ -360,13 +360,13 @@ fun RestoreResultSheet(view: ViewModel) {
             result.total == 0u || result.restoredNames.isEmpty() -> Str.Restore.nothing_play(context)
             else -> Str.Restore.names(context, result.restoredNames.joinToString(", "))
         }
-    BottomSheet(onDismiss = { dispatch(Event.DismissRestoreResult) }, dismissible = result.finished, background = LognDark.surface) {
+    BottomSheet(onDismiss = { dispatch(Event.DismissRestoreResult) }, dismissible = result.finished, background = LognColors.surface) {
         Column(Modifier.padding(StoreMetrics.side), verticalArrangement = Arrangement.spacedBy(Space.md)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     Str.Restore.title(context),
                     style = LognFont.mono(StoreMetrics.META_SIZE, tracking = StoreMetrics.EYEBROW_TRACKING),
-                    color = LognDark.textMuted,
+                    color = LognColors.textMuted,
                     modifier = Modifier.weight(1f),
                 )
                 if (result.finished && result.total > 0u) {
@@ -374,17 +374,17 @@ fun RestoreResultSheet(view: ViewModel) {
                     Text(
                         Str.Restore.count(context, result.restored.toInt(), result.total.toInt()),
                         style = LognFont.mono(StoreMetrics.META_SIZE, FontWeight.Medium),
-                        color = if (any) LognDark.correctInk else LognDark.textSecondary,
+                        color = if (any) LognColors.correctInk else LognColors.textSecondary,
                         modifier =
                             Modifier
-                                .border(Stroke.hairline, if (any) LognDark.correct else LognDark.lineStrong, RoundedCornerShape(Radius.xs))
+                                .border(Stroke.hairline, if (any) LognColors.correct else LognColors.lineStrong, RoundedCornerShape(Radius.xs))
                                 .padding(horizontal = StoreMetrics.chipPaddingH, vertical = StoreMetrics.gap3),
                     )
                 }
             }
-            Text(message, style = LognFont.sans(StoreMetrics.BODY_SIZE), color = LognDark.textPrimary)
+            Text(message, style = LognFont.sans(StoreMetrics.BODY_SIZE), color = LognColors.textPrimary)
             if (result.otherAccount > 0u) {
-                Text(Str.Restore.other(context, result.otherAccount.toInt()), style = LognFont.sans(StoreMetrics.NOTE_SIZE), color = LognDark.warnInk)
+                Text(Str.Restore.other(context, result.otherAccount.toInt()), style = LognFont.sans(StoreMetrics.NOTE_SIZE), color = LognColors.warnInk)
             }
             LognButton(Str.Restore.ok(context), ButtonVariant.Secondary, enabled = result.finished) { dispatch(Event.DismissRestoreResult) }
         }

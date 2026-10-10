@@ -48,7 +48,7 @@ import sh.logn.app.ui.LocalReadView
 import sh.logn.app.ui.components.ButtonVariant
 import sh.logn.app.ui.components.LognButton
 import sh.logn.app.ui.theme.LocalReduceMotion
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.MatchMetrics
 import sh.logn.app.ui.theme.Radius
@@ -161,7 +161,7 @@ fun MatchScreen(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(LognDark.canvas),
+                .background(LognColors.canvas),
         ) {
             Box(
                 Modifier
@@ -234,7 +234,7 @@ private fun PlayScreen(
             submitTitle(context, mv),
             ButtonVariant.Primary,
             Modifier
-                .background(LognDark.canvas)
+                .background(LognColors.canvas)
                 .navigationBarsPadding()
                 .padding(start = MatchMetrics.bodySide, end = MatchMetrics.bodySide, top = Space.lg, bottom = MatchMetrics.panelBottom),
             enabled = canSubmit(mv),
@@ -258,7 +258,7 @@ private fun ProblemStatement(
             Text(
                 mv.currentTitle.uppercase(),
                 style = LognFont.mono(MatchMetrics.LABEL_SIZE, tracking = MatchMetrics.LABEL_TRACKING),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
             )
             // A origem na linha do título: atribuição que ninguém vê não é atribuição.
             if (mv.currentOrigin.isNotEmpty()) {
@@ -266,10 +266,10 @@ private fun ProblemStatement(
                 Text(
                     mv.currentOrigin.uppercase(),
                     style = LognFont.mono(MatchMetrics.ORIGIN_SIZE, tracking = MatchMetrics.LABEL_TRACKING),
-                    color = if (originStory) LognDark.accent else LognDark.textSecondary,
+                    color = if (originStory) LognColors.accent else LognColors.textSecondary,
                     modifier =
                         Modifier
-                            .border(Stroke.hairline, if (originStory) LognDark.accent.copy(alpha = ORIGIN_ALPHA) else LognDark.lineStrong, shape)
+                            .border(Stroke.hairline, if (originStory) LognColors.accent.copy(alpha = ORIGIN_ALPHA) else LognColors.lineStrong, shape)
                             .then(if (originStory) Modifier.clickable(role = Role.Button) { dispatch(Event.OpenOriginSheet) } else Modifier)
                             .padding(horizontal = MatchMetrics.originPaddingH, vertical = Space.xxs),
                 )
@@ -281,7 +281,7 @@ private fun ProblemStatement(
                 LognFont
                     .sans(MatchMetrics.STATEMENT_SIZE, FontWeight.SemiBold)
                     .merge(TextStyle(lineHeight = MatchMetrics.STATEMENT_LINE.sp)),
-            color = LognDark.textPrimary,
+            color = LognColors.textPrimary,
             modifier = Modifier.padding(top = Space.md),
         )
     }
@@ -306,7 +306,7 @@ private fun TemplateBody(mv: MatchViewModel) {
                 Text(
                     Str.Arena.drag_block(context),
                     style = LognFont.mono(MatchMetrics.LABEL_SIZE, tracking = MatchMetrics.LABEL_TRACKING),
-                    color = LognDark.textMuted,
+                    color = LognColors.textMuted,
                 )
                 DropZone(mv.answerString, { dispatch(Event.MatchSetAnswer(it)) }, { dispatch(Event.MatchSetAnswer("")) })
                 val blank = ChipTarget(Str.Arena.place_in_blank_accessibility(context)) { dispatch(Event.MatchSetAnswer(it)) }
@@ -327,7 +327,7 @@ private fun TemplateBody(mv: MatchViewModel) {
                         .padding(vertical = Space.sm)
                         .fillMaxWidth()
                         .height(Stroke.hairline)
-                        .background(LognDark.line),
+                        .background(LognColors.line),
                 )
                 // Tocar põe o chip na próxima casa vazia: primeiro tempo, depois espaço.
                 val axes =
@@ -359,7 +359,7 @@ private fun TemplateBody(mv: MatchViewModel) {
                 Text(
                     Str.Arena.select_up_to(context, mv.maxSelections),
                     style = LognFont.mono(MatchMetrics.LABEL_SIZE, tracking = MatchMetrics.LABEL_TRACKING),
-                    color = LognDark.textMuted,
+                    color = LognColors.textMuted,
                 )
                 TagBank(mv.currentOptions, mv.selectedTags) { dispatch(Event.MatchToggleTag(it)) }
             }

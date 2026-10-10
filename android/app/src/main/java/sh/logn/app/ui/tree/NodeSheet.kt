@@ -30,7 +30,7 @@ import sh.logn.app.ui.components.BottomSheet
 import sh.logn.app.ui.components.ButtonVariant
 import sh.logn.app.ui.components.LognButton
 import sh.logn.app.ui.components.balloonColor
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.NodeSheetMetrics
 import sh.logn.app.ui.theme.Radius
@@ -68,7 +68,7 @@ fun NodeSheet(
                 Modifier
                     .align(Alignment.CenterHorizontally)
                     .size(NodeSheetMetrics.handleWidth, NodeSheetMetrics.handleHeight)
-                    .background(LognDark.lineStrong, RoundedCornerShape(NodeSheetMetrics.handleHeight)),
+                    .background(LognColors.lineStrong, RoundedCornerShape(NodeSheetMetrics.handleHeight)),
             )
             Header(node, topic, Modifier.padding(top = Space.lg))
             Neighbourhood(incoming, unlocks, Modifier.padding(top = Space.screenMargin))
@@ -88,9 +88,9 @@ private fun Header(
     val context = LocalContext.current
     val (label, color) =
         when (node.status) {
-            NodeStatus.COMPLETED -> Str.Node.completed(context) to LognDark.textSecondary
-            NodeStatus.ACTIVE -> Str.Node.active(context, node.requiredXp) to LognDark.accentInk
-            NodeStatus.LOCKED, NodeStatus.PAYWALLLOCKED -> Str.Node.locked(context) to LognDark.textMuted
+            NodeStatus.COMPLETED -> Str.Node.completed(context) to LognColors.textSecondary
+            NodeStatus.ACTIVE -> Str.Node.active(context, node.requiredXp) to LognColors.accentInk
+            NodeStatus.LOCKED, NodeStatus.PAYWALLLOCKED -> Str.Node.locked(context) to LognColors.textMuted
         }
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(NodeSheetMetrics.headerGap), verticalAlignment = Alignment.CenterVertically) {
         val width = NodeSheetMetrics.balloon
@@ -108,7 +108,7 @@ private fun Header(
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(Space.xs)) {
-            Text(node.name, style = LognFont.sans(NodeSheetMetrics.TITLE_SIZE, FontWeight.SemiBold), color = LognDark.textPrimary)
+            Text(node.name, style = LognFont.sans(NodeSheetMetrics.TITLE_SIZE, FontWeight.SemiBold), color = LognColors.textPrimary)
             // A cor da família vive no balão, não no texto: a paleta é certificada para 3:1
             // como forma, não 4.5:1 como glifo.
             Text(label, style = LognFont.mono(NodeSheetMetrics.STATE_SIZE, tracking = NodeSheetMetrics.STATE_TRACKING), color = color)
@@ -138,13 +138,13 @@ private fun NeighbourColumn(
 ) {
     val context = LocalContext.current
     Column(modifier) {
-        Text(title, style = LognFont.mono(NodeSheetMetrics.COLUMN_SIZE, tracking = NodeSheetMetrics.COLUMN_TRACKING), color = LognDark.textMuted)
+        Text(title, style = LognFont.mono(NodeSheetMetrics.COLUMN_SIZE, tracking = NodeSheetMetrics.COLUMN_TRACKING), color = LognColors.textMuted)
         if (nodes.isEmpty()) {
             // Vazio nunca é ilustração: uma frase e pronto.
             Text(
                 if (upstream) Str.Node.start_point(context) else Str.Node.end_point(context),
                 style = LognFont.sans(NodeSheetMetrics.NEIGHBOUR_SIZE),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
                 modifier = Modifier.padding(top = Space.md),
             )
             return@Column
@@ -156,11 +156,11 @@ private fun NeighbourColumn(
                 horizontalArrangement = Arrangement.spacedBy(NodeSheetMetrics.neighbourGap),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TopicIcon(topic, if (upstream) topic.color else LognDark.textMuted, NodeSheetMetrics.neighbourIcon)
+                TopicIcon(topic, if (upstream) topic.color else LognColors.textMuted, NodeSheetMetrics.neighbourIcon)
                 Text(
                     neighbour.name,
                     style = LognFont.sans(NodeSheetMetrics.NEIGHBOUR_SIZE),
-                    color = if (upstream) LognDark.textPrimary else LognDark.textSecondary,
+                    color = if (upstream) LognColors.textPrimary else LognColors.textSecondary,
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
@@ -184,13 +184,13 @@ private fun Problems(
             Text(
                 Str.Solved.problems(context),
                 style = LognFont.mono(NodeSheetMetrics.COLUMN_SIZE, tracking = NodeSheetMetrics.COLUMN_TRACKING),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
             )
             Spacer(Modifier.weight(1f))
             Text(
                 Str.Solved.count(context, node.solvedCount, node.problemsSolved.size),
                 style = LognFont.mono(NodeSheetMetrics.STATE_SIZE),
-                color = LognDark.textSecondary,
+                color = LognColors.textSecondary,
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(Space.md)) {
@@ -223,14 +223,14 @@ private fun Problems(
                         Text(
                             letter.toString(),
                             style = LognFont.mono(NodeSheetMetrics.PROBLEM_LETTER_SIZE, FontWeight.SemiBold),
-                            color = if (solved) LognDark.onAccent else LognDark.textSecondary,
+                            color = if (solved) LognColors.onAccent else LognColors.textSecondary,
                             modifier = Modifier.padding(top = width * PROBLEM_LETTER_TOP),
                         )
                     }
                     Text(
                         if (solved) Str.Solved.done(context) else Str.Solved.worth(context, XP_PER_ACCEPTED),
                         style = LognFont.mono(NodeSheetMetrics.PROBLEM_CAPTION_SIZE, tracking = LABEL_TRACKING),
-                        color = if (solved) LognDark.textMuted else LognDark.textPrimary,
+                        color = if (solved) LognColors.textMuted else LognColors.textPrimary,
                     )
                 }
             }
@@ -252,8 +252,8 @@ private fun StatStrip(
         modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
-            .background(LognDark.line, shape)
-            .border(Stroke.hairline, LognDark.line, shape),
+            .background(LognColors.line, shape)
+            .border(Stroke.hairline, LognColors.line, shape),
         horizontalArrangement = Arrangement.spacedBy(Stroke.hairline),
     ) {
         StatCell(Str.Node.prereq(context), "${node.prerequisites.size}", Modifier.weight(1f))
@@ -278,12 +278,12 @@ fun StatCell(
     Column(
         modifier
             .fillMaxHeight()
-            .background(LognDark.surface)
+            .background(LognColors.surface)
             .padding(horizontal = NodeSheetMetrics.statPaddingH, vertical = NodeSheetMetrics.statPaddingV),
         verticalArrangement = Arrangement.spacedBy(Space.xs),
     ) {
-        Text(label, style = LognFont.mono(NodeSheetMetrics.COLUMN_SIZE, tracking = NodeSheetMetrics.STAT_LABEL_TRACKING), color = LognDark.textMuted)
-        Text(value, style = LognFont.mono(valueSize, valueWeight), color = LognDark.textPrimary)
+        Text(label, style = LognFont.mono(NodeSheetMetrics.COLUMN_SIZE, tracking = NodeSheetMetrics.STAT_LABEL_TRACKING), color = LognColors.textMuted)
+        Text(value, style = LognFont.mono(valueSize, valueWeight), color = LognColors.textPrimary)
     }
 }
 
@@ -303,7 +303,7 @@ private fun Cta(
             // não há é melhor que um botão que promete partida e não faz nada.
             Column(modifier, verticalArrangement = Arrangement.spacedBy(Space.sm), horizontalAlignment = Alignment.CenterHorizontally) {
                 LognButton(Str.Node.no_problems(context), ButtonVariant.Primary, enabled = false) {}
-                Text(Str.Node.no_problems_desc(context), style = LognFont.mono(NodeSheetMetrics.STATE_SIZE), color = LognDark.textMuted)
+                Text(Str.Node.no_problems_desc(context), style = LognFont.mono(NodeSheetMetrics.STATE_SIZE), color = LognColors.textMuted)
             }
         else -> {
             val open = node.problemsSolved.size - node.solvedCount

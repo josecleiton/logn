@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -19,7 +20,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
 import sh.logn.app.ui.theme.Balloon
 import sh.logn.app.ui.theme.BalloonMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 
 /** Os caminhos do balão do DS, os mesmos de BalloonShape.swift. */
 internal object BalloonPaths {
@@ -81,6 +82,7 @@ fun BalloonShape(
     val knot = remember { PathParser().parsePathString(BalloonPaths.KNOT).toPath() }
     val shine = remember { PathParser().parsePathString(BalloonPaths.SHINE).toPath() }
     val string = remember { PathParser().parsePathString(BalloonPaths.STRING).toPath() }
+    val colors = LognColors.palette
     Canvas(modifier.size(width, height).clearAndSetSemantics { }) {
         val s = size.width / BalloonPaths.VIEW_WIDTH
         // Em dp, como os pontos de iOS.
@@ -101,18 +103,18 @@ fun BalloonShape(
                     stringColor = style.color
                 }
                 BalloonStyle.Active -> {
-                    drawPath(body, LognDark.accentTint)
-                    drawPath(body, LognDark.accent, style = Stroke(BalloonPaths.ACTIVE_STROKE))
+                    drawPath(body, colors.accentTint)
+                    drawPath(body, colors.accent, style = Stroke(BalloonPaths.ACTIVE_STROKE))
                     if (shineOn) {
-                        drawPath(shine, LognDark.accent.copy(alpha = BalloonPaths.ACTIVE_SHINE_ALPHA), style = shineStroke)
+                        drawPath(shine, colors.accent.copy(alpha = BalloonPaths.ACTIVE_SHINE_ALPHA), style = shineStroke)
                     }
-                    drawPath(knot, LognDark.accent)
-                    stringColor = LognDark.accent
+                    drawPath(knot, colors.accent)
+                    stringColor = colors.accent
                 }
                 BalloonStyle.Locked -> {
-                    drawPath(body, LognDark.lineStrong)
-                    drawPath(knot, LognDark.lineStrong)
-                    stringColor = LognDark.lineStrong
+                    drawPath(body, colors.lineStrong)
+                    drawPath(knot, colors.lineStrong)
+                    stringColor = colors.lineStrong
                 }
             }
             if (showString) {
@@ -125,7 +127,9 @@ fun BalloonShape(
 private val shineStroke = Stroke(BalloonPaths.SHINE_WIDTH, cap = StrokeCap.Round)
 
 /** A cor da letra do problema: endereço, nunca estado. Fora de A–M, `textMuted`. */
-fun balloonColor(letter: Char): Color = if (letter.uppercaseChar() in 'A'..'M') Balloon.of(letter) else LognDark.textMuted
+@Composable
+@ReadOnlyComposable
+fun balloonColor(letter: Char): Color = if (letter.uppercaseChar() in 'A'..'M') Balloon.of(letter) else LognColors.textMuted
 
 val BALLOON_LETTERS: List<Char> = ('A'..'M').toList()
 

@@ -36,7 +36,7 @@ import sh.logn.app.ui.components.LognButton
 import sh.logn.app.ui.components.LognIcon
 import sh.logn.app.ui.theme.HomeMetrics
 import sh.logn.app.ui.theme.IconMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Radius
 import sh.logn.app.ui.theme.Space
@@ -66,7 +66,7 @@ fun OnboardingScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .background(LognDark.surface)
+            .background(LognColors.surface)
             .safeDrawingPadding()
             .padding(start = HomeMetrics.onboardingSide, end = HomeMetrics.onboardingSide, bottom = HomeMetrics.onboardingBottom),
     ) {
@@ -74,9 +74,9 @@ fun OnboardingScreen(
             Text(
                 Str.Onboarding.title(context),
                 style = LognFont.sans(HomeMetrics.ONBOARDING_TITLE_SIZE, FontWeight.SemiBold, HomeMetrics.HEADER_TRACKING),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
             )
-            Text(Str.Onboarding.body(context), style = LognFont.sans(HomeMetrics.ONBOARDING_BODY_SIZE), color = LognDark.textSecondary)
+            Text(Str.Onboarding.body(context), style = LognFont.sans(HomeMetrics.ONBOARDING_BODY_SIZE), color = LognColors.textSecondary)
         }
         Column(Modifier.padding(top = TermsMetrics.sideMargin), verticalArrangement = Arrangement.spacedBy(Space.md)) {
             Option(!wantsCatalog, free?.name.orEmpty(), Str.Onboarding.free_body(context)) { wantsCatalog = false }
@@ -101,8 +101,8 @@ private fun Option(
     Row(
         Modifier
             .fillMaxWidth()
-            .background(if (selected) LognDark.accentTint else Color.Transparent, shape)
-            .border(if (selected) HomeMetrics.optionStroke else Stroke.hairline, if (selected) LognDark.accent else LognDark.line, shape)
+            .background(if (selected) LognColors.accentTint else Color.Transparent, shape)
+            .border(if (selected) HomeMetrics.optionStroke else Stroke.hairline, if (selected) LognColors.accent else LognColors.line, shape)
             .semantics { this.selected = selected }
             .clickable(role = Role.RadioButton, onClick = onClick)
             .padding(HomeMetrics.optionPadding),
@@ -110,10 +110,10 @@ private fun Option(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(TermsMetrics.cellGap)) {
-            Text(title, style = LognFont.sans(HomeMetrics.OPTION_TITLE_SIZE, FontWeight.SemiBold), color = LognDark.textPrimary)
-            Text(body, style = LognFont.sans(TermsMetrics.BODY_SIZE), color = LognDark.textSecondary)
+            Text(title, style = LognFont.sans(HomeMetrics.OPTION_TITLE_SIZE, FontWeight.SemiBold), color = LognColors.textPrimary)
+            Text(body, style = LognFont.sans(TermsMetrics.BODY_SIZE), color = LognColors.textSecondary)
         }
-        if (selected) Icon(LognIcon.Check, LognDark.accentInk, IconMetrics.md)
+        if (selected) Icon(LognIcon.Check, LognColors.accentInk, IconMetrics.md)
     }
 }
 
@@ -139,21 +139,21 @@ fun ExpiredTrackScreen(
         Text(
             Str.Expired.eyebrow(context, track.daysSinceContact.toInt()),
             style = LognFont.mono(TermsMetrics.CELL_DATE_SIZE, tracking = TermsMetrics.LIST_LABEL_TRACKING),
-            color = LognDark.wrongInk,
+            color = LognColors.wrongInk,
         )
         Text(
             Str.Expired.title(context, track.name),
             style = LognFont.sans(HomeMetrics.EXPIRED_TITLE_SIZE, FontWeight.SemiBold, HomeMetrics.HEADER_TRACKING),
-            color = LognDark.textPrimary,
+            color = LognColors.textPrimary,
         )
-        Text(Str.Expired.body(context), style = LognFont.sans(TermsMetrics.BODY_SIZE + 1), color = LognDark.textSecondary)
+        Text(Str.Expired.body(context), style = LognFont.sans(TermsMetrics.BODY_SIZE + 1), color = LognColors.textSecondary)
         val shape = RoundedCornerShape(Radius.sm)
         Row(
             Modifier
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
-                .background(LognDark.line, shape)
-                .border(Stroke.hairline, LognDark.line, shape),
+                .background(LognColors.line, shape)
+                .border(Stroke.hairline, LognColors.line, shape),
             horizontalArrangement = Arrangement.spacedBy(Stroke.hairline),
         ) {
             StatCell(
@@ -168,7 +168,7 @@ fun ExpiredTrackScreen(
         Spacer(Modifier.weight(1f))
         LognButton(Str.Expired.retry(context), ButtonVariant.Primary) { dispatch(Event.FetchLicense(track.id)) }
         if (free != null) {
-            LinkText(Str.Expired.back(context, free.name), LognDark.textSecondary, Modifier.fillMaxWidth()) {
+            LinkText(Str.Expired.back(context, free.name), LognColors.textSecondary, Modifier.fillMaxWidth()) {
                 dispatch(Event.SelectTrack(free.id))
             }
         }

@@ -22,7 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import sh.logn.app.ui.theme.BrandMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.coreshell.i18n.Str
 
@@ -44,13 +44,14 @@ private object BrandPaths {
 fun BrandSymbol(
     height: Dp,
     modifier: Modifier = Modifier,
-    color: Color = LognDark.accent,
+    color: Color = LognColors.accent,
 ) {
     val width = height * (BrandPaths.VIEW_WIDTH / BrandPaths.VIEW_HEIGHT)
     val body = remember { PathParser().parsePathString(BalloonPaths.BODY).toPath() }
     val shine = remember { PathParser().parsePathString(BalloonPaths.SHINE).toPath() }
     val knot = remember { PathParser().parsePathString(BalloonPaths.KNOT).toPath() }
     val tail = remember { PathParser().parsePathString(BrandPaths.TAIL).toPath() }
+    val shineColor = LognColors.shine
     Canvas(modifier.size(width, height)) {
         // Medido antes do `scale`: dentro dele, `size` ainda é o da tela.
         val showShine = size.width >= BrandMetrics.shineMinWidth.toPx()
@@ -58,7 +59,7 @@ fun BrandSymbol(
         scale(s, s, pivot = Offset.Zero) {
             drawPath(body, color)
             if (showShine) {
-                drawPath(shine, LognDark.shine, style = Stroke(BalloonPaths.SHINE_WIDTH, cap = StrokeCap.Round))
+                drawPath(shine, shineColor, style = Stroke(BalloonPaths.SHINE_WIDTH, cap = StrokeCap.Round))
             }
             drawPath(knot, color)
             drawPath(tail, color, style = Stroke(BrandPaths.TAIL_WIDTH, cap = StrokeCap.Round))
@@ -83,7 +84,7 @@ fun BrandLockup(
         Text(
             name,
             style = LognFont.sans(fontSize, FontWeight.SemiBold, BrandMetrics.LOCKUP_TRACKING),
-            color = LognDark.textPrimary,
+            color = LognColors.textPrimary,
         )
     }
 }

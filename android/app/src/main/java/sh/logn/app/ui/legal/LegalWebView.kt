@@ -23,7 +23,7 @@ import okhttp3.Request
 import org.json.JSONObject
 import sh.logn.app.BuildConfig
 import sh.logn.app.ui.theme.LegalMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.coreshell.i18n.Str
 import java.util.concurrent.TimeUnit
 
@@ -87,6 +87,7 @@ fun LegalWebView(
             LegalLoader(context.applicationContext)
         }
     loader.callbacks = LegalLoader.Callbacks(onMeta, onPhase, onSwitch)
+    val background = LognColors.surfaceRaised.toArgb()
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
@@ -97,7 +98,7 @@ fun LegalWebView(
                 settings.domStorageEnabled = false
                 settings.setSupportZoom(false)
                 // Sem isto a página pisca branco antes do CSS escuro chegar.
-                setBackgroundColor(LognDark.surfaceRaised.toArgb())
+                setBackgroundColor(background)
                 isLongClickable = false
                 webViewClient = loader.client
             }

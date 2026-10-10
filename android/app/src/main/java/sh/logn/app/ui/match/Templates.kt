@@ -56,7 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.IntOffset
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.MatchMetrics
 import sh.logn.app.ui.theme.Radius
@@ -143,12 +143,12 @@ private fun ChipFace(
     Box(
         modifier
             .heightIn(min = Space.matchTouch)
-            .background(LognDark.surfaceRaised, shape)
-            .border(LognStroke.hairline, if (raised) LognDark.accent else LognDark.lineStrong, shape)
+            .background(LognColors.surfaceRaised, shape)
+            .border(LognStroke.hairline, if (raised) LognColors.accent else LognColors.lineStrong, shape)
             .padding(horizontal = Space.md, vertical = MatchMetrics.chipPaddingV),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = LognFont.mono(MatchMetrics.CHIP_SIZE), color = LognDark.textPrimary)
+        Text(text, style = LognFont.mono(MatchMetrics.CHIP_SIZE), color = LognColors.textPrimary)
     }
 }
 
@@ -222,15 +222,15 @@ fun DropZone(
     val targeted = drag.hovered === key
     val fill =
         when {
-            targeted -> LognDark.accentTint
-            filled -> LognDark.surfaceRaised
-            else -> LognDark.canvas
+            targeted -> LognColors.accentTint
+            filled -> LognColors.surfaceRaised
+            else -> LognColors.canvas
         }
     val stroke =
         when {
-            targeted -> LognDark.accent
-            filled -> LognDark.lineStrong
-            else -> LognDark.lineDim
+            targeted -> LognColors.accent
+            filled -> LognColors.lineStrong
+            else -> LognColors.lineDim
         }
     val label = if (filled) Str.Arena.filled_accessibility(context, value) else Str.Arena.drop_here_accessibility(context)
     Box(
@@ -255,7 +255,7 @@ fun DropZone(
         Text(
             if (filled) value else Str.Arena.drop_here(context),
             style = LognFont.mono(if (filled) MatchMetrics.DROP_FILLED_SIZE else MatchMetrics.CHIP_SIZE),
-            color = if (filled) LognDark.textPrimary else LognDark.textDim,
+            color = if (filled) LognColors.textPrimary else LognColors.textDim,
         )
     }
     DisposableEffect(key) { onDispose { drag.unregister(key) } }
@@ -273,7 +273,7 @@ fun LabelledDrop(
         Text(
             label,
             style = LognFont.mono(MatchMetrics.LABEL_SIZE, tracking = MatchMetrics.LABEL_TRACKING),
-            color = LognDark.textMuted,
+            color = LognColors.textMuted,
             modifier = Modifier.width(MatchMetrics.axisLabel),
         )
         DropZone(value, onDrop, onRemove, Modifier.weight(1f))
@@ -291,14 +291,14 @@ fun TagChip(
     Box(
         Modifier
             .heightIn(min = Space.matchTouch)
-            .background(if (selected) LognDark.accentTint else Color.Transparent, shape)
-            .border(LognStroke.hairline, if (selected) LognDark.accent else LognDark.lineStrong, shape)
+            .background(if (selected) LognColors.accentTint else Color.Transparent, shape)
+            .border(LognStroke.hairline, if (selected) LognColors.accent else LognColors.lineStrong, shape)
             .semantics { this.selected = selected }
             .clickable(role = Role.Checkbox, onClick = onClick)
             .padding(horizontal = MatchMetrics.tagPaddingH, vertical = MatchMetrics.tagPaddingV),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = LognFont.mono(MatchMetrics.CHIP_SIZE), color = if (selected) LognDark.accentInk else LognDark.textSecondary)
+        Text(text, style = LognFont.mono(MatchMetrics.CHIP_SIZE), color = if (selected) LognColors.accentInk else LognColors.textSecondary)
     }
 }
 
@@ -338,7 +338,7 @@ fun TradeoffPanel(
                 .fillMaxWidth()
                 .padding(vertical = Space.xs)
                 .height(LognStroke.hairline)
-                .background(LognDark.line),
+                .background(LognColors.line),
         )
         for ((index, option) in options.withIndex()) {
             val used = option == benefit || option == drawback
@@ -358,10 +358,11 @@ private fun TradeoffSlot(
     val filled = value.isNotEmpty()
     val stroke =
         when {
-            filled -> LognDark.lineStrong
-            isNext -> LognDark.accent
-            else -> LognDark.lineDim
+            filled -> LognColors.lineStrong
+            isNext -> LognColors.accent
+            else -> LognColors.lineDim
         }
+    val fill = LognColors.surfaceRaised
     val a11y = if (filled) Str.Arena.slot_filled_accessibility(context, label, value) else Str.Arena.slot_empty_accessibility(context, label)
     Column(
         Modifier
@@ -371,7 +372,7 @@ private fun TradeoffSlot(
             .clickable(enabled = filled, role = Role.Button, onClick = onClear)
             .drawBehind {
                 val r = CornerRadius(Radius.sm.toPx())
-                if (filled) drawRoundRect(LognDark.surfaceRaised, cornerRadius = r)
+                if (filled) drawRoundRect(fill, cornerRadius = r)
                 val dash = MatchMetrics.dropDash.toPx()
                 drawRoundRect(
                     stroke,
@@ -388,12 +389,12 @@ private fun TradeoffSlot(
         Text(
             label,
             style = LognFont.mono(MatchMetrics.LABEL_SIZE, FontWeight.Medium, MatchMetrics.SLOT_TRACKING),
-            color = if (isNext) LognDark.accentInk else LognDark.textSecondary,
+            color = if (isNext) LognColors.accentInk else LognColors.textSecondary,
         )
         Text(
             if (filled) value else Str.Arena.tap_an_option(context),
             style = LognFont.sans(MatchMetrics.OPTION_SIZE),
-            color = if (filled) LognDark.textPrimary else LognDark.textMuted,
+            color = if (filled) LognColors.textPrimary else LognColors.textMuted,
         )
     }
 }
@@ -410,14 +411,14 @@ private fun OptionRow(
         Modifier
             .fillMaxWidth()
             .heightIn(min = Space.matchTouch)
-            .background(if (used) Color.Transparent else LognDark.surfaceRaised, shape)
-            .border(LognStroke.hairline, if (used) LognDark.line else LognDark.lineStrong, shape)
+            .background(if (used) Color.Transparent else LognColors.surfaceRaised, shape)
+            .border(LognStroke.hairline, if (used) LognColors.line else LognColors.lineStrong, shape)
             .clickable(enabled = !used, role = Role.Button, onClick = onClick)
             .padding(horizontal = MatchMetrics.slotPaddingH, vertical = Space.md),
         horizontalArrangement = Arrangement.spacedBy(Space.sm),
     ) {
-        Text(letter, style = LognFont.mono(MatchMetrics.LETTER_SIZE), color = LognDark.textMuted, modifier = Modifier.width(MatchMetrics.optionLetter))
-        Text(text, style = LognFont.sans(MatchMetrics.OPTION_SIZE), color = if (used) LognDark.textDim else LognDark.textPrimary)
+        Text(letter, style = LognFont.mono(MatchMetrics.LETTER_SIZE), color = LognColors.textMuted, modifier = Modifier.width(MatchMetrics.optionLetter))
+        Text(text, style = LognFont.sans(MatchMetrics.OPTION_SIZE), color = if (used) LognColors.textDim else LognColors.textPrimary)
     }
 }
 
@@ -443,8 +444,8 @@ fun DryRunPanel(
         Column(
             Modifier
                 .fillMaxWidth()
-                .background(LognDark.canvas, shape)
-                .border(LognStroke.hairline, if (focused || predicted.isNotEmpty()) LognDark.accent else LognDark.line, shape)
+                .background(LognColors.canvas, shape)
+                .border(LognStroke.hairline, if (focused || predicted.isNotEmpty()) LognColors.accent else LognColors.line, shape)
                 .padding(horizontal = MatchMetrics.slotPaddingH, vertical = MatchMetrics.outputPaddingV),
             verticalArrangement = Arrangement.spacedBy(Space.sm),
         ) {
@@ -452,23 +453,23 @@ fun DryRunPanel(
                 Text(
                     Str.Dry_run.expected_output(context),
                     style = LognFont.mono(MatchMetrics.WATCH_LABEL_SIZE, tracking = MatchMetrics.WATCH_TRACKING),
-                    color = LognDark.textMuted,
+                    color = LognColors.textMuted,
                     modifier = Modifier.weight(1f),
                 )
                 // A limpeza é visível: o jogador sabe que espaço não conta.
                 if (predicted.isNotEmpty()) {
-                    Text(Str.Dry_run.ignored_spaces(context), style = LognFont.mono(MatchMetrics.WATCH_LABEL_SIZE), color = LognDark.infoInk)
+                    Text(Str.Dry_run.ignored_spaces(context), style = LognFont.mono(MatchMetrics.WATCH_LABEL_SIZE), color = LognColors.infoInk)
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(Space.sm), verticalAlignment = Alignment.CenterVertically) {
-                Text(PROMPT, style = LognFont.mono(MatchMetrics.OUTPUT_SIZE), color = LognDark.accentInk)
+                Text(PROMPT, style = LognFont.mono(MatchMetrics.OUTPUT_SIZE), color = LognColors.accentInk)
                 val size = if (predicted.isEmpty()) MatchMetrics.OUTPUT_SIZE else MatchMetrics.OUTPUT_FILLED_SIZE
                 BasicTextField(
                     value = predicted,
                     onValueChange = onChange,
                     singleLine = true,
-                    textStyle = LognFont.mono(size).copy(color = LognDark.textPrimary),
-                    cursorBrush = SolidColor(LognDark.accent),
+                    textStyle = LognFont.mono(size).copy(color = LognColors.textPrimary),
+                    cursorBrush = SolidColor(LognColors.accent),
                     keyboardOptions =
                         KeyboardOptions(
                             capitalization = KeyboardCapitalization.None,
@@ -482,7 +483,7 @@ fun DryRunPanel(
                             .onFocusChanged { focused = it.isFocused },
                     decorationBox = { inner ->
                         Box {
-                            if (predicted.isEmpty()) Text(Str.Dry_run.tap_to_type(context), style = LognFont.mono(size), color = LognDark.textDim)
+                            if (predicted.isEmpty()) Text(Str.Dry_run.tap_to_type(context), style = LognFont.mono(size), color = LognColors.textDim)
                             inner()
                         }
                     },
@@ -499,27 +500,28 @@ private fun WatchPanel(
 ) {
     val context = LocalContext.current
     val shape = RoundedCornerShape(Radius.xs)
+    val line = LognColors.line
     Column(
         Modifier
             .fillMaxWidth()
-            .background(LognDark.surfaceRaised, shape)
-            .border(LognStroke.hairline, LognDark.line, shape),
+            .background(LognColors.surfaceRaised, shape)
+            .border(LognStroke.hairline, line, shape),
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .drawBehind {
                     val y = size.height - LognStroke.hairline.toPx() / 2
-                    drawLine(LognDark.line, Offset(0f, y), Offset(size.width, y), LognStroke.hairline.toPx())
+                    drawLine(line, Offset(0f, y), Offset(size.width, y), LognStroke.hairline.toPx())
                 }.padding(horizontal = Space.md, vertical = MatchMetrics.watchHeaderV),
         ) {
             Text(
                 Str.Dry_run.watch(context),
                 style = LognFont.mono(MatchMetrics.WATCH_LABEL_SIZE, tracking = MatchMetrics.WATCH_TRACKING),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
                 modifier = Modifier.weight(1f),
             )
-            if (note.isNotEmpty()) Text(note, style = LognFont.mono(MatchMetrics.WATCH_LABEL_SIZE), color = LognDark.textMuted)
+            if (note.isNotEmpty()) Text(note, style = LognFont.mono(MatchMetrics.WATCH_LABEL_SIZE), color = LognColors.textMuted)
         }
         Row(Modifier.height(IntrinsicSize.Min)) {
             for ((index, variable) in watch.withIndex()) {
@@ -531,15 +533,15 @@ private fun WatchPanel(
                         .padding(horizontal = Space.md, vertical = Space.md),
                     verticalArrangement = Arrangement.spacedBy(Space.xxs),
                 ) {
-                    Text(variable.name, style = LognFont.mono(MatchMetrics.LABEL_SIZE), color = LognDark.textMuted)
-                    Text(variable.value, style = LognFont.mono(MatchMetrics.WATCH_VALUE_SIZE), color = LognDark.textPrimary)
+                    Text(variable.name, style = LognFont.mono(MatchMetrics.LABEL_SIZE), color = LognColors.textMuted)
+                    Text(variable.value, style = LognFont.mono(MatchMetrics.WATCH_VALUE_SIZE), color = LognColors.textPrimary)
                 }
                 if (index < watch.lastIndex) {
                     Box(
                         Modifier
                             .width(LognStroke.hairline)
                             .fillMaxHeight()
-                            .background(LognDark.line),
+                            .background(LognColors.line),
                     )
                 }
             }

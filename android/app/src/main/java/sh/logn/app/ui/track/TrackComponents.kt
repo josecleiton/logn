@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -29,7 +30,7 @@ import sh.logn.app.AppLocale
 import sh.logn.app.core.StorePrice
 import sh.logn.app.ui.components.BalloonShape
 import sh.logn.app.ui.components.BalloonStyle
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Radius
 import sh.logn.app.ui.theme.Stroke
@@ -45,9 +46,10 @@ import java.util.Locale
 
 /** A cor do balão da trilha, que chega do servidor como `#RRGGBB`. */
 val TrackView.tint: Color
+    @Composable @ReadOnlyComposable
     get() {
         val hex = color.removePrefix("#")
-        val value = hex.takeIf { it.length == HEX_LENGTH }?.toLongOrNull(HEX_RADIX) ?: return LognDark.accent
+        val value = hex.takeIf { it.length == HEX_LENGTH }?.toLongOrNull(HEX_RADIX) ?: return LognColors.accent
         return Color(OPAQUE or value)
     }
 
@@ -95,26 +97,28 @@ data class TrackChipStyle(
     val spoken: String = text,
 ) {
     companion object {
+        @Composable
+        @ReadOnlyComposable
         fun of(
             context: Context,
             track: TrackView,
             price: StorePrice?,
         ): TrackChipStyle {
-            if (track.revoked) return TrackChipStyle(Str.Catalog.no_access(context), LognDark.textSecondary, LognDark.lineStrong)
+            if (track.revoked) return TrackChipStyle(Str.Catalog.no_access(context), LognColors.textSecondary, LognColors.lineStrong)
             if (track.owned) {
                 when (track.offline) {
                     OfflineState.SOON ->
-                        return TrackChipStyle(Str.Catalog.days(context, track.offlineDaysLeft.toInt()), LognDark.warnInk, LognDark.warn)
-                    OfflineState.TODAY -> return TrackChipStyle(Str.Catalog.today(context), LognDark.warnInk, LognDark.warn)
-                    OfflineState.EXPIRED -> return TrackChipStyle(Str.Catalog.connect(context), LognDark.wrongInk, LognDark.wrong)
+                        return TrackChipStyle(Str.Catalog.days(context, track.offlineDaysLeft.toInt()), LognColors.warnInk, LognColors.warn)
+                    OfflineState.TODAY -> return TrackChipStyle(Str.Catalog.today(context), LognColors.warnInk, LognColors.warn)
+                    OfflineState.EXPIRED -> return TrackChipStyle(Str.Catalog.connect(context), LognColors.wrongInk, LognColors.wrong)
                     else -> Unit
                 }
-                if (track.discontinued) return TrackChipStyle(Str.Catalog.discontinued(context), LognDark.textSecondary, LognDark.lineStrong)
-                return TrackChipStyle(Str.Catalog.owned(context), LognDark.correctInk, LognDark.correct)
+                if (track.discontinued) return TrackChipStyle(Str.Catalog.discontinued(context), LognColors.textSecondary, LognColors.lineStrong)
+                return TrackChipStyle(Str.Catalog.owned(context), LognColors.correctInk, LognColors.correct)
             }
-            if (price == null) return TrackChipStyle(Str.Catalog.see(context), LognDark.textPrimary, LognDark.lineStrong)
-            if (!price.discounted) return TrackChipStyle(price.formatted, LognDark.textPrimary, LognDark.lineStrong)
-            return TrackChipStyle(price.formatted, LognDark.textPrimary, LognDark.accent, offer = price, spoken = price.spoken(context))
+            if (price == null) return TrackChipStyle(Str.Catalog.see(context), LognColors.textPrimary, LognColors.lineStrong)
+            if (!price.discounted) return TrackChipStyle(price.formatted, LognColors.textPrimary, LognColors.lineStrong)
+            return TrackChipStyle(price.formatted, LognColors.textPrimary, LognColors.accent, offer = price, spoken = price.spoken(context))
         }
     }
 }
@@ -165,10 +169,10 @@ fun DiscountTag(price: StorePrice) {
     Text(
         Str.Catalog.discount(LocalContext.current, discountPercent(LocalContext.current, percent)),
         style = LognFont.mono(TrackMetrics.CHIP_SIZE, FontWeight.Medium),
-        color = LognDark.onAccent,
+        color = LognColors.onAccent,
         modifier =
             Modifier
-                .background(LognDark.accent, RoundedCornerShape(Radius.xs))
+                .background(LognColors.accent, RoundedCornerShape(Radius.xs))
                 .padding(horizontal = TrackMetrics.chipPaddingH, vertical = TrackMetrics.chipPaddingV),
     )
 }
@@ -179,7 +183,7 @@ fun StruckPrice(text: String) {
     Text(
         text,
         style = LognFont.mono(TrackMetrics.CHIP_SIZE).merge(TextStyle(textDecoration = TextDecoration.LineThrough)),
-        color = LognDark.textMuted,
+        color = LognColors.textMuted,
         modifier = Modifier.clearAndSetSemantics { },
     )
 }
@@ -202,7 +206,7 @@ fun DiscountLine(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         DiscountTag(price)
-        Text(Str.Catalog.first_purchase(context), style = LognFont.mono(TrackMetrics.CHIP_SIZE), color = LognDark.textPrimary)
+        Text(Str.Catalog.first_purchase(context), style = LognFont.mono(TrackMetrics.CHIP_SIZE), color = LognColors.textPrimary)
         StruckPrice(price.full.orEmpty())
     }
 }
@@ -235,9 +239,9 @@ fun OfflineDaysBar(
         for (i in 0 until OFFLINE_DAYS) {
             val color =
                 when {
-                    i >= usedDays -> LognDark.line
-                    i >= OFFLINE_DAYS - WARN_DAYS -> LognDark.warn
-                    else -> LognDark.lineDim
+                    i >= usedDays -> LognColors.line
+                    i >= OFFLINE_DAYS - WARN_DAYS -> LognColors.warn
+                    else -> LognColors.lineDim
                 }
             Box(
                 Modifier

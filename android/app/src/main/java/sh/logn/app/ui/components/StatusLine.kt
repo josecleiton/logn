@@ -10,7 +10,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import sh.logn.app.ui.copy.copy
 import sh.logn.app.ui.copy.isInProgress
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.core.LogN.StatusKey
 
@@ -27,7 +27,7 @@ fun StatusLine(
     Text(
         copy,
         style = LognFont.label,
-        color = if (status.isInProgress) LognDark.textSecondary else LognDark.wrongInk,
+        color = if (status.isInProgress) LognColors.textSecondary else LognColors.wrongInk,
         textAlign = TextAlign.Center,
         // O leitor de tela anuncia o problema sem o foco ir até ele.
         modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },

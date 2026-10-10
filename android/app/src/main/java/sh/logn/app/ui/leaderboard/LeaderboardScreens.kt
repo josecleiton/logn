@@ -51,7 +51,7 @@ import sh.logn.app.ui.ShellState
 import sh.logn.app.ui.components.Icon
 import sh.logn.app.ui.components.LognIcon
 import sh.logn.app.ui.theme.LeaderboardMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Radius
 import sh.logn.app.ui.theme.Space
@@ -114,7 +114,7 @@ fun LeaderboardScreen(
     val dispatch = LocalDispatch.current
     val board = view.leaderboard
     LaunchedEffect(Unit) { dispatch(Event.LeaderboardOpened) }
-    Column(Modifier.fillMaxSize().background(LognDark.canvas)) {
+    Column(Modifier.fillMaxSize().background(LognColors.canvas)) {
         Header()
         when (board.state) {
             LeaderboardState.SIGNEDOUT -> GuestState()
@@ -147,20 +147,20 @@ private fun Header() {
     Column(
         Modifier
             .fillMaxWidth()
-            .bottomLine(LognDark.line)
+            .bottomLine(LognColors.line)
             .padding(start = Space.screenMargin, end = Space.screenMargin, top = LeaderboardMetrics.headerTop),
         verticalArrangement = Arrangement.spacedBy(LeaderboardMetrics.headerGap),
     ) {
         Text(
             Str.Leaderboard.title(context),
             style = LognFont.sans(LeaderboardMetrics.TITLE_SIZE, FontWeight.SemiBold, LeaderboardMetrics.TITLE_TRACKING),
-            color = LognDark.textPrimary,
+            color = LognColors.textPrimary,
             modifier = Modifier.semantics { heading() },
         )
         Text(
             Str.Leaderboard.subtitle(context),
             style = LognFont.mono(LeaderboardMetrics.LABEL_SIZE, tracking = LeaderboardMetrics.LABEL_TRACKING),
-            color = LognDark.textMuted,
+            color = LognColors.textMuted,
             modifier = Modifier.padding(bottom = LeaderboardMetrics.headerBottom),
         )
     }
@@ -172,17 +172,17 @@ private fun OfflineBanner(board: LeaderboardView) {
     Row(
         Modifier
             .fillMaxWidth()
-            .background(LognDark.tintInfo)
-            .bottomLine(LognDark.info)
+            .background(LognColors.tintInfo)
+            .bottomLine(LognColors.info)
             .padding(horizontal = Space.screenMargin, vertical = LeaderboardMetrics.bannerPaddingV),
         horizontalArrangement = Arrangement.spacedBy(Space.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(LognIcon.WifiSlash, LognDark.infoInk, LeaderboardMetrics.bannerIcon)
+        Icon(LognIcon.WifiSlash, LognColors.infoInk, LeaderboardMetrics.bannerIcon)
         Text(
             Str.Leaderboard.offline(context, ageText(context, board)),
             style = LognFont.sans(LeaderboardMetrics.BANNER_SIZE),
-            color = LognDark.infoInk,
+            color = LognColors.infoInk,
         )
     }
 }
@@ -223,7 +223,7 @@ private fun ListRow(row: LeaderboardRow) {
         Modifier
             .fillMaxWidth()
             .heightIn(min = LeaderboardMetrics.rowMinHeight)
-            .bottomLine(LognDark.rowLine)
+            .bottomLine(LognColors.rowLine)
             .clearAndSetSemantics { contentDescription = label }
             .padding(horizontal = Space.screenMargin, vertical = LeaderboardMetrics.rowPaddingV),
         horizontalArrangement = Arrangement.spacedBy(LeaderboardMetrics.rowGap),
@@ -232,13 +232,13 @@ private fun ListRow(row: LeaderboardRow) {
         Text(
             "${row.rank}",
             style = LognFont.mono(LeaderboardMetrics.RANK_SIZE),
-            color = LognDark.textMuted,
+            color = LognColors.textMuted,
             modifier = Modifier.width(LeaderboardMetrics.rankWidth),
         )
         Text(
             name,
             style = nameStyle(row.nickname, FontWeight.Medium),
-            color = if (row.nickname != null) LognDark.textPrimary else LognDark.textSecondary,
+            color = if (row.nickname != null) LognColors.textPrimary else LognColors.textSecondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
@@ -246,7 +246,7 @@ private fun ListRow(row: LeaderboardRow) {
         Text(
             Str.Leaderboard.xp(context, xp),
             style = LognFont.mono(LeaderboardMetrics.XP_SIZE),
-            color = LognDark.textPrimary,
+            color = LognColors.textPrimary,
         )
     }
 }
@@ -275,14 +275,15 @@ private fun PinnedRow(board: LeaderboardView) {
         } else {
             Str.Leaderboard.me_unranked_accessibility(context, name, xp)
         }
+    val accent = LognColors.accent
     Row(
         Modifier
             .fillMaxWidth()
-            .background(LognDark.accentTint)
+            .background(LognColors.accentTint)
             .drawBehind {
                 val h = LognStroke.hairline.toPx()
-                drawRect(LognDark.accent, Offset.Zero, size.copy(height = h))
-                drawRect(LognDark.accent, Offset(0f, size.height - h), size.copy(height = h))
+                drawRect(accent, Offset.Zero, size.copy(height = h))
+                drawRect(accent, Offset(0f, size.height - h), size.copy(height = h))
             }.clearAndSetSemantics { contentDescription = label }
             .padding(horizontal = Space.screenMargin, vertical = Space.lg),
         horizontalArrangement = Arrangement.spacedBy(LeaderboardMetrics.rowGap),
@@ -291,27 +292,27 @@ private fun PinnedRow(board: LeaderboardView) {
         Text(
             if (ranked) "${me.rank}" else Str.Leaderboard.rank_none(context),
             style = LognFont.mono(LeaderboardMetrics.RANK_SIZE),
-            color = LognDark.accentInk,
+            color = LognColors.accentInk,
             modifier = Modifier.width(LeaderboardMetrics.rankWidth),
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LeaderboardMetrics.meNameGap)) {
             Text(
                 name,
                 style = nameStyle(me.nickname, FontWeight.SemiBold),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 if (board.meStatus == LeaderboardMeStatus.HIDDEN) Str.Leaderboard.hidden_label(context) else Str.Leaderboard.you(context),
                 style = LognFont.mono(LeaderboardMetrics.LABEL_SIZE, tracking = LeaderboardMetrics.LABEL_TRACKING),
-                color = LognDark.accentInk,
+                color = LognColors.accentInk,
             )
         }
         Text(
             Str.Leaderboard.xp(context, xp),
             style = LognFont.mono(LeaderboardMetrics.XP_SIZE, FontWeight.SemiBold),
-            color = LognDark.textPrimary,
+            color = LognColors.textPrimary,
         )
     }
 }
@@ -334,7 +335,7 @@ private fun ClosedState(
         Text(
             Str.Leaderboard.closed_eyebrow(context),
             style = LognFont.mono(LeaderboardMetrics.LABEL_SIZE, tracking = LeaderboardMetrics.LABEL_TRACKING),
-            color = LognDark.textMuted,
+            color = LognColors.textMuted,
         )
         Row(
             Modifier.clearAndSetSemantics { contentDescription = Str.Leaderboard.closed_accessibility(context, players, threshold) },
@@ -344,13 +345,13 @@ private fun ClosedState(
             Text(
                 "$players",
                 style = LognFont.mono(LeaderboardMetrics.COUNT_SIZE, FontWeight.SemiBold).copy(lineHeight = LeaderboardMetrics.COUNT_SIZE.sp),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
                 modifier = Modifier.alignByBaseline(),
             )
             Text(
                 Str.Leaderboard.closed_of(context, threshold),
                 style = LognFont.mono(LeaderboardMetrics.COUNT_OF_SIZE),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
                 modifier = Modifier.alignByBaseline(),
             )
         }
@@ -360,7 +361,7 @@ private fun ClosedState(
                     Modifier
                         .weight(1f)
                         .height(LeaderboardMetrics.barHeight)
-                        .background(if (i < players) LognDark.accent else LognDark.line, RoundedCornerShape(LeaderboardMetrics.barRadius)),
+                        .background(if (i < players) LognColors.accent else LognColors.line, RoundedCornerShape(LeaderboardMetrics.barRadius)),
                 )
             }
         }
@@ -368,7 +369,7 @@ private fun ClosedState(
             Text(
                 Str.Leaderboard.closed_missing(context, board.missing.toInt()),
                 style = LognFont.sans(LeaderboardMetrics.CLOSED_TITLE_SIZE, FontWeight.SemiBold),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
             )
             val body =
                 if (board.meStatus == LeaderboardMeStatus.WAITING) {
@@ -376,7 +377,7 @@ private fun ClosedState(
                 } else {
                     Str.Leaderboard.closed_body(context)
                 }
-            Text(body, style = bodyStyle(), color = LognDark.textSecondary)
+            Text(body, style = bodyStyle(), color = LognColors.textSecondary)
         }
     }
 }
@@ -391,11 +392,12 @@ private fun ZeroXpFooter(
 ) {
     val context = LocalContext.current
     val dispatch = LocalDispatch.current
+    val line = LognColors.line
     Column(
         Modifier
             .fillMaxWidth()
-            .background(LognDark.surface)
-            .drawBehind { drawRect(LognDark.line, Offset.Zero, size.copy(height = LognStroke.hairline.toPx())) }
+            .background(LognColors.surface)
+            .drawBehind { drawRect(line, Offset.Zero, size.copy(height = LognStroke.hairline.toPx())) }
             .padding(start = Space.screenMargin, end = Space.screenMargin, top = Space.lg, bottom = LeaderboardMetrics.zeroBottom),
         verticalArrangement = Arrangement.spacedBy(LeaderboardMetrics.zeroGap),
     ) {
@@ -403,16 +405,16 @@ private fun ZeroXpFooter(
             Text(
                 leaderboardName(context, board.me.anonNumber, board.me.nickname),
                 style = nameStyle(board.me.nickname, FontWeight.SemiBold),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
             )
             Text(
                 Str.Leaderboard.you(context) + " · " + Str.Leaderboard.xp(context, "0"),
                 style = LognFont.mono(LeaderboardMetrics.LABEL_SIZE, tracking = LeaderboardMetrics.LABEL_TRACKING),
-                color = LognDark.accentInk,
+                color = LognColors.accentInk,
             )
         }
-        Text(Str.Leaderboard.zero_xp(context), style = bodyStyle(), color = LognDark.textSecondary)
-        OutlineButton(Str.Leaderboard.zero_xp_action(context), LognDark.accent, LognDark.accentInk, FontWeight.SemiBold, LeaderboardMetrics.smallButton) {
+        Text(Str.Leaderboard.zero_xp(context), style = bodyStyle(), color = LognColors.textSecondary)
+        OutlineButton(Str.Leaderboard.zero_xp_action(context), LognColors.accent, LognColors.accentInk, FontWeight.SemiBold, LeaderboardMetrics.smallButton) {
             dispatch(Event.SelectTrack(""))
             onGoToTrail()
         }
@@ -424,27 +426,28 @@ private fun ZeroXpFooter(
 private fun GuestState() {
     val context = LocalContext.current
     val dispatch = LocalDispatch.current
+    val lineDim = LognColors.lineDim
     CenteredState {
         Box(
             Modifier
                 .size(LeaderboardMetrics.guestAvatar)
-                .background(LognDark.surface, CircleShape)
+                .background(LognColors.surface, CircleShape)
                 .drawBehind {
                     val dash = LeaderboardMetrics.guestDash.toPx()
                     drawCircle(
-                        LognDark.lineDim,
+                        lineDim,
                         style = Stroke(LognStroke.hairline.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash))),
                     )
                 },
             contentAlignment = Alignment.Center,
-        ) { Icon(LognIcon.Person, LognDark.textMuted, LeaderboardMetrics.guestIcon) }
+        ) { Icon(LognIcon.Person, LognColors.textMuted, LeaderboardMetrics.guestIcon) }
         StateText(Str.Leaderboard.guest_title(context), Str.Leaderboard.guest_body(context))
         Column(verticalArrangement = Arrangement.spacedBy(LeaderboardMetrics.buttonGap)) {
             FilledButton(Str.Leaderboard.guest_create(context)) {
                 ShellState.wantsRegistration = true
                 dispatch(Event.Logout)
             }
-            OutlineButton(Str.Leaderboard.guest_sign_in(context), LognDark.lineStrong, LognDark.textPrimary, FontWeight.Medium, LeaderboardMetrics.button) {
+            OutlineButton(Str.Leaderboard.guest_sign_in(context), LognColors.lineStrong, LognColors.textPrimary, FontWeight.Medium, LeaderboardMetrics.button) {
                 dispatch(Event.Logout)
             }
         }
@@ -457,9 +460,9 @@ private fun UnavailableState() {
     val context = LocalContext.current
     val dispatch = LocalDispatch.current
     CenteredState {
-        Icon(LognIcon.WifiSlash, LognDark.textMuted, LeaderboardMetrics.stateIcon)
+        Icon(LognIcon.WifiSlash, LognColors.textMuted, LeaderboardMetrics.stateIcon)
         StateText(Str.Leaderboard.unavailable_title(context), Str.Leaderboard.unavailable_body(context))
-        OutlineButton(Str.Dashboard.try_again(context), LognDark.lineStrong, LognDark.textPrimary, FontWeight.Medium, LeaderboardMetrics.smallButton) {
+        OutlineButton(Str.Dashboard.try_again(context), LognColors.lineStrong, LognColors.textPrimary, FontWeight.Medium, LeaderboardMetrics.smallButton) {
             dispatch(Event.LeaderboardRefresh)
         }
     }
@@ -476,15 +479,19 @@ private fun Skeleton() {
                 Modifier
                     .fillMaxWidth()
                     .heightIn(min = LeaderboardMetrics.rowMinHeight)
-                    .bottomLine(LognDark.rowLine)
+                    .bottomLine(LognColors.rowLine)
                     .padding(horizontal = Space.screenMargin, vertical = LeaderboardMetrics.rowPaddingV),
                 horizontalArrangement = Arrangement.spacedBy(LeaderboardMetrics.rowGap),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.size(LeaderboardMetrics.skeletonRank, LeaderboardMetrics.skeletonRankHeight).background(LognDark.rowLine, RoundedCornerShape(Radius.xs)))
-                Box(Modifier.size(width, LeaderboardMetrics.skeletonText).background(LognDark.surface, RoundedCornerShape(Radius.xs)))
+                Box(
+                    Modifier
+                        .size(LeaderboardMetrics.skeletonRank, LeaderboardMetrics.skeletonRankHeight)
+                        .background(LognColors.rowLine, RoundedCornerShape(Radius.xs)),
+                )
+                Box(Modifier.size(width, LeaderboardMetrics.skeletonText).background(LognColors.surface, RoundedCornerShape(Radius.xs)))
                 Box(Modifier.weight(1f))
-                Box(Modifier.size(LeaderboardMetrics.skeletonXp, LeaderboardMetrics.skeletonText).background(LognDark.surface, RoundedCornerShape(Radius.xs)))
+                Box(Modifier.size(LeaderboardMetrics.skeletonXp, LeaderboardMetrics.skeletonText).background(LognColors.surface, RoundedCornerShape(Radius.xs)))
             }
         }
     }
@@ -506,8 +513,8 @@ private fun StateText(
     body: String,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(LeaderboardMetrics.textGap)) {
-        Text(title, style = LognFont.sans(LeaderboardMetrics.STATE_TITLE_SIZE, FontWeight.SemiBold), color = LognDark.textPrimary)
-        Text(body, style = bodyStyle(), color = LognDark.textSecondary)
+        Text(title, style = LognFont.sans(LeaderboardMetrics.STATE_TITLE_SIZE, FontWeight.SemiBold), color = LognColors.textPrimary)
+        Text(body, style = bodyStyle(), color = LognColors.textSecondary)
     }
 }
 
@@ -521,11 +528,11 @@ private fun FilledButton(
         Modifier
             .fillMaxWidth()
             .height(LeaderboardMetrics.button)
-            .background(LognDark.accent, shape)
+            .background(LognColors.accent, shape)
             .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(title, style = LognFont.sans(LeaderboardMetrics.BUTTON_SIZE, FontWeight.SemiBold), color = LognDark.onAccent)
+        Text(title, style = LognFont.sans(LeaderboardMetrics.BUTTON_SIZE, FontWeight.SemiBold), color = LognColors.onAccent)
     }
 }
 

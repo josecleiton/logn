@@ -1,9 +1,11 @@
 package sh.logn.app.ui.copy
 
 import android.content.Context
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 import sh.logn.app.ui.components.Glyph
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.core.LogN.BootCheck
 import sh.logn.core.LogN.BootDetail
 import sh.logn.core.LogN.BootLine
@@ -54,15 +56,16 @@ val BootLine.glyph: Glyph
         }
 
 val BootLine.tone: Color
+    @Composable @ReadOnlyComposable
     get() {
         // Termos que mudaram não são erro nem acerto: a cor de informação, e a tela de
         // aceite vem em seguida.
-        if (detail == BootDetail.TERMSCHANGED) return LognDark.info
+        if (detail == BootDetail.TERMSCHANGED) return LognColors.info
         return when (verdict) {
-            BootVerdict.RUNNING -> LognDark.textMuted
-            BootVerdict.OK -> LognDark.correct
-            BootVerdict.WARN -> LognDark.warn
-            BootVerdict.FAIL -> LognDark.wrong
-            BootVerdict.SKIPPED -> LognDark.textMuted
+            BootVerdict.RUNNING -> LognColors.textMuted
+            BootVerdict.OK -> LognColors.correct
+            BootVerdict.WARN -> LognColors.warn
+            BootVerdict.FAIL -> LognColors.wrong
+            BootVerdict.SKIPPED -> LognColors.textMuted
         }
     }

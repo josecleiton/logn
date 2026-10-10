@@ -23,7 +23,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import sh.logn.app.ui.theme.ButtonMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Radius
 import sh.logn.app.ui.theme.Stroke
@@ -48,15 +48,15 @@ fun LognButton(
     val shape = RoundedCornerShape(Radius.sm)
     val foreground =
         when {
-            !enabled -> LognDark.textDim
-            variant == ButtonVariant.Primary -> LognDark.onAccent
-            variant == ButtonVariant.Secondary -> LognDark.textPrimary
-            else -> LognDark.textSecondary
+            !enabled -> LognColors.textDim
+            variant == ButtonVariant.Primary -> LognColors.onAccent
+            variant == ButtonVariant.Secondary -> LognColors.textPrimary
+            else -> LognColors.textSecondary
         }
     val background =
         when {
-            !enabled -> LognDark.buttonDisabled
-            variant == ButtonVariant.Primary -> LognDark.accent
+            !enabled -> LognColors.buttonDisabled
+            variant == ButtonVariant.Primary -> LognColors.accent
             else -> Color.Transparent
         }
     Box(
@@ -67,7 +67,7 @@ fun LognButton(
             .background(background, shape)
             .then(
                 if (variant == ButtonVariant.Secondary) {
-                    Modifier.border(Stroke.hairline, LognDark.lineStrong, shape)
+                    Modifier.border(Stroke.hairline, LognColors.lineStrong, shape)
                 } else {
                     Modifier
                 },
@@ -116,21 +116,21 @@ fun DestructiveButton(
     val background =
         when {
             !filled -> Color.Transparent
-            enabled -> LognDark.wrong
-            else -> LognDark.buttonDisabled
+            enabled -> LognColors.wrong
+            else -> LognColors.buttonDisabled
         }
     val foreground =
         when {
-            !enabled -> LognDark.textDim
-            filled -> LognDark.onAccent
-            else -> LognDark.wrongInk
+            !enabled -> LognColors.textDim
+            filled -> LognColors.onAccent
+            else -> LognColors.wrongInk
         }
     Box(
         modifier
             .fillMaxWidth()
             .height(ButtonMetrics.height)
             .background(background, shape)
-            .then(if (filled) Modifier else Modifier.border(Stroke.hairline, LognDark.wrong, shape))
+            .then(if (filled) Modifier else Modifier.border(Stroke.hairline, LognColors.wrong, shape))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

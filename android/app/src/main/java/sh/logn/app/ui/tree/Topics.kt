@@ -3,6 +3,7 @@ package sh.logn.app.ui.tree
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -15,7 +16,8 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
 import sh.logn.app.ui.theme.Balloon
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
+import sh.logn.app.ui.theme.LognPalette
 import sh.logn.core.LogN.SkillNode
 
 /** Um elemento do ícone de assunto: caminho só de contorno, ou círculo. */
@@ -33,13 +35,17 @@ sealed interface TopicPart {
 
 /** A família do assunto: dá a cor. O acento fica reservado ao nó ativo e ao boss. */
 enum class TopicFamily(
-    val color: Color,
+    /** O balão que dá a cor; o boss, sem letra, é o acento. */
+    private val letter: Char?,
 ) {
-    Fundamentos(Balloon.of('H')),
-    Busca(Balloon.of('C')),
-    Estruturas(Balloon.of('E')),
-    Otimizacao(Balloon.of('M')),
-    Boss(LognDark.accent),
+    Fundamentos('H'),
+    Busca('C'),
+    Estruturas('E'),
+    Otimizacao('M'),
+    Boss(null),
+    ;
+
+    fun color(palette: LognPalette): Color = letter?.let { Balloon.of(it) } ?: palette.accent
 }
 
 /**
@@ -86,7 +92,11 @@ enum class LognTopic(
     Challenge(TopicFamily.Boss, listOf(TopicPart.Path("M6 21V3M6 4h12l-3 4.5L18 13H6"))),
     ;
 
-    val color: Color get() = family.color
+    val color: Color
+        @Composable @ReadOnlyComposable
+        get() = family.color(LognColors.palette)
+
+    fun color(palette: LognPalette): Color = family.color(palette)
 
     companion object {
         private val slugs =

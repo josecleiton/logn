@@ -37,7 +37,7 @@ import sh.logn.app.ui.legal.LegalKind
 import sh.logn.app.ui.legal.LegalLinksRow
 import sh.logn.app.ui.theme.FieldMetrics
 import sh.logn.app.ui.theme.LoginMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Space
 import sh.logn.core.LogN.Event
@@ -97,7 +97,7 @@ fun RegisterScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .background(LognDark.canvas)
+            .background(LognColors.canvas)
             .safeDrawingPadding()
             .imePadding()
             .verticalScroll(rememberScrollState())
@@ -115,7 +115,7 @@ fun RegisterScreen(
                     RegisterStep.Password -> Str.Register.set_password(context)
                 },
                 style = LognFont.headlineMedium,
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
             )
             Text(
                 when (step) {
@@ -124,7 +124,7 @@ fun RegisterScreen(
                     RegisterStep.Password -> Str.Register.reason_password(context)
                 },
                 style = LognFont.mono(FieldMetrics.TEXT_SIZE),
-                color = LognDark.textSecondary,
+                color = LognColors.textSecondary,
                 textAlign = TextAlign.Center,
             )
         }
@@ -146,7 +146,7 @@ fun RegisterScreen(
                         // Fora da caixa: dentro dela, o toque no link marcaria a caixa.
                         LegalLinksRow(onOpen = onLegal)
                         if (termsAccepted && !view.legalVersionsReady) {
-                            Text(Str.Register.legal_pending(context), style = LognFont.sans(LoginMetrics.CHECK_SIZE), color = LognDark.textMuted)
+                            Text(Str.Register.legal_pending(context), style = LognFont.sans(LoginMetrics.CHECK_SIZE), color = LognColors.textMuted)
                         }
                     }
                     LognButton(

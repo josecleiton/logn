@@ -45,7 +45,7 @@ import sh.logn.app.ui.components.LognButton
 import sh.logn.app.ui.components.LognIcon
 import sh.logn.app.ui.theme.FieldMetrics
 import sh.logn.app.ui.theme.IconMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Radius
 import sh.logn.app.ui.theme.Space
@@ -113,10 +113,10 @@ fun OtpInput(
                         Box(
                             Modifier
                                 .size(FieldMetrics.otpWidth, FieldMetrics.otpHeight)
-                                .background(LognDark.surface, shape)
+                                .background(LognColors.surface, shape)
                                 .border(
                                     if (focused) FieldMetrics.focusStroke else Stroke.hairline,
-                                    if (focused) LognDark.accent else LognDark.line,
+                                    if (focused) LognColors.accent else LognColors.line,
                                     shape,
                                 ).semantics { contentDescription = label },
                             contentAlignment = Alignment.Center,
@@ -124,7 +124,7 @@ fun OtpInput(
                             Text(
                                 code.getOrNull(i)?.toString().orEmpty(),
                                 style = LognFont.mono(FieldMetrics.OTP_TEXT_SIZE, FontWeight.SemiBold),
-                                color = LognDark.textPrimary,
+                                color = LognColors.textPrimary,
                                 textAlign = TextAlign.Center,
                             )
                         }
@@ -144,8 +144,8 @@ fun OtpInput(
             horizontalArrangement = Arrangement.spacedBy(Space.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(LognIcon.Clipboard, LognDark.textSecondary, IconMetrics.md)
-            Text(Str.Otp.paste_code(context), style = LognFont.label, color = LognDark.textSecondary)
+            Icon(LognIcon.Clipboard, LognColors.textSecondary, IconMetrics.md)
+            Text(Str.Otp.paste_code(context), style = LognFont.label, color = LognColors.textSecondary)
         }
 
         LognButton(
@@ -156,7 +156,7 @@ fun OtpInput(
 
         LinkText(
             if (resendLocked) Str.Status.wait_seconds(context, view.resendCooldownSeconds.toInt()) else Str.Otp.resend_code(context),
-            if (resendLocked) LognDark.textDim else LognDark.textSecondary,
+            if (resendLocked) LognColors.textDim else LognColors.textSecondary,
             enabled = !resendLocked,
             underline = !resendLocked,
         ) { dispatch(Event.RequestOTP(email, purpose)) }

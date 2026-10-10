@@ -30,7 +30,7 @@ import sh.logn.app.ui.components.Icon
 import sh.logn.app.ui.components.LognIcon
 import sh.logn.app.ui.home.Divider
 import sh.logn.app.ui.theme.IconMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Radius
 import sh.logn.app.ui.theme.Space
@@ -60,7 +60,7 @@ fun StorageSheet(
                     .padding(start = Space.xl, end = Space.md, top = Space.xl, bottom = Space.lg),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(Str.Storage.title(context), style = LognFont.titleMedium, color = LognDark.textPrimary, modifier = Modifier.weight(1f))
+                Text(Str.Storage.title(context), style = LognFont.titleMedium, color = LognColors.textPrimary, modifier = Modifier.weight(1f))
                 val close = Str.Storage.close(context)
                 Box(
                     Modifier
@@ -68,7 +68,7 @@ fun StorageSheet(
                         .semantics { contentDescription = close }
                         .clickable(role = Role.Button, onClick = onClose),
                     contentAlignment = Alignment.Center,
-                ) { Icon(LognIcon.Close, LognDark.textSecondary, IconMetrics.md) }
+                ) { Icon(LognIcon.Close, LognColors.textSecondary, IconMetrics.md) }
             }
             Divider()
             Column(
@@ -77,12 +77,12 @@ fun StorageSheet(
                     .padding(horizontal = Space.xl),
                 verticalArrangement = Arrangement.spacedBy(Space.md),
             ) {
-                Text(Str.Storage.desc(context), style = LognFont.bodyMedium, color = LognDark.textSecondary, modifier = Modifier.padding(top = Space.lg))
+                Text(Str.Storage.desc(context), style = LognFont.bodyMedium, color = LognColors.textSecondary, modifier = Modifier.padding(top = Space.lg))
                 if (owned.isEmpty()) {
                     Text(
                         Str.Storage.empty(context),
                         style = LognFont.bodyMedium,
-                        color = LognDark.textSecondary,
+                        color = LognColors.textSecondary,
                         modifier = Modifier.padding(top = Space.xl),
                     )
                 }
@@ -106,14 +106,14 @@ private fun StorageRow(track: TrackView) {
     Row(
         Modifier
             .fillMaxWidth()
-            .background(LognDark.canvas, shape)
-            .border(Stroke.hairline, LognDark.line, shape)
+            .background(LognColors.canvas, shape)
+            .border(Stroke.hairline, LognColors.line, shape)
             .padding(Space.lg),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Space.xs)) {
-            Text(track.name, style = LognFont.bodyLarge, color = LognDark.textPrimary)
-            Text(detail, style = LognFont.label, color = LognDark.textSecondary)
+            Text(track.name, style = LognFont.bodyLarge, color = LognColors.textPrimary)
+            Text(detail, style = LognFont.label, color = LognColors.textSecondary)
         }
         if (track.downloaded) {
             val label = Str.Storage.delete_accessibility(context, track.name)
@@ -123,14 +123,14 @@ private fun StorageRow(track: TrackView) {
                     .semantics { contentDescription = label }
                     .clickable(role = Role.Button) { dispatch(Event.DeleteTrackDownload(track.id)) },
                 contentAlignment = Alignment.Center,
-            ) { Icon(LognIcon.Trash, LognDark.wrongInk, IconMetrics.md) }
+            ) { Icon(LognIcon.Trash, LognColors.wrongInk, IconMetrics.md) }
         } else {
             Box(
                 Modifier
                     .heightIn(min = IconMetrics.touch)
                     .clickable(role = Role.Button) { dispatch(Event.FetchLicense(track.id)) },
                 contentAlignment = Alignment.Center,
-            ) { Text(Str.Storage.download(context), style = LognFont.label, color = LognDark.accent) }
+            ) { Text(Str.Storage.download(context), style = LognFont.label, color = LognColors.accent) }
         }
     }
 }

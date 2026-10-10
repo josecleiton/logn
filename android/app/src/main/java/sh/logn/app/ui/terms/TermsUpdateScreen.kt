@@ -51,7 +51,7 @@ import sh.logn.app.ui.legal.LegalDocumentScreen
 import sh.logn.app.ui.legal.LegalKind
 import sh.logn.app.ui.theme.FieldMetrics
 import sh.logn.app.ui.theme.IconMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.NoticeMetrics
 import sh.logn.app.ui.theme.Radius
@@ -102,7 +102,7 @@ fun TermsUpdateScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .background(LognDark.canvas)
+            .background(LognColors.canvas)
             .safeDrawingPadding(),
     ) {
         Column(
@@ -116,15 +116,15 @@ fun TermsUpdateScreen(
             Text(
                 Str.Reaccept.eyebrow(context),
                 style = LognFont.mono(TermsMetrics.EYEBROW_SIZE, tracking = TermsMetrics.EYEBROW_TRACKING),
-                color = LognDark.infoInk,
+                color = LognColors.infoInk,
                 modifier = Modifier.padding(top = Space.sm),
             )
-            Text(headline, style = LognFont.sans(TermsMetrics.HEADLINE_SIZE, FontWeight.SemiBold), color = LognDark.textPrimary)
+            Text(headline, style = LognFont.sans(TermsMetrics.HEADLINE_SIZE, FontWeight.SemiBold), color = LognColors.textPrimary)
             Versions(update)
             Changes(update.changes)
             LinkText(
                 Str.Reaccept.read_documents(context),
-                LognDark.textSecondary,
+                LognColors.textSecondary,
                 underline = true,
             ) { showsDocuments = true }
         }
@@ -147,8 +147,8 @@ private fun Versions(update: TermsUpdateViewModel) {
         Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
-            .background(LognDark.surface, shape)
-            .border(Stroke.hairline, LognDark.line, shape),
+            .background(LognColors.surface, shape)
+            .border(Stroke.hairline, LognColors.line, shape),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         VersionCell(
@@ -159,25 +159,25 @@ private fun Versions(update: TermsUpdateViewModel) {
                 Str.Reaccept.version(context, update.fromVersion.toInt())
             },
             update.fromDate,
-            LognDark.textMuted,
-            LognDark.textSecondary,
+            LognColors.textMuted,
+            LognColors.textSecondary,
             Modifier.weight(1f),
         )
         Box(Modifier.width(TermsMetrics.arrowSlot), contentAlignment = Alignment.Center) {
-            Icon(LognIcon.ArrowRight, LognDark.textMuted, IconMetrics.sm)
+            Icon(LognIcon.ArrowRight, LognColors.textMuted, IconMetrics.sm)
         }
         Box(
             Modifier
                 .width(Stroke.hairline)
                 .fillMaxHeight()
-                .background(LognDark.line),
+                .background(LognColors.line),
         )
         VersionCell(
             Str.Reaccept.current(context),
             Str.Reaccept.version(context, update.toVersion.toInt()),
             update.toDate,
-            LognDark.infoInk,
-            LognDark.textPrimary,
+            LognColors.infoInk,
+            LognColors.textPrimary,
             Modifier.weight(1f),
         )
     }
@@ -200,7 +200,7 @@ private fun VersionCell(
     ) {
         Text(label, style = LognFont.mono(TermsMetrics.CELL_LABEL_SIZE, tracking = TermsMetrics.CELL_LABEL_TRACKING), color = labelColor)
         Text(version, style = LognFont.mono(TermsMetrics.CELL_VALUE_SIZE), color = valueColor)
-        Text(date, style = LognFont.mono(TermsMetrics.CELL_DATE_SIZE), color = LognDark.textMuted)
+        Text(date, style = LognFont.mono(TermsMetrics.CELL_DATE_SIZE), color = LognColors.textMuted)
     }
 }
 
@@ -210,9 +210,9 @@ private fun Changes(changes: List<TermsChange>) {
     Column(verticalArrangement = Arrangement.spacedBy(Space.sm)) {
         Row(Modifier.fillMaxWidth()) {
             val style = LognFont.mono(TermsMetrics.LIST_LABEL_SIZE, tracking = TermsMetrics.LIST_LABEL_TRACKING)
-            Text(Str.Reaccept.what_changed(context), style = style, color = LognDark.textMuted)
+            Text(Str.Reaccept.what_changed(context), style = style, color = LognColors.textMuted)
             Spacer(Modifier.weight(1f))
-            Text(Str.Reaccept.changes_count(context, changes.size), style = style, color = LognDark.textMuted)
+            Text(Str.Reaccept.changes_count(context, changes.size), style = style, color = LognColors.textMuted)
         }
         for (change in changes) ChangeRow(change)
     }
@@ -224,9 +224,9 @@ private fun ChangeRow(change: TermsChange) {
     val context = LocalContext.current
     val (sign, name, ink, tint) =
         when (change.change) {
-            TermsChangeKind.ADDED -> ChangeLook("+", Str.Reaccept.sign_added(context), LognDark.correct, LognDark.tintOk)
-            TermsChangeKind.CHANGED -> ChangeLook("~", Str.Reaccept.sign_changed(context), LognDark.warn, LognDark.tintWarn)
-            TermsChangeKind.REMOVED -> ChangeLook("−", Str.Reaccept.sign_removed(context), LognDark.wrong, LognDark.tintErr)
+            TermsChangeKind.ADDED -> ChangeLook("+", Str.Reaccept.sign_added(context), LognColors.correct, LognColors.tintOk)
+            TermsChangeKind.CHANGED -> ChangeLook("~", Str.Reaccept.sign_changed(context), LognColors.warn, LognColors.tintWarn)
+            TermsChangeKind.REMOVED -> ChangeLook("−", Str.Reaccept.sign_removed(context), LognColors.wrong, LognColors.tintErr)
         }
     val document = if (change.kind == "privacy") Str.Reaccept.doc_privacy(context) else Str.Reaccept.doc_terms(context)
     val place = Str.Reaccept.change_where(context, document, change.version.toInt())
@@ -236,8 +236,8 @@ private fun ChangeRow(change: TermsChange) {
         Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
-            .background(LognDark.surface, shape)
-            .border(Stroke.hairline, LognDark.line, shape)
+            .background(LognColors.surface, shape)
+            .border(Stroke.hairline, LognColors.line, shape)
             .clearAndSetSemantics { contentDescription = label },
     ) {
         Row(
@@ -266,8 +266,8 @@ private fun ChangeRow(change: TermsChange) {
             Modifier.padding(horizontal = TermsMetrics.rowPaddingH, vertical = Space.sm),
             verticalArrangement = Arrangement.spacedBy(TermsMetrics.cellGap),
         ) {
-            Text(place, style = LognFont.mono(TermsMetrics.CELL_LABEL_SIZE, tracking = TermsMetrics.PLACE_TRACKING), color = LognDark.textMuted)
-            Text(change.summary, style = LognFont.sans(TermsMetrics.BODY_SIZE), color = LognDark.textPrimary)
+            Text(place, style = LognFont.mono(TermsMetrics.CELL_LABEL_SIZE, tracking = TermsMetrics.PLACE_TRACKING), color = LognColors.textMuted)
+            Text(change.summary, style = LognFont.sans(TermsMetrics.BODY_SIZE), color = LognColors.textPrimary)
         }
     }
 }
@@ -292,13 +292,13 @@ private fun Footer(
     Column(
         Modifier
             .fillMaxWidth()
-            .background(LognDark.surface),
+            .background(LognColors.surface),
     ) {
         Box(
             Modifier
                 .fillMaxWidth()
                 .height(Stroke.hairline)
-                .background(LognDark.line),
+                .background(LognColors.line),
         )
         Column(
             Modifier.padding(start = TermsMetrics.sideMargin, end = TermsMetrics.sideMargin, top = TermsMetrics.footerTop, bottom = Space.md),
@@ -317,7 +317,7 @@ private fun Footer(
                 Text(
                     Str.Reaccept.accept_check(context, update.toVersion.toInt()),
                     style = LognFont.sans(TermsMetrics.BODY_SIZE),
-                    color = LognDark.textSecondary,
+                    color = LognColors.textSecondary,
                 )
             }
             LognButton(
@@ -328,7 +328,7 @@ private fun Footer(
             )
             LinkText(
                 Str.Reaccept.decline(context),
-                LognDark.textSecondary,
+                LognColors.textSecondary,
                 Modifier.fillMaxWidth(),
                 enabled = !update.accepting,
                 onClick = onDecline,
@@ -344,11 +344,11 @@ private fun AcceptBox(checked: Boolean) {
     Box(
         Modifier
             .size(TermsMetrics.box)
-            .background(if (checked) LognDark.accent else Color.Transparent, shape)
-            .border(TermsMetrics.boxStroke, if (checked) LognDark.accent else LognDark.lineDim, shape),
+            .background(if (checked) LognColors.accent else Color.Transparent, shape)
+            .border(TermsMetrics.boxStroke, if (checked) LognColors.accent else LognColors.lineDim, shape),
         contentAlignment = Alignment.Center,
     ) {
-        if (checked) Icon(LognIcon.Check, LognDark.onAccent, IconMetrics.sm, strokeWidth = TermsMetrics.CHECK_STROKE)
+        if (checked) Icon(LognIcon.Check, LognColors.onAccent, IconMetrics.sm, strokeWidth = TermsMetrics.CHECK_STROKE)
     }
 }
 
@@ -372,15 +372,15 @@ fun TermsDeclineSheet(
             Text(
                 Str.Reaccept.decline_title(context),
                 style = LognFont.sans(NoticeMetrics.TITLE_SIZE, FontWeight.SemiBold),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
             )
-            Text(Str.Reaccept.decline_body(context), style = LognFont.sans(NoticeMetrics.BODY_SIZE), color = LognDark.textSecondary)
+            Text(Str.Reaccept.decline_body(context), style = LognFont.sans(NoticeMetrics.BODY_SIZE), color = LognColors.textSecondary)
             LognButton(Str.Reaccept.sign_out(context), ButtonVariant.Secondary) {
                 onDismiss()
                 dispatch(Event.Logout)
             }
             DestructiveButton(Str.Reaccept.delete_account(context)) { showsDelete = true }
-            LinkText(Str.Reaccept.back(context), LognDark.textSecondary, Modifier.fillMaxWidth(), onClick = onDismiss)
+            LinkText(Str.Reaccept.back(context), LognColors.textSecondary, Modifier.fillMaxWidth(), onClick = onDismiss)
         }
     }
     if (showsDelete) DeleteAccountSheet(view, onDismiss = { showsDelete = false })
@@ -397,8 +397,8 @@ fun TermsNoticeBanner(modifier: Modifier = Modifier) {
         modifier
             .padding(horizontal = Space.screenMargin)
             .fillMaxWidth()
-            .background(LognDark.tintInfo, shape)
-            .border(Stroke.hairline, LognDark.info, shape)
+            .background(LognColors.tintInfo, shape)
+            .border(Stroke.hairline, LognColors.info, shape)
             .padding(start = TermsMetrics.bannerPaddingStart),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Space.md),
@@ -406,7 +406,7 @@ fun TermsNoticeBanner(modifier: Modifier = Modifier) {
         Text(
             Str.Reaccept.notice(context),
             style = LognFont.sans(TermsMetrics.BODY_SIZE),
-            color = LognDark.textPrimary,
+            color = LognColors.textPrimary,
             modifier =
                 Modifier
                     .weight(1f)
@@ -421,7 +421,7 @@ fun TermsNoticeBanner(modifier: Modifier = Modifier) {
             Text(
                 Str.Reaccept.notice_open(context),
                 style = LognFont.sans(TermsMetrics.BODY_SIZE, FontWeight.Medium),
-                color = LognDark.infoInk,
+                color = LognColors.infoInk,
             )
         }
         val close = Str.Reaccept.notice_close(context)
@@ -431,7 +431,7 @@ fun TermsNoticeBanner(modifier: Modifier = Modifier) {
                 .semantics { contentDescription = close }
                 .clickable(role = Role.Button) { dispatch(Event.DismissTermsNotice) },
             contentAlignment = Alignment.Center,
-        ) { Icon(LognIcon.Close, LognDark.textMuted, IconMetrics.sm) }
+        ) { Icon(LognIcon.Close, LognColors.textMuted, IconMetrics.sm) }
     }
     if (showsDocument) LegalDocumentScreen(LegalKind.Terms, onClose = { showsDocument = false })
 }

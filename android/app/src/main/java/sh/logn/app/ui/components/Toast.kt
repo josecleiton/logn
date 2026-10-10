@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -45,7 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.delay
 import sh.logn.app.ui.theme.LocalReduceMotion
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Space
 import sh.logn.app.ui.theme.Stroke
@@ -55,13 +56,22 @@ import kotlin.math.roundToInt
 
 enum class ToastVariant(
     val icon: LognIcon,
-    val tint: Color,
     /** Erro fica mais porque costuma pedir releitura; sucesso é o mais curto. */
     val millis: Long,
 ) {
-    Attention(LognIcon.ExclamationCircleFill, LognDark.warn, 3_500),
-    Error(LognIcon.XCircleFill, LognDark.wrong, 5_000),
-    Success(LognIcon.CheckCircleFill, LognDark.correct, 2_500),
+    Attention(LognIcon.ExclamationCircleFill, 3_500),
+    Error(LognIcon.XCircleFill, 5_000),
+    Success(LognIcon.CheckCircleFill, 2_500),
+    ;
+
+    val tint: Color
+        @Composable @ReadOnlyComposable
+        get() =
+            when (this) {
+                Attention -> LognColors.warn
+                Error -> LognColors.wrong
+                Success -> LognColors.correct
+            }
 }
 
 data class ToastMessage(
@@ -183,8 +193,8 @@ fun ToastHost(modifier: Modifier = Modifier) {
                     .offset { IntOffset(0, dragY.roundToInt()) }
                     .scale(scale)
                     .shadow(ToastMetrics.shadow, shape)
-                    .background(LognDark.surfaceRaised, shape)
-                    .border(Stroke.hairline, LognDark.lineStrong, shape)
+                    .background(LognColors.surfaceRaised, shape)
+                    .border(Stroke.hairline, LognColors.lineStrong, shape)
                     .heightIn(min = ToastMetrics.minHeight)
                     .padding(start = Space.md, end = Space.lg, top = Space.md, bottom = Space.md)
                     // O texto já saiu como anúncio; a pílula some antes de alguém chegar nela.
@@ -208,8 +218,8 @@ fun ToastHost(modifier: Modifier = Modifier) {
                 horizontalArrangement = Arrangement.spacedBy(Space.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(shown.icon ?: shown.variant.icon, shown.variant.tint, IconSize, knockout = LognDark.surfaceRaised)
-                Text(shown.text, style = LognFont.sans(ToastMetrics.TEXT_SIZE, FontWeight.Medium), color = LognDark.textPrimary)
+                Icon(shown.icon ?: shown.variant.icon, shown.variant.tint, IconSize, knockout = LognColors.surfaceRaised)
+                Text(shown.text, style = LognFont.sans(ToastMetrics.TEXT_SIZE, FontWeight.Medium), color = LognColors.textPrimary)
             }
         }
     }

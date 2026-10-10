@@ -55,7 +55,7 @@ import sh.logn.app.ui.legal.LegalDocumentScreen
 import sh.logn.app.ui.legal.LegalKind
 import sh.logn.app.ui.legal.LegalLinksRow
 import sh.logn.app.ui.theme.IconMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.NicknameMetrics
 import sh.logn.app.ui.theme.NodeSheetMetrics
@@ -96,7 +96,7 @@ fun ProfileHub(
                     .align(Alignment.CenterHorizontally)
                     .padding(bottom = ProfileMetrics.grabberBottom)
                     .size(NodeSheetMetrics.handleWidth, NodeSheetMetrics.handleHeight)
-                    .background(LognDark.lineStrong, RoundedCornerShape(NodeSheetMetrics.handleHeight)),
+                    .background(LognColors.lineStrong, RoundedCornerShape(NodeSheetMetrics.handleHeight)),
             )
             Identity(view)
             if (view.canChooseNickname) {
@@ -120,7 +120,7 @@ fun ProfileHub(
         CriticalLogoutSheet(view, onStay = { showsCritical = false })
     }
     if (showsAccount) {
-        FullScreenSheet(onDismiss = { showsAccount = false }, background = LognDark.canvas) {
+        FullScreenSheet(onDismiss = { showsAccount = false }, background = LognColors.canvas) {
             ManageAccountScreen(view, onBack = { showsAccount = false })
         }
     }
@@ -134,22 +134,23 @@ fun ProfileHub(
 private fun Identity(view: ViewModel) {
     val context = LocalContext.current
     val pending = view.pendingSyncCount.toInt()
+    val lineDim = LognColors.lineDim
     Row(horizontalArrangement = Arrangement.spacedBy(NodeSheetMetrics.headerGap), verticalAlignment = Alignment.CenterVertically) {
         if (view.isGuest) {
             // Visitante não tem inicial: ícone genérico e borda tracejada.
             Box(
                 Modifier
                     .size(ProfileMetrics.avatar)
-                    .background(LognDark.surface, CircleShape)
+                    .background(LognColors.surface, CircleShape)
                     .drawBehind {
                         val dash = ProfileMetrics.dash.toPx()
                         drawCircle(
-                            LognDark.lineDim,
+                            lineDim,
                             style = Stroke(LognStroke.hairline.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash))),
                         )
                     },
                 contentAlignment = Alignment.Center,
-            ) { Icon(LognIcon.Person, LognDark.textMuted, ProfileMetrics.personIcon) }
+            ) { Icon(LognIcon.Person, LognColors.textMuted, ProfileMetrics.personIcon) }
         } else if (view.profileAnonNumber > 0 && view.profileNickname == null) {
             AnonAvatar(ProfileMetrics.avatar)
         } else {
@@ -160,16 +161,16 @@ private fun Identity(view: ViewModel) {
                 Text(
                     Str.Profile.guest_mode(context),
                     style = LognFont.mono(ProfileMetrics.TAG_SIZE, tracking = ProfileMetrics.TAG_TRACKING),
-                    color = LognDark.textSecondary,
+                    color = LognColors.textSecondary,
                     modifier =
                         Modifier
-                            .border(LognStroke.hairline, LognDark.lineStrong, RoundedCornerShape(Radius.xs))
+                            .border(LognStroke.hairline, LognColors.lineStrong, RoundedCornerShape(Radius.xs))
                             .padding(horizontal = ProfileMetrics.tagPaddingH, vertical = Space.xs),
                 )
                 Text(
                     Str.Profile.guest_sub(context),
                     style = LognFont.mono(ProfileMetrics.SMALL_SIZE, tracking = ProfileMetrics.SMALL_TRACKING),
-                    color = LognDark.textMuted,
+                    color = LognColors.textMuted,
                     modifier = Modifier.padding(top = ProfileMetrics.gap6),
                 )
             } else if (view.profileAnonNumber > 0) {
@@ -178,7 +179,7 @@ private fun Identity(view: ViewModel) {
                 Text(
                     view.accountEmail,
                     style = LognFont.mono(NicknameMetrics.EMAIL_SIZE),
-                    color = LognDark.textMuted,
+                    color = LognColors.textMuted,
                     maxLines = 1,
                     overflow = TextOverflow.MiddleEllipsis,
                     modifier = Modifier.padding(top = NicknameMetrics.nameGap),
@@ -187,7 +188,7 @@ private fun Identity(view: ViewModel) {
                 Text(
                     view.accountEmail,
                     style = LognFont.mono(ProfileMetrics.EMAIL_SIZE),
-                    color = LognDark.textPrimary,
+                    color = LognColors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.MiddleEllipsis,
                 )
@@ -201,12 +202,12 @@ private fun Identity(view: ViewModel) {
                     Box(
                         Modifier
                             .size(ProfileMetrics.dot)
-                            .background(if (pending > 0) LognDark.warn else LognDark.correct, CircleShape),
+                            .background(if (pending > 0) LognColors.warn else LognColors.correct, CircleShape),
                     )
                     Text(
                         if (pending > 0) Str.Profile.queued_events(context, pending) else Str.Profile.all_synced(context),
                         style = LognFont.mono(ProfileMetrics.SMALL_SIZE, tracking = ProfileMetrics.SMALL_TRACKING),
-                        color = if (pending > 0) LognDark.warnInk else LognDark.textMuted,
+                        color = if (pending > 0) LognColors.warnInk else LognColors.textMuted,
                     )
                 }
             }
@@ -223,8 +224,8 @@ private fun QueueCard(view: ViewModel) {
         Modifier
             .padding(top = Space.lg)
             .fillMaxWidth()
-            .background(LognDark.tintWarn, shape)
-            .border(LognStroke.hairline, LognDark.warn, shape)
+            .background(LognColors.tintWarn, shape)
+            .border(LognStroke.hairline, LognColors.warn, shape)
             .padding(horizontal = ProfileMetrics.cardPaddingH, vertical = Space.md),
         horizontalArrangement = Arrangement.spacedBy(ProfileMetrics.gap11),
         verticalAlignment = Alignment.CenterVertically,
@@ -233,19 +234,19 @@ private fun QueueCard(view: ViewModel) {
             Text(
                 Str.Profile.local_xp_only(context, view.globalXp),
                 style = LognFont.sans(ProfileMetrics.BODY_SIZE).merge(TextStyle(lineHeight = ProfileMetrics.BODY_LINE.sp)),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
             )
             Text(
                 Str.Profile.pending_events(context, view.pendingSyncCount.toInt()),
                 style = LognFont.mono(ProfileMetrics.META_SIZE),
-                color = LognDark.textSecondary,
+                color = LognColors.textSecondary,
                 modifier = Modifier.padding(top = Space.xs),
             )
         }
         Box(
             Modifier
                 .height(ProfileMetrics.retryHeight)
-                .border(LognStroke.hairline, LognDark.warn, RoundedCornerShape(ProfileMetrics.retryRadius))
+                .border(LognStroke.hairline, LognColors.warn, RoundedCornerShape(ProfileMetrics.retryRadius))
                 .clickable(role = Role.Button) { dispatch(Event.SyncNow) }
                 .padding(horizontal = ProfileMetrics.cardPaddingH),
             contentAlignment = Alignment.Center,
@@ -253,7 +254,7 @@ private fun QueueCard(view: ViewModel) {
             Text(
                 if (view.isSyncing) ELLIPSIS else Str.Profile.retry(context),
                 style = LognFont.mono(ProfileMetrics.RETRY_SIZE, FontWeight.Medium),
-                color = LognDark.warnInk,
+                color = LognColors.warnInk,
             )
         }
     }
@@ -277,12 +278,12 @@ private fun LevelBlock(view: ViewModel) {
             Text(
                 "${view.level}",
                 style = LognFont.sans(ProfileMetrics.LEVEL_SIZE, FontWeight.SemiBold, ProfileMetrics.LEVEL_TRACKING),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
             )
             Text(
                 Str.Profile.level(context),
                 style = LognFont.mono(ProfileMetrics.TAG_SIZE, tracking = ProfileMetrics.LEVEL_LABEL_TRACKING),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
                 modifier = Modifier.padding(bottom = Space.sm),
             )
         }
@@ -293,28 +294,28 @@ private fun LevelBlock(view: ViewModel) {
         ) {
             Row(Modifier.fillMaxWidth()) {
                 val style = LognFont.mono(ProfileMetrics.META_SIZE)
-                Text(Str.Profile.xp(context, view.globalXp), style = style, color = LognDark.textMuted)
+                Text(Str.Profile.xp(context, view.globalXp), style = style, color = LognColors.textMuted)
                 Spacer(Modifier.weight(1f))
-                Text("${view.level * view.xpForLevel}", style = style, color = LognDark.textMuted)
+                Text("${view.level * view.xpForLevel}", style = style, color = LognColors.textMuted)
             }
             Box(
                 Modifier
                     .padding(top = ProfileMetrics.gap6)
                     .fillMaxWidth()
                     .height(ProfileMetrics.barHeight)
-                    .background(LognDark.line, CircleShape),
+                    .background(LognColors.line, CircleShape),
             ) {
                 Box(
                     Modifier
                         .fillMaxWidth(progress.coerceIn(0f, 1f))
                         .height(ProfileMetrics.barHeight)
-                        .background(LognDark.accent, CircleShape),
+                        .background(LognColors.accent, CircleShape),
                 )
             }
             Text(
                 Str.Profile.xp_to_next(context, view.xpToNextLevel, view.level + 1),
                 style = LognFont.mono(ProfileMetrics.TINY_SIZE),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
                 modifier = Modifier.padding(top = ProfileMetrics.gap5),
             )
         }
@@ -330,8 +331,8 @@ private fun Stats(view: ViewModel) {
             .padding(top = Space.screenMargin)
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
-            .background(LognDark.line, shape)
-            .border(LognStroke.hairline, LognDark.line, shape),
+            .background(LognColors.line, shape)
+            .border(LognStroke.hairline, LognColors.line, shape),
         horizontalArrangement = Arrangement.spacedBy(LognStroke.hairline),
     ) {
         ProfileStat(Str.Profile.total_xp(context), "${view.globalXp}", null, Modifier.weight(1f))
@@ -351,21 +352,21 @@ private fun ProfileStat(
     Column(
         modifier
             .fillMaxHeight()
-            .background(LognDark.surface)
+            .background(LognColors.surface)
             .padding(horizontal = ProfileMetrics.cardPaddingH, vertical = Space.md),
     ) {
-        Text(label, style = LognFont.mono(ProfileMetrics.SMALL_SIZE, tracking = ProfileMetrics.SMALL_TRACKING), color = LognDark.textMuted)
+        Text(label, style = LognFont.mono(ProfileMetrics.SMALL_SIZE, tracking = ProfileMetrics.SMALL_TRACKING), color = LognColors.textMuted)
         Text(
             value,
             style = LognFont.mono(ProfileMetrics.STAT_SIZE, FontWeight.SemiBold),
-            color = LognDark.textPrimary,
+            color = LognColors.textPrimary,
             modifier = Modifier.padding(top = Space.xs),
         )
         if (sub != null) {
             Text(
                 sub,
                 style = LognFont.mono(ProfileMetrics.TINY_SIZE),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
                 modifier = Modifier.padding(top = Space.xxs),
             )
         }
@@ -382,7 +383,7 @@ private fun Summary(view: ViewModel) {
             Str.Dashboard.balloons_up(context, view.balloonsUp),
         ),
         style = LognFont.mono(ProfileMetrics.META_SIZE),
-        color = LognDark.textMuted,
+        color = LognColors.textMuted,
         modifier = Modifier.padding(top = Space.md),
     )
 }
@@ -410,7 +411,7 @@ private fun Footer(
                 .padding(top = if (pending) Space.screenMargin else ProfileMetrics.gap22, bottom = Space.lg)
                 .fillMaxWidth()
                 .height(LognStroke.hairline)
-                .background(LognDark.line),
+                .background(LognColors.line),
         )
         // Sem alerta quando não há o que perder: sair sincronizado é reversível, e a tela
         // de saída traz o desfazer.
@@ -419,7 +420,7 @@ private fun Footer(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = ProfileMetrics.logoutHeight)
-                .border(LognStroke.hairline, LognDark.lineStrong, shape)
+                .border(LognStroke.hairline, LognColors.lineStrong, shape)
                 .clickable(role = Role.Button) { if (pending) onLogout() else dispatch(Event.Logout) },
             horizontalArrangement = Arrangement.spacedBy(ProfileMetrics.gap9, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
@@ -428,10 +429,10 @@ private fun Footer(
                 Box(
                     Modifier
                         .size(ProfileMetrics.logoutDot)
-                        .background(LognDark.warn, CircleShape),
+                        .background(LognColors.warn, CircleShape),
                 )
             }
-            Text(Str.Profile.sign_out(context), style = LognFont.sans(ProfileMetrics.LOGOUT_SIZE, FontWeight.Medium), color = LognDark.textPrimary)
+            Text(Str.Profile.sign_out(context), style = LognFont.sans(ProfileMetrics.LOGOUT_SIZE, FontWeight.Medium), color = LognColors.textPrimary)
         }
         Row(
             Modifier
@@ -442,8 +443,8 @@ private fun Footer(
             horizontalArrangement = Arrangement.spacedBy(ProfileMetrics.gap7, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(LognIcon.Lock, LognDark.textMuted, IconMetrics.sm)
-            Text(Str.Profile.manage_account(context), style = LognFont.sans(ProfileMetrics.BODY_SIZE), color = LognDark.textSecondary)
+            Icon(LognIcon.Lock, LognColors.textMuted, IconMetrics.sm)
+            Text(Str.Profile.manage_account(context), style = LognFont.sans(ProfileMetrics.BODY_SIZE), color = LognColors.textSecondary)
         }
     }
     // Visitante e conta: a política promete o interruptor para os dois.
@@ -453,7 +454,7 @@ private fun Footer(
     Text(
         Str.Profile.app_version(context, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE.toString()),
         style = LognFont.mono(ProfileMetrics.VERSION_SIZE),
-        color = LognDark.textDim,
+        color = LognColors.textDim,
         textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth().padding(top = Space.xxs),
     )
@@ -474,8 +475,8 @@ private fun FooterRow(
         horizontalArrangement = Arrangement.spacedBy(ProfileMetrics.gap9),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, LognDark.textSecondary, IconMetrics.md)
-        Text(title, style = LognFont.sans(ProfileMetrics.ROW_SIZE), color = LognDark.textSecondary)
+        Icon(icon, LognColors.textSecondary, IconMetrics.md)
+        Text(title, style = LognFont.sans(ProfileMetrics.ROW_SIZE), color = LognColors.textSecondary)
     }
 }
 
@@ -491,7 +492,7 @@ private fun FooterLink(
             .heightIn(min = ProfileMetrics.rowHeight)
             .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) { Text(title, style = LognFont.sans(ProfileMetrics.ROW_SIZE), color = LognDark.textSecondary) }
+    ) { Text(title, style = LognFont.sans(ProfileMetrics.ROW_SIZE), color = LognColors.textSecondary) }
 }
 
 /** O interruptor da telemetria de uso. Quem guarda a escolha e para de mandar é o Core. */
@@ -506,26 +507,30 @@ private fun AnalyticsToggle(
     Row(
         modifier
             .fillMaxWidth()
-            .background(LognDark.surface, shape)
-            .border(LognStroke.hairline, LognDark.line, shape)
+            .background(LognColors.surface, shape)
+            .border(LognStroke.hairline, LognColors.line, shape)
             .padding(horizontal = NodeSheetMetrics.headerGap, vertical = Space.md),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Space.md),
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ProfileMetrics.gap3)) {
-            Text(Str.Profile.analytics_title(context), style = LognFont.sans(ProfileMetrics.TOGGLE_TITLE_SIZE, FontWeight.Medium), color = LognDark.textPrimary)
-            Text(Str.Profile.analytics_desc(context), style = LognFont.sans(ProfileMetrics.TOGGLE_DESC_SIZE), color = LognDark.textMuted)
+            Text(
+                Str.Profile.analytics_title(context),
+                style = LognFont.sans(ProfileMetrics.TOGGLE_TITLE_SIZE, FontWeight.Medium),
+                color = LognColors.textPrimary,
+            )
+            Text(Str.Profile.analytics_desc(context), style = LognFont.sans(ProfileMetrics.TOGGLE_DESC_SIZE), color = LognColors.textMuted)
         }
         Switch(
             checked = view.analyticsEnabled,
             onCheckedChange = { dispatch(Event.SetAnalyticsEnabled(it)) },
             colors =
                 SwitchDefaults.colors(
-                    checkedThumbColor = LognDark.onAccent,
-                    checkedTrackColor = LognDark.accent,
-                    uncheckedThumbColor = LognDark.textMuted,
-                    uncheckedTrackColor = LognDark.line,
-                    uncheckedBorderColor = LognDark.lineStrong,
+                    checkedThumbColor = LognColors.onAccent,
+                    checkedTrackColor = LognColors.accent,
+                    uncheckedThumbColor = LognColors.textMuted,
+                    uncheckedTrackColor = LognColors.line,
+                    uncheckedBorderColor = LognColors.lineStrong,
                 ),
         )
     }
@@ -541,19 +546,19 @@ private fun ConversionCard(view: ViewModel) {
         Modifier
             .padding(top = ProfileMetrics.gap22)
             .fillMaxWidth()
-            .background(LognDark.accent.copy(alpha = ProfileMetrics.CONVERSION_ALPHA), shape)
-            .border(LognStroke.hairline, LognDark.accent, shape)
+            .background(LognColors.accent.copy(alpha = ProfileMetrics.CONVERSION_ALPHA), shape)
+            .border(LognStroke.hairline, LognColors.accent, shape)
             .padding(start = Space.lg, end = Space.lg, top = Space.lg, bottom = ProfileMetrics.gap18),
     ) {
         Text(
             Str.Profile.guest_risk(context),
             style = LognFont.sans(ProfileMetrics.RISK_SIZE, FontWeight.SemiBold),
-            color = LognDark.textPrimary,
+            color = LognColors.textPrimary,
         )
         Text(
             Str.Profile.guest_risk_desc(context, view.globalXp, view.balloonsUp, view.challengesCompleted),
             style = LognFont.sans(ProfileMetrics.BODY_SIZE).merge(TextStyle(lineHeight = ProfileMetrics.RISK_LINE.sp)),
-            color = LognDark.textSecondary,
+            color = LognColors.textSecondary,
             modifier = Modifier.padding(top = Space.sm),
         )
         LognButton(Str.Profile.create_account(context), ButtonVariant.Primary, Modifier.padding(top = Space.lg)) {

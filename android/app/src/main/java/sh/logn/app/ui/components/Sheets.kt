@@ -20,7 +20,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.Radius
 
 /**
@@ -32,7 +32,7 @@ import sh.logn.app.ui.theme.Radius
 fun FullScreenSheet(
     onDismiss: () -> Unit,
     dismissible: Boolean = true,
-    background: Color = LognDark.surfaceRaised,
+    background: Color = LognColors.surfaceRaised,
     content: @Composable () -> Unit,
 ) {
     Dialog(
@@ -72,7 +72,7 @@ private object SwallowUpwardFling : NestedScrollConnection {
 fun BottomSheet(
     onDismiss: () -> Unit,
     dismissible: Boolean = true,
-    background: Color = LognDark.surfaceRaised,
+    background: Color = LognColors.surfaceRaised,
     content: @Composable () -> Unit,
 ) {
     val state =

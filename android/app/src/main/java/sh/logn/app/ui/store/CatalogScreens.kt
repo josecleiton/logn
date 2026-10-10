@@ -48,7 +48,7 @@ import sh.logn.app.ui.components.LognButton
 import sh.logn.app.ui.components.LognIcon
 import sh.logn.app.ui.theme.HomeMetrics
 import sh.logn.app.ui.theme.IconMetrics
-import sh.logn.app.ui.theme.LognDark
+import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.Radius
 import sh.logn.app.ui.theme.Space
@@ -92,7 +92,7 @@ fun CatalogScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .background(LognDark.surface)
+            .background(LognColors.surface)
             .statusBarsPadding(),
     ) {
         BackBar(onBack)
@@ -104,12 +104,12 @@ fun CatalogScreen(
             verticalArrangement = Arrangement.spacedBy(Space.lg),
         ) {
             Row(Modifier.padding(top = Space.sm), verticalAlignment = Alignment.CenterVertically) {
-                Text(Str.Catalog.title(context), style = LognFont.headlineMedium, color = LognDark.textPrimary, modifier = Modifier.weight(1f))
+                Text(Str.Catalog.title(context), style = LognFont.headlineMedium, color = LognColors.textPrimary, modifier = Modifier.weight(1f))
                 if (view.isOfflineSession) {
                     Text(
                         Str.Catalog.offline(context),
                         style = LognFont.mono(StoreMetrics.SMALL_SIZE, tracking = StoreMetrics.SMALL_TRACKING),
-                        color = LognDark.textMuted,
+                        color = LognColors.textMuted,
                     )
                 }
             }
@@ -135,7 +135,7 @@ fun BackBar(onBack: () -> Unit) {
             .clickable(role = Role.Button, onClick = onBack)
             .clearAndSetSemantics { contentDescription = label }
             .padding(Space.md),
-    ) { Icon(LognIcon.ChevronLeft, LognDark.textSecondary, IconMetrics.md) }
+    ) { Icon(LognIcon.ChevronLeft, LognColors.textSecondary, IconMetrics.md) }
 }
 
 @Composable
@@ -148,8 +148,8 @@ private fun PrincipalCard(
     Row(
         Modifier
             .fillMaxWidth()
-            .background(if (track.selected) LognDark.accentTint else LognDark.canvas, shape)
-            .border(Stroke.hairline, if (track.selected) LognDark.accent else LognDark.line, shape)
+            .background(if (track.selected) LognColors.accentTint else LognColors.canvas, shape)
+            .border(Stroke.hairline, if (track.selected) LognColors.accent else LognColors.line, shape)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(StoreMetrics.cardPadding),
         horizontalArrangement = Arrangement.spacedBy(Space.md),
@@ -160,13 +160,13 @@ private fun PrincipalCard(
             Text(
                 Str.Catalog.principal(context),
                 style = LognFont.mono(StoreMetrics.SMALL_SIZE, tracking = StoreMetrics.EYEBROW_TRACKING),
-                color = LognDark.accentInk,
+                color = LognColors.accentInk,
             )
-            Text(track.name, style = LognFont.sans(StoreMetrics.PRINCIPAL_NAME_SIZE, FontWeight.SemiBold), color = LognDark.textPrimary)
+            Text(track.name, style = LognFont.sans(StoreMetrics.PRINCIPAL_NAME_SIZE, FontWeight.SemiBold), color = LognColors.textPrimary)
             Text(
                 Str.Catalog.progress(context, track.nodesDone.toInt(), track.nodeCount.toInt(), track.trackXp),
                 style = LognFont.mono(StoreMetrics.META_SIZE),
-                color = LognDark.textSecondary,
+                color = LognColors.textSecondary,
             )
         }
     }
@@ -189,8 +189,8 @@ private fun TrackCard(
         modifier
             .fillMaxHeight()
             .heightIn(min = StoreMetrics.cardMinHeight)
-            .background(LognDark.canvas, shape)
-            .border(Stroke.hairline, if (warn) LognDark.warn else LognDark.line, shape)
+            .background(LognColors.canvas, shape)
+            .border(Stroke.hairline, if (warn) LognColors.warn else LognColors.line, shape)
             .clearAndSetSemantics { contentDescription = label }
             .clickable(role = Role.Button, onClick = onClick)
             .padding(Space.md),
@@ -203,13 +203,13 @@ private fun TrackCard(
             Text(
                 if (track.owned) "${track.nodesDone}/${track.nodeCount}" else Str.Catalog.nodes(context, track.nodeCount.toInt()),
                 style = LognFont.mono(StoreMetrics.SMALL_SIZE),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
             )
         }
         Text(
             track.name,
             style = LognFont.sans(StoreMetrics.CARD_NAME_SIZE, FontWeight.SemiBold),
-            color = LognDark.textPrimary,
+            color = LognColors.textPrimary,
             modifier = Modifier.alpha(if (dimmed) StoreMetrics.DIMMED_ALPHA else 1f),
         )
         Spacer(Modifier.weight(1f))
@@ -235,7 +235,7 @@ fun TrackDetailScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .background(LognDark.surface)
+            .background(LognColors.surface)
             .statusBarsPadding(),
     ) {
         BackBar(onBack)
@@ -251,7 +251,7 @@ fun TrackDetailScreen(
                 Text(
                     track.description,
                     style = LognFont.sans(StoreMetrics.DESC_SIZE).merge(TextStyle(lineHeight = StoreMetrics.DESC_LINE.sp)),
-                    color = LognDark.textSecondary,
+                    color = LognColors.textSecondary,
                 )
             }
             Notices(track)
@@ -274,7 +274,7 @@ private fun Heading(track: TrackView) {
             Text(
                 track.name,
                 style = LognFont.sans(StoreMetrics.TITLE_SIZE, FontWeight.SemiBold, StoreMetrics.TITLE_TRACKING),
-                color = LognDark.textPrimary,
+                color = LognColors.textPrimary,
             )
             Text(
                 if (track.owned) {
@@ -283,7 +283,7 @@ private fun Heading(track: TrackView) {
                     Str.Track.meta(context, track.nodeCount.toInt(), track.author.uppercase(), track.languagesLabel)
                 },
                 style = LognFont.mono(StoreMetrics.META_SIZE),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
             )
         }
     }
@@ -301,16 +301,16 @@ private fun Notices(track: TrackView) {
                 } else {
                     Str.Track.revoked_other(context, track.name, track.trackXp)
                 },
-                LognDark.surfaceRaised,
-                LognDark.lineStrong,
+                LognColors.surfaceRaised,
+                LognColors.lineStrong,
             )
         track.owned && (track.offline == OfflineState.SOON || track.offline == OfflineState.TODAY) -> OfflineBlock(track)
-        track.owned && track.discontinued -> Note(Str.Track.discontinued_note(context), LognDark.surfaceRaised, LognDark.lineStrong)
+        track.owned && track.discontinued -> Note(Str.Track.discontinued_note(context), LognColors.surfaceRaised, LognColors.lineStrong)
         track.owned && track.validUntil > 0 ->
             Text(
                 Str.Track.valid_until(context, TrackDates.short(track.validUntil, locale)),
                 style = LognFont.mono(StoreMetrics.META_SIZE),
-                color = LognDark.textMuted,
+                color = LognColors.textMuted,
             )
     }
 }
@@ -325,7 +325,7 @@ private fun Note(
     Text(
         text,
         style = LognFont.sans(StoreMetrics.NOTE_SIZE).merge(TextStyle(lineHeight = StoreMetrics.NOTE_LINE.sp)),
-        color = LognDark.textPrimary,
+        color = LognColors.textPrimary,
         modifier =
             Modifier
                 .fillMaxWidth()
@@ -345,8 +345,8 @@ private fun OfflineBlock(track: TrackView) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(LognDark.tintWarn, shape)
-            .border(Stroke.hairline, LognDark.warn, shape)
+            .background(LognColors.tintWarn, shape)
+            .border(Stroke.hairline, LognColors.warn, shape)
             .padding(StoreMetrics.cardPadding),
         verticalArrangement = Arrangement.spacedBy(Space.md),
     ) {
@@ -355,10 +355,10 @@ private fun OfflineBlock(track: TrackView) {
             Text(
                 if (lastDay) Str.Track.offline_last_day_tag(context) else Str.Track.offline_days_tag(context, track.daysSinceContact.toInt()),
                 style = style,
-                color = LognDark.warnInk,
+                color = LognColors.warnInk,
                 modifier = Modifier.weight(1f),
             )
-            Text(Str.Track.valid_until(context, TrackDates.short(track.validUntil, locale)), style = style, color = LognDark.warnInk)
+            Text(Str.Track.valid_until(context, TrackDates.short(track.validUntil, locale)), style = style, color = LognColors.warnInk)
         }
         Text(
             if (lastDay) {
@@ -367,10 +367,10 @@ private fun OfflineBlock(track: TrackView) {
                 Str.Track.offline_soon_body(context, TrackDates.weekday(track.validUntil, locale), track.name)
             },
             style = LognFont.sans(StoreMetrics.BODY_SIZE),
-            color = LognDark.textPrimary,
+            color = LognColors.textPrimary,
         )
         OfflineDaysBar(track.daysSinceContact.toInt().coerceAtMost(OFFLINE_DAYS))
-        Text(Str.Track.offline_rule(context), style = LognFont.sans(StoreMetrics.RULE_SIZE), color = LognDark.textSecondary)
+        Text(Str.Track.offline_rule(context), style = LognFont.sans(StoreMetrics.RULE_SIZE), color = LognColors.textSecondary)
     }
 }
 
@@ -378,19 +378,20 @@ private fun OfflineBlock(track: TrackView) {
 private fun NodeList(track: TrackView) {
     val context = LocalContext.current
     val shape = RoundedCornerShape(Radius.sm)
+    val line = LognColors.line
     Column(
         Modifier
             .fillMaxWidth()
-            .border(Stroke.hairline, LognDark.line, shape),
+            .border(Stroke.hairline, line, shape),
     ) {
         for ((index, row) in track.nodes.withIndex()) {
             val sample = !track.owned && row.free
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .background(if (sample) LognDark.tintOk else Color.Transparent)
+                    .background(if (sample) LognColors.tintOk else Color.Transparent)
                     .drawBehind {
-                        if (index > 0) drawLine(LognDark.line, Offset(0f, 0f), Offset(size.width, 0f), Stroke.hairline.toPx())
+                        if (index > 0) drawLine(line, Offset(0f, 0f), Offset(size.width, 0f), Stroke.hairline.toPx())
                     }.padding(horizontal = Space.md, vertical = StoreMetrics.rowPaddingV),
                 horizontalArrangement = Arrangement.spacedBy(Space.md),
                 verticalAlignment = Alignment.CenterVertically,
@@ -398,13 +399,13 @@ private fun NodeList(track: TrackView) {
                 Text(
                     String.format(Locale.ROOT, "%02d", index + 1),
                     style = LognFont.mono(StoreMetrics.META_SIZE),
-                    color = if (sample) LognDark.correctInk else LognDark.textMuted,
+                    color = if (sample) LognColors.correctInk else LognColors.textMuted,
                     modifier = Modifier.width(StoreMetrics.indexWidth),
                 )
                 Text(
                     row.name,
                     style = LognFont.sans(StoreMetrics.NOTE_SIZE),
-                    color = if (sample || row.active) LognDark.textPrimary else LognDark.textSecondary,
+                    color = if (sample || row.active) LognColors.textPrimary else LognColors.textSecondary,
                     modifier = Modifier.weight(1f),
                 )
                 when {
@@ -412,10 +413,10 @@ private fun NodeList(track: TrackView) {
                         Text(
                             Str.Track.free_tag(context),
                             style = LognFont.mono(StoreMetrics.SMALL_SIZE, tracking = StoreMetrics.FREE_TRACKING),
-                            color = LognDark.correctInk,
+                            color = LognColors.correctInk,
                         )
-                    track.owned && row.done -> Icon(LognIcon.Check, LognDark.correctInk, IconMetrics.sm)
-                    track.owned && row.active -> Icon(LognIcon.ArrowRight, LognDark.accentInk, IconMetrics.sm)
+                    track.owned && row.done -> Icon(LognIcon.Check, LognColors.correctInk, IconMetrics.sm)
+                    track.owned && row.active -> Icon(LognIcon.ArrowRight, LognColors.accentInk, IconMetrics.sm)
                 }
             }
         }
@@ -431,16 +432,17 @@ private fun Footer(
     val context = LocalContext.current
     val store = LocalStore.current
     val activity = LocalActivity.current
+    val line = LognColors.line
     Column(
         Modifier
             .fillMaxWidth()
-            .drawBehind { drawLine(LognDark.line, Offset(0f, 0f), Offset(size.width, 0f), Stroke.hairline.toPx()) }
+            .drawBehind { drawLine(line, Offset(0f, 0f), Offset(size.width, 0f), Stroke.hairline.toPx()) }
             .navigationBarsPadding()
             .padding(start = StoreMetrics.side, end = StoreMetrics.side, top = Space.md, bottom = StoreMetrics.side),
         verticalArrangement = Arrangement.spacedBy(Space.sm),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        store.problem?.let { Text(sh.logn.app.core.PlayStore.copy(context, it), style = LognFont.bodyMedium, color = LognDark.textSecondary) }
+        store.problem?.let { Text(sh.logn.app.core.PlayStore.copy(context, it), style = LognFont.bodyMedium, color = LognColors.textSecondary) }
         // Só onde o rodapé vende: quem tem a trilha vê "Continuar".
         if (price != null && (track.revoked || !track.owned)) DiscountLine(price)
         when {
@@ -466,7 +468,7 @@ private fun Footer(
                         loading = store.isPurchasing,
                     ) { activity?.let { store.buy(it, track.productId) } }
                 }
-                Text(Str.Track.buy_note(context), style = LognFont.mono(StoreMetrics.SMALL_SIZE), color = LognDark.textMuted)
+                Text(Str.Track.buy_note(context), style = LognFont.mono(StoreMetrics.SMALL_SIZE), color = LognColors.textMuted)
             }
         }
     }
