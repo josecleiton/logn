@@ -44,7 +44,7 @@ import sh.logn.app.ui.components.BalloonShape
 import sh.logn.app.ui.components.BalloonStyle
 import sh.logn.app.ui.components.ButtonVariant
 import sh.logn.app.ui.components.LognButton
-import sh.logn.app.ui.components.balloonColor
+import sh.logn.app.ui.components.filledBalloon
 import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.MatchMetrics
@@ -209,7 +209,7 @@ private fun HitStage(
         verticalArrangement = Arrangement.spacedBy(Space.sm, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        BalloonShape(BalloonStyle.Filled(balloonColor(snapshot.letter)), MatchMetrics.hitBalloon, showString = true)
+        BalloonShape(filledBalloon(snapshot.letter), MatchMetrics.hitBalloon, showString = true)
         Text(
             VerdictCode.AC.raw,
             style = LognFont.mono(MatchMetrics.HIT_SIZE, FontWeight.SemiBold, MatchMetrics.HERO_TRACKING),
@@ -406,7 +406,7 @@ fun MatchReport(
                         verticalArrangement = Arrangement.spacedBy(Space.xs),
                     ) {
                         BalloonShape(
-                            if (accepted) BalloonStyle.Filled(balloonColor(letter)) else BalloonStyle.Outline(LognColors.lineStrong, REPORT_OUTLINE),
+                            if (accepted) filledBalloon(letter) else BalloonStyle.Outline(LognColors.lineStrong, REPORT_OUTLINE),
                             MatchMetrics.reportBalloon,
                             showString = true,
                         )

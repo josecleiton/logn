@@ -28,6 +28,7 @@ import sh.logn.app.ui.components.BalloonStyle
 import sh.logn.app.ui.components.Icon
 import sh.logn.app.ui.components.LognIcon
 import sh.logn.app.ui.components.balloonColor
+import sh.logn.app.ui.components.filledBalloon
 import sh.logn.app.ui.theme.IconMetrics
 import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
@@ -121,7 +122,7 @@ fun MatchHeader(
                 ) { Icon(LognIcon.Close, LognColors.textMuted, IconMetrics.md) }
             }
             BalloonShape(
-                if (currentIsAlive) BalloonStyle.Filled(balloonColor(letter)) else BalloonStyle.Outline(LognColors.lineStrong, OUTLINE_DEAD),
+                if (currentIsAlive) filledBalloon(letter) else BalloonStyle.Outline(LognColors.lineStrong, OUTLINE_DEAD),
                 MatchMetrics.headerBalloon,
                 showString = true,
             )
@@ -170,7 +171,7 @@ private fun BalloonRow(
             ) {
                 val style =
                     when {
-                        accepted -> BalloonStyle.Filled(balloonColor(l))
+                        accepted -> filledBalloon(l)
                         l == current -> BalloonStyle.Outline(balloonColor(l), OUTLINE_ROW)
                         else -> BalloonStyle.Outline(LognColors.lineStrong, OUTLINE_ROW)
                     }

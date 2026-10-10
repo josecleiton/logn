@@ -122,7 +122,7 @@ fun DestructiveButton(
     val foreground =
         when {
             !enabled -> LognColors.textDim
-            filled -> LognColors.onAccent
+            filled -> LognColors.onStatus
             else -> LognColors.wrongInk
         }
     Box(

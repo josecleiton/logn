@@ -30,6 +30,7 @@ import sh.logn.app.ui.components.BottomSheet
 import sh.logn.app.ui.components.ButtonVariant
 import sh.logn.app.ui.components.LognButton
 import sh.logn.app.ui.components.balloonColor
+import sh.logn.app.ui.components.filledBalloon
 import sh.logn.app.ui.theme.LognColors
 import sh.logn.app.ui.theme.LognFont
 import sh.logn.app.ui.theme.NodeSheetMetrics
@@ -213,7 +214,7 @@ private fun Problems(
                     Box(Modifier.size(width, TreeLayout.balloonHeight(width)), contentAlignment = Alignment.TopCenter) {
                         BalloonShape(
                             if (solved) {
-                                BalloonStyle.Filled(balloonColor(letter))
+                                filledBalloon(letter)
                             } else {
                                 BalloonStyle.Outline(balloonColor(letter), NodeSheetMetrics.PROBLEM_OUTLINE)
                             },

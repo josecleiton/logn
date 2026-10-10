@@ -59,13 +59,13 @@ val BootLine.tone: Color
     @Composable @ReadOnlyComposable
     get() {
         // Termos que mudaram não são erro nem acerto: a cor de informação, e a tela de
-        // aceite vem em seguida.
-        if (detail == BootDetail.TERMSCHANGED) return LognColors.info
+        // aceite vem em seguida. É o sinal da linha, um glifo: tinta, nunca a base.
+        if (detail == BootDetail.TERMSCHANGED) return LognColors.infoInk
         return when (verdict) {
             BootVerdict.RUNNING -> LognColors.textMuted
-            BootVerdict.OK -> LognColors.correct
-            BootVerdict.WARN -> LognColors.warn
-            BootVerdict.FAIL -> LognColors.wrong
+            BootVerdict.OK -> LognColors.correctInk
+            BootVerdict.WARN -> LognColors.warnInk
+            BootVerdict.FAIL -> LognColors.wrongInk
             BootVerdict.SKIPPED -> LognColors.textMuted
         }
     }

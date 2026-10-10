@@ -1,6 +1,7 @@
 package sh.logn.app
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -21,10 +22,17 @@ class MainActivity : ComponentActivity() {
         // abertura, é a SplashScreen do Compose, que começa no mesmo balão.
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-        )
+        // Ícones claros no tema escuro e escuros no claro. A troca de tema recria a
+        // Activity, então decidir aqui basta.
+        val night =
+            resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+        val bars =
+            if (night) {
+                SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+            } else {
+                SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+            }
+        enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
         setContent {
             LognTheme {
                 LognRoot(core, (application as LognApplication).store)

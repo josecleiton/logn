@@ -110,7 +110,8 @@ private fun CodeLine(
     val context = LocalContext.current
     val blank = code.indexOf(BLANK)
     val rowLine = LognColors.rowLine
-    val accent = LognColors.accent
+    // A caixa tracejada é o único sinal visível da lacuna: em tinta, para passar de 3:1.
+    val gapLine = LognColors.accentInk
     Row(
         Modifier
             .fillMaxWidth()
@@ -120,8 +121,9 @@ private fun CodeLine(
             .semantics { this.selected = selected }
             .then(if (onTap != null) Modifier.clickable(role = Role.Button, onClick = onTap) else Modifier)
             .drawBehind {
-                // Barra lateral de 2: o estado nunca depende só do fundo.
-                if (selected) drawRect(highlightColor, size = size.copy(width = MatchMetrics.sideBar.toPx()))
+                // Barra lateral de 2: o estado nunca depende só do fundo. Em tinta, porque é
+                // ela que carrega a seleção, e no claro a base do acento não chega a 3:1.
+                if (selected) drawRect(highlightInk, size = size.copy(width = MatchMetrics.sideBar.toPx()))
                 if (showsDivider) {
                     val y = size.height - LognStroke.hairline.toPx()
                     drawRect(rowLine, topLeft = androidx.compose.ui.geometry.Offset(0f, y), size = size.copy(height = LognStroke.hairline.toPx()))
@@ -152,7 +154,7 @@ private fun CodeLine(
                         .drawBehind {
                             val dash = MatchMetrics.blankDash.toPx()
                             drawRoundRect(
-                                accent,
+                                gapLine,
                                 cornerRadius = CornerRadius(Radius.xs.toPx()),
                                 style = Stroke(LognStroke.hairline.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash))),
                             )
@@ -199,7 +201,7 @@ private fun highlight(
         fun isWord(c: Char) = c.isLetterOrDigit() || c == '_' || c == '#'
         while (i < code.length) {
             if (code.startsWith(BLANK, i)) {
-                withStyle(SpanStyle(color = colors.accent)) { append(BLANK) }
+                withStyle(SpanStyle(color = colors.accentInk)) { append(BLANK) }
                 i += BLANK.length
                 continue
             }

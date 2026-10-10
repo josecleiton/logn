@@ -222,11 +222,14 @@ private fun Changes(changes: List<TermsChange>) {
 @Composable
 private fun ChangeRow(change: TermsChange) {
     val context = LocalContext.current
-    val (sign, name, ink, tint) =
+    val (sign, name, look) =
         when (change.change) {
-            TermsChangeKind.ADDED -> ChangeLook("+", Str.Reaccept.sign_added(context), LognColors.correct, LognColors.tintOk)
-            TermsChangeKind.CHANGED -> ChangeLook("~", Str.Reaccept.sign_changed(context), LognColors.warn, LognColors.tintWarn)
-            TermsChangeKind.REMOVED -> ChangeLook("−", Str.Reaccept.sign_removed(context), LognColors.wrong, LognColors.tintErr)
+            TermsChangeKind.ADDED ->
+                Triple("+", Str.Reaccept.sign_added(context), ChangeLook(LognColors.correct, LognColors.correctInk, LognColors.tintOk))
+            TermsChangeKind.CHANGED ->
+                Triple("~", Str.Reaccept.sign_changed(context), ChangeLook(LognColors.warn, LognColors.warnInk, LognColors.tintWarn))
+            TermsChangeKind.REMOVED ->
+                Triple("−", Str.Reaccept.sign_removed(context), ChangeLook(LognColors.wrong, LognColors.wrongInk, LognColors.tintErr))
         }
     val document = if (change.kind == "privacy") Str.Reaccept.doc_privacy(context) else Str.Reaccept.doc_terms(context)
     val place = Str.Reaccept.change_where(context, document, change.version.toInt())
@@ -243,12 +246,12 @@ private fun ChangeRow(change: TermsChange) {
         Row(
             Modifier
                 .fillMaxHeight()
-                .background(tint),
+                .background(look.tint),
         ) {
             Text(
                 sign,
                 style = LognFont.mono(TermsMetrics.SIGN_SIZE),
-                color = ink,
+                color = look.ink,
                 modifier =
                     Modifier
                         .width(TermsMetrics.signSlot)
@@ -259,7 +262,7 @@ private fun ChangeRow(change: TermsChange) {
                 Modifier
                     .width(TermsMetrics.signBar)
                     .fillMaxHeight()
-                    .background(ink),
+                    .background(look.line),
             )
         }
         Column(
@@ -272,9 +275,9 @@ private fun ChangeRow(change: TermsChange) {
     }
 }
 
+/** A faixa do sinal: a barra na base, o sinal na tinta, o fundo tingido. */
 private data class ChangeLook(
-    val sign: String,
-    val name: String,
+    val line: Color,
     val ink: Color,
     val tint: Color,
 )
@@ -337,7 +340,10 @@ private fun Footer(
     }
 }
 
-/** A caixa do aceite: 20, raio 3, traço 1.5; cheia de acento quando marcada. */
+/**
+ * A caixa do aceite: 20, raio 3, traço 1.5; cheia quando marcada. Na base do acento, com o
+ * visto escuro, como a caixa do cadastro: o visto é o estado.
+ */
 @Composable
 private fun AcceptBox(checked: Boolean) {
     val shape = RoundedCornerShape(TermsMetrics.boxRadius)

@@ -55,7 +55,7 @@ enum class FieldKind { Email, Password, NewPassword, Number, Text }
 
 /**
  * O campo de texto do DS: 52 de altura, `surface` com borda `line`, Plex Mono 14 e o
- * prompt em `textDim`. `error` troca a borda (a confirmação de senha que não bate).
+ * prompt em `textFaint`. `error` troca a borda (a confirmação de senha que não bate).
  */
 @Composable
 fun LognTextField(
@@ -88,7 +88,7 @@ fun LognTextField(
         singleLine = true,
         interactionSource = interaction,
         textStyle = textStyle.copy(color = LognColors.textPrimary),
-        cursorBrush = SolidColor(LognColors.accent),
+        cursorBrush = SolidColor(LognColors.accentInk),
         visualTransformation = if (secret && !revealed) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions =
             KeyboardOptions(
@@ -130,7 +130,7 @@ fun LognTextField(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                    if (value.isEmpty()) Text(placeholder, style = textStyle, color = LognColors.textDim)
+                    if (value.isEmpty()) Text(placeholder, style = textStyle, color = LognColors.textFaint)
                     inner()
                 }
                 if (secret) PasswordEye(revealed) { revealed = !revealed }
@@ -176,11 +176,14 @@ fun LognCheckbox(
             .clickable(role = Role.Checkbox, onClick = onToggle),
         horizontalArrangement = Arrangement.spacedBy(FieldMetrics.checkboxGap),
     ) {
+        // Marcada, o visto vazado no quadrado cheio é o estado: o quadrado na base do acento,
+        // com o visto escuro, como o texto do botão primário (7.5:1). No escuro o vazado já
+        // é o canvas, quase preto, e fica como estava; no claro o canvas daria 2.4:1.
         Icon(
             if (checked) LognIcon.CheckSquareFill else LognIcon.Square,
             color = if (checked) LognColors.accent else LognColors.textDim,
             size = FieldMetrics.checkbox,
-            knockout = LognColors.canvas,
+            knockout = if (LognColors.isLight) LognColors.onAccent else LognColors.canvas,
         )
         Text(label, style = LognFont.sans(LoginMetrics.CHECK_SIZE), color = LognColors.textSecondary)
     }

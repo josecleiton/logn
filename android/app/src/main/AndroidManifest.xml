@@ -31,8 +31,9 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.LogN.Starting">
-        <!-- Retrato e escuro, como em iOS. `singleTask`: o retorno do login com GitHub
-             e os links de e-mail voltam para a mesma Activity, por onNewIntent. -->
+        <!-- Retrato, como em iOS; claro ou escuro como o sistema (ADR 0030). `singleTask`:
+             o retorno do login com GitHub e os links de e-mail voltam para a mesma
+             Activity, por onNewIntent. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

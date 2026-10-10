@@ -129,7 +129,7 @@ fun OriginSheet(
                 Text(
                     card.role,
                     style = LognFont.mono(MatchMetrics.CARD_ANSWER_SIZE, tracking = MatchMetrics.ROLE_TRACKING),
-                    color = LognColors.accent,
+                    color = LognColors.accentInk,
                     modifier = Modifier.padding(top = Space.xs),
                 )
                 Box(
@@ -170,7 +170,7 @@ private fun PauseNotice(modifier: Modifier) {
             .padding(MatchMetrics.cardPadding),
         horizontalArrangement = Arrangement.spacedBy(Space.md),
     ) {
-        Icon(LognIcon.PauseCircle, LognColors.info, IconMetrics.md)
+        Icon(LognIcon.PauseCircle, LognColors.infoInk, IconMetrics.md)
         Text(Str.Origin.pause_notice(context), style = LognFont.mono(MatchMetrics.CARD_ANSWER_SIZE), color = LognColors.textSecondary)
     }
 }

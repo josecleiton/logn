@@ -58,6 +58,9 @@ object BalloonMetrics {
     val marqueeWidth = 13.dp
     val marqueeGap = 7.dp
     const val MARQUEE_ALPHA = 0.5f
+
+    /** O contorno do balão cheio, quando o traço difere do corpo (só no claro). */
+    val edge = 1.dp
 }
 
 /** Ícones de traço, na grade de 24 do DS. */

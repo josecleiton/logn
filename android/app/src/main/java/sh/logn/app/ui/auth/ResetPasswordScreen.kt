@@ -78,8 +78,9 @@ fun ResetPasswordScreen(
         verticalArrangement = Arrangement.spacedBy(Space.xl),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Azul é informação; o que a tela pede é ação, e ação é o acento.
-        Icon(LognIcon.KeyFill, LognColors.accentInk, IconMetrics.hero)
+        // Azul é informação; o que a tela pede é ação, e ação é o acento. A chave é forma
+        // cheia, então é a base que preenche, como o balão do logo, e não a tinta.
+        Icon(LognIcon.KeyFill, LognColors.accent, IconMetrics.hero)
         Text(Str.Reset.title(context), style = LognFont.headlineMedium, color = LognColors.textPrimary)
         Text(
             if (asksForCode) Str.Reset.subtitle_with_code(context, email) else Str.Reset.subtitle(context, email),

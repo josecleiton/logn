@@ -124,7 +124,7 @@ private fun InputStep(
             onValueChange = onChange,
             singleLine = true,
             textStyle = LognFont.mono(NicknameMetrics.FIELD_SIZE).copy(color = LognColors.textPrimary),
-            cursorBrush = SolidColor(LognColors.accent),
+            cursorBrush = SolidColor(LognColors.accentInk),
             keyboardOptions =
                 KeyboardOptions(
                     capitalization = KeyboardCapitalization.None,
@@ -145,7 +145,11 @@ private fun InputStep(
                     contentAlignment = Alignment.CenterStart,
                 ) {
                     if (text.isEmpty()) {
-                        Text(Str.Nickname.placeholder(context), style = LognFont.mono(NicknameMetrics.FIELD_SIZE), color = LognColors.lineDim)
+                        // O exemplo dos outros campos é `textFaint`; este escrevia em `lineDim`,
+                        // que no claro cai a 2:1. O escuro fica como estava (ADR 0030, escuro
+                        // intacto).
+                        val placeholder = if (LognColors.isLight) LognColors.textFaint else LognColors.lineDim
+                        Text(Str.Nickname.placeholder(context), style = LognFont.mono(NicknameMetrics.FIELD_SIZE), color = placeholder)
                     }
                     inner()
                 }

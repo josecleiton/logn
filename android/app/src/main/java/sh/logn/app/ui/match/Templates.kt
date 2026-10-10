@@ -144,7 +144,7 @@ private fun ChipFace(
         modifier
             .heightIn(min = Space.matchTouch)
             .background(LognColors.surfaceRaised, shape)
-            .border(LognStroke.hairline, if (raised) LognColors.accent else LognColors.lineStrong, shape)
+            .border(LognStroke.hairline, if (raised) LognColors.accentInk else LognColors.lineStrong, shape)
             .padding(horizontal = Space.md, vertical = MatchMetrics.chipPaddingV),
         contentAlignment = Alignment.Center,
     ) {
@@ -228,7 +228,7 @@ fun DropZone(
         }
     val stroke =
         when {
-            targeted -> LognColors.accent
+            targeted -> LognColors.accentInk
             filled -> LognColors.lineStrong
             else -> LognColors.lineDim
         }
@@ -255,7 +255,7 @@ fun DropZone(
         Text(
             if (filled) value else Str.Arena.drop_here(context),
             style = LognFont.mono(if (filled) MatchMetrics.DROP_FILLED_SIZE else MatchMetrics.CHIP_SIZE),
-            color = if (filled) LognColors.textPrimary else LognColors.textDim,
+            color = if (filled) LognColors.textPrimary else LognColors.textFaint,
         )
     }
     DisposableEffect(key) { onDispose { drag.unregister(key) } }
@@ -292,7 +292,8 @@ fun TagChip(
         Modifier
             .heightIn(min = Space.matchTouch)
             .background(if (selected) LognColors.accentTint else Color.Transparent, shape)
-            .border(LognStroke.hairline, if (selected) LognColors.accent else LognColors.lineStrong, shape)
+            // A borda é o que diz "marcada": em tinta, que no claro passa de 3:1.
+            .border(LognStroke.hairline, if (selected) LognColors.accentInk else LognColors.lineStrong, shape)
             .semantics { this.selected = selected }
             .clickable(role = Role.Checkbox, onClick = onClick)
             .padding(horizontal = MatchMetrics.tagPaddingH, vertical = MatchMetrics.tagPaddingV),
@@ -359,7 +360,7 @@ private fun TradeoffSlot(
     val stroke =
         when {
             filled -> LognColors.lineStrong
-            isNext -> LognColors.accent
+            isNext -> LognColors.accentInk
             else -> LognColors.lineDim
         }
     val fill = LognColors.surfaceRaised
@@ -445,7 +446,7 @@ fun DryRunPanel(
             Modifier
                 .fillMaxWidth()
                 .background(LognColors.canvas, shape)
-                .border(LognStroke.hairline, if (focused || predicted.isNotEmpty()) LognColors.accent else LognColors.line, shape)
+                .border(LognStroke.hairline, if (focused || predicted.isNotEmpty()) LognColors.accentInk else LognColors.line, shape)
                 .padding(horizontal = MatchMetrics.slotPaddingH, vertical = MatchMetrics.outputPaddingV),
             verticalArrangement = Arrangement.spacedBy(Space.sm),
         ) {
@@ -469,7 +470,7 @@ fun DryRunPanel(
                     onValueChange = onChange,
                     singleLine = true,
                     textStyle = LognFont.mono(size).copy(color = LognColors.textPrimary),
-                    cursorBrush = SolidColor(LognColors.accent),
+                    cursorBrush = SolidColor(LognColors.accentInk),
                     keyboardOptions =
                         KeyboardOptions(
                             capitalization = KeyboardCapitalization.None,
@@ -483,7 +484,7 @@ fun DryRunPanel(
                             .onFocusChanged { focused = it.isFocused },
                     decorationBox = { inner ->
                         Box {
-                            if (predicted.isEmpty()) Text(Str.Dry_run.tap_to_type(context), style = LognFont.mono(size), color = LognColors.textDim)
+                            if (predicted.isEmpty()) Text(Str.Dry_run.tap_to_type(context), style = LognFont.mono(size), color = LognColors.textFaint)
                             inner()
                         }
                     },

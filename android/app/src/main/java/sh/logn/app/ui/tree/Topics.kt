@@ -45,7 +45,11 @@ enum class TopicFamily(
     Boss(null),
     ;
 
-    fun color(palette: LognPalette): Color = letter?.let { Balloon.of(it) } ?: palette.accent
+    /** O traço da família: aresta, ícone de traço, contorno do balão. */
+    fun color(palette: LognPalette): Color = letter?.let { Balloon.edge(it, palette.isLight) } ?: palette.accent
+
+    /** O corpo do balão conquistado da família. */
+    fun fill(palette: LognPalette): Color = letter?.let { Balloon.fill(it, palette.isLight) } ?: palette.accent
 }
 
 /**
@@ -95,6 +99,10 @@ enum class LognTopic(
     val color: Color
         @Composable @ReadOnlyComposable
         get() = family.color(LognColors.palette)
+
+    val fill: Color
+        @Composable @ReadOnlyComposable
+        get() = family.fill(LognColors.palette)
 
     fun color(palette: LognPalette): Color = family.color(palette)
 

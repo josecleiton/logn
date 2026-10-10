@@ -46,9 +46,13 @@ internal object BalloonPaths {
 /** Como o balão aparece. */
 @Immutable
 sealed interface BalloonStyle {
-    /** Aceito ou conquistado: corpo cheio na cor. */
+    /**
+     * Aceito ou conquistado: corpo cheio em `color`. Nó e cordinha em `edge`; quando ele
+     * difere do corpo (balão de letra no claro), contorna o corpo também.
+     */
     data class Filled(
         val color: Color,
+        val edge: Color = color,
     ) : BalloonStyle
 
     /** Em aberto: contorno na cor, com a espessura em unidades de viewBox. */
@@ -93,9 +97,11 @@ fun BalloonShape(
             when (style) {
                 is BalloonStyle.Filled -> {
                     drawPath(body, style.color)
+                    // O corpo vivo do claro some no branco sem borda; o traço a segura em 3:1.
+                    if (style.edge != style.color) drawPath(body, style.edge, style = Stroke(BalloonMetrics.edge.toPx() / s))
                     if (shineOn) drawPath(shine, Color.White.copy(alpha = BalloonPaths.SHINE_ALPHA), style = shineStroke)
-                    drawPath(knot, style.color)
-                    stringColor = style.color
+                    drawPath(knot, style.edge)
+                    stringColor = style.edge
                 }
                 is BalloonStyle.Outline -> {
                     drawPath(body, style.color, style = Stroke(style.lineWidth))
@@ -126,10 +132,23 @@ fun BalloonShape(
 
 private val shineStroke = Stroke(BalloonPaths.SHINE_WIDTH, cap = StrokeCap.Round)
 
-/** A cor da letra do problema: endereço, nunca estado. Fora de A–M, `textMuted`. */
+/**
+ * O traço da letra do problema (balão em aberto, contorno, cordinha): endereço, nunca
+ * estado. Fora de A–M, `textMuted`.
+ */
 @Composable
 @ReadOnlyComposable
-fun balloonColor(letter: Char): Color = if (letter.uppercaseChar() in 'A'..'M') Balloon.of(letter) else LognColors.textMuted
+fun balloonColor(letter: Char): Color = if (letter.uppercaseChar() in 'A'..'M') Balloon.edge(letter) else LognColors.textMuted
+
+/** O balão cheio da letra: corpo vivo e traço de 3:1 no claro, uma cor só no escuro. */
+@Composable
+@ReadOnlyComposable
+fun filledBalloon(letter: Char): BalloonStyle =
+    if (letter.uppercaseChar() in 'A'..'M') {
+        BalloonStyle.Filled(Balloon.fill(letter), Balloon.edge(letter))
+    } else {
+        BalloonStyle.Filled(LognColors.textMuted)
+    }
 
 val BALLOON_LETTERS: List<Char> = ('A'..'M').toList()
 
@@ -141,7 +160,7 @@ fun BalloonMarquee(modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(BalloonMetrics.marqueeGap),
     ) {
         for (letter in BALLOON_LETTERS) {
-            BalloonShape(BalloonStyle.Filled(balloonColor(letter)), BalloonMetrics.marqueeWidth)
+            BalloonShape(filledBalloon(letter), BalloonMetrics.marqueeWidth)
         }
     }
 }

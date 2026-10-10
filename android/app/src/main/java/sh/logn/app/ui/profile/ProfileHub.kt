@@ -305,6 +305,8 @@ private fun LevelBlock(view: ViewModel) {
                     .height(ProfileMetrics.barHeight)
                     .background(LognColors.line, CircleShape),
             ) {
+                // Na base do acento: o XP acima e a frase abaixo já dizem o nível e quanto
+                // falta, então a barra não carrega o estado sozinha.
                 Box(
                     Modifier
                         .fillMaxWidth(progress.coerceIn(0f, 1f))
@@ -454,7 +456,7 @@ private fun Footer(
     Text(
         Str.Profile.app_version(context, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE.toString()),
         style = LognFont.mono(ProfileMetrics.VERSION_SIZE),
-        color = LognColors.textDim,
+        color = LognColors.textFaint,
         textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth().padding(top = Space.xxs),
     )
@@ -521,6 +523,9 @@ private fun AnalyticsToggle(
             )
             Text(Str.Profile.analytics_desc(context), style = LognFont.sans(ProfileMetrics.TOGGLE_DESC_SIZE), color = LognColors.textMuted)
         }
+        // Ligado, a bolinha vai para a direita e fica escura sobre o acento (7.5:1), como o
+        // texto do botão primário: a posição e a bolinha dizem o estado, e o trilho fica na
+        // base do acento. No escuro nada muda.
         Switch(
             checked = view.analyticsEnabled,
             onCheckedChange = { dispatch(Event.SetAnalyticsEnabled(it)) },

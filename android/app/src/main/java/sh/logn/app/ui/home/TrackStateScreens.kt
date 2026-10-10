@@ -102,7 +102,7 @@ private fun Option(
         Modifier
             .fillMaxWidth()
             .background(if (selected) LognColors.accentTint else Color.Transparent, shape)
-            .border(if (selected) HomeMetrics.optionStroke else Stroke.hairline, if (selected) LognColors.accent else LognColors.line, shape)
+            .border(if (selected) HomeMetrics.optionStroke else Stroke.hairline, if (selected) LognColors.accentInk else LognColors.line, shape)
             .semantics { this.selected = selected }
             .clickable(role = Role.RadioButton, onClick = onClick)
             .padding(HomeMetrics.optionPadding),

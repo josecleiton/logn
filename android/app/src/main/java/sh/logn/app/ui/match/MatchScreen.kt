@@ -266,7 +266,7 @@ private fun ProblemStatement(
                 Text(
                     mv.currentOrigin.uppercase(),
                     style = LognFont.mono(MatchMetrics.ORIGIN_SIZE, tracking = MatchMetrics.LABEL_TRACKING),
-                    color = if (originStory) LognColors.accent else LognColors.textSecondary,
+                    color = if (originStory) LognColors.accentInk else LognColors.textSecondary,
                     modifier =
                         Modifier
                             .border(Stroke.hairline, if (originStory) LognColors.accent.copy(alpha = ORIGIN_ALPHA) else LognColors.lineStrong, shape)

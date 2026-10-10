@@ -7,9 +7,10 @@
         <item name="postSplashScreenTheme">@style/Theme.LogN</item>
     </style>
 
-    <!-- Escuro sempre, como em iOS. O fundo da janela é o canvas, para não piscar branco
-         entre a splash e o primeiro quadro. -->
-    <style name="Theme.LogN" parent="android:Theme.Material.NoActionBar">
+    <!-- Claro aqui e escuro em values-night, como o sistema (ADR 0030). O fundo da janela é
+         o canvas, para não piscar entre a splash e o primeiro quadro. O pai claro também
+         diz ao WebView do documento legal que o tema é claro (`prefers-color-scheme`). -->
+    <style name="Theme.LogN" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/logn_canvas</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>

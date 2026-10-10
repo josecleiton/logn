@@ -275,15 +275,17 @@ private fun PinnedRow(board: LeaderboardView) {
         } else {
             Str.Leaderboard.me_unranked_accessibility(context, name, xp)
         }
-    val accent = LognColors.accent
+    // Em tinta: o fio de baixo encosta na aba ativa, que é `accentInk`, e dois laranjas na
+    // mesma aresta destoavam no claro.
+    val edge = LognColors.accentInk
     Row(
         Modifier
             .fillMaxWidth()
             .background(LognColors.accentTint)
             .drawBehind {
                 val h = LognStroke.hairline.toPx()
-                drawRect(accent, Offset.Zero, size.copy(height = h))
-                drawRect(accent, Offset(0f, size.height - h), size.copy(height = h))
+                drawRect(edge, Offset.Zero, size.copy(height = h))
+                drawRect(edge, Offset(0f, size.height - h), size.copy(height = h))
             }.clearAndSetSemantics { contentDescription = label }
             .padding(horizontal = Space.screenMargin, vertical = Space.lg),
         horizontalArrangement = Arrangement.spacedBy(LeaderboardMetrics.rowGap),
@@ -355,6 +357,7 @@ private fun ClosedState(
                 modifier = Modifier.alignByBaseline(),
             )
         }
+        // Na base do acento: a contagem acima e a frase abaixo já dizem quantos faltam.
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(LeaderboardMetrics.barGap)) {
             for (i in 0 until threshold) {
                 Box(

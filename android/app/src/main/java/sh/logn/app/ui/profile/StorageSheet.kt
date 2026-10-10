@@ -130,7 +130,7 @@ private fun StorageRow(track: TrackView) {
                     .heightIn(min = IconMetrics.touch)
                     .clickable(role = Role.Button) { dispatch(Event.FetchLicense(track.id)) },
                 contentAlignment = Alignment.Center,
-            ) { Text(Str.Storage.download(context), style = LognFont.label, color = LognColors.accent) }
+            ) { Text(Str.Storage.download(context), style = LognFont.label, color = LognColors.accentInk) }
         }
     }
 }

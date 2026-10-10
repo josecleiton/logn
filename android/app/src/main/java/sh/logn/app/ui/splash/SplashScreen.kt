@@ -158,6 +158,8 @@ private fun ProgressBar(
         animationSpec = tween(if (reduceMotion) 0 else SplashMetrics.PROGRESS_MILLIS),
         label = "progress",
     )
+    // Na base do acento: a barra acompanha as linhas da abertura, que dizem o que está
+    // acontecendo; ela não carrega o estado sozinha.
     Box(modifier.fillMaxWidth().height(SplashMetrics.progressHeight).background(LognColors.line)) {
         Box(Modifier.fillMaxHeight().fillMaxWidth(fraction).background(LognColors.accent))
     }

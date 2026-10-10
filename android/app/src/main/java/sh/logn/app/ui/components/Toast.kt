@@ -188,11 +188,14 @@ fun ToastHost(modifier: Modifier = Modifier) {
             val shown = message ?: return@AnimatedVisibility
             val shape = RoundedCornerShape(ToastMetrics.radius)
             val dismissPx = with(density) { ToastMetrics.dismissDrag.toPx() }
+            // No claro a sombra vira um halo cinza em volta da pílula, e o DS só põe sombra
+            // em folha; a borda `lineStrong` já a separa do fundo. No escuro fica como estava.
+            val lifted = !LognColors.isLight
             Row(
                 Modifier
                     .offset { IntOffset(0, dragY.roundToInt()) }
                     .scale(scale)
-                    .shadow(ToastMetrics.shadow, shape)
+                    .then(if (lifted) Modifier.shadow(ToastMetrics.shadow, shape) else Modifier)
                     .background(LognColors.surfaceRaised, shape)
                     .border(Stroke.hairline, LognColors.lineStrong, shape)
                     .heightIn(min = ToastMetrics.minHeight)

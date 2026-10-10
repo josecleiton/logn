@@ -149,7 +149,8 @@ private fun PrincipalCard(
         Modifier
             .fillMaxWidth()
             .background(if (track.selected) LognColors.accentTint else LognColors.canvas, shape)
-            .border(Stroke.hairline, if (track.selected) LognColors.accent else LognColors.line, shape)
+            // A borda é o que diz qual trilha está aberta: em tinta, que no claro passa de 3:1.
+            .border(Stroke.hairline, if (track.selected) LognColors.accentInk else LognColors.line, shape)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(StoreMetrics.cardPadding),
         horizontalArrangement = Arrangement.spacedBy(Space.md),

@@ -355,9 +355,9 @@ private fun WarnBar(
         horizontalArrangement = Arrangement.spacedBy(Space.sm, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, LognColors.onAccent, HomeMetrics.warnIcon, knockout = LognColors.warn)
+        Icon(icon, LognColors.onStatus, HomeMetrics.warnIcon, knockout = LognColors.warn)
         // Com a fonte do sistema maior a frase quebra; sem o peso ela empurra o ícone para fora.
-        Text(text, style = LognFont.label, color = LognColors.onAccent, modifier = Modifier.weight(1f, fill = false))
+        Text(text, style = LognFont.label, color = LognColors.onStatus, modifier = Modifier.weight(1f, fill = false))
     }
 }
 
@@ -448,7 +448,8 @@ fun BottomNav(
 ) {
     val context = LocalContext.current
     val line = LognColors.line
-    val accent = LognColors.accent
+    // A borda da aba ativa carrega a seleção: em tinta, que no claro passa de 3:1.
+    val indicator = LognColors.accentInk
     Row(
         Modifier
             .fillMaxWidth()
@@ -473,7 +474,7 @@ fun BottomNav(
                     .drawBehind {
                         if (active) {
                             val h = HomeMetrics.navIndicator.toPx()
-                            drawRect(accent, Offset(0f, -h / 2), androidx.compose.ui.geometry.Size(size.width, h))
+                            drawRect(indicator, Offset(0f, -h / 2), androidx.compose.ui.geometry.Size(size.width, h))
                         }
                     }.padding(vertical = HomeMetrics.navPaddingV),
                 contentAlignment = Alignment.Center,

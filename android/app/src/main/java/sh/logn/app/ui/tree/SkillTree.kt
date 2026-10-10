@@ -219,7 +219,7 @@ fun nodeBalloonStyle(
     topic: LognTopic,
 ): BalloonStyle =
     when (node.status) {
-        NodeStatus.COMPLETED -> BalloonStyle.Filled(topic.color)
+        NodeStatus.COMPLETED -> BalloonStyle.Filled(topic.fill, topic.color)
         NodeStatus.ACTIVE -> BalloonStyle.Active
         NodeStatus.LOCKED, NodeStatus.PAYWALLLOCKED -> BalloonStyle.Locked
     }
@@ -330,7 +330,7 @@ private fun NodeLabel(node: SkillNode) {
         // Quantos problemas do nó já renderam XP. No bloqueado, 0/5 é ruído.
         if (!node.isClosed && node.problemsSolved.isNotEmpty()) {
             val all = node.solvedCount == node.problemsSolved.size
-            val color = if (all) LognColors.correct else LognColors.textSecondary
+            val color = if (all) LognColors.correctInk else LognColors.textSecondary
             if (all) Icon(LognIcon.Check, color, TreeMetrics.checkIcon, strokeWidth = TreeMetrics.CHECK_STROKE)
             Text("${node.solvedCount}/${node.problemsSolved.size}", style = LognFont.mono(TreeMetrics.COUNT_SIZE), color = color)
         }

@@ -116,7 +116,7 @@ fun OtpInput(
                                 .background(LognColors.surface, shape)
                                 .border(
                                     if (focused) FieldMetrics.focusStroke else Stroke.hairline,
-                                    if (focused) LognColors.accent else LognColors.line,
+                                    if (focused) LognColors.accentInk else LognColors.line,
                                     shape,
                                 ).semantics { contentDescription = label },
                             contentAlignment = Alignment.Center,
