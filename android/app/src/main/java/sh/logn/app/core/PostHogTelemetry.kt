@@ -49,7 +49,10 @@ class PostHogTelemetry(
                 // O crash do Core (Rust, no `.so`) não passa pela JVM. No Android 12 ou mais
                 // o SDK lê o tombstone do sistema na abertura seguinte (ADR 0024).
                 errorTrackingConfig.captureNativeCrashes = true
-                onFeatureFlags = PostHogOnFeatureFlags { android.os.Handler(android.os.Looper.getMainLooper()).post(FeatureFlags::refreshed) }
+                // A lambda, e não `FeatureFlags::refreshed`: a referência resolve o objeto aqui,
+                // na thread do PostHog, e se o estado de `FeatureFlags` nasce no meio de uma
+                // composição, a tela que o lê derruba o app ("created after the snapshot").
+                onFeatureFlags = PostHogOnFeatureFlags { android.os.Handler(android.os.Looper.getMainLooper()).post { FeatureFlags.refreshed() } }
             }
         PostHogAndroid.setup(context, config)
         started = true
