@@ -331,6 +331,10 @@ struct ProfileHubView: View {
             statCell(Str.Profile.bugs, "\(vm.bugsFound)", "spot the bug")
             statCell(Str.Profile.dry_runs, "\(vm.dryRunsCompleted)", "trace")
         }
+        // A linha fica com a altura da célula mais alta, e cada célula a ocupa inteira: o
+        // "XP TOTAL", sem legenda, ficava mais baixo e deixava o fundo `line` em cima e
+        // embaixo dele.
+        .fixedSize(horizontal: false, vertical: true)
         .background(LognColors.line)
         .cornerRadius(Radius.sm)
         .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
@@ -355,7 +359,7 @@ struct ProfileHubView: View {
                     .padding(.top, 2)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 13)
         .padding(.vertical, 12)
         .background(LognColors.surface)

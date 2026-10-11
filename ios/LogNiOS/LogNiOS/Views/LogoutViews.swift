@@ -394,7 +394,10 @@ struct DeleteAccountSheet: View {
             }
         }
         .padding(20)
-        .background(LognColors.surfaceRaised)
+        // A folha inteira, não só o conteúdo: sem o quadro cheio, o fundo do sistema
+        // aparecia em cima e embaixo, e o conteúdo lia como um cartão dentro da folha.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(LognColors.surfaceRaised.ignoresSafeArea())
     }
 
     private var confirmed: Bool { confirmation == "EXCLUIR" }
@@ -411,7 +414,9 @@ struct DeleteAccountSheet: View {
                 .foregroundColor(confirmed ? LognColors.textSecondary : LognColors.textDim)
                 .frame(maxWidth: .infinity, minHeight: 44)
         }
-        .buttonStyle(.plain)
+        // Desligado, o texto já sai em `textDim`; o `.plain` ainda esmaecia pela metade
+        // por cima, e o rótulo sumia (1.7:1 no claro).
+        .buttonStyle(PressSinkStyle())
         .disabled(!confirmed || providerBusy)
     }
 

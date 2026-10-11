@@ -132,6 +132,11 @@ struct LogNiOSApp: App {
                     core.dispatch(event: .dismissPasswordReset)
                 }
             }
+            // O tom do cursor, dos links e da seta de voltar: texto e glifo, então a tinta,
+            // que no claro passa de 4.5:1 (ADR 0031). Na raiz, e por último, para valer
+            // também no login, no cadastro e nas folhas; em `ContentView` as telas de
+            // entrada ficavam com o azul do sistema.
+            .tint(LognColors.accentInk)
         }
     }
     

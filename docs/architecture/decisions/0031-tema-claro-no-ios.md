@@ -43,25 +43,48 @@ da letra no tema em vigor; `BalloonColor.filled(_:)` monta o balão cheio, como 
   sistema fica em 1.7:1 sobre o branco;
 - o botão "Entrar com Apple": branco no escuro e preto no claro, as variantes que a
   diretriz da Apple pede para cada fundo. Ele só aparece com o login da Apple configurado;
-- o texto apagado que cai na sombra do painel do veredito ("0 XP" no palco e o fecho embaixo
-  do botão): `textMuted` no escuro e `textSecondary` no claro, onde a sombra escurece o fundo
-  e o `textMuted` desce a 4.4:1. O Android não tem essa sombra sobre o palco.
+- o "0 XP" do palco do erro, que cai na sombra do painel do veredito: `textMuted` no escuro e
+  `textSecondary` no claro, onde a sombra escurece o fundo e o `textMuted` desce a 4.4:1. O
+  Android não tem essa sombra sobre o palco.
 
 **Sistema.** As cinco telas deixam de forçar o escuro. A cor de abertura (`LaunchBackground`)
 ganha o canvas claro; o ícone do app fica escuro, como no Android. O símbolo do GitHub vira
 molde, pintado com `textPrimary`, que no escuro é o hex que estava gravado. A sombra do painel
 do veredito usa o `shadowSheet` do DS, que já tinha o valor claro. O tom global, que pinta o
-cursor, os links e a seta de voltar dentro do app, passa a `accentInk`. O interruptor é o do
-sistema: a bolinha é sempre branca e o trilho ligado fica no `accent`; a posição diz o estado.
+cursor, os links e a seta de voltar, passa a `accentInk`. O interruptor é o do sistema: a
+bolinha é sempre branca e o trilho ligado fica no `accent`; a posição diz o estado.
 
 **Documento legal.** Sem o escuro forçado, o WebView passa o tema do app ao
 `prefers-color-scheme`, e o `embed.css` já tem o bloco claro (ADR 0008). A cópia que viaja no
 bundle se gera de novo (`just legal-bundle`) com esse CSS no ar.
 
-**O escuro não mudou.** Cada tela foi capturada no simulador antes e depois da mudança, pelo
-mesmo roteiro: das 78, 55 saem iguais pixel a pixel, e as outras 23 diferem só onde duas
-rodadas do mesmo build já diferem: os dados da conta nova, o relógio da partida e o
+**O claro não mudou o escuro.** Cada tela foi capturada no simulador antes e depois da
+mudança, pelo mesmo roteiro: das 78, 55 saem iguais pixel a pixel, e as outras 23 diferem só
+onde duas rodadas do mesmo build já diferem: os dados da conta nova, o relógio da partida e o
 antisserrilhado de um ícone de tópico.
+
+**Depois da revisão, o dono decidiu corrigir nos dois temas** defeitos que o claro mostrou e
+que o escuro já tinha e escondia:
+
+- a sombra do painel do veredito vira um bloco só (`.compositingGroup()`). Sem isso, cada
+  filho projetava a sua, e o botão ganhava um halo dentro do painel. O raio passa ao do DS: o
+  do SwiftUI é o desvio da gaussiana, metade do borrão do CSS, e `0 -16 48` dá 24, não 48;
+- o tom global sobe para a raiz. Em `ContentView`, login, cadastro, redefinição de senha e
+  termos ficavam com o cursor azul do sistema;
+- as folhas de exclusão de conta e de compra como visitante pintam a folha inteira. Antes,
+  sobrava em volta o fundo do sistema, e na de compra o botão da tela de trás vazava pelo
+  vidro;
+- os botões desligados da exclusão ficam em `textDim`, sem o esmaecimento do sistema por
+  cima;
+- bordas e rótulos seguem o Android:
+  - a saída dos termos ganha a borda do botão secundário (`lineStrong`);
+  - os campos de redefinição de senha passam a `line`;
+  - a linha do armazenamento é `line`, no lugar do `Divider()` do sistema;
+  - "Sair mesmo assim" passa a `textPrimary`;
+- a célula "XP TOTAL" ocupa a altura da linha no perfil.
+
+Conferido de novo por captura: no escuro, só as telas dessas correções mudaram, e as outras
+diferem só nos dados da conta, no relógio e no antisserrilhado.
 
 ## 3. Alternativas descartadas
 
@@ -74,8 +97,6 @@ antisserrilhado de um ícone de tópico.
 - **`Color.resolve(in:)`.** É do iOS 17, e o app ainda roda no 16.
 - **Exemplo próprio em todo campo, nos dois temas.** Uniformizaria o exemplo em `textFaint`,
   mas mudaria o escuro, onde o cinza do sistema e o `textDim` não são o mesmo pixel.
-- **Levar o tom global para a raiz.** Login, cadastro e redefinição ganhariam o cursor da
-  marca, mas o escuro mudaria nessas telas, onde o cursor hoje é o azul do sistema.
 - **Interruptor desenhado à mão, com a bolinha `onAccent` do Android.** O controle do sistema
   é o que quem usa iOS reconhece, e o estado já está na posição da bolinha.
 
@@ -86,13 +107,3 @@ antisserrilhado de um ícone de tópico.
   descreve como dirigir o app instalado por XCUITest.
 - iOS e Android leem a mesma paleta, em duas cópias: mudança de token vale nas duas.
 - A cor da trilha que vem do servidor continua uma só para os dois temas (ADR 0030).
-- O claro mostrou defeitos que o escuro já tinha e escondia. Corrigi-los muda o escuro, e
-  ficaram com o dono:
-  - o halo do botão dentro do painel do veredito: a sombra vem sem `.compositingGroup()` e
-    com o dobro do raio de `0 -16 48`;
-  - o fundo do sistema em volta das folhas de exclusão de conta e de compra como visitante;
-  - o cursor azul do sistema nas telas de entrada;
-  - o esmaecimento dobrado dos botões desligados da exclusão;
-  - a célula "XP TOTAL" mais baixa que a linha no perfil;
-  - bordas e rótulos que divergem do Android: a saída dos termos, os campos de redefinição
-    de senha, o divisor do armazenamento e "Sair mesmo assim".

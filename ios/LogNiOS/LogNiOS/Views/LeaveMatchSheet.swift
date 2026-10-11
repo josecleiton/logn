@@ -72,7 +72,7 @@ struct LeaveMatchSheet: View {
             Button(action: onLeave) {
                 Text(Str.Leave.confirm)
                     .font(.plexSansMedium(16, relativeTo: .body))
-                    .foregroundColor(LognColors.textSecondary)
+                    .foregroundColor(LognColors.textPrimary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .overlay(

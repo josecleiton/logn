@@ -45,9 +45,6 @@ struct ContentView: View {
         // cartão dele ficava sem o nome da trilha, que vem da mesma busca.
         .onAppear(perform: loadNodesIfNeeded)
         .onChange(of: core.viewModel.hasAccessToken) { _ in loadNodesIfNeeded() }
-        // O tom do cursor, dos links e da seta de voltar: texto e glifo, então a tinta, que
-        // no claro passa de 4.5:1. O tema segue o do sistema (ADR 0031).
-        .tint(LognColors.accentInk)
         // O Core emite StoreReview via notify_shell após dominar um nó de milestone.
         // O delay deixa a animação de pop do relatório terminar antes de a sheet aparecer.
         .onChange(of: core.reviewRequestCount) { _ in

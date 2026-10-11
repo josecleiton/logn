@@ -23,7 +23,9 @@ struct StorageManagementView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider().background(LognColors.line)
+            // A linha das outras folhas. O `Divider()` do sistema saía no cinza dele, por
+            // cima do `.background`, que não o pintava.
+            Rectangle().fill(LognColors.line).frame(height: 1)
             ScrollView {
                 VStack(spacing: Space.md) {
                     Text(Str.Storage.desc)

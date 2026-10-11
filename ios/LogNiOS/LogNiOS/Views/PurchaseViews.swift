@@ -369,6 +369,9 @@ struct GuestPurchaseSheet: View {
         .padding(.horizontal, 22)
         .padding(.top, 22)
         .padding(.bottom, 12)
+        // A folha inteira: só com o conteúdo pintado, sobrava em volta o vidro do sistema,
+        // e o botão de comprar da tela de trás vazava por ele.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(LognColors.surface.ignoresSafeArea())
         .presentationDetents([.height(420)])
         .presentationDragIndicator(.visible)

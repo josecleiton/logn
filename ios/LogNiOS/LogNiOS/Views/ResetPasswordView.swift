@@ -56,9 +56,9 @@ struct ResetPasswordView: View {
                         .cornerRadius(Radius.sm)
                         .overlay(
                             RoundedRectangle(cornerRadius: Radius.sm)
-                                .stroke(LognColors.lineDim, lineWidth: 1)
+                                .stroke(LognColors.line, lineWidth: 1)
                         )
-                    
+
                     PasswordField(Str.Reset.confirm_prompt, text: $confirmPassword)
                         .textContentType(.newPassword)
                         .font(LognFont.bodyLarge)
@@ -68,7 +68,7 @@ struct ResetPasswordView: View {
                         .cornerRadius(Radius.sm)
                         .overlay(
                             RoundedRectangle(cornerRadius: Radius.sm)
-                                .stroke(passwordsMatch ? LognColors.lineDim : LognColors.warn, lineWidth: 1)
+                                .stroke(passwordsMatch ? LognColors.line : LognColors.warn, lineWidth: 1)
                         )
                     
                     Button(action: {
@@ -117,7 +117,7 @@ struct ResetPasswordView: View {
             .cornerRadius(Radius.sm)
             .overlay(
                 RoundedRectangle(cornerRadius: Radius.sm)
-                    .stroke(LognColors.lineDim, lineWidth: 1)
+                    .stroke(LognColors.line, lineWidth: 1)
             )
             .onChange(of: typedCode) { newValue in
                 let digits = String(newValue.filter(\.isNumber).prefix(6))

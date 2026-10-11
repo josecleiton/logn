@@ -337,11 +337,13 @@ struct TermsDeclineSheet: View {
                 dismiss()
                 core.dispatch(event: .logout)
             } label: {
+                // A borda do botão secundário (`lineStrong`, como no `LognButton`): com
+                // `line` o botão quase sumia na folha.
                 Text(Str.Reaccept.sign_out)
                     .font(.plexSansSemiBold(15))
                     .foregroundColor(LognColors.textPrimary)
                     .frame(maxWidth: .infinity, minHeight: 50)
-                    .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.lineStrong, lineWidth: 1))
             }
 
             Button { showsDelete = true } label: {

@@ -512,9 +512,9 @@ struct MatchVerdictScreen: View {
             : Str.Arena.back_to_trail_open
     }
 
-    /// O apagado que cai na sombra do painel: "0 XP" no palco e o fecho embaixo do botão.
-    /// No claro a sombra escurece o fundo dos dois, e `textMuted` fica abaixo de 4.5:1;
-    /// `textSecondary` passa. No escuro continua `textMuted`.
+    /// O apagado que cai na sombra do painel: o "0 XP" do palco, logo acima dele. No claro
+    /// a sombra escurece o fundo, e `textMuted` fica abaixo de 4.5:1; `textSecondary` passa.
+    /// No escuro continua `textMuted`.
     private var shadedMuted: Color {
         colorScheme == .light ? LognColors.textSecondary : LognColors.textMuted
     }
@@ -658,7 +658,7 @@ struct MatchVerdictScreen: View {
             if matchOver {
                 Text(closingNote)
                     .font(.plexMono(11))
-                    .foregroundColor(shadedMuted)
+                    .foregroundColor(LognColors.textMuted)
                     .frame(maxWidth: .infinity)
                     .padding(.top, 10)
             }
@@ -673,7 +673,11 @@ struct MatchVerdictScreen: View {
                 .frame(height: 1)
                 .foregroundColor(snapshot.isAccepted ? LognColors.lineStrong : LognColors.lineStrong)
         }
-        .shadow(color: LognColors.shadowSheet, radius: 48, y: -16)
+        // Um bloco só antes da sombra: sem isto cada filho projetava a dele, e o botão
+        // ganhava um halo dentro do painel (o DS não dá sombra a botão). O raio daqui é o
+        // desvio da gaussiana, metade do borrão do CSS: `0 -16 48` do DS é raio 24.
+        .compositingGroup()
+        .shadow(color: LognColors.shadowSheet, radius: 24, y: -16)
         // O painel reclama o espaço antes do palco; o palco não encolhe abaixo do
         // próprio conteúdo (`fixedSize` lá dentro), então a sigla nunca some.
         .layoutPriority(1)
