@@ -176,18 +176,33 @@ only inside the confirmation block, never in the screen's resting state. Never i
 The third color family, and the only non-semantic one. **Each contest letter carries the same color
 everywhere**: question header, scoreboard, report. It indicates an *address*, not a state.
 
-| Letter | Dark | Light | | Letter | Dark | Light |
-|---|---|---|---|---|---|---|
-| A | `#E4572E` | `#C43F19` | | H | `#F4A261` | `#B26320` |
-| B | `#F5C451` | `#A67A00` | | I | `#9BC53D` | `#5F8410` |
-| C | `#3DB2FF` | `#0B6FBF` | | J | `#D64550` | `#A3202B` |
-| D | `#6BCB77` | `#2E8B45` | | K | `#7C8BFF` | `#4352C9` |
-| E | `#C77DFF` | `#8A3FD1` | | L | `#D8DEE4` | `#5B646D` |
-| F | `#FF6FB5` | `#C2367E` | | M | `#00B894` | `#007A61` |
-| G | `#4ECDC4` | `#18867E` | | | | |
+| Letter | Dark | Light · body | Light · stroke |
+|---|---|---|---|
+| A | `#E4572E` | `#E4572E` | `#E4572E` |
+| B | `#F5C451` | `#F5C451` | `#B28300` |
+| C | `#3DB2FF` | `#3DB2FF` | `#0092DD` |
+| D | `#6BCB77` | `#6BCB77` | `#3C9D4C` |
+| E | `#C77DFF` | `#C77DFF` | `#B369EA` |
+| F | `#FF6FB5` | `#FF6FB5` | `#E4569D` |
+| G | `#4ECDC4` | `#4ECDC4` | `#009B93` |
+| H | `#F4A261` | `#F4A261` | `#C77836` |
+| I | `#9BC53D` | `#9BC53D` | `#709700` |
+| J | `#D64550` | `#D84751` | `#D84751` |
+| K | `#7C8BFF` | `#7C8BFF` | `#7280F3` |
+| L | `#D8DEE4` | `#D8DEE4` | `#868C91` |
+| M | `#00B894` | `#00B894` | `#009D7B` |
+
+In light, the balloon body keeps the dark color, and the stroke (the 1 dp outline of a filled
+balloon, an open balloon, the knot, the string, an edge, a stroke icon) is that color with the same
+OKLCH hue and chroma, darkened until it reaches 3:1 on `surfaceRaised`, the darkest background a
+balloon appears on: the outline holds the edge of the light body against white. J lightens a hair
+so the dark letter inside it reaches 4.5:1. Darkening the whole body, as the first handoff did
+(3.6–6.9:1) and a vivid palette at 3:1 did after it, turned orange into brown and yellow into
+mustard (ADR 0030). In dark, body and stroke are the same color, and there is no outline.
 
 Forbidden: using a balloon color for a verdict, selection or navigation; reassigning a letter within
-the same contest. Always access it through `Balloon.of('C')`, never through a hex literal.
+the same contest. Always access it through the token (`Balloon.fill('C')` for the body,
+`Balloon.edge('C')` for the stroke), never through a hex literal.
 
 ### Shadow
 Only use: the bottom sheet, and **only upward**.
@@ -552,7 +567,7 @@ on WA, 240ms shake, `lives--`, +20min penalty, and the trap sheet opens if a tra
 - A verdict is never conveyed by color alone: the judge's code always goes with it
 - A balloon is never conveyed by color alone: the letter sits below the balloon and in the `contentDescription`
 - A scoreboard cell reads "problema C, aceito, 2 tentativas, 88 minutos" ("problem C, accepted, 2 attempts, 88 minutes")
-- Minimum contrast 4.5:1 on text that is read; 3:1 for balloon colors (shapes, not text)
+- Minimum contrast 4.5:1 on text that is read; 3:1 for balloon colors (shapes, not text), which in light comes from the stroke
 - Font scale up to 200% (Android) / Dynamic Type up to AX3 (iOS) without truncating the prompt
 - `reduceMotion`: the shake becomes a border flash
 
@@ -591,17 +606,18 @@ balloon palette:
 
 | Family | Color | Topics |
 |---|---|---|
-| fundamentals | balloon **H** `#F4A261` / light `#B26320` | adhoc, arrays, strings |
-| search and sorting | balloon **C** `#3DB2FF` / light `#0B6FBF` | two-pointers, binary-search, sliding-window, sorting |
-| structures | balloon **E** `#C77DFF` / light `#8A3FD1` | trees, graphs |
-| optimization | balloon **M** `#00B894` / light `#007A61` | dp, greedy |
+| fundamentals | balloon **H** `#F4A261` (light stroke `#C77836`) | adhoc, arrays, strings |
+| search and sorting | balloon **C** `#3DB2FF` (light stroke `#0092DD`) | two-pointers, binary-search, sliding-window, sorting |
+| structures | balloon **E** `#C77DFF` (light stroke `#B369EA`) | trees, graphs |
+| optimization | balloon **M** `#00B894` (light stroke `#009D7B`) | dp, greedy |
 | boss | `accent` | challenge |
 
 A family color is **not** a problem color: they are distinct uses of the same palette. The accent stays
 reserved for the active node and the boss; no topic uses it.
 
 > **The balloon palette is certified for 3:1 as shape, not 4.5:1 as text.** Use it for
-> fills, icon strokes and edges. In legends and lists, the family appears as a 9dp colored
+> fills, icon strokes and edges; in light, a fill is the vivid body with the stroke as its
+> outline, and icon strokes and edges use the stroke. In legends and lists, the family appears as a 9dp colored
 > dot before the label, with the label in `textSecondary`: the color becomes shape and the text
 > stays legible.
 

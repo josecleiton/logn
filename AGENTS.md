@@ -6,7 +6,7 @@ Este arquivo contém as diretrizes e regras arquiteturais do projeto **LogN**, s
 - **Design System:** Localizado em `docs/design_system/`. Contém todas as especificações de UI/UX, cores, semântica e exportações de tokens (`tokens/`).
 - **Decisões Arquiteturais (ADRs):** Localizadas em `docs/architecture/decisions/`. Antes de alterar paradigmas do sistema, leia as ADRs para entender o contexto das decisões passadas.
 - **Teste no simulador:** `docs/testing/roteiro-simulador-ios.md`. Percorre o app inteiro tela a tela por linha de comando — geometria da janela, toque e arrasto sintéticos, atalhos de DEBUG e o que conferir em cada tela. Use antes de dar uma mudança de UI como pronta: os bugs mais caros deste projeto passaram por build, teste unitário e revisão, e só apareceram jogando.
-- **Teste no aparelho Android:** `docs/testing/roteiro-android.md`. O mesmo, por `adb`, num telefone conectado, lado a lado com o simulador iOS, que é a referência de cada tela (ADR 0023).
+- **Teste no aparelho Android:** `docs/testing/roteiro-android.md`. O mesmo, por `adb`, num telefone conectado ou no emulador, lado a lado com o simulador iOS, que é a referência de cada tela no escuro (ADR 0023), e de novo no tema claro (ADR 0030).
 
 ## 🏗️ Arquitetura do Sistema
 O LogN adota um padrão de **Monorepo** com separação clara de responsabilidades:
@@ -193,6 +193,17 @@ O LogN adota um padrão de **Monorepo** com separação clara de responsabilidad
     token de design que não existe (`Radius.max` no lugar de `.cornerRadius`). Nunca
     encadeie `.filter{}.map{}` dentro da árvore de views: resolva num laço `for` ou numa
     variável computada antes. Sub-árvore complexa vira `@ViewBuilder` separado.
+
+12. **No Android, toda tela nasce nos dois temas.** O app segue o claro ou o escuro do
+    sistema (ADR 0030); o iOS ainda é só escuro. A tela lê cor de `LognColors`, nunca de
+    `LognDark`, `LognLight` ou `Color(0x…)` (o `tokens-gate` barra). Texto e glifo usam a
+    tinta (`accentInk`, `correctInk`…), e a base só preenche e contorna: no escuro as duas
+    têm o mesmo hex, então o erro só aparece no claro. Estado que depende só de um traço
+    (seleção, foco) usa `accentInk`; onde número, visto ou texto já dizem o estado (barra de
+    progresso, caixa marcada, interruptor), fica a base do acento. Balão cheio é
+    `filledBalloon(letra)`: no claro, o corpo vivo leva contorno no traço de 3:1. Antes de
+    dar a tela como pronta, confira os dois temas no aparelho ou no emulador
+    (`adb shell cmd uimode night yes|no`, roteiro Android).
 
 
 ## 🔄 Fluxo de Trabalho do Agente

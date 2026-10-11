@@ -86,6 +86,9 @@ enum LognLight {
 }
 
 /// Balões A—M. Identidade categórica do problema, NUNCA estado.
+/// No light cada letra tem corpo (`lightFill`, a cor viva do dark) e traço (`light`:
+/// contorno, balão em aberto, cordinha, aresta), escurecido até 3:1 sobre `surfaceRaised`.
+/// O app iOS ainda é só dark (ADR 0030) e não lê as listas do light.
 enum Balloon {
     static let dark: [Color] = [
         Color(hex: "E4572E"), // A · vermelho
@@ -102,24 +105,49 @@ enum Balloon {
         Color(hex: "D8DEE4"), // L · prata
         Color(hex: "00B894"), // M · esmeralda
     ]
+    /// Traço no light.
     static let light: [Color] = [
-        Color(hex: "C43F19"), // A · vermelho
-        Color(hex: "A67A00"), // B · amarelo
-        Color(hex: "0B6FBF"), // C · azul
-        Color(hex: "2E8B45"), // D · verde
-        Color(hex: "8A3FD1"), // E · violeta
-        Color(hex: "C2367E"), // F · rosa
-        Color(hex: "18867E"), // G · turquesa
-        Color(hex: "B26320"), // H · âmbar
-        Color(hex: "5F8410"), // I · lima
-        Color(hex: "A3202B"), // J · carmim
-        Color(hex: "4352C9"), // K · índigo
-        Color(hex: "5B646D"), // L · prata
-        Color(hex: "007A61"), // M · esmeralda
+        Color(hex: "E4572E"), // A · vermelho
+        Color(hex: "B28300"), // B · amarelo
+        Color(hex: "0092DD"), // C · azul
+        Color(hex: "3C9D4C"), // D · verde
+        Color(hex: "B369EA"), // E · violeta
+        Color(hex: "E4569D"), // F · rosa
+        Color(hex: "009B93"), // G · turquesa
+        Color(hex: "C77836"), // H · âmbar
+        Color(hex: "709700"), // I · lima
+        Color(hex: "D84751"), // J · carmim
+        Color(hex: "7280F3"), // K · índigo
+        Color(hex: "868C91"), // L · prata
+        Color(hex: "009D7B"), // M · esmeralda
     ]
-    static func of(_ letter: Character, isLight: Bool = false) -> Color {
+    /// Corpo no light: a cor do dark; J clareia um fio para a letra escura chegar a 4.5:1.
+    static let lightFill: [Color] = [
+        Color(hex: "E4572E"), // A · vermelho
+        Color(hex: "F5C451"), // B · amarelo
+        Color(hex: "3DB2FF"), // C · azul
+        Color(hex: "6BCB77"), // D · verde
+        Color(hex: "C77DFF"), // E · violeta
+        Color(hex: "FF6FB5"), // F · rosa
+        Color(hex: "4ECDC4"), // G · turquesa
+        Color(hex: "F4A261"), // H · âmbar
+        Color(hex: "9BC53D"), // I · lima
+        Color(hex: "D84751"), // J · carmim
+        Color(hex: "7C8BFF"), // K · índigo
+        Color(hex: "D8DEE4"), // L · prata
+        Color(hex: "00B894"), // M · esmeralda
+    ]
+    /// O traço da letra: contorno, balão em aberto, cordinha, aresta.
+    static func edge(_ letter: Character, isLight: Bool = false) -> Color {
         let i = Int(letter.uppercased().first!.asciiValue! - 65)
         return (isLight ? light : dark)[i]
+    }
+    /// O mesmo que `edge`; o app, só dark, chama por este nome.
+    static func of(_ letter: Character, isLight: Bool = false) -> Color { edge(letter, isLight: isLight) }
+    /// O corpo do balão cheio da letra.
+    static func fill(_ letter: Character, isLight: Bool = false) -> Color {
+        let i = Int(letter.uppercased().first!.asciiValue! - 65)
+        return (isLight ? lightFill : dark)[i]
     }
 }
 

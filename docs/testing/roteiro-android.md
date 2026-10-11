@@ -1,8 +1,9 @@
 # Roteiro de teste no aparelho Android — tela a tela
 
 O par do `roteiro-simulador-ios.md`: como percorrer o LogN num telefone Android conectado
-por USB, com o backend local, só por linha de comando. Cada tela se confere lado a lado
-com o simulador iOS, que é a referência (ADR 0023).
+por USB, ou no emulador, com o backend local, só por linha de comando. Cada tela se confere
+lado a lado com o simulador iOS, que é a referência no escuro (ADR 0023), e de novo no tema
+claro, que só o Android tem (ADR 0030).
 
 Uma seção por fase do cliente, da abertura ao build de release.
 
@@ -22,6 +23,40 @@ adb shell wm density
 
 No aparelho de teste, 1080×2400 a 440 dpi: **1 dp = 2,75 px**. Toque e captura são em
 pixel do aparelho.
+
+### Emulador
+
+O AVD `Pixel_10` (API 37, arm64) serve no lugar do telefone. Com a memória do Mac
+apertada, o emulador cai sozinho para renderização por software (o log diz "Software GL
+rendering") e cada toque leva segundos; `-gpu host` força a GPU do Mac:
+
+```bash
+~/Library/Android/sdk/emulator/emulator -avd Pixel_10 -gpu host -no-snapshot -no-audio &
+adb devices                      # emulator-5554
+```
+
+A tela é 1080×2424 a 420 dpi: **1 dp = 2,625 px**, e as coordenadas das seções abaixo,
+que são do telefone, não valem. As receitas `just android/*` chamam `adb` sem serial: com
+telefone e emulador ligados juntos, desligue um. O teclado do emulador sobe as folhas e
+desloca os campos; feche-o (`KEYCODE_BACK` com ele aberto) antes de tocar no próximo.
+
+### Tema (ADR 0030)
+
+O app segue o claro ou o escuro do sistema, e **toda tela se confere nos dois**:
+
+```bash
+adb shell cmd uimode night yes   # escuro
+adb shell cmd uimode night no    # claro
+```
+
+A troca recria a Activity. No claro, confira o que o escuro esconde: texto e glifo de
+veredito, acento e sintaxe na tinta (`…Ink`), nunca na base, que no escuro tem o mesmo hex
+e no claro some; estado que só o traço carrega (aba, opção marcada, foco) em `accentInk`, e
+barras de progresso, caixas marcadas e interruptor no laranja da marca; os balões com o
+corpo vivo e o contorno fino, não marrons nem mostarda (ADR 0030); a tarja amarela e o botão
+de excluir com texto claro; os ícones da barra de status escuros no claro e claros no
+escuro, também com folha aberta; o documento legal claro, que pede o `embed.css` atual no
+backend local.
 
 ### Infra
 

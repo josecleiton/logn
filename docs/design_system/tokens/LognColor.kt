@@ -35,6 +35,8 @@ object LognDark {
     val tintInfo        = Color(0xFF0D1B2B)
     val synKeyword      = Color(0xFFC792EA)
     val synFunction     = Color(0xFF82AAFF)
+    val accentTint      = Color(0xFF241610)
+    val shine           = Color(0xB8FFFFFF)
 }
 
 object LognLight {
@@ -68,11 +70,17 @@ object LognLight {
     val tintInfo        = Color(0xFFE6EFFB)
     val synKeyword      = Color(0xFF7A28C4)
     val synFunction     = Color(0xFF0A4FA8)
+    val accentTint      = Color(0xFFFDE9DF)
+    val shine           = Color(0xB8FFFFFF)
 }
 
 /**
  * Balões A—M. Identidade categórica do problema, NUNCA estado.
  * A cor da letra é fixa durante todo o contest.
+ *
+ * No light cada letra tem corpo (`fill`, a cor viva do dark) e traço (`edge`: contorno,
+ * balão em aberto, cordinha, aresta), escurecido até 3:1 sobre `surfaceRaised`. No dark as
+ * duas são a mesma.
  */
 object Balloon {
     val dark = listOf(
@@ -90,21 +98,26 @@ object Balloon {
         Color(0xFFD8DEE4), // L · prata
         Color(0xFF00B894), // M · esmeralda
     )
-    val light = listOf(
-        Color(0xFFC43F19), // A · vermelho
-        Color(0xFFA67A00), // B · amarelo
-        Color(0xFF0B6FBF), // C · azul
-        Color(0xFF2E8B45), // D · verde
-        Color(0xFF8A3FD1), // E · violeta
-        Color(0xFFC2367E), // F · rosa
-        Color(0xFF18867E), // G · turquesa
-        Color(0xFFB26320), // H · âmbar
-        Color(0xFF5F8410), // I · lima
-        Color(0xFFA3202B), // J · carmim
-        Color(0xFF4352C9), // K · índigo
-        Color(0xFF5B646D), // L · prata
-        Color(0xFF007A61), // M · esmeralda
+    /** Corpo no light: a cor do dark; J clareia um fio para a letra escura chegar a 4.5:1. */
+    val lightFill = dark.mapIndexed { i, color -> if (i == 'J' - 'A') Color(0xFFD84751) else color }
+    /** Traço no light: mesmo matiz e croma em OKLCH, 3:1 sobre `surfaceRaised`. */
+    val lightEdge = listOf(
+        Color(0xFFE4572E), // A · vermelho
+        Color(0xFFB28300), // B · amarelo
+        Color(0xFF0092DD), // C · azul
+        Color(0xFF3C9D4C), // D · verde
+        Color(0xFFB369EA), // E · violeta
+        Color(0xFFE4569D), // F · rosa
+        Color(0xFF009B93), // G · turquesa
+        Color(0xFFC77836), // H · âmbar
+        Color(0xFF709700), // I · lima
+        Color(0xFFD84751), // J · carmim
+        Color(0xFF7280F3), // K · índigo
+        Color(0xFF868C91), // L · prata
+        Color(0xFF009D7B), // M · esmeralda
     )
-    fun of(letter: Char, isLight: Boolean = false): Color =
-        (if (isLight) light else dark)[letter.uppercaseChar() - 'A']
+    fun fill(letter: Char, isLight: Boolean = false): Color =
+        (if (isLight) lightFill else dark)[letter.uppercaseChar() - 'A']
+    fun edge(letter: Char, isLight: Boolean = false): Color =
+        (if (isLight) lightEdge else dark)[letter.uppercaseChar() - 'A']
 }

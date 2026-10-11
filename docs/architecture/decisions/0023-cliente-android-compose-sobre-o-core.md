@@ -89,7 +89,8 @@ Sem Sentry, sem Firebase e sem `google-services.json`.
 `BackHandler` por tela. É o que o iOS faz, e evita duas fontes de verdade sobre onde o
 jogador está.
 
-**Identidade visual.** Tema escuro e retrato, como no iOS. Os tokens de
+**Identidade visual.** Tema escuro e retrato, como no iOS (o tema claro veio depois, na
+ADR 0030, e as telas passaram a ler `LognColors`). Os tokens de
 `LognDesignSystem.swift` viram `LognDark`, `LognFont`, `Space`, `Radius` em `ui/theme/`, e
 o `just android/tokens-gate` barra medida com `.dp`/`.sp` fora dali. IBM Plex Sans e Mono
 em `res/font`. Balão, mapa e placar são desenhados em `Canvas` a partir dos paths do design
@@ -163,7 +164,8 @@ ADR, na tabela abaixo, quando entrar no código.
 - **Navigation Compose.** A raiz é derivada do `ViewModel`.
 - **Room e DataStore.** O Core já decide o que persiste; o shell só guarda bytes.
 - **UniFFI.** A ponte é a mesma do iOS, e duas pontes seriam dois formatos para manter.
-- **Tema claro e paisagem.** Nenhum dos dois existe no iOS.
+- **Tema claro e paisagem.** Nenhum dos dois existe no iOS. O tema claro entrou depois,
+  só no Android (ADR 0030); a paisagem continua fora.
 
 ## 5. Consequências
 

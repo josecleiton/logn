@@ -176,18 +176,33 @@ só dentro do bloco de confirmação, nunca no estado de repouso da tela. Nunca 
 Terceira família de cor, e a única não-semântica. **Cada letra do contest carrega a mesma cor
 em toda parte**: header da questão, placar, relatório. Indica *endereço*, não estado.
 
-| Letra | Dark | Light | | Letra | Dark | Light |
-|---|---|---|---|---|---|---|
-| A | `#E4572E` | `#C43F19` | | H | `#F4A261` | `#B26320` |
-| B | `#F5C451` | `#A67A00` | | I | `#9BC53D` | `#5F8410` |
-| C | `#3DB2FF` | `#0B6FBF` | | J | `#D64550` | `#A3202B` |
-| D | `#6BCB77` | `#2E8B45` | | K | `#7C8BFF` | `#4352C9` |
-| E | `#C77DFF` | `#8A3FD1` | | L | `#D8DEE4` | `#5B646D` |
-| F | `#FF6FB5` | `#C2367E` | | M | `#00B894` | `#007A61` |
-| G | `#4ECDC4` | `#18867E` | | | | |
+| Letra | Dark | Light · corpo | Light · traço |
+|---|---|---|---|
+| A | `#E4572E` | `#E4572E` | `#E4572E` |
+| B | `#F5C451` | `#F5C451` | `#B28300` |
+| C | `#3DB2FF` | `#3DB2FF` | `#0092DD` |
+| D | `#6BCB77` | `#6BCB77` | `#3C9D4C` |
+| E | `#C77DFF` | `#C77DFF` | `#B369EA` |
+| F | `#FF6FB5` | `#FF6FB5` | `#E4569D` |
+| G | `#4ECDC4` | `#4ECDC4` | `#009B93` |
+| H | `#F4A261` | `#F4A261` | `#C77836` |
+| I | `#9BC53D` | `#9BC53D` | `#709700` |
+| J | `#D64550` | `#D84751` | `#D84751` |
+| K | `#7C8BFF` | `#7C8BFF` | `#7280F3` |
+| L | `#D8DEE4` | `#D8DEE4` | `#868C91` |
+| M | `#00B894` | `#00B894` | `#009D7B` |
+
+No light, o corpo do balão continua a cor do dark, e o traço (contorno de 1 dp do balão cheio,
+balão em aberto, nó, cordinha, aresta, ícone de traço) é ela com o mesmo matiz e croma em OKLCH,
+escurecida até 3:1 sobre `surfaceRaised`, o fundo mais escuro onde um balão aparece: o contorno
+segura a borda do corpo claro sobre o branco. J clareia um fio para a letra escura dentro dele
+chegar a 4.5:1. Escurecer o corpo inteiro, como o primeiro handoff (3.6–6.9:1) e uma paleta viva
+a 3:1 depois dele, transformava laranja em marrom e amarelo em mostarda (ADR 0030). No dark corpo
+e traço são a mesma cor, e não há contorno.
 
 Proibido: usar cor de balão para veredito, seleção ou navegação; reatribuir uma letra dentro
-do mesmo contest. Acesse sempre por `Balloon.of('C')`, nunca por hex literal.
+do mesmo contest. Acesse sempre pelo token (`Balloon.fill('C')` para o corpo,
+`Balloon.edge('C')` para o traço), nunca por hex literal.
 
 ### Sombra
 Único uso: bottom sheet, e **só para cima**.
@@ -552,7 +567,7 @@ se WA, shake 240ms, `lives--`, penalidade +20min, e abre trap sheet se houver tr
 - Veredito nunca só por cor — a sigla do juiz sempre acompanha
 - Balão nunca só por cor — a letra fica sob o balão e no `contentDescription`
 - Célula do placar lê "problema C, aceito, 2 tentativas, 88 minutos"
-- Contraste mínimo 4.5:1 em texto lido; 3:1 nas cores de balão (formas, não texto)
+- Contraste mínimo 4.5:1 em texto lido; 3:1 nas cores de balão (formas, não texto), que no light vem do traço
 - Font scale até 200% (Android) / Dynamic Type até AX3 (iOS) sem truncar enunciado
 - `reduceMotion`: shake vira flash de borda
 
@@ -591,17 +606,18 @@ paleta de balões:
 
 | Família | Cor | Assuntos |
 |---|---|---|
-| fundamentos | balão **H** `#F4A261` / light `#B26320` | adhoc, arrays, strings |
-| busca e ordenação | balão **C** `#3DB2FF` / light `#0B6FBF` | two-pointers, binary-search, sliding-window, sorting |
-| estruturas | balão **E** `#C77DFF` / light `#8A3FD1` | trees, graphs |
-| otimização | balão **M** `#00B894` / light `#007A61` | dp, greedy |
+| fundamentos | balão **H** `#F4A261` (traço no light `#C77836`) | adhoc, arrays, strings |
+| busca e ordenação | balão **C** `#3DB2FF` (traço no light `#0092DD`) | two-pointers, binary-search, sliding-window, sorting |
+| estruturas | balão **E** `#C77DFF` (traço no light `#B369EA`) | trees, graphs |
+| otimização | balão **M** `#00B894` (traço no light `#009D7B`) | dp, greedy |
 | boss | `accent` | challenge |
 
 Cor de família **não** é cor de problema: são usos distintos da mesma paleta. O acento fica
 reservado ao nó ativo e ao boss — nenhum assunto o usa.
 
 > **A paleta de balões é certificada para 3:1 como forma, não 4.5:1 como texto.** Use-a em
-> preenchimento, traço de ícone e aresta. Em legendas e listas, a família entra como um ponto
+> preenchimento, traço de ícone e aresta; no light, o preenchimento é o corpo vivo e leva o
+> contorno no traço, e traço e aresta usam o traço. Em legendas e listas, a família entra como um ponto
 > colorido de 9dp antes do rótulo, e o rótulo em `textSecondary` — cor vira forma, o texto
 > continua legível.
 
