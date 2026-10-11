@@ -209,6 +209,7 @@ standings = "STANDINGS"
 lives_accessibility = "%{lives} out of %{max_lives} lives"
 verdict_accessibility = "%{raw}, %{meaning}"
 xp = "%{xp} XP"
+avatar_accessibility = "Profile"
 
 guest_mode = "GUEST MODE"
 guest_sub = "NO ACCOUNT · LOCAL ONLY"

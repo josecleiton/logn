@@ -50,9 +50,12 @@ struct LogNiOSApp: App {
                         .environmentObject(core)
                         .environmentObject(storeKit)
                         .overlay(alignment: .bottom) {
-                            // A exclusão pedida foi cancelada por este login.
+                            // A exclusão pedida foi cancelada por este login. Acima da barra
+                            // de abas, na altura da faixa dos termos: colado ao pé, o cartão
+                            // cobria a barra.
                             if core.viewModel.accountRestoredNotice {
                                 AccountRestoredCard().environmentObject(core)
+                                    .padding(.bottom, 96)
                             }
                         }
                         .overlay(alignment: .bottom) {

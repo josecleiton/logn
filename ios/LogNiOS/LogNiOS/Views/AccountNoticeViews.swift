@@ -95,7 +95,6 @@ struct AccountRestoredCard: View {
         .cornerRadius(Radius.md)
         .overlay(RoundedRectangle(cornerRadius: Radius.md).stroke(LognColors.lineStrong, lineWidth: 1))
         .padding(.horizontal, 20)
-        .padding(.bottom, 24)
         .accessibilityElement(children: .contain)
     }
 }

@@ -229,7 +229,8 @@ private fun TrailsHeader(
                     TrackSwitcher(view, onCatalog)
                 }
             }
-            val label = Str.Profile.guest_mode(context)
+            // Quem tem conta ouvia "modo visitante" também.
+            val label = if (view.isGuest) Str.Profile.guest_mode(context) else Str.Profile.avatar_accessibility(context)
             // O círculo tem 40; o alvo cresce para os 44 mínimos, invisível.
             Box(
                 Modifier

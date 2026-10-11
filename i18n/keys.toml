@@ -232,6 +232,8 @@ standings = {}
 lives_accessibility = { placeholders = [{ name = "lives", type = "int" }, { name = "max_lives", type = "int" }] }
 verdict_accessibility = { placeholders = [{ name = "raw", type = "text" }, { name = "meaning", type = "text" }] }
 xp = { placeholders = [{ name = "xp", type = "int" }] }
+# O avatar do topo, que abre o perfil, para o leitor de tela; o visitante ouve `guest_mode`.
+avatar_accessibility = {}
 
 guest_mode = {}
 guest_sub = {}

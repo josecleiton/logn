@@ -209,6 +209,7 @@ standings = "PLACAR"
 lives_accessibility = "%{lives} de %{max_lives} vidas"
 verdict_accessibility = "%{raw}, %{meaning}"
 xp = "%{xp} XP"
+avatar_accessibility = "Perfil"
 
 guest_mode = "MODO VISITANTE"
 guest_sub = "SEM CONTA · SÓ NESTE APARELHO"

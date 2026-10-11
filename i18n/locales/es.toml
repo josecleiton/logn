@@ -207,6 +207,7 @@ standings = "POSICIONES"
 lives_accessibility = "%{lives} de %{max_lives} vidas"
 verdict_accessibility = "%{raw}, %{meaning}"
 xp = "%{xp} XP"
+avatar_accessibility = "Perfil"
 
 guest_mode = "MODO INVITADO"
 guest_sub = "SIN CUENTA · SOLO EN ESTE DISPOSITIVO"

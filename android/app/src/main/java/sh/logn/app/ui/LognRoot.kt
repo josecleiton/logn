@@ -161,8 +161,16 @@ private fun AppHost(view: ViewModel) {
         // o onboarding: duas capas de tela cheia não abrem juntas.
         if (view.purchaseFlow.stage != PurchaseStage.IDLE && !view.showOnboarding) PurchaseProgressScreen(view)
         store.guestPrompt?.let { GuestPurchaseSheet(view, it) }
-        // A exclusão pedida foi cancelada por este login.
-        if (view.accountRestoredNotice) AccountRestoredCard(Modifier.align(Alignment.BottomCenter))
+        // A exclusão pedida foi cancelada por este login. Acima da barra de abas, como a
+        // faixa: colado ao pé, o cartão cobria a barra.
+        if (view.accountRestoredNotice) {
+            AccountRestoredCard(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = RootMetrics.bannerAboveTabs),
+            )
+        }
         // Só mudanças não relevantes: a faixa, uma vez, acima da barra de abas.
         if (view.termsNotice) {
             TermsNoticeBanner(

@@ -335,7 +335,8 @@ struct SkillTreeHostView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(Str.Profile.guest_mode)
+            // Quem tem conta ouvia "modo visitante" também.
+            .accessibilityLabel(core.viewModel.isGuest ? Str.Profile.guest_mode : Str.Profile.avatar_accessibility)
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)

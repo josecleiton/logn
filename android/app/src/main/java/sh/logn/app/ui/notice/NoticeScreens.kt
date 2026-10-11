@@ -123,7 +123,7 @@ fun AccountRestoredCard(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val dispatch = LocalDispatch.current
     val shape = RoundedCornerShape(Radius.md)
-    Box(modifier.fillMaxWidth().padding(start = Space.screenMargin, end = Space.screenMargin, bottom = Space.xl)) {
+    Box(modifier.fillMaxWidth().padding(horizontal = Space.screenMargin)) {
         Column(
             Modifier
                 .fillMaxWidth()
