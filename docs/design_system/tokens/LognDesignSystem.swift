@@ -46,6 +46,8 @@ enum LognDark {
     static let synKeyword      = Color(hex: "C792EA")
     static let synFunction     = Color(hex: "82AAFF")
     static let accentTint      = Color(hex: "241610")
+    /// Sombra de folha (`shadowSheet`): `0 -16 48`.
+    static let shadowSheet     = Color.black.opacity(0.65)
 }
 
 enum LognLight {
@@ -80,6 +82,7 @@ enum LognLight {
     static let synKeyword      = Color(hex: "7A28C4")
     static let synFunction     = Color(hex: "0A4FA8")
     static let accentTint      = Color(hex: "FDE9DF")
+    static let shadowSheet     = Color(hex: "14161A").opacity(0.14)
 }
 
 /// Balões A—M. Identidade categórica do problema, NUNCA estado.
@@ -138,8 +141,6 @@ enum Balloon {
         let i = Int(letter.uppercased().first!.asciiValue! - 65)
         return (isLight ? light : dark)[i]
     }
-    /// O mesmo que `edge`; o app, só dark, chama por este nome.
-    static func of(_ letter: Character, isLight: Bool = false) -> Color { edge(letter, isLight: isLight) }
     /// O corpo do balão cheio da letra.
     static func fill(_ letter: Character, isLight: Bool = false) -> Color {
         let i = Int(letter.uppercased().first!.asciiValue! - 65)

@@ -13,7 +13,7 @@ O plano da loja (plano no repositório de conteúdo, `docs/planos/<nome>`, decis
 **Uma página, dois modos**, montados pelo pacote `backend/internal/legal`:
 
 - `GET /legal/{terms,privacy}`: a página do navegador. Tem título, linha de versão e vigência gerada das colunas, tema claro e escuro e troca de língua. É a URL da loja.
-- `?embed=1`: o modo do app. Usa o CSS em `surfaceRaised`, sem título e sem data, porque a tela nativa mostra os dois no cabeçalho. Segue o `prefers-color-scheme`, que o WebView tira do tema do app: o Android segue o tema do sistema (ADR 0030), e o iOS, que força o escuro, recebe o escuro.
+- `?embed=1`: o modo do app. Usa o CSS em `surfaceRaised`, sem título e sem data, porque a tela nativa mostra os dois no cabeçalho. Segue o `prefers-color-scheme`, que o WebView tira do tema do app: os dois apps seguem o tema do sistema (ADR 0030 e ADR 0031).
 - `?highlight=id1,id2` marca seções como novas nos dois modos. É o que a futura folha de aceite pendente vai usar.
 - A língua vem de `?lang=`, depois do `Accept-Language`, e por fim do português, que é a versão que prevalece.
 

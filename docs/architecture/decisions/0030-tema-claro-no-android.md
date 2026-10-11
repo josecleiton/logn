@@ -1,7 +1,7 @@
 # ADR 0030: Tema claro no Android, derivado dos tokens e seguindo o sistema
 
 Substitui, na ADR 0023, o descarte de "Tema claro e paisagem" na parte do tema claro. A
-paisagem continua fora.
+paisagem continua fora. A ADR 0031 leva o claro ao iOS, com as mesmas regras.
 
 ## 1. Contexto
 
@@ -129,12 +129,12 @@ a `070809`. O resto foi conferido tela a tela, com captura antes e depois no emu
   padrão `#FF7A45`, que é o acento; uma trilha com cor própria vai precisar do par claro.
 - A cópia do documento legal que viaja no build da loja sai da produção: o `.aab` gerado
   antes do deploy deste `embed.css` leva a cópia offline só escura.
-- O iOS segue escuro, com pendências conhecidas para quando ganhar o claro:
+- O iOS seguia escuro, com as pendências abaixo, resolvidas na ADR 0031:
   - cinco telas forçam `.preferredColorScheme(.dark)`, e a raiz não: a interface do
     sistema já segue o aparelho nas telas de entrada;
   - o botão "Entrar com Apple" é branco, e as diretrizes da Apple pedem o preto ou o
     contornado sobre fundo claro;
   - o ícone do GitHub tem `fill="#EDEEEF"` gravado no asset;
   - as sombras são `.black` com opacidade do escuro.
-- A referência de cada tela continua o iOS no escuro; no claro, enquanto o iOS não tiver,
-  é o Android contra o design system.
+- A referência de cada tela continua o iOS no escuro; no claro, o design system, com os dois
+  apps conferidos um contra o outro (ADR 0031).

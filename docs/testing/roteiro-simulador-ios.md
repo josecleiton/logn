@@ -83,6 +83,33 @@ xcrun simctl launch booted sh.logn.LogNiOS
 O bundle id é `sh.logn.LogNiOS` — não `com.josecleiton.*`. É o id de teste, de propósito:
 o de loja é `sh.logn.app`, o mesmo pacote do Android.
 
+### Tema (ADR 0031)
+
+O app segue o claro ou o escuro do sistema, e **toda tela se confere nos dois**:
+
+```bash
+xcrun simctl ui booted appearance dark    # escuro
+xcrun simctl ui booted appearance light   # claro
+```
+
+A troca vale na hora, com o app aberto. Para comparar capturas de duas rodadas, fixe a barra
+de status antes:
+
+```bash
+xcrun simctl status_bar booted override --time 9:41 --batteryState charged --batteryLevel 100 \
+  --cellularMode active --cellularBars 4 --wifiBars 3 --dataNetwork wifi
+```
+
+No claro, confira o mesmo que o roteiro do Android pede: texto e glifo de veredito, acento e
+sintaxe na tinta (`…Ink`), nunca na base; estado que só o traço carrega (aba, opção marcada,
+foco do OTP, borda da saída prevista) em `accentInk`, e barras de progresso, caixas marcadas e
+interruptor no laranja da marca; os balões com o corpo vivo e o contorno fino; a tarja amarela
+e o botão de excluir com texto claro. E o que é só do iOS: o exemplo dentro dos campos em
+`textFaint`, não no cinza do sistema, que no branco some; o visto escuro na caixa marcada do
+cadastro; o símbolo do GitHub escuro; o aviso do topo sem sombra; o fundo da abertura claro; e
+o documento legal claro, que pede o `embed.css` atual no backend local e a cópia do bundle
+gerada de novo (`LEGAL_BUNDLE_ALLOW_DRAFT=1 just legal-bundle`).
+
 ---
 
 ## 1 · Geometria da janela: o passo que ninguém acerta chutando
@@ -190,6 +217,32 @@ AS
 
 A comparação por igualdade de texto funciona; comparar `item 1 of (position of e)`
 com número, não.
+
+### Quando a árvore do app não aparece: XCUITest
+
+No Simulator do Xcode 26.4 a árvore de Acessibilidade do macOS não chegou aos elementos do
+app: a janela do device respondia como o próprio aplicativo, e nem a geometria da seção 1 nem
+o `AXPress` acharam alvo. O que funcionou foi um bundle de UI test, num projeto à parte, que
+dirige o app já instalado pelo bundle id:
+
+```swift
+let logn = XCUIApplication(bundleIdentifier: "sh.logn.LogNiOS")
+logn.launchArguments = ["-AppleLanguages", "(pt-BR)"]
+logn.launch()
+```
+
+Ele roda dentro do simulador, sem tomar o mouse nem o teclado do Mac, acha botão e campo pelo
+rótulo e grava a captura direto no disco do Mac (`XCUIScreen.main.screenshot()`). O que o
+teste não alcança (SQL, backend fora) fica no shell, entre um método e outro, com
+`xcodebuild test-without-building -only-testing:…`. Tropeços conhecidos:
+
+- depois de um `build-for-testing`, a primeira rodada ainda usa o runner instalado no
+  simulador: desinstale o `….xctrunner` antes;
+- o "Save Password?" do iOS cobre a tela logo depois de entrar: toque em "Not Now";
+- o código de 6 dígitos vai um por campo: a rajada de `typeText` perde dígitos enquanto o foco
+  anda;
+- o exemplo de um campo é `placeholderValue`, não `label`, na busca por texto;
+- dentro de um `XCTestCase`, uma função solta chamada `wait` perde para o método da classe.
 
 ---
 
