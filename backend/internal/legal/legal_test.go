@@ -195,10 +195,15 @@ func TestInternalLinkKeepsFragment(t *testing.T) {
 func TestEmbedMode(t *testing.T) {
 	store := newFakeStore(t, PtBR, En, Es)
 	body := serve(t, Handler(store, Terms, false), "/legal/terms?embed=1&lang=en", nil).Body.String()
-	for _, absent := range []string{"<h1", "legal-meta", "prefers-color-scheme", `class="topbar"`} {
+	for _, absent := range []string{"<h1", "legal-meta", `class="topbar"`} {
 		if strings.Contains(body, absent) {
 			t.Errorf("embed não devia ter %q", absent)
 		}
+	}
+	// O WebView passa o tema do app ao `prefers-color-scheme`: sem o bloco claro, o
+	// documento sai escuro num app claro.
+	if !strings.Contains(body, "prefers-color-scheme:light") {
+		t.Error("embed sem tema claro")
 	}
 	if !strings.Contains(body, "Introduction of the test document.") {
 		t.Error("embed perdeu a introdução")
