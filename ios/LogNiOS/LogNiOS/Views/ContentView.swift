@@ -7,7 +7,7 @@ import App
 struct ContentView: View {
     @EnvironmentObject var core: CoreWrapper
     @EnvironmentObject var storeKit: StoreKitManager
-    @State private var tab: LognTab = LognTab.launchOverride ?? .trilhas
+    @State private var tab: LognTab = LognTab.launchOverride ?? .trails
     @State private var catalogRequested = false
     @Environment(\.requestReview) private var requestReview
 
@@ -31,7 +31,7 @@ struct ContentView: View {
         Group {
             if core.viewModel.showOnboarding {
                 OnboardingView { wantsCatalog in
-                    tab = .trilhas
+                    tab = .trails
                     catalogRequested = wantsCatalog
                 }
                 .environmentObject(core)
@@ -83,7 +83,7 @@ struct ContentView: View {
     private var tabRoot: some View {
         Group {
             switch tab {
-            case .trilhas:
+            case .trails:
                 NavigationStack {
                     SkillTreeHostView(tab: $tab, catalogRequested: $catalogRequested)
                         .environmentObject(core)
@@ -91,7 +91,7 @@ struct ContentView: View {
                 }
             case .arena:
                 NavigationStack { ArenaHostView(tab: $tab).environmentObject(core) }
-            case .placar:
+            case .standings:
                 NavigationStack { StandingsHostView(tab: $tab).environmentObject(core) }
             }
         }
@@ -101,13 +101,13 @@ struct ContentView: View {
 // MARK: - Barra de navegação
 
 enum LognTab: CaseIterable {
-    case trilhas, arena, placar
+    case trails, arena, standings
 
     var title: String {
         switch self {
-        case .trilhas: return Str.Tabs.trails
-        case .arena:   return Str.Tabs.arena
-        case .placar:  return Str.Tabs.standings
+        case .trails:    return Str.Tabs.trails
+        case .arena:     return Str.Tabs.arena
+        case .standings: return Str.Tabs.standings
         }
     }
 
@@ -119,9 +119,9 @@ enum LognTab: CaseIterable {
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: "-LogNStartTab"), i + 1 < args.count else { return nil }
         switch args[i + 1] {
-        case "trilhas": return .trilhas
+        case "trilhas": return .trails
         case "arena":   return .arena
-        case "placar":  return .placar
+        case "placar":  return .standings
         default:        return nil
         }
         #else
@@ -564,7 +564,7 @@ struct StandingsHostView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            LeaderboardScreen(onGoToTrail: { tab = .trilhas }).environmentObject(core)
+            LeaderboardScreen(onGoToTrail: { tab = .trails }).environmentObject(core)
             LognBottomNav(selection: $tab)
         }
         .navigationBarHidden(true)
