@@ -49,6 +49,8 @@ enum LognDark {
     /// Acento sobre canvas — fundo de seleção (linha escolhida, tag marcada, nó ativo).
     /// Literal de `logn-gameplay-exploracoes.dc.html`.
     static let accentTint      = Color(hex: "241610")
+    /// Sombra de folha (`shadowSheet`): `0 -16 48`.
+    static let shadowSheet     = Color.black.opacity(0.65)
 }
 
 enum LognLight {
@@ -83,12 +85,69 @@ enum LognLight {
     static let synKeyword      = Color(hex: "7A28C4")
     static let synFunction     = Color(hex: "0A4FA8")
     static let accentTint      = Color(hex: "FDE9DF")
+    static let shadowSheet     = Color(hex: "14161A").opacity(0.14)
+}
+
+extension Color {
+    /// A cor que resolve pelo tema em vigor: `light` no claro, `dark` no escuro. Vale em
+    /// qualquer `View`, dentro de `Canvas` e passada ao UIKit, porque quem resolve é o traço.
+    init(light: Color, dark: Color) {
+        let l = UIColor(light)
+        let d = UIColor(dark)
+        self.init(uiColor: UIColor { $0.userInterfaceStyle == .dark ? d : l })
+    }
+}
+
+/// A paleta das telas: cada token no tema do sistema em vigor (ADR 0031). Tela lê daqui,
+/// nunca de `LognDark` ou `LognLight`, e `just ios-tokens-gate` barra. No escuro cada token
+/// é o hex do `LognDark`, então o escuro não muda.
+enum LognColors {
+    static let canvas          = Color(light: LognLight.canvas, dark: LognDark.canvas)
+    static let surface         = Color(light: LognLight.surface, dark: LognDark.surface)
+    static let surfaceRaised   = Color(light: LognLight.surfaceRaised, dark: LognDark.surfaceRaised)
+    static let line            = Color(light: LognLight.line, dark: LognDark.line)
+    static let lineStrong      = Color(light: LognLight.lineStrong, dark: LognDark.lineStrong)
+    static let textPrimary     = Color(light: LognLight.textPrimary, dark: LognDark.textPrimary)
+    static let textSecondary   = Color(light: LognLight.textSecondary, dark: LognDark.textSecondary)
+    static let textMuted       = Color(light: LognLight.textMuted, dark: LognDark.textMuted)
+    static let textDim         = Color(light: LognLight.textDim, dark: LognDark.textDim)
+    static let lineDim         = Color(light: LognLight.lineDim, dark: LognDark.lineDim)
+    static let heartOff        = Color(light: LognLight.heartOff, dark: LognDark.heartOff)
+    static let rowLine         = Color(light: LognLight.rowLine, dark: LognDark.rowLine)
+    static let buttonDisabled  = Color(light: LognLight.buttonDisabled, dark: LognDark.buttonDisabled)
+    static let accent          = Color(light: LognLight.accent, dark: LognDark.accent)
+    static let accentInk       = Color(light: LognLight.accentInk, dark: LognDark.accentInk)
+    static let onAccent        = Color(light: LognLight.onAccent, dark: LognDark.onAccent)
+    static let correct         = Color(light: LognLight.correct, dark: LognDark.correct)
+    static let wrong           = Color(light: LognLight.wrong, dark: LognDark.wrong)
+    static let warn            = Color(light: LognLight.warn, dark: LognDark.warn)
+    static let info            = Color(light: LognLight.info, dark: LognDark.info)
+    static let correctInk      = Color(light: LognLight.correctInk, dark: LognDark.correctInk)
+    static let wrongInk        = Color(light: LognLight.wrongInk, dark: LognDark.wrongInk)
+    static let warnInk         = Color(light: LognLight.warnInk, dark: LognDark.warnInk)
+    static let infoInk         = Color(light: LognLight.infoInk, dark: LognDark.infoInk)
+    static let tintOk          = Color(light: LognLight.tintOk, dark: LognDark.tintOk)
+    static let tintErr         = Color(light: LognLight.tintErr, dark: LognDark.tintErr)
+    static let tintWarn        = Color(light: LognLight.tintWarn, dark: LognDark.tintWarn)
+    static let tintInfo        = Color(light: LognLight.tintInfo, dark: LognDark.tintInfo)
+    static let synKeyword      = Color(light: LognLight.synKeyword, dark: LognDark.synKeyword)
+    static let synFunction     = Color(light: LognLight.synFunction, dark: LognDark.synFunction)
+    static let accentTint      = Color(light: LognLight.accentTint, dark: LognDark.accentTint)
+    static let shadowSheet     = Color(light: LognLight.shadowSheet, dark: LognDark.shadowSheet)
+    /// O texto mais apagado que ainda se lê (exemplo dentro do campo, versão do app):
+    /// `textDim` no escuro; `textMuted` no claro, onde `textDim` fica em 3.6:1 e o DS o
+    /// reserva a forma.
+    static let textFaint       = Color(light: LognLight.textMuted, dark: LognDark.textDim)
+    /// A tinta sobre um preenchimento cheio que escurece no claro (`warn`, `wrong`): a tarja
+    /// sem rede e o botão de excluir. `onAccent` no escuro; `canvas` no claro, como o mock de
+    /// Validade Offline escreve, porque o texto escuro ali cai a 3.3:1.
+    static let onStatus        = Color(light: LognLight.canvas, dark: LognDark.onAccent)
 }
 
 /// Balões A—M. Identidade categórica do problema, NUNCA estado.
 /// No light cada letra tem corpo (`lightFill`, a cor viva do dark) e traço (`light`:
 /// contorno, balão em aberto, cordinha, aresta), escurecido até 3:1 sobre `surfaceRaised`.
-/// O app iOS ainda é só dark (ADR 0030) e não lê as listas do light.
+/// As telas usam `fill(_:)` e `edge(_:)`, que resolvem pelo tema em vigor.
 enum Balloon {
     static let dark: [Color] = [
         Color(hex: "E4572E"), // A · vermelho
@@ -137,18 +196,18 @@ enum Balloon {
         Color(hex: "D8DEE4"), // L · prata
         Color(hex: "00B894"), // M · esmeralda
     ]
-    /// O traço da letra: contorno, balão em aberto, cordinha, aresta.
-    static func edge(_ letter: Character, isLight: Bool = false) -> Color {
-        let i = Int(letter.uppercased().first!.asciiValue! - 65)
-        return (isLight ? light : dark)[i]
-    }
-    /// O mesmo que `edge`; o app, só dark, chama por este nome.
-    static func of(_ letter: Character, isLight: Bool = false) -> Color { edge(letter, isLight: isLight) }
-    /// O corpo do balão cheio da letra.
-    static func fill(_ letter: Character, isLight: Bool = false) -> Color {
-        let i = Int(letter.uppercased().first!.asciiValue! - 65)
-        return (isLight ? lightFill : dark)[i]
-    }
+    /// O traço da letra num tema: contorno, balão em aberto, cordinha, aresta.
+    static func edge(_ letter: Character, isLight: Bool) -> Color { (isLight ? light : dark)[index(letter)] }
+    /// O corpo do balão cheio da letra num tema.
+    static func fill(_ letter: Character, isLight: Bool) -> Color { (isLight ? lightFill : dark)[index(letter)] }
+    /// O traço da letra no tema em vigor.
+    static func edge(_ letter: Character) -> Color { edges[index(letter)] }
+    /// O corpo da letra no tema em vigor. No escuro é o próprio traço.
+    static func fill(_ letter: Character) -> Color { fills[index(letter)] }
+
+    private static let edges = zip(light, dark).map { Color(light: $0, dark: $1) }
+    private static let fills = zip(lightFill, dark).map { Color(light: $0, dark: $1) }
+    private static func index(_ letter: Character) -> Int { Int(letter.uppercased().first!.asciiValue! - 65) }
 }
 
 /// Nomes PostScript da IBM Plex.

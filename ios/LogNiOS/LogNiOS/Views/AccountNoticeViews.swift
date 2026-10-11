@@ -10,24 +10,24 @@ struct DeletionNoticeView: View {
 
     var body: some View {
         ZStack {
-            LognDark.canvas.ignoresSafeArea()
+            LognColors.canvas.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 VStack(spacing: 16) {
                     Image(systemName: "clock.arrow.circlepath")
                         .font(.system(size: 34, weight: .light))
-                        .foregroundColor(LognDark.textMuted)
+                        .foregroundColor(LognColors.textMuted)
                         .accessibilityHidden(true)
 
                     Text(Str.Logout.deleted_title)
                         .font(.plexSansSemiBold(18, relativeTo: .headline))
-                        .foregroundColor(LognDark.textPrimary)
+                        .foregroundColor(LognColors.textPrimary)
                         .multilineTextAlignment(.center)
 
                     Text(Str.Logout.deleted_body(purgeDate))
                         .font(.plexSans(14, relativeTo: .subheadline))
                         .lineSpacing(21 - 14)
-                        .foregroundColor(LognDark.textSecondary)
+                        .foregroundColor(LognColors.textSecondary)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -39,9 +39,9 @@ struct DeletionNoticeView: View {
                 } label: {
                     Text(Str.Logout.notice_ok)
                         .font(.plexSansMedium(15))
-                        .foregroundColor(LognDark.textPrimary)
+                        .foregroundColor(LognColors.textPrimary)
                         .frame(maxWidth: .infinity, minHeight: 50)
-                        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.lineStrong, lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.lineStrong, lineWidth: 1))
                 }
                 .buttonStyle(PressSinkStyle())
                 .padding(.horizontal, 20)
@@ -69,12 +69,12 @@ struct AccountRestoredCard: View {
         VStack(alignment: .leading, spacing: 0) {
             Text(Str.Logout.restored_title)
                 .font(.plexSansSemiBold(15, relativeTo: .callout))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
 
             Text(Str.Logout.restored_body)
                 .font(.plexSans(13.5, relativeTo: .footnote))
                 .lineSpacing(20 - 13.5)
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 6)
 
@@ -83,17 +83,17 @@ struct AccountRestoredCard: View {
             } label: {
                 Text(Str.Logout.notice_ok)
                     .font(.plexSansMedium(14.5))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.lineStrong, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.lineStrong, lineWidth: 1))
             }
             .buttonStyle(PressSinkStyle())
             .padding(.top, 14)
         }
         .padding(16)
-        .background(LognDark.surfaceRaised)
+        .background(LognColors.surfaceRaised)
         .cornerRadius(Radius.md)
-        .overlay(RoundedRectangle(cornerRadius: Radius.md).stroke(LognDark.lineStrong, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Radius.md).stroke(LognColors.lineStrong, lineWidth: 1))
         .padding(.horizontal, 20)
         .padding(.bottom, 24)
         .accessibilityElement(children: .contain)

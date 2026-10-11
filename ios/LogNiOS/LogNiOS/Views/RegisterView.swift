@@ -6,6 +6,7 @@ import App
 struct RegisterView: View {
     @EnvironmentObject var core: CoreWrapper
     @Environment(\.dismiss) var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     
     @State private var email = ""
     @State private var password = ""
@@ -22,7 +23,7 @@ struct RegisterView: View {
 
     var body: some View {
         ZStack {
-            LognDark.canvas.ignoresSafeArea()
+            LognColors.canvas.ignoresSafeArea()
             
             VStack(spacing: Space.xl) {
                 BalloonMarquee()
@@ -33,11 +34,11 @@ struct RegisterView: View {
                 VStack(spacing: 4) {
                     Text(stepTitle)
                         .font(LognFont.headlineMedium)
-                        .foregroundColor(LognDark.textPrimary)
+                        .foregroundColor(LognColors.textPrimary)
                     
                     Text(stepSubtitle)
                         .font(.plexMono(14))
-                        .foregroundColor(LognDark.textSecondary)
+                        .foregroundColor(LognColors.textSecondary)
                         .multilineTextAlignment(.center)
                 }
                 
@@ -95,30 +96,30 @@ struct RegisterView: View {
     
     private var emailStep: some View {
         VStack(spacing: Space.sm) {
-            TextField(Str.Register.email_prompt, text: $email)
+            TextField(Str.Register.email_prompt, text: $email, prompt: lightPrompt(Str.Register.email_prompt, colorScheme))
                 .textContentType(.emailAddress)
                 .keyboardType(.emailAddress)
                 .autocapitalization(.none)
                 .font(.plexMono(14))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .padding(.horizontal, 14)
                 .frame(height: 52)
-                .background(LognDark.surface)
+                .background(LognColors.surface)
                 .cornerRadius(Radius.sm)
                 .overlay(
                     RoundedRectangle(cornerRadius: Radius.sm)
-                        .stroke(LognDark.line, lineWidth: 1)
+                        .stroke(LognColors.line, lineWidth: 1)
                 )
                 
             VStack(alignment: .leading, spacing: 12) {
                 Button(action: { ageConfirmed.toggle() }) {
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: ageConfirmed ? "checkmark.square.fill" : "square")
-                            .foregroundColor(ageConfirmed ? LognDark.accent : LognDark.textDim)
+                            .lognCheckbox(checked: ageConfirmed, colorScheme)
                             .font(.system(size: 18))
                         Text(Str.Register.age_confirmation(Int(core.viewModel.minAge)))
                             .font(.plexSans(13))
-                            .foregroundColor(LognDark.textSecondary)
+                            .foregroundColor(LognColors.textSecondary)
                             .multilineTextAlignment(.leading)
                     }
                 }
@@ -133,11 +134,11 @@ struct RegisterView: View {
                 }) {
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: termsAccepted ? "checkmark.square.fill" : "square")
-                            .foregroundColor(termsAccepted ? LognDark.accent : LognDark.textDim)
+                            .lognCheckbox(checked: termsAccepted, colorScheme)
                             .font(.system(size: 18))
                         Text(Str.Register.terms_confirmation)
                             .font(.plexSans(13))
-                            .foregroundColor(LognDark.textSecondary)
+                            .foregroundColor(LognColors.textSecondary)
                             .multilineTextAlignment(.leading)
                     }
                 }
@@ -149,7 +150,7 @@ struct RegisterView: View {
                 if termsAccepted && !core.viewModel.legalVersionsReady {
                     Text(Str.Register.legal_pending)
                         .font(.plexSans(13, relativeTo: .footnote))
-                        .foregroundColor(LognDark.textMuted)
+                        .foregroundColor(LognColors.textMuted)
                 }
             }
             .padding(.top, 4)
@@ -162,10 +163,10 @@ struct RegisterView: View {
                 Text(sendCodeLabel)
                     .font(.plexSansSemiBold(15))
                     .monospacedDigit()
-                    .foregroundColor(canSendCode ? LognDark.onAccent : LognDark.textDim)
+                    .foregroundColor(canSendCode ? LognColors.onAccent : LognColors.textDim)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
-                    .background(canSendCode ? LognDark.accent : LognDark.buttonDisabled)
+                    .background(canSendCode ? LognColors.accent : LognColors.buttonDisabled)
                     .cornerRadius(Radius.sm)
             }
             .disabled(!canSendCode || core.viewModel.isAuthenticating)
@@ -183,27 +184,27 @@ struct RegisterView: View {
             PasswordField(Str.Register.password_prompt, text: $password)
                 .textContentType(.newPassword)
                 .font(.plexMono(14))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .padding(.horizontal, 14)
                 .frame(height: 52)
-                .background(LognDark.surface)
+                .background(LognColors.surface)
                 .cornerRadius(Radius.sm)
                 .overlay(
                     RoundedRectangle(cornerRadius: Radius.sm)
-                        .stroke(LognDark.line, lineWidth: 1)
+                        .stroke(LognColors.line, lineWidth: 1)
                 )
             
             PasswordField(Str.Register.confirm_prompt, text: $confirmPassword)
                 .textContentType(.newPassword)
                 .font(.plexMono(14))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .padding(.horizontal, 14)
                 .frame(height: 52)
-                .background(LognDark.surface)
+                .background(LognColors.surface)
                 .cornerRadius(Radius.sm)
                 .overlay(
                     RoundedRectangle(cornerRadius: Radius.sm)
-                        .stroke(passwordsMatch ? LognDark.line : LognDark.wrong, lineWidth: 1)
+                        .stroke(passwordsMatch ? LognColors.line : LognColors.wrong, lineWidth: 1)
                 )
             
             Button(action: {
@@ -217,10 +218,10 @@ struct RegisterView: View {
                      : Str.Register.create_account)
                     .font(.plexSansSemiBold(15))
                     .monospacedDigit()
-                    .foregroundColor(canRegister ? LognDark.onAccent : LognDark.textDim)
+                    .foregroundColor(canRegister ? LognColors.onAccent : LognColors.textDim)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
-                    .background(canRegister ? LognDark.accent : LognDark.buttonDisabled)
+                    .background(canRegister ? LognColors.accent : LognColors.buttonDisabled)
                     .cornerRadius(Radius.sm)
             }
             .disabled(!canRegister || core.viewModel.isAuthenticating)

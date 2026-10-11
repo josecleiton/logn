@@ -50,7 +50,7 @@ struct SkillTreeView: View {
                     Text(Str.Tree.edge_legend)
                         .font(.plexMono(9.5))
                         .tracking(0.12 * 9.5)
-                        .foregroundColor(LognDark.textMuted)
+                        .foregroundColor(LognColors.textMuted)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 18)
                         .padding(.bottom, 14)
@@ -240,14 +240,14 @@ struct SkillTreeEdges: View {
                     // Pré-requisito pendente — o caminho ainda está fechado.
                     context.stroke(
                         path,
-                        with: .color(LognDark.lineDim),
+                        with: .color(LognColors.lineDim),
                         style: StrokeStyle(lineWidth: 2.5, lineCap: .round, dash: [4, 6])
                     )
                 } else if edge.child.status == .active {
                     // Aresta ativa — é por aqui que o jogador segue agora.
                     context.stroke(
                         path,
-                        with: .color(LognDark.accent),
+                        with: .color(LognColors.accent),
                         style: StrokeStyle(lineWidth: 3, lineCap: .round)
                     )
                 } else {
@@ -309,10 +309,10 @@ struct SkillNodeView: View {
             if node.prerequisites.count >= 2 {
                 Text("\(node.prerequisites.count)")
                     .font(.plexMono(9))
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .frame(width: 18, height: 18)
-                    .background(Circle().fill(LognDark.canvas))
-                    .overlay(Circle().stroke(LognDark.lineDim, lineWidth: 1))
+                    .background(Circle().fill(LognColors.canvas))
+                    .overlay(Circle().stroke(LognColors.lineDim, lineWidth: 1))
                     .offset(x: 5, y: 2)
             }
         }
@@ -320,7 +320,7 @@ struct SkillNodeView: View {
 
     private var balloonStyle: BalloonShape.Style {
         switch node.status {
-        case .completed: return .filled(topic.color)
+        case .completed: return topic.filledBalloon
         case .active:    return .active
         case .locked, .paywallLocked: return .locked
         }
@@ -328,9 +328,9 @@ struct SkillNodeView: View {
 
     private var iconColor: Color {
         switch node.status {
-        case .completed: return LognDark.onAccent   // tinta escura sobre o corpo cheio
-        case .active:    return LognDark.accentInk
-        case .locked, .paywallLocked: return LognDark.textSecondary
+        case .completed: return LognColors.onAccent   // tinta escura sobre o corpo cheio
+        case .active:    return LognColors.accentInk
+        case .locked, .paywallLocked: return LognColors.textSecondary
         }
     }
 
@@ -359,26 +359,26 @@ struct SkillNodeView: View {
             VStack(spacing: 2) {
                 Text(node.name)
                     .font(.plexSansSemiBold(11.5))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                 // Glifo sobre accent usa a tinta, não o token base — regra de tinta do DS.
                 Text(node.problemsSolved.isEmpty
                      ? Str.Node.active(Int(node.requiredXp))
                      : Str.Solved.inflating(solvedCount, node.problemsSolved.count))
                     .font(.plexMono(9.5))
                     .tracking(0.08 * 9.5)
-                    .foregroundColor(LognDark.accentInk)
+                    .foregroundColor(LognColors.accentInk)
             }
             .fixedSize()
             .padding(.horizontal, 9)
             .padding(.vertical, 4)
-            .background(LognDark.accentTint)
-            .overlay(RoundedRectangle(cornerRadius: 3).stroke(LognDark.accent, lineWidth: 1))
+            .background(LognColors.accentTint)
+            .overlay(RoundedRectangle(cornerRadius: 3).stroke(LognColors.accent, lineWidth: 1))
             .cornerRadius(3)
         } else {
             HStack(spacing: 6) {
                 Text(node.name)
                     .font(.plexSansSemiBold(11.5))
-                    .foregroundColor((node.status == .locked || node.status == .paywallLocked) ? LognDark.textSecondary : LognDark.textPrimary)
+                    .foregroundColor((node.status == .locked || node.status == .paywallLocked) ? LognColors.textSecondary : LognColors.textPrimary)
                 // Quantos problemas do nó já renderam XP. No bloqueado, 0/5 é ruído.
                 if (node.status != .locked && node.status != .paywallLocked) && !node.problemsSolved.isEmpty {
                     HStack(spacing: 3) {
@@ -390,14 +390,15 @@ struct SkillNodeView: View {
                             .font(.plexMono(10))
                             .monospacedDigit()
                     }
-                    .foregroundColor(allSolved ? LognDark.correct : LognDark.textSecondary)
+                    // O visto e a contagem são glifo e texto: tinta, nunca a base.
+                    .foregroundColor(allSolved ? LognColors.correctInk : LognColors.textSecondary)
                 }
             }
             .fixedSize()
             .padding(.horizontal, 9)
             .padding(.vertical, 4)
-            .background(LognDark.canvas)
-            .overlay(RoundedRectangle(cornerRadius: 3).stroke(LognDark.line, lineWidth: 1))
+            .background(LognColors.canvas)
+            .overlay(RoundedRectangle(cornerRadius: 3).stroke(LognColors.line, lineWidth: 1))
             .cornerRadius(3)
         }
     }

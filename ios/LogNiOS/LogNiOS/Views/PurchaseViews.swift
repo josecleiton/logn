@@ -32,11 +32,11 @@ struct LockedNodeSheet: View {
             Text(Str.Locked.eyebrow(nodeIndex, node.name.uppercased()))
                 .font(.plexMono(10))
                 .tracking(0.12 * 10)
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
             Text(Str.Locked.title)
                 .font(.plexSansSemiBold(20))
                 .tracking(-0.02 * 20)
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
             // "Você terminou a amostra" só é dito a quem terminou. Cada frase é uma chave
             // inteira do catálogo: nada de montar frase no código.
             VStack(alignment: .leading, spacing: 2) {
@@ -47,12 +47,12 @@ struct LockedNodeSheet: View {
             }
             .font(.plexSans(13.5))
             .lineSpacing(20 - 13.5)
-            .foregroundColor(LognDark.textSecondary)
+            .foregroundColor(LognColors.textSecondary)
             .fixedSize(horizontal: false, vertical: true)
             if let problem = storeKit.problem {
                 Text(problem.copy)
                     .font(LognFont.bodyMedium)
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
             }
             // A folha fecha antes da compra: a tela do passo a passo e a do visitante
             // abrem da raiz, e uma raiz que já apresenta esta folha não apresenta outra.
@@ -67,13 +67,13 @@ struct LockedNodeSheet: View {
                        isDisabled: track.productId.isEmpty, isLoading: storeKit.isPurchasing)
             Button(Str.Locked.not_now) { dismiss() }
                 .font(.plexSans(13.5))
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .frame(maxWidth: .infinity, minHeight: 44)
         }
         .padding(.horizontal, 22)
         .padding(.top, 22)
         .padding(.bottom, 12)
-        .background(LognDark.surface.ignoresSafeArea())
+        .background(LognColors.surface.ignoresSafeArea())
         .presentationDetents([.height(360)])
         .presentationDragIndicator(.visible)
         .task { await storeKit.loadPrices(for: [track.productId]) }
@@ -111,26 +111,26 @@ struct SampleOfferCard: View {
                 Text(Str.Offer.eyebrow(Int(offer.nextNodeIndex), Int(track?.nodeCount ?? 0)))
                     .font(.plexMono(10))
                     .tracking(0.12 * 10)
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
                 Text(offer.nextNodeName)
                     .font(.plexSansSemiBold(16))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                 // Contagens em mono, separadas; a frase da compra inteira, abaixo.
                 HStack(spacing: 8) {
                     Text(Str.Offer.nodes(Int(offer.remainingNodes)))
                     Text(Str.Offer.problems(Int(offer.remainingProblems)))
                 }
                 .font(.plexMono(12))
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 Text(Str.Offer.tail)
                     .font(.plexSans(13.5))
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
-            .background(LognDark.canvas)
-            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.lineStrong, lineWidth: 1))
+            .background(LognColors.canvas)
+            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.lineStrong, lineWidth: 1))
             .cornerRadius(Radius.sm)
 
             LognButton(title: price.map { Str.Offer.continue_buy(name, $0) } ?? Str.Offer.continue_buy_no_price(name),
@@ -145,7 +145,7 @@ struct SampleOfferCard: View {
                 onDismiss()
             }
             .font(.plexSans(13.5))
-            .foregroundColor(LognDark.textSecondary)
+            .foregroundColor(LognColors.textSecondary)
             .frame(maxWidth: .infinity, minHeight: 40)
         }
         .task { await storeKit.loadPrices(for: [track?.productId ?? ""]) }
@@ -175,15 +175,15 @@ struct PurchaseProgressView: View {
             Text(flow.label)
                 .font(.plexMono(11))
                 .tracking(0.12 * 11)
-                .foregroundColor(flow.isFailed ? LognDark.wrongInk : LognDark.textMuted)
+                .foregroundColor(flow.isFailed ? LognColors.wrongInk : LognColors.textMuted)
             Text(flow.title(name))
                 .font(.plexSansSemiBold(24))
                 .tracking(-0.02 * 24)
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
             Text(flow.body(core.viewModel.purchaseFlow.failure))
                 .font(.plexSans(14))
                 .lineSpacing(20 - 14)
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             VStack(alignment: .leading, spacing: 0) {
@@ -193,18 +193,18 @@ struct PurchaseProgressView: View {
                             .foregroundColor(line.markInk)
                             .frame(width: 18, alignment: .leading)
                         Text(line.text)
-                            .foregroundColor(line.done ? LognDark.textPrimary : LognDark.textMuted)
+                            .foregroundColor(line.done ? LognColors.textPrimary : LognColors.textMuted)
                         Spacer()
                         Text(line.meta)
-                            .foregroundColor(LognDark.textMuted)
+                            .foregroundColor(LognColors.textMuted)
                     }
                     .font(.plexMono(12))
                     .frame(minHeight: 22)
                 }
             }
             .padding(14)
-            .background(LognDark.canvas)
-            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+            .background(LognColors.canvas)
+            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
             .cornerRadius(Radius.sm)
             .accessibilityElement(children: .combine)
 
@@ -219,7 +219,7 @@ struct PurchaseProgressView: View {
             if flow.isWaiting {
                 Button(Str.Purchase.background) { core.dispatch(event: .closePurchaseFlow) }
                     .font(.plexSans(13.5))
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
         }
@@ -227,7 +227,7 @@ struct PurchaseProgressView: View {
         .padding(.top, 40)
         .padding(.bottom, 26)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(LognDark.surface.ignoresSafeArea())
+        .background(LognColors.surface.ignoresSafeArea())
     }
 }
 
@@ -303,7 +303,7 @@ struct PurchaseSteps {
             let current = !isFailed && i == rank
             lines.append(Line(
                 mark: done ? "✓" : (current ? "…" : "·"),
-                markInk: done ? LognDark.correctInk : (current ? LognDark.warnInk : LognDark.textMuted),
+                markInk: done ? LognColors.correctInk : (current ? LognColors.warnInk : LognColors.textMuted),
                 text: step.0,
                 meta: done ? step.1 : "",
                 done: done
@@ -343,17 +343,17 @@ struct GuestPurchaseSheet: View {
                     Text(eyebrow(track))
                         .font(.plexMono(10.5))
                         .tracking(0.12 * 10.5)
-                        .foregroundColor(LognDark.textMuted)
+                        .foregroundColor(LognColors.textMuted)
                 }
             }
             Text(Str.Guest_purchase.title)
                 .font(.plexSansSemiBold(20))
                 .tracking(-0.02 * 20)
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
             Text(Str.Guest_purchase.body)
                 .font(.plexSans(13.5))
                 .lineSpacing(20 - 13.5)
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             LognButton(title: Str.Guest_purchase.create, variant: .primary) {
                 storeKit.continueAfterSignUp(prompt, register: true)
@@ -363,13 +363,13 @@ struct GuestPurchaseSheet: View {
             }
             Text(Str.Guest_purchase.note)
                 .font(.plexMono(10))
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
                 .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, 22)
         .padding(.top, 22)
         .padding(.bottom, 12)
-        .background(LognDark.surface.ignoresSafeArea())
+        .background(LognColors.surface.ignoresSafeArea())
         .presentationDetents([.height(420)])
         .presentationDragIndicator(.visible)
     }

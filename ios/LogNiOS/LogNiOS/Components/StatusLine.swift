@@ -17,7 +17,7 @@ struct StatusLine: View {
         if let copy = status.copy {
             Text(copy)
                 .lognLabel()
-                .foregroundColor(status.isInProgress ? LognDark.textSecondary : LognDark.wrongInk)
+                .foregroundColor(status.isInProgress ? LognColors.textSecondary : LognColors.wrongInk)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(status.isInProgress ? [] : .isStaticText)

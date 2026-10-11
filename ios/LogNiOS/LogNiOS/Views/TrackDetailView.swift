@@ -26,7 +26,7 @@ struct TrackDetailView: View {
                 Color.clear
             }
         }
-        .background(LognDark.surface.ignoresSafeArea())
+        .background(LognColors.surface.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -39,7 +39,7 @@ struct TrackDetailView: View {
                         Text(track.description)
                             .font(.plexSans(14.5))
                             .lineSpacing(21 - 14.5)
-                            .foregroundColor(LognDark.textSecondary)
+                            .foregroundColor(LognColors.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     notices(track)
@@ -59,12 +59,12 @@ struct TrackDetailView: View {
                 Text(track.name)
                     .font(.plexSansSemiBold(26))
                     .tracking(-0.02 * 26)
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                 Text(track.owned
                      ? Str.Track.owned_meta(Int(track.nodesDone), Int(track.nodeCount))
                      : Str.Track.meta(Int(track.nodeCount), track.author.uppercased(), track.languagesLabel))
                     .font(.plexMono(10.5))
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
             }
         }
         .padding(.top, Space.sm)
@@ -76,15 +76,15 @@ struct TrackDetailView: View {
             note(text: track.revokedReason == "refund"
                  ? Str.Track.revoked_refund(track.name, Int(track.trackXp))
                  : Str.Track.revoked_other(track.name, Int(track.trackXp)),
-                 background: LognDark.surfaceRaised, line: LognDark.lineStrong)
+                 background: LognColors.surfaceRaised, line: LognColors.lineStrong)
         } else if track.owned && (track.offline == .soon || track.offline == .today) {
             offlineBlock(track)
         } else if track.owned && track.discontinued {
-            note(text: Str.Track.discontinued_note, background: LognDark.surfaceRaised, line: LognDark.lineStrong)
+            note(text: Str.Track.discontinued_note, background: LognColors.surfaceRaised, line: LognColors.lineStrong)
         } else if track.owned && track.validUntil > 0 {
             Text(Str.Track.valid_until(TrackDates.short(track.validUntil)))
                 .font(.plexMono(10.5))
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
         }
     }
 
@@ -92,7 +92,7 @@ struct TrackDetailView: View {
         Text(text)
             .font(.plexSans(13.5))
             .lineSpacing(19 - 13.5)
-            .foregroundColor(LognDark.textPrimary)
+            .foregroundColor(LognColors.textPrimary)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
@@ -113,25 +113,25 @@ struct TrackDetailView: View {
             }
             .font(.plexMono(10.5))
             .tracking(0.1 * 10.5)
-            .foregroundColor(LognDark.warnInk)
+            .foregroundColor(LognColors.warnInk)
 
             Text(lastDay
                  ? Str.Track.offline_today_body(track.name)
                  : Str.Track.offline_soon_body(TrackDates.weekday(track.validUntil), track.name))
                 .font(.plexSans(14))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
             OfflineDaysBar(usedDays: min(30, Int(track.daysSinceContact)))
 
             Text(Str.Track.offline_rule)
                 .font(.plexSans(12.5))
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
-        .background(LognDark.tintWarn)
-        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.warn, lineWidth: 1))
+        .background(LognColors.tintWarn)
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.warn, lineWidth: 1))
         .cornerRadius(Radius.sm)
     }
 
@@ -141,7 +141,7 @@ struct TrackDetailView: View {
                 nodeRow(track, index: index, row: row)
             }
         }
-        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
         .cornerRadius(Radius.sm)
     }
 
@@ -150,34 +150,34 @@ struct TrackDetailView: View {
         return HStack(spacing: 10) {
             Text(String(format: "%02d", index + 1))
                 .font(.plexMono(11))
-                .foregroundColor(sample ? LognDark.correctInk : LognDark.textMuted)
+                .foregroundColor(sample ? LognColors.correctInk : LognColors.textMuted)
                 .frame(width: 28, alignment: .leading)
             Text(row.name)
                 .font(.plexSans(13.5))
-                .foregroundColor(sample || row.active ? LognDark.textPrimary : LognDark.textSecondary)
+                .foregroundColor(sample || row.active ? LognColors.textPrimary : LognColors.textSecondary)
             Spacer()
             if sample {
                 Text(Str.Track.free_tag)
                     .font(.plexMono(10))
                     .tracking(0.08 * 10)
-                    .foregroundColor(LognDark.correctInk)
+                    .foregroundColor(LognColors.correctInk)
             } else if track.owned && row.done {
                 Image(systemName: "checkmark")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(LognDark.correctInk)
+                    .foregroundColor(LognColors.correctInk)
                     .accessibilityHidden(true)
             } else if track.owned && row.active {
                 Image(systemName: "arrow.right")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(LognDark.accentInk)
+                    .foregroundColor(LognColors.accentInk)
                     .accessibilityHidden(true)
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
-        .background(sample ? LognDark.tintOk : Color.clear)
+        .background(sample ? LognColors.tintOk : Color.clear)
         .overlay(alignment: .top) {
-            if index > 0 { Rectangle().frame(height: 1).foregroundColor(LognDark.line) }
+            if index > 0 { Rectangle().frame(height: 1).foregroundColor(LognColors.line) }
         }
     }
 
@@ -188,7 +188,7 @@ struct TrackDetailView: View {
             if let problem = storeKit.problem {
                 Text(problem.copy)
                     .font(LognFont.bodyMedium)
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .multilineTextAlignment(.center)
             }
             if track.revoked {
@@ -207,13 +207,13 @@ struct TrackDetailView: View {
                 }
                 Text(Str.Track.buy_note)
                     .font(.plexMono(10))
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
             }
         }
         .padding(.horizontal, 22)
         .padding(.top, 12)
         .padding(.bottom, 22)
-        .overlay(alignment: .top) { Rectangle().frame(height: 1).foregroundColor(LognDark.line) }
+        .overlay(alignment: .top) { Rectangle().frame(height: 1).foregroundColor(LognColors.line) }
         .task(id: track.productId) {
             await storeKit.loadPrices(for: [track.productId])
         }

@@ -45,10 +45,9 @@ struct ContentView: View {
         // cartão dele ficava sem o nome da trilha, que vem da mesma busca.
         .onAppear(perform: loadNodesIfNeeded)
         .onChange(of: core.viewModel.hasAccessToken) { _ in loadNodesIfNeeded() }
-        .tint(LognDark.accent)
-        // Dark-first e, por ora, dark-only: `LognLight` existe nos tokens mas nenhum
-        // mock desenha o app em claro, então o app não oferece a escolha.
-        .preferredColorScheme(.dark)
+        // O tom do cursor, dos links e da seta de voltar: texto e glifo, então a tinta, que
+        // no claro passa de 4.5:1. O tema segue o do sistema (ADR 0031).
+        .tint(LognColors.accentInk)
         // O Core emite StoreReview via notify_shell após dominar um nó de milestone.
         // O delay deixa a animação de pop do relatório terminar antes de a sheet aparecer.
         .onChange(of: core.reviewRequestCount) { _ in
@@ -159,20 +158,20 @@ struct ProfileAvatar: View {
 
     var body: some View {
         Circle()
-            .fill(LognDark.accent.opacity(0.18))
+            .fill(LognColors.accent.opacity(0.18))
             .frame(width: size, height: size)
-            .overlay(Circle().stroke(LognDark.accent, lineWidth: 1))
+            .overlay(Circle().stroke(LognColors.accent, lineWidth: 1))
             .overlay(
                 Text(letter)
                     .font(.plexSansSemiBold(size * 15 / 40))
-                    .foregroundColor(LognDark.accentInk)
+                    .foregroundColor(LognColors.accentInk)
             )
             .overlay(alignment: .topTrailing) {
                 if hasPending {
                     Circle()
-                        .fill(LognDark.warn)
+                        .fill(LognColors.warn)
                         .frame(width: 11, height: 11)
-                        .overlay(Circle().stroke(LognDark.canvas, lineWidth: 2))
+                        .overlay(Circle().stroke(LognColors.canvas, lineWidth: 2))
                         .offset(x: 1, y: -1)
                 }
             }
@@ -200,15 +199,17 @@ struct LognBottomNav: View {
                     Text(item.title)
                         .font(.plexMono(10.5))
                         .tracking(0.1 * 10.5)
-                        .foregroundColor(isActive ? LognDark.accentInk : LognDark.textMuted)
+                        .foregroundColor(isActive ? LognColors.accentInk : LognColors.textMuted)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
                         .contentShape(Rectangle())
                         .overlay(alignment: .top) {
+                            // A borda da aba ativa carrega a seleção: em tinta, que no claro
+                            // passa de 3:1.
                             if isActive {
                                 Rectangle()
                                     .frame(height: 2)
-                                    .foregroundColor(LognDark.accent)
+                                    .foregroundColor(LognColors.accentInk)
                                     .offset(y: -1)
                             }
                         }
@@ -217,9 +218,9 @@ struct LognBottomNav: View {
                 .accessibilityAddTraits(isActive ? [.isSelected] : [])
             }
         }
-        .background(LognDark.surface)
+        .background(LognColors.surface)
         .overlay(alignment: .top) {
-            Rectangle().frame(height: 1).foregroundColor(LognDark.line)
+            Rectangle().frame(height: 1).foregroundColor(LognColors.line)
         }
     }
 }
@@ -244,7 +245,7 @@ struct SkillTreeHostView: View {
 
     var body: some View {
         ZStack {
-            LognDark.canvas.ignoresSafeArea()
+            LognColors.canvas.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 header
@@ -315,7 +316,7 @@ struct SkillTreeHostView: View {
                 Text(core.viewModel.isFetching ? Str.Dashboard.map_updating : Str.Dashboard.balloons_up(balloonsUp))
                     .font(.plexSansSemiBold(20, relativeTo: .title3))
                     .tracking(-0.02 * 20)
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
             } else {
                 trackSwitcher
             }
@@ -343,7 +344,7 @@ struct SkillTreeHostView: View {
         .padding(.top, 16)
         .padding(.bottom, 12)
         .overlay(alignment: .bottom) {
-            Rectangle().frame(height: 1).foregroundColor(LognDark.line)
+            Rectangle().frame(height: 1).foregroundColor(LognColors.line)
         }
     }
 
@@ -377,19 +378,19 @@ struct SkillTreeHostView: View {
                     HStack(spacing: 6) {
                         Text(track.name)
                             .font(.plexSansSemiBold(17, relativeTo: .headline))
-                            .foregroundColor(LognDark.textPrimary)
+                            .foregroundColor(LognColors.textPrimary)
                             .lineLimit(1)
                         Image(systemName: "chevron.down")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(LognDark.textSecondary)
+                            .foregroundColor(LognColors.textSecondary)
                         if let badge {
                             Text(badge)
                                 .font(.plexMonoMedium(9.5))
                                 .tracking(0.06 * 9.5)
-                                .foregroundColor(LognDark.canvas)
+                                .foregroundColor(LognColors.canvas)
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 2)
-                                .background(expired ? LognDark.wrong : LognDark.warn)
+                                .background(expired ? LognColors.wrong : LognColors.warn)
                                 .cornerRadius(Radius.xs)
                                 .fixedSize()
                         }
@@ -397,7 +398,7 @@ struct SkillTreeHostView: View {
                     Text(headerMeta)
                         .font(.plexMono(10))
                         .monospacedDigit()
-                        .foregroundColor(LognDark.textMuted)
+                        .foregroundColor(LognColors.textMuted)
                         .lineLimit(1)
                 }
             }
@@ -415,10 +416,11 @@ struct SkillTreeHostView: View {
             Text(Str.Dashboard.sync_guest_warning)
                 .lognLabel()
         }
-        .foregroundColor(LognDark.onAccent)
+        // A tinta sobre o `warn` cheio, que escurece no claro.
+        .foregroundColor(LognColors.onStatus)
         .frame(maxWidth: .infinity)
         .padding(.vertical, Space.sm)
-        .background(LognDark.warn)
+        .background(LognColors.warn)
     }
 
     /// Sessão em pé, servidor fora de alcance.
@@ -433,10 +435,10 @@ struct SkillTreeHostView: View {
             Text(Str.Dashboard.offline_session)
                 .lognLabel()
         }
-        .foregroundColor(LognDark.onAccent)
+        .foregroundColor(LognColors.onStatus)
         .frame(maxWidth: .infinity)
         .padding(.vertical, Space.sm)
-        .background(LognDark.warn)
+        .background(LognColors.warn)
     }
 
     /// A trilha na tela é a que veio dentro do app, congelada no dia do build.
@@ -458,13 +460,13 @@ struct SkillTreeHostView: View {
                 .lognLabel()
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .foregroundColor(LognDark.textMuted)
+        .foregroundColor(LognColors.textMuted)
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.horizontal, Space.lg)
         .padding(.vertical, Space.sm)
-        .background(LognDark.surface)
+        .background(LognColors.surface)
         .overlay(alignment: .bottom) {
-            Rectangle().frame(height: 1).foregroundColor(LognDark.line)
+            Rectangle().frame(height: 1).foregroundColor(LognColors.line)
         }
     }
 
@@ -491,11 +493,11 @@ struct SkillTreeHostView: View {
                 VStack(spacing: Space.md) {
                     ForEach(0..<3, id: \.self) { _ in
                         RoundedRectangle(cornerRadius: Radius.sm)
-                            .fill(LognDark.surface)
+                            .fill(LognColors.surface)
                             .frame(height: 64)
                             .overlay(
                                 RoundedRectangle(cornerRadius: Radius.sm)
-                                    .stroke(LognDark.line, lineWidth: 1)
+                                    .stroke(LognColors.line, lineWidth: 1)
                             )
                     }
                 }
@@ -505,7 +507,7 @@ struct SkillTreeHostView: View {
                 // refreshed!" aparecia aqui como se fosse a explicação do mapa vazio.
                 Text(Str.Dashboard.map_failed)
                     .font(LognFont.bodyMedium)
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, Space.screenMargin)
 
@@ -527,22 +529,22 @@ struct ArenaHostView: View {
 
     var body: some View {
         ZStack {
-            LognDark.canvas.ignoresSafeArea()
+            LognColors.canvas.ignoresSafeArea()
             VStack(spacing: 0) {
                 Spacer()
                 VStack(alignment: .leading, spacing: Space.md) {
                     Text(Str.Tabs.arena)
                         .lognLabel()
-                        .foregroundColor(LognDark.textMuted)
+                        .foregroundColor(LognColors.textMuted)
 
                     Text(Str.Dashboard.arena_desc)
                         .font(.plexSansSemiBold(21))
                         .tracking(-0.02 * 21)
-                        .foregroundColor(LognDark.textPrimary)
+                        .foregroundColor(LognColors.textPrimary)
 
                     Text(Str.Dashboard.arena_sub)
                         .font(LognFont.bodyMedium)
-                        .foregroundColor(LognDark.textSecondary)
+                        .foregroundColor(LognColors.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

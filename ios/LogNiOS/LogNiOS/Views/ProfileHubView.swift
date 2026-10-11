@@ -42,7 +42,7 @@ struct ProfileHubView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                LognDark.surfaceRaised.ignoresSafeArea()
+                LognColors.surfaceRaised.ignoresSafeArea()
 
                 VStack(alignment: .leading, spacing: 0) {
                     grabber
@@ -103,7 +103,7 @@ struct ProfileHubView: View {
 
     private var grabber: some View {
         Capsule()
-            .fill(LognDark.lineStrong)
+            .fill(LognColors.lineStrong)
             .frame(width: 36, height: 3)
             .frame(maxWidth: .infinity)
             .padding(.bottom, 18)
@@ -117,13 +117,13 @@ struct ProfileHubView: View {
     /// O avatar de quem ainda é "jogador #N": "#" em mono, sobre a superfície.
     private var anonAvatar: some View {
         Circle()
-            .fill(LognDark.surface)
+            .fill(LognColors.surface)
             .frame(width: 52, height: 52)
-            .overlay(Circle().stroke(LognDark.lineStrong, lineWidth: 1))
+            .overlay(Circle().stroke(LognColors.lineStrong, lineWidth: 1))
             .overlay(
                 Text("#")
                     .font(.plexMono(18))
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
             )
     }
 
@@ -134,18 +134,18 @@ struct ProfileHubView: View {
         if vm.profileAnonNumber > 0 {
             Text(leaderboardName(anonNumber: vm.profileAnonNumber, nickname: vm.profileNickname))
                 .font(vm.profileNickname != nil ? .plexSansSemiBold(17) : .plexMonoSemiBold(16))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .lineLimit(1)
             Text(vm.accountEmail)
                 .font(.plexMono(12))
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .padding(.top, 4)
         } else {
             Text(vm.accountEmail)
                 .font(.plexMono(13))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .lineLimit(1)
                 .truncationMode(.middle)
         }
@@ -162,10 +162,10 @@ struct ProfileHubView: View {
                 Text(Str.Nickname.choose)
                     .font(.plexSansSemiBold(14))
             }
-            .foregroundColor(LognDark.accentInk)
+            .foregroundColor(LognColors.accentInk)
             .padding(.horizontal, 16)
             .frame(height: 44)
-            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.accent, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.accent, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .padding(.top, 14)
@@ -176,18 +176,18 @@ struct ProfileHubView: View {
             if isGuest {
                 // Visitante não tem inicial: ícone genérico e borda tracejada.
                 Circle()
-                    .fill(LognDark.surface)
+                    .fill(LognColors.surface)
                     .frame(width: 52, height: 52)
                     .overlay(
                         Circle().strokeBorder(
-                            LognDark.lineDim,
+                            LognColors.lineDim,
                             style: StrokeStyle(lineWidth: 1, dash: [4])
                         )
                     )
                     .overlay(
                         Image(systemName: "person")
                             .font(.system(size: 22, weight: .regular))
-                            .foregroundColor(LognDark.textMuted)
+                            .foregroundColor(LognColors.textMuted)
                     )
             } else if hasAnonName {
                 anonAvatar
@@ -200,27 +200,27 @@ struct ProfileHubView: View {
                     Text(Str.Profile.guest_mode)
                         .font(.plexMono(11))
                         .tracking(0.1 * 11)
-                        .foregroundColor(LognDark.textSecondary)
+                        .foregroundColor(LognColors.textSecondary)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 4)
-                        .overlay(RoundedRectangle(cornerRadius: Radius.xs).stroke(LognDark.lineStrong, lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: Radius.xs).stroke(LognColors.lineStrong, lineWidth: 1))
 
                     Text(Str.Profile.guest_sub)
                         .font(.plexMono(10))
                         .tracking(0.12 * 10)
-                        .foregroundColor(LognDark.textMuted)
+                        .foregroundColor(LognColors.textMuted)
                         .padding(.top, 6)
                 } else {
                     accountLines
 
                     HStack(spacing: 6) {
                         Circle()
-                            .fill(pending > 0 ? LognDark.warn : LognDark.correct)
+                            .fill(pending > 0 ? LognColors.warn : LognColors.correct)
                             .frame(width: 6, height: 6)
                         Text(pending > 0 ? Str.Profile.queued_events(pending) : Str.Profile.all_synced)
                             .font(.plexMono(10))
                             .tracking(0.12 * 10)
-                            .foregroundColor(pending > 0 ? LognDark.warnInk : LognDark.textMuted)
+                            .foregroundColor(pending > 0 ? LognColors.warnInk : LognColors.textMuted)
                     }
                     .padding(.top, 6)
                 }
@@ -237,12 +237,12 @@ struct ProfileHubView: View {
                 Text(Str.Profile.local_xp_only(Int(vm.globalXp)))
                     .font(.plexSans(13.5, relativeTo: .footnote))
                     .lineSpacing(19 - 13.5)
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text(Str.Profile.pending_events(pending))
                     .font(.plexMono(10.5))
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .padding(.top, 4)
             }
 
@@ -251,18 +251,18 @@ struct ProfileHubView: View {
             } label: {
                 Text(vm.isSyncing ? "…" : Str.Profile.retry)
                     .font(.plexMonoMedium(11.5))
-                    .foregroundColor(LognDark.warnInk)
+                    .foregroundColor(LognColors.warnInk)
                     .frame(height: 34)
                     .padding(.horizontal, 13)
-                    .overlay(RoundedRectangle(cornerRadius: 3).stroke(LognDark.warn, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 3).stroke(LognColors.warn, lineWidth: 1))
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 13)
         .padding(.vertical, 12)
-        .background(LognDark.tintWarn)
+        .background(LognColors.tintWarn)
         .cornerRadius(Radius.sm)
-        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.warn, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.warn, lineWidth: 1))
         .padding(.top, 16)
     }
 
@@ -275,11 +275,11 @@ struct ProfileHubView: View {
                     .font(.plexSansSemiBold(44))
                     .tracking(-0.035 * 44)
                     .monospacedDigit()
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                 Text(Str.Profile.level)
                     .font(.plexMono(11))
                     .tracking(0.14 * 11)
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
             }
 
             VStack(alignment: .leading, spacing: 0) {
@@ -290,13 +290,13 @@ struct ProfileHubView: View {
                 }
                 .font(.plexMono(10.5))
                 .monospacedDigit()
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
 
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(LognDark.line)
+                        Capsule().fill(LognColors.line)
                         Capsule()
-                            .fill(LognDark.accent)
+                            .fill(LognColors.accent)
                             .frame(width: geo.size.width * progress)
                     }
                 }
@@ -306,7 +306,7 @@ struct ProfileHubView: View {
                 Text(Str.Profile.xp_to_next(Int(vm.xpToNextLevel), Int(vm.level + 1)))
                     .font(.plexMono(9.5))
                     .monospacedDigit()
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
                     .padding(.top, 5)
             }
             .padding(.bottom, 3)
@@ -331,9 +331,9 @@ struct ProfileHubView: View {
             statCell(Str.Profile.bugs, "\(vm.bugsFound)", "spot the bug")
             statCell(Str.Profile.dry_runs, "\(vm.dryRunsCompleted)", "trace")
         }
-        .background(LognDark.line)
+        .background(LognColors.line)
         .cornerRadius(Radius.sm)
-        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
         .padding(.top, 20)
     }
 
@@ -342,30 +342,30 @@ struct ProfileHubView: View {
             Text(label)
                 .font(.plexMono(10))
                 .tracking(0.12 * 10)
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
             Text(value)
                 .font(.plexMonoSemiBold(17))
                 .monospacedDigit()
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .padding(.top, 4)
             if let sub {
                 Text(sub)
                     .font(.plexMono(9.5))
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
                     .padding(.top, 2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 13)
         .padding(.vertical, 12)
-        .background(LognDark.surface)
+        .background(LognColors.surface)
     }
 
     private var summary: some View {
         Text(Str.Profile.stats_summary(Str.Profile.challenges_completed(Int(vm.challengesCompleted)), Str.Dashboard.balloons_up(Int(vm.balloonsUp))))
             .font(.plexMono(10.5))
             .monospacedDigit()
-            .foregroundColor(LognDark.textMuted)
+            .foregroundColor(LognColors.textMuted)
             .padding(.top, 10)
     }
 
@@ -381,19 +381,21 @@ struct ProfileHubView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(Str.Profile.analytics_title)
                     .font(.plexSansMedium(14.5, relativeTo: .callout))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                 Text(Str.Profile.analytics_desc)
                     .font(.plexSans(12.5, relativeTo: .footnote))
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .tint(LognDark.accent)
+        // O trilho ligado no laranja da marca: a bolinha do sistema, que muda de lado, diz o
+        // estado, e o trilho não o carrega sozinho (ADR 0031).
+        .tint(LognColors.accent)
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(LognDark.surface)
+        .background(LognColors.surface)
         .cornerRadius(Radius.sm)
-        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
     }
 
     // MARK: Rodapé — muda inteiro entre visitante e conta
@@ -408,7 +410,7 @@ struct ProfileHubView: View {
             } label: {
                 Text(Str.Profile.has_account)
                     .font(.plexSans(14, relativeTo: .subheadline))
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .frame(maxWidth: .infinity, minHeight: 42)
             }
             .buttonStyle(.plain)
@@ -425,7 +427,7 @@ struct ProfileHubView: View {
                         .font(.plexSans(14, relativeTo: .subheadline))
                     Spacer()
                 }
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .frame(maxWidth: .infinity, minHeight: 42)
             }
             .buttonStyle(.plain)
@@ -445,7 +447,7 @@ struct ProfileHubView: View {
                         .font(.plexSans(14, relativeTo: .subheadline))
                     Spacer()
                 }
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .frame(maxWidth: .infinity, minHeight: 42)
             }
             .buttonStyle(.plain)
@@ -459,7 +461,7 @@ struct ProfileHubView: View {
 
             Rectangle()
                 .frame(height: 1)
-                .foregroundColor(LognDark.line)
+                .foregroundColor(LognColors.line)
                 .padding(.top, pending > 0 ? 20 : 22)
                 .padding(.bottom, 16)
 
@@ -470,14 +472,14 @@ struct ProfileHubView: View {
             } label: {
                 HStack(spacing: 9) {
                     if pending > 0 {
-                        Circle().fill(LognDark.warn).frame(width: 7, height: 7)
+                        Circle().fill(LognColors.warn).frame(width: 7, height: 7)
                     }
                     Text(Str.Profile.sign_out)
                         .font(.plexSansMedium(15))
-                        .foregroundColor(LognDark.textPrimary)
+                        .foregroundColor(LognColors.textPrimary)
                 }
                 .frame(maxWidth: .infinity, minHeight: 50)
-                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.lineStrong, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.lineStrong, lineWidth: 1))
             }
             .buttonStyle(PressSinkStyle())
 
@@ -487,10 +489,10 @@ struct ProfileHubView: View {
                 HStack(spacing: 7) {
                     Image(systemName: "lock")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(LognDark.textMuted)
+                        .foregroundColor(LognColors.textMuted)
                     Text(Str.Profile.manage_account)
                         .font(.plexSans(13.5, relativeTo: .footnote))
-                        .foregroundColor(LognDark.textSecondary)
+                        .foregroundColor(LognColors.textSecondary)
                 }
                 .frame(maxWidth: .infinity, minHeight: 40)
             }
@@ -509,7 +511,7 @@ struct ProfileHubView: View {
         // Para o jogador dizer qual versão tem quando reporta um problema.
         Text(appVersion)
             .font(.plexMono(11.5, relativeTo: .caption))
-            .foregroundColor(LognDark.textDim)
+            .foregroundColor(LognColors.textFaint)
             .frame(maxWidth: .infinity)
             .padding(.top, 2)
     }
@@ -527,13 +529,13 @@ struct ProfileHubView: View {
             Text(Str.Profile.guest_risk)
                 .font(.plexSansSemiBold(16, relativeTo: .headline))
                 .lineSpacing(16 * 0.3)
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(Str.Profile.guest_risk_desc(Int(vm.globalXp), Int(vm.balloonsUp), Int(vm.challengesCompleted)))
                 .font(.plexSans(13.5, relativeTo: .footnote))
                 .lineSpacing(20 - 13.5)
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 8)
 
@@ -543,9 +545,9 @@ struct ProfileHubView: View {
             } label: {
                 Text(Str.Profile.create_account)
                     .font(.plexSansSemiBold(15, relativeTo: .callout))
-                    .foregroundColor(LognDark.onAccent)
+                    .foregroundColor(LognColors.onAccent)
                     .frame(maxWidth: .infinity, minHeight: 50)
-                    .background(LognDark.accent)
+                    .background(LognColors.accent)
                     .cornerRadius(Radius.sm)
             }
             .buttonStyle(PressSinkStyle())
@@ -554,8 +556,8 @@ struct ProfileHubView: View {
         .padding(.horizontal, 16)
         .padding(.top, 16)
         .padding(.bottom, 18)
-        .background(LognDark.accent.opacity(0.12))
+        .background(LognColors.accent.opacity(0.12))
         .cornerRadius(Radius.sm)
-        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.accent, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.accent, lineWidth: 1))
     }
 }

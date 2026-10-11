@@ -37,20 +37,20 @@ struct DryRunPanel: View {
                 Text(Str.Dry_run.watch)
                     .font(.plexMono(10))
                     .tracking(0.14 * 10)
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
 
                 Spacer(minLength: 0)
 
                 if !watchNote.isEmpty {
                     Text(watchNote)
                         .font(.plexMono(10))
-                        .foregroundColor(LognDark.textMuted)
+                        .foregroundColor(LognColors.textMuted)
                 }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
             .overlay(alignment: .bottom) {
-                Rectangle().frame(height: 1).foregroundColor(LognDark.line)
+                Rectangle().frame(height: 1).foregroundColor(LognColors.line)
             }
 
             HStack(spacing: 0) {
@@ -58,18 +58,18 @@ struct DryRunPanel: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(variable.name)
                             .font(.plexMono(11))
-                            .foregroundColor(LognDark.textMuted)
+                            .foregroundColor(LognColors.textMuted)
                         Text(variable.value)
                             .font(.plexMono(15))
                             .monospacedDigit()
-                            .foregroundColor(LognDark.textPrimary)
+                            .foregroundColor(LognColors.textPrimary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                     .overlay(alignment: .trailing) {
                         if index < watchVariables.count - 1 {
-                            Rectangle().frame(width: 1).foregroundColor(LognDark.line)
+                            Rectangle().frame(width: 1).foregroundColor(LognColors.line)
                         }
                     }
                     .accessibilityElement(children: .ignore)
@@ -77,9 +77,9 @@ struct DryRunPanel: View {
                 }
             }
         }
-        .background(LognDark.surfaceRaised)
+        .background(LognColors.surfaceRaised)
         .cornerRadius(Radius.xs)
-        .overlay(RoundedRectangle(cornerRadius: Radius.xs).stroke(LognDark.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Radius.xs).stroke(LognColors.line, lineWidth: 1))
     }
 
     // MARK: Saída prevista
@@ -90,7 +90,7 @@ struct DryRunPanel: View {
                 Text(Str.Dry_run.expected_output)
                     .font(.plexMono(10))
                     .tracking(0.14 * 10)
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
 
                 Spacer(minLength: 0)
 
@@ -98,25 +98,25 @@ struct DryRunPanel: View {
                 if !predictedOutput.isEmpty {
                     Text(Str.Dry_run.ignored_spaces)
                         .font(.plexMono(10))
-                        .foregroundColor(LognDark.infoInk)
+                        .foregroundColor(LognColors.infoInk)
                 }
             }
 
             HStack(spacing: 8) {
                 Text(">")
                     .font(.plexMono(17))
-                    .foregroundColor(LognDark.accentInk)
+                    .foregroundColor(LognColors.accentInk)
 
                 TextField(
                     "",
                     text: Binding(get: { predictedOutput }, set: onOutputChange),
                     prompt: Text(Str.Dry_run.tap_to_type)
                         .font(.plexMono(17))
-                        .foregroundColor(LognDark.textDim)
+                        .foregroundColor(LognColors.textFaint)
                 )
                 .font(.plexMono(predictedOutput.isEmpty ? 17 : 19))
-                .foregroundColor(LognDark.textPrimary)
-                .tint(LognDark.accent)
+                .foregroundColor(LognColors.textPrimary)
+                .tint(LognColors.accentInk)
                 .focused($isTyping)
                 .keyboardType(.numbersAndPunctuation)
                 .autocorrectionDisabled()
@@ -127,11 +127,13 @@ struct DryRunPanel: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 13)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(LognDark.canvas)
+        .background(LognColors.canvas)
         .cornerRadius(Radius.xs)
+        // O foco e a resposta escrita só aparecem nesta borda: em tinta, que no claro passa
+        // de 3:1.
         .overlay(
             RoundedRectangle(cornerRadius: Radius.xs)
-                .stroke(isTyping || !predictedOutput.isEmpty ? LognDark.accent : LognDark.line, lineWidth: 1)
+                .stroke(isTyping || !predictedOutput.isEmpty ? LognColors.accentInk : LognColors.line, lineWidth: 1)
         )
         .contentShape(Rectangle())
         .onTapGesture { isTyping = true }

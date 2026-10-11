@@ -5,7 +5,7 @@ import LogNCoreFFI
 ///
 /// Exploração `3b · Contest`: fundo `surface`, borda `line`, raio 4dp, Plex Mono 12.5sp com
 /// entrelinha 33dp, divisor `rowLine` entre linhas. Linha selecionada ganha fundo `accentTint`
-/// e barra lateral 2dp em `accent`.
+/// e barra lateral 2dp em `accentInk`.
 ///
 /// Sem scroll horizontal — linhas longas quebram preservando a indentação.
 struct CodeBlock: View {
@@ -31,8 +31,8 @@ struct CodeBlock: View {
     init(
         lines: [String],
         selectedLine: Int? = nil,
-        highlightColor: Color = LognDark.accent,
-        highlightInk: Color = LognDark.accentInk,
+        highlightColor: Color = LognColors.accent,
+        highlightInk: Color = LognColors.accentInk,
         fontSize: CGFloat? = nil,
         lineHeight: CGFloat? = nil,
         cornerRadius: CGFloat? = nil,
@@ -74,11 +74,11 @@ struct CodeBlock: View {
         }
         .frame(maxHeight: fillsHeight ? .infinity : nil, alignment: .top)
         .padding(.vertical, isSelectable ? 0 : 8)
-        .background(LognDark.surface)
+        .background(LognColors.surface)
         .cornerRadius(cornerRadius)
         .overlay(
             RoundedRectangle(cornerRadius: cornerRadius)
-                .stroke(LognDark.line, lineWidth: 1)
+                .stroke(LognColors.line, lineWidth: 1)
         )
     }
 }
@@ -106,7 +106,7 @@ private struct CodeLineRow: View {
             Text(verbatim: "\(number)")
                 .font(.plexMono(fontSize))
                 .monospacedDigit()
-                .foregroundColor(isSelected ? highlightInk : LognDark.textMuted)
+                .foregroundColor(isSelected ? highlightInk : LognColors.textMuted)
                 // 12pt cabia um dígito só: da linha 10 em diante o número quebrava em
                 // duas alturas e comia o bloco inteiro. Dois dígitos de Plex Mono
                 // pedem ~16pt; o lineLimit garante que três dígitos truncam em vez de
@@ -140,10 +140,11 @@ private struct CodeLineRow: View {
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
-    /// Lacuna inline: min-width 74dp, altura 30dp, tracejado `accent`, raio 2dp.
+    /// Lacuna inline: min-width 74dp, altura 30dp, tracejado `accentInk`, raio 2dp. A caixa
+    /// tracejada é o único sinal visível da lacuna: em tinta, para passar de 3:1 no claro.
     private var blankBox: some View {
         RoundedRectangle(cornerRadius: Radius.xs)
-            .strokeBorder(LognDark.accent, style: StrokeStyle(lineWidth: 1, dash: [3]))
+            .strokeBorder(LognColors.accentInk, style: StrokeStyle(lineWidth: 1, dash: [3]))
             .frame(minWidth: 74, maxWidth: 74, minHeight: 30)
             .padding(.horizontal, 2)
             .accessibilityLabel(Str.Arena.gap_to_fill)
@@ -153,18 +154,19 @@ private struct CodeLineRow: View {
         isSelected ? highlightColor.opacity(0.14) : Color.clear
     }
 
-    /// Barra lateral 2dp — o estado nunca depende só do fundo.
+    /// Barra lateral 2dp — o estado nunca depende só do fundo. Em tinta, porque é ela que
+    /// carrega a seleção, e no claro a base do acento não chega a 3:1.
     @ViewBuilder
     private var sideBar: some View {
         if isSelected {
-            Rectangle().frame(width: 2).foregroundColor(highlightColor)
+            Rectangle().frame(width: 2).foregroundColor(highlightInk)
         }
     }
 
     @ViewBuilder
     private var divider: some View {
         if showsDivider {
-            Rectangle().frame(height: 1).foregroundColor(LognDark.rowLine)
+            Rectangle().frame(height: 1).foregroundColor(LognColors.rowLine)
         }
     }
 }
@@ -174,7 +176,7 @@ private struct CodeLineRow: View {
 /// Realce básico para o pseudocódigo do LogN (sabor C/C++/Kotlin).
 ///
 /// DS: keywords em `synKeyword`, chamadas em `synFunction`, números em `warn`,
-/// texto base em `textSecondary`, lacuna em `accent` tracejado.
+/// texto base em `textSecondary`, lacuna em `accentInk` tracejado.
 enum SyntaxHighlighter {
 
     private static let keywords: Set<String> = [
@@ -191,15 +193,15 @@ enum SyntaxHighlighter {
 
     static func highlight(_ code: String, isEmphasised: Bool = false) -> AttributedString {
         var out = AttributedString()
-        let baseColor = isEmphasised ? LognDark.textPrimary : LognDark.textSecondary
+        let baseColor = isEmphasised ? LognColors.textPrimary : LognColors.textSecondary
 
         for token in tokenize(code) {
             var piece = AttributedString(token.text)
             switch token.kind {
-            case .keyword:     piece.foregroundColor = LognDark.synKeyword
-            case .function:    piece.foregroundColor = LognDark.synFunction
-            case .number:      piece.foregroundColor = LognDark.warnInk
-            case .placeholder: piece.foregroundColor = LognDark.accent
+            case .keyword:     piece.foregroundColor = LognColors.synKeyword
+            case .function:    piece.foregroundColor = LognColors.synFunction
+            case .number:      piece.foregroundColor = LognColors.warnInk
+            case .placeholder: piece.foregroundColor = LognColors.accentInk
             case .plain:       piece.foregroundColor = baseColor
             }
             out.append(piece)

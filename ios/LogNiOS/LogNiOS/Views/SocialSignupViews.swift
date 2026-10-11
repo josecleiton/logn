@@ -17,13 +17,13 @@ struct GoogleSignInButton: View {
                     .frame(width: 20, height: 20)
                 Text(Str.Login.sign_in_google)
                     .font(.plexSansMedium(15))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 52)
-            .background(LognDark.surface)
+            .background(LognColors.surface)
             .cornerRadius(Radius.sm)
-            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
         }
     }
 }
@@ -35,6 +35,7 @@ struct GoogleSignInButton: View {
 /// política. O token do Google fica no Core; esta tela só responde sim ou não.
 struct SocialSignupSheet: View {
     @EnvironmentObject var core: CoreWrapper
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var ageConfirmed = false
     @State private var termsAccepted = false
@@ -45,11 +46,11 @@ struct SocialSignupSheet: View {
         VStack(alignment: .leading, spacing: 18) {
             Text(Str.Login.google_signup_title)
                 .font(.plexSansSemiBold(18))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
 
             Text(Str.Login.google_signup_reason)
                 .font(.plexSans(14))
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
 
             checkbox(isOn: $ageConfirmed, label: Str.Register.age_confirmation(Int(core.viewModel.minAge)))
 
@@ -68,7 +69,7 @@ struct SocialSignupSheet: View {
             if termsAccepted && !core.viewModel.legalVersionsReady {
                 Text(Str.Register.legal_pending)
                     .font(.plexSans(13, relativeTo: .footnote))
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
             }
 
             StatusLine(status: core.viewModel.status)
@@ -79,9 +80,9 @@ struct SocialSignupSheet: View {
                 Text(continueLabel)
                     .font(.plexSansSemiBold(15))
                     .monospacedDigit()
-                    .foregroundColor(canContinue ? LognDark.onAccent : LognDark.textDim)
+                    .foregroundColor(canContinue ? LognColors.onAccent : LognColors.textDim)
                     .frame(maxWidth: .infinity, minHeight: 52)
-                    .background(canContinue ? LognDark.accent : LognDark.buttonDisabled)
+                    .background(canContinue ? LognColors.accent : LognColors.buttonDisabled)
                     .cornerRadius(Radius.sm)
             }
             .disabled(!canContinue || core.viewModel.isAuthenticating)
@@ -89,14 +90,13 @@ struct SocialSignupSheet: View {
             Button(action: { core.dispatch(event: .cancelSocialSignup) }) {
                 Text(Str.Login.google_signup_cancel)
                     .font(.plexSans(14))
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.plain)
         }
         .padding(20)
-        .background(LognDark.surfaceRaised)
-        .preferredColorScheme(.dark)
+        .background(LognColors.surfaceRaised)
         .task {
             country = await DeviceCountry.current()
             core.dispatch(event: .fetchLegalVersions(country: country))
@@ -118,11 +118,11 @@ struct SocialSignupSheet: View {
         }) {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: isOn.wrappedValue ? "checkmark.square.fill" : "square")
-                    .foregroundColor(isOn.wrappedValue ? LognDark.accent : LognDark.textDim)
+                    .lognCheckbox(checked: isOn.wrappedValue, colorScheme)
                     .font(.system(size: 18))
                 Text(label)
                     .font(.plexSans(13))
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .multilineTextAlignment(.leading)
             }
         }

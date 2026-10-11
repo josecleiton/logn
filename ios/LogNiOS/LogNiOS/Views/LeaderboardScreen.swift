@@ -33,7 +33,7 @@ struct LeaderboardScreen: View {
 
     var body: some View {
         ZStack {
-            LognDark.canvas.ignoresSafeArea()
+            LognColors.canvas.ignoresSafeArea()
             VStack(spacing: 0) {
                 header
                 content
@@ -73,19 +73,19 @@ struct LeaderboardScreen: View {
             Text(Str.Leaderboard.title)
                 .font(.plexSansSemiBold(22, relativeTo: .title2))
                 .tracking(-0.02 * 22)
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .accessibilityAddTraits(.isHeader)
             Text(Str.Leaderboard.subtitle)
                 .font(.plexMono(11))
                 .tracking(0.1 * 11)
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
                 .padding(.bottom, 12)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, Space.screenMargin)
         .padding(.top, 18)
         .overlay(alignment: .bottom) {
-            Rectangle().frame(height: 1).foregroundColor(LognDark.line)
+            Rectangle().frame(height: 1).foregroundColor(LognColors.line)
         }
     }
 
@@ -97,12 +97,12 @@ struct LeaderboardScreen: View {
                 .font(.plexSans(12.5))
             Spacer(minLength: 0)
         }
-        .foregroundColor(LognDark.infoInk)
+        .foregroundColor(LognColors.infoInk)
         .padding(.horizontal, Space.screenMargin)
         .padding(.vertical, 10)
-        .background(LognDark.tintInfo)
+        .background(LognColors.tintInfo)
         .overlay(alignment: .bottom) {
-            Rectangle().frame(height: 1).foregroundColor(LognDark.info)
+            Rectangle().frame(height: 1).foregroundColor(LognColors.info)
         }
     }
 
@@ -164,14 +164,14 @@ struct LeaderboardScreen: View {
             Text(Str.Leaderboard.closed_eyebrow)
                 .font(.plexMono(11))
                 .tracking(0.1 * 11)
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(String(players))
                     .font(.plexMonoSemiBold(48))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                 Text(Str.Leaderboard.closed_of(Int(board.threshold)))
                     .font(.plexMono(20))
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Str.Leaderboard.closed_accessibility(players, Int(board.threshold)))
@@ -179,11 +179,11 @@ struct LeaderboardScreen: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(Str.Leaderboard.closed_missing(Int(board.missing)))
                     .font(.plexSansSemiBold(18))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                 Text(closedBody)
                     .font(.plexSans(14))
                     .lineSpacing(bodyLineSpacing)
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
@@ -203,7 +203,7 @@ struct LeaderboardScreen: View {
     }
 
     private func segmentColor(_ index: Int) -> Color {
-        index < players ? LognDark.accent : LognDark.line
+        index < players ? LognColors.accent : LognColors.line
     }
 
     // MARK: Sem XP
@@ -213,16 +213,16 @@ struct LeaderboardScreen: View {
             HStack(spacing: 10) {
                 Text(leaderboardName(anonNumber: board.me.anonNumber, nickname: board.me.nickname))
                     .font(nameFont(board.me.nickname, bold: true))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                 Text(Str.Leaderboard.you + " · " + Str.Leaderboard.xp("0"))
                     .font(.plexMono(11))
                     .tracking(0.1 * 11)
-                    .foregroundColor(LognDark.accentInk)
+                    .foregroundColor(LognColors.accentInk)
             }
             Text(Str.Leaderboard.zero_xp)
                 .font(.plexSans(14))
                 .lineSpacing(bodyLineSpacing)
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             Button {
                 core.dispatch(event: .selectTrack(trackId: ""))
@@ -230,18 +230,18 @@ struct LeaderboardScreen: View {
             } label: {
                 Text(Str.Leaderboard.zero_xp_action)
                     .font(.plexSansSemiBold(14))
-                    .foregroundColor(LognDark.accentInk)
+                    .foregroundColor(LognColors.accentInk)
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.accent, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.accent, lineWidth: 1))
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, Space.screenMargin)
         .padding(.top, 16)
         .padding(.bottom, 20)
-        .background(LognDark.surface)
+        .background(LognColors.surface)
         .overlay(alignment: .top) {
-            Rectangle().frame(height: 1).foregroundColor(LognDark.line)
+            Rectangle().frame(height: 1).foregroundColor(LognColors.line)
         }
     }
 
@@ -251,13 +251,13 @@ struct LeaderboardScreen: View {
         VStack(alignment: .leading, spacing: 20) {
             Spacer(minLength: 0)
             Circle()
-                .fill(LognDark.surface)
+                .fill(LognColors.surface)
                 .frame(width: 52, height: 52)
-                .overlay(Circle().strokeBorder(LognDark.lineDim, style: StrokeStyle(lineWidth: 1, dash: [3])))
+                .overlay(Circle().strokeBorder(LognColors.lineDim, style: StrokeStyle(lineWidth: 1, dash: [3])))
                 .overlay(
                     Image(systemName: "person")
                         .font(.system(size: 20, weight: .regular))
-                        .foregroundColor(LognDark.textMuted)
+                        .foregroundColor(LognColors.textMuted)
                 )
             stateText(Str.Leaderboard.guest_title, Str.Leaderboard.guest_body)
             VStack(spacing: 10) {
@@ -267,9 +267,9 @@ struct LeaderboardScreen: View {
                 } label: {
                     Text(Str.Leaderboard.guest_create)
                         .font(.plexSansSemiBold(15))
-                        .foregroundColor(LognDark.onAccent)
+                        .foregroundColor(LognColors.onAccent)
                         .frame(maxWidth: .infinity, minHeight: 48)
-                        .background(LognDark.accent)
+                        .background(LognColors.accent)
                         .cornerRadius(Radius.sm)
                 }
                 .buttonStyle(.plain)
@@ -287,7 +287,7 @@ struct LeaderboardScreen: View {
             Spacer(minLength: 0)
             Image(systemName: "wifi.slash")
                 .font(.system(size: 24, weight: .regular))
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
             stateText(Str.Leaderboard.unavailable_title, Str.Leaderboard.unavailable_body)
             outlineButton(Str.Dashboard.try_again, height: 44, size: 14) {
                 core.dispatch(event: .leaderboardRefresh)
@@ -301,16 +301,16 @@ struct LeaderboardScreen: View {
         VStack(spacing: 0) {
             ForEach(Self.skeletonWidths, id: \.self) { width in
                 HStack(spacing: 14) {
-                    RoundedRectangle(cornerRadius: 2).fill(LognDark.rowLine).frame(width: 18, height: 10)
-                    RoundedRectangle(cornerRadius: 2).fill(LognDark.surface).frame(width: width, height: 12)
+                    RoundedRectangle(cornerRadius: 2).fill(LognColors.rowLine).frame(width: 18, height: 10)
+                    RoundedRectangle(cornerRadius: 2).fill(LognColors.surface).frame(width: width, height: 12)
                     Spacer(minLength: 0)
-                    RoundedRectangle(cornerRadius: 2).fill(LognDark.surface).frame(width: 58, height: 12)
+                    RoundedRectangle(cornerRadius: 2).fill(LognColors.surface).frame(width: 58, height: 12)
                 }
                 .padding(.horizontal, Space.screenMargin)
                 .frame(minHeight: 44)
                 .padding(.vertical, 1)
                 .overlay(alignment: .bottom) {
-                    Rectangle().frame(height: 1).foregroundColor(LognDark.rowLine)
+                    Rectangle().frame(height: 1).foregroundColor(LognColors.rowLine)
                 }
             }
             Spacer(minLength: 0)
@@ -325,12 +325,12 @@ struct LeaderboardScreen: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.plexSansSemiBold(20))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
             Text(body)
                 .font(.plexSans(14))
                 .lineSpacing(bodyLineSpacing)
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -339,9 +339,9 @@ struct LeaderboardScreen: View {
         Button(action: action) {
             Text(title)
                 .font(.plexSansMedium(size))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .frame(maxWidth: .infinity, minHeight: height)
-                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.lineStrong, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.lineStrong, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
@@ -367,23 +367,23 @@ struct LeaderboardRowView: View {
             Text("\(Int(row.rank))")
                 .font(.plexMono(13))
                 .monospacedDigit()
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
                 .frame(width: 26, alignment: .leading)
             Text(name)
                 .font(nameFont(row.nickname, bold: false))
-                .foregroundColor(row.nickname != nil ? LognDark.textPrimary : LognDark.textSecondary)
+                .foregroundColor(row.nickname != nil ? LognColors.textPrimary : LognColors.textSecondary)
                 .lineLimit(1)
             Spacer(minLength: 0)
             Text(Str.Leaderboard.xp(xp))
                 .font(.plexMono(14))
                 .monospacedDigit()
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
         }
         .padding(.horizontal, Space.screenMargin)
         .padding(.vertical, 13)
         .frame(minHeight: 44)
         .overlay(alignment: .bottom) {
-            Rectangle().frame(height: 1).foregroundColor(LognDark.rowLine)
+            Rectangle().frame(height: 1).foregroundColor(LognColors.rowLine)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Str.Leaderboard.row_accessibility(Int(row.rank), name, xp))
@@ -411,32 +411,34 @@ struct LeaderboardMeRow: View {
             Text(ranked ? "\(Int(me.rank))" : Str.Leaderboard.rank_none)
                 .font(.plexMono(13))
                 .monospacedDigit()
-                .foregroundColor(LognDark.accentInk)
+                .foregroundColor(LognColors.accentInk)
                 .frame(width: 26, alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
                 Text(name)
                     .font(nameFont(me.nickname, bold: true))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                     .lineLimit(1)
                 Text(board.meStatus == .hidden ? Str.Leaderboard.hidden_label : Str.Leaderboard.you)
                     .font(.plexMono(11))
                     .tracking(0.1 * 11)
-                    .foregroundColor(LognDark.accentInk)
+                    .foregroundColor(LognColors.accentInk)
             }
             Spacer(minLength: 0)
             Text(Str.Leaderboard.xp(xp))
                 .font(.plexMonoSemiBold(14))
                 .monospacedDigit()
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
         }
         .padding(.horizontal, Space.screenMargin)
         .padding(.vertical, 16)
-        .background(LognDark.accentTint)
+        .background(LognColors.accentTint)
+        // Em tinta: o fio de baixo encosta na aba ativa, que é `accentInk`, e dois laranjas na
+        // mesma aresta destoavam no claro.
         .overlay(alignment: .top) {
-            Rectangle().frame(height: 1).foregroundColor(LognDark.accent)
+            Rectangle().frame(height: 1).foregroundColor(LognColors.accentInk)
         }
         .overlay(alignment: .bottom) {
-            Rectangle().frame(height: 1).foregroundColor(LognDark.accent)
+            Rectangle().frame(height: 1).foregroundColor(LognColors.accentInk)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)

@@ -33,7 +33,7 @@ struct LognButton: View {
             .overlay(
                     variant == .secondary
                         ? RoundedRectangle(cornerRadius: Radius.sm)
-                            .stroke(LognDark.lineStrong, lineWidth: 1)
+                            .stroke(LognColors.lineStrong, lineWidth: 1)
                         : nil
                 )
         }
@@ -47,18 +47,18 @@ struct LognButton: View {
     }
 
     private var foregroundColor: Color {
-        if isDisabled { return LognDark.textDim }
+        if isDisabled { return LognColors.textDim }
         switch variant {
-        case .primary:   return LognDark.onAccent
-        case .secondary: return LognDark.textPrimary
-        case .ghost:     return LognDark.textSecondary
+        case .primary:   return LognColors.onAccent
+        case .secondary: return LognColors.textPrimary
+        case .ghost:     return LognColors.textSecondary
         }
     }
 
     private var backgroundColor: Color {
-        if isDisabled { return LognDark.buttonDisabled }
+        if isDisabled { return LognColors.buttonDisabled }
         switch variant {
-        case .primary:             return LognDark.accent
+        case .primary:             return LognColors.accent
         case .secondary, .ghost:   return .clear
         }
     }
@@ -74,6 +74,28 @@ struct PressSinkStyle: ButtonStyle {
 
 // MARK: - PasswordField
 
+extension Image {
+    /// A caixa de marcar (`checkmark.square.fill` ou `square`). Marcada, o quadrado fica na
+    /// base do acento e o visto, que é o estado, sai escuro no claro (`onAccent`, 7.5:1), como
+    /// o texto do botão primário; o canvas vazado ali daria 2.4:1. No escuro o visto continua
+    /// vazado, como sempre foi. Vazia, `textDim`.
+    @ViewBuilder
+    func lognCheckbox(checked: Bool, _ scheme: ColorScheme) -> some View {
+        if checked && scheme == .light {
+            symbolRenderingMode(.palette).foregroundStyle(LognColors.onAccent, LognColors.accent)
+        } else {
+            foregroundColor(checked ? LognColors.accent : LognColors.textDim)
+        }
+    }
+}
+
+/// O exemplo de um campo que só tem título. No claro, em `textFaint`: o cinza do sistema
+/// fica em 1.7:1 sobre o branco. No escuro, `nil`, e o campo mostra o do sistema, como
+/// sempre mostrou (ADR 0031).
+func lightPrompt(_ text: String, _ scheme: ColorScheme) -> Text? {
+    scheme == .light ? Text(text).foregroundColor(LognColors.textFaint) : nil
+}
+
 /// O `SecureField` com o olho na borda direita, que mostra e esconde a senha. Quem usa
 /// aplica o mesmo visual de antes (padding, fundo, borda, `textContentType`), que vale
 /// para o par de campos por dentro. Some da tela, a senha volta a ficar escondida.
@@ -84,6 +106,10 @@ struct PasswordField: View {
 
     @State private var revealed = false
     @FocusState private var focused: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// Sem exemplo próprio, o do tema (`lightPrompt`).
+    private var shownPrompt: Text? { prompt ?? lightPrompt(placeholder, colorScheme) }
 
     init(_ placeholder: String, text: Binding<String>, prompt: Text? = nil) {
         self.placeholder = placeholder
@@ -97,7 +123,7 @@ struct PasswordField: View {
             Button(action: toggle) {
                 Image(systemName: revealed ? "eye.slash" : "eye")
                     .font(.system(size: 15))
-                    .foregroundColor(LognDark.textDim)
+                    .foregroundColor(LognColors.textDim)
                     .frame(width: Space.minTouch, height: Space.minTouch)
                     .contentShape(Rectangle())
             }
@@ -112,12 +138,12 @@ struct PasswordField: View {
     @ViewBuilder
     private var field: some View {
         if revealed {
-            TextField(placeholder, text: $text, prompt: prompt)
+            TextField(placeholder, text: $text, prompt: shownPrompt)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .focused($focused)
         } else {
-            SecureField(placeholder, text: $text, prompt: prompt)
+            SecureField(placeholder, text: $text, prompt: shownPrompt)
                 .focused($focused)
         }
     }
@@ -149,13 +175,13 @@ struct LifeBar: View {
             ForEach(0..<maxLives, id: \.self) { i in
                 Image(systemName: i < lives ? "heart.fill" : "heart")
                     .font(.system(size: heartSize))
-                    .foregroundColor(i < lives ? LognDark.wrong : LognDark.heartOff)
+                    .foregroundColor(i < lives ? LognColors.wrong : LognColors.heartOff)
             }
             if showsCounter {
                 Text("\(lives) / \(maxLives)")
                     .lognLabel()
                     .monospacedDigit()
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
             }
         }
         .accessibilityElement(children: .ignore)
@@ -177,33 +203,33 @@ struct ContestClock: View {
                 Text(formattedTime)
                     .font(.plexMonoSemiBold(28))
                     .monospacedDigit()
-                    .foregroundColor(LognDark.wrongInk)
+                    .foregroundColor(LognColors.wrongInk)
 
                 Text(Str.Match.clock_critical)
                     .font(.plexMono(11))
                     .tracking(0.1 * 11)
-                    .foregroundColor(LognDark.wrongInk)
+                    .foregroundColor(LognColors.wrongInk)
             }
         } else {
             VStack(alignment: .leading, spacing: 6) {
                 Text(isFrozen ? "PLACAR CONGELADO" : "TEMPO RESTANTE")
                     .font(.plexMono(10.5))
                     .tracking(0.16 * 10.5)
-                    .foregroundColor(isFrozen ? LognDark.warnInk : LognDark.textMuted)
+                    .foregroundColor(isFrozen ? LognColors.warnInk : LognColors.textMuted)
 
                 Text(formattedTime)
                     .font(.plexMonoMedium(38))
                     .tracking(-0.01 * 38)
                     .monospacedDigit()
-                    .foregroundColor(isFrozen ? LognDark.warnInk : LognDark.textPrimary)
+                    .foregroundColor(isFrozen ? LognColors.warnInk : LognColors.textPrimary)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 16)
-            .background(isFrozen ? LognDark.tintWarn : LognDark.canvas)
+            .background(isFrozen ? LognColors.tintWarn : LognColors.canvas)
             .cornerRadius(Radius.sm)
             .overlay(
                 RoundedRectangle(cornerRadius: Radius.sm)
-                    .stroke(isFrozen ? LognDark.warn : LognDark.line, lineWidth: 1)
+                    .stroke(isFrozen ? LognColors.warn : LognColors.line, lineWidth: 1)
             )
         }
     }
@@ -258,10 +284,10 @@ struct VerdictChip: View {
         /// Cor de **linha**: borda, barra lateral, ícone preenchido.
         var tone: Color {
             switch self {
-            case .ac:                   return LognDark.correct
-            case .wa, .tle, .mle, .re:  return LognDark.wrong
-            case .ce, .pe:              return LognDark.warn
-            case .judging:              return LognDark.textMuted
+            case .ac:                   return LognColors.correct
+            case .wa, .tle, .mle, .re:  return LognColors.wrong
+            case .ce, .pe:              return LognColors.warn
+            case .judging:              return LognColors.textMuted
             }
         }
 
@@ -269,18 +295,18 @@ struct VerdictChip: View {
         /// no light escurece, porque a cor de linha não alcança 4.5:1 sobre o próprio tint.
         var ink: Color {
             switch self {
-            case .ac:                   return LognDark.correctInk
-            case .wa, .tle, .mle, .re:  return LognDark.wrongInk
-            case .ce, .pe:              return LognDark.warnInk
-            case .judging:              return LognDark.textMuted
+            case .ac:                   return LognColors.correctInk
+            case .wa, .tle, .mle, .re:  return LognColors.wrongInk
+            case .ce, .pe:              return LognColors.warnInk
+            case .judging:              return LognColors.textMuted
             }
         }
 
         var tint: Color {
             switch self {
-            case .ac:                   return LognDark.tintOk
-            case .wa, .tle, .mle, .re:  return LognDark.tintErr
-            case .ce, .pe:              return LognDark.tintWarn
+            case .ac:                   return LognColors.tintOk
+            case .wa, .tle, .mle, .re:  return LognColors.tintErr
+            case .ce, .pe:              return LognColors.tintWarn
             case .judging:              return .clear
             }
         }
@@ -297,7 +323,7 @@ struct VerdictChip: View {
             .cornerRadius(Radius.xs)
             .overlay(
                 RoundedRectangle(cornerRadius: Radius.xs)
-                    .stroke(verdict == .judging ? LognDark.lineDim : verdict.tone, lineWidth: 1)
+                    .stroke(verdict == .judging ? LognColors.lineDim : verdict.tone, lineWidth: 1)
             )
             .accessibilityLabel(Str.Profile.verdict_accessibility(verdict.rawValue, verdict.meaning))
     }
@@ -336,7 +362,7 @@ struct MatchHeader: View {
                     Button(action: onLeave) {
                         Image(systemName: "xmark")
                             .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(LognDark.textMuted)
+                            .foregroundColor(LognColors.textMuted)
                             .frame(width: 44, height: 44)
                     }
                     .buttonStyle(.plain)
@@ -347,8 +373,8 @@ struct MatchHeader: View {
 
                 BalloonShape(
                     style: currentIsAlive
-                        ? .filled(BalloonColor.forLetter(letter))
-                        : .outline(LognDark.lineStrong, 4),
+                        ? BalloonColor.filled(letter)
+                        : .outline(LognColors.lineStrong, 4),
                     width: 14,
                     showString: true
                 )
@@ -356,7 +382,7 @@ struct MatchHeader: View {
                 Text(Str.Match.problem_letter(String(letter)))
                     .font(.plexMono(12))
                     .tracking(0.12 * 12)
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
 
                 Spacer(minLength: 0)
 
@@ -378,9 +404,9 @@ struct MatchHeader: View {
         .padding(.top, 16)
         .padding(.bottom, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(LognDark.canvas)
+        .background(LognColors.canvas)
         .overlay(alignment: .bottom) {
-            Rectangle().frame(height: 1).foregroundColor(LognDark.line)
+            Rectangle().frame(height: 1).foregroundColor(LognColors.line)
         }
     }
 
@@ -405,7 +431,7 @@ struct MatchHeader: View {
                     // como texto — a letra fica em `textMuted`, a cor vive no balão.
                     Text(String(l))
                         .font(.plexMono(8))
-                        .foregroundColor(LognDark.textMuted)
+                        .foregroundColor(LognColors.textMuted)
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(balloonDescription(for: l))
@@ -415,9 +441,9 @@ struct MatchHeader: View {
     }
 
     private func balloonStyle(for l: Character) -> BalloonShape.Style {
-        if isAccepted(l) { return .filled(BalloonColor.forLetter(l)) }
+        if isAccepted(l) { return BalloonColor.filled(l) }
         if l == letter   { return .outline(BalloonColor.forLetter(l), 5) }
-        return .outline(LognDark.lineStrong, 5)
+        return .outline(LognColors.lineStrong, 5)
     }
 
     /// O balão nunca comunica só por cor — a letra e o estado vão no rótulo.
@@ -440,9 +466,9 @@ struct MatchHeader: View {
     private var isSolved: Bool { isAccepted(letter) }
 
     private var clockColor: Color {
-        if remainingSeconds <= 15 { return LognDark.wrongInk }
-        if isFrozen || remainingSeconds <= 45 { return LognDark.warnInk }
-        return LognDark.textSecondary
+        if remainingSeconds <= 15 { return LognColors.wrongInk }
+        if isFrozen || remainingSeconds <= 45 { return LognColors.warnInk }
+        return LognColors.textSecondary
     }
 }
 

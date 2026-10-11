@@ -62,7 +62,7 @@ struct CatalogView: View {
             .padding(.horizontal, Space.lg)
             .padding(.bottom, Space.xl)
         }
-        .background(LognDark.surface.ignoresSafeArea())
+        .background(LognColors.surface.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             core.dispatch(event: .catalogOpened)
@@ -77,13 +77,13 @@ struct CatalogView: View {
             Text(Str.Catalog.title)
                 .font(LognFont.headlineMedium)
                 .tracking(-0.02 * 24)
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
             Spacer()
             if core.viewModel.isOfflineSession {
                 Text(Str.Catalog.offline)
                     .font(.plexMono(10))
                     .tracking(0.1 * 10)
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
             }
         }
         .padding(.top, Space.sm)
@@ -99,19 +99,20 @@ struct CatalogView: View {
                     Text(Str.Catalog.principal)
                         .font(.plexMono(10))
                         .tracking(0.12 * 10)
-                        .foregroundColor(LognDark.accentInk)
+                        .foregroundColor(LognColors.accentInk)
                     Text(track.name)
                         .font(.plexSansSemiBold(16))
-                        .foregroundColor(LognDark.textPrimary)
+                        .foregroundColor(LognColors.textPrimary)
                     Text(Str.Catalog.progress(Int(track.nodesDone), Int(track.nodeCount), Int(track.trackXp)))
                         .font(.plexMono(11))
-                        .foregroundColor(LognDark.textSecondary)
+                        .foregroundColor(LognColors.textSecondary)
                 }
                 Spacer(minLength: 0)
             }
             .padding(14)
-            .background(track.selected ? LognDark.accentTint : LognDark.canvas)
-            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(track.selected ? LognDark.accent : LognDark.line, lineWidth: 1))
+            .background(track.selected ? LognColors.accentTint : LognColors.canvas)
+            // A borda é o que diz qual trilha está aberta: em tinta, que no claro passa de 3:1.
+            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(track.selected ? LognColors.accentInk : LognColors.line, lineWidth: 1))
             .cornerRadius(Radius.sm)
         }
         .buttonStyle(.plain)
@@ -128,11 +129,11 @@ struct CatalogView: View {
                      ? verbatimProgress(track)
                      : Str.Catalog.nodes(Int(track.nodeCount)))
                     .font(.plexMono(10))
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
             }
             Text(track.name)
                 .font(.plexSansSemiBold(14))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .opacity(track.isExpired || track.revoked ? 0.45 : 1)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
@@ -141,8 +142,8 @@ struct CatalogView: View {
         }
         .padding(12)
         .frame(minHeight: 132, alignment: .topLeading)
-        .background(LognDark.canvas)
-        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(warn ? LognDark.warn : LognDark.line, lineWidth: 1))
+        .background(LognColors.canvas)
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(warn ? LognColors.warn : LognColors.line, lineWidth: 1))
         .cornerRadius(Radius.sm)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Str.Catalog.open_accessibility(track.name, chip.text))

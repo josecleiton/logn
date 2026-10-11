@@ -23,19 +23,19 @@ struct StorageManagementView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider().background(LognDark.line)
+            Divider().background(LognColors.line)
             ScrollView {
                 VStack(spacing: Space.md) {
                     Text(Str.Storage.desc)
                         .font(LognFont.bodyMedium)
-                        .foregroundColor(LognDark.textSecondary)
+                        .foregroundColor(LognColors.textSecondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, Space.lg)
 
                     if ownedTracks.isEmpty {
                         Text(Str.Storage.empty)
                             .font(LognFont.bodyMedium)
-                            .foregroundColor(LognDark.textSecondary)
+                            .foregroundColor(LognColors.textSecondary)
                             .padding(.top, Space.xl)
                     } else {
                         ForEach(ownedTracks, id: \.id) { track in
@@ -47,18 +47,18 @@ struct StorageManagementView: View {
             }
             Spacer()
         }
-        .background(LognDark.surfaceRaised.ignoresSafeArea())
+        .background(LognColors.surfaceRaised.ignoresSafeArea())
     }
 
     private var header: some View {
         HStack {
             Text(Str.Storage.title)
                 .font(LognFont.titleMedium)
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
             Spacer()
             Button(action: { dismiss() }) {
                 Image(systemName: "xmark")
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
             }
             .accessibilityLabel(Str.Storage.close)
         }
@@ -79,16 +79,16 @@ struct StorageManagementView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(track.name)
                     .font(LognFont.bodyLarge)
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                 Text(detail(for: track))
                     .font(LognFont.label)
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
             }
             Spacer()
             if track.downloaded {
                 Button(action: { core.dispatch(event: .deleteTrackDownload(trackId: track.id)) }) {
                     Image(systemName: "trash")
-                        .foregroundColor(LognDark.wrongInk)
+                        .foregroundColor(LognColors.wrongInk)
                 }
                 .accessibilityLabel(Str.Storage.delete_accessibility(track.name))
             } else {
@@ -96,12 +96,12 @@ struct StorageManagementView: View {
                     core.dispatch(event: .fetchLicense(trackId: track.id))
                 }
                 .font(LognFont.label)
-                .foregroundColor(LognDark.accent)
+                .foregroundColor(LognColors.accentInk)
             }
         }
         .padding(Space.lg)
-        .background(LognDark.canvas)
+        .background(LognColors.canvas)
         .cornerRadius(Radius.md)
-        .overlay(RoundedRectangle(cornerRadius: Radius.md).stroke(LognDark.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Radius.md).stroke(LognColors.line, lineWidth: 1))
     }
 }

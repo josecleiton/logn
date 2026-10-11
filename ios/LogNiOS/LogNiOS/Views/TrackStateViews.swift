@@ -24,10 +24,10 @@ struct OnboardingView: View {
                 Text(Str.Onboarding.title)
                     .font(.plexSansSemiBold(26))
                     .tracking(-0.02 * 26)
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                 Text(Str.Onboarding.body)
                     .font(.plexSans(14.5))
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.top, 40)
@@ -51,7 +51,7 @@ struct OnboardingView: View {
         }
         .padding(.horizontal, 22)
         .padding(.bottom, 26)
-        .background(LognDark.surface.ignoresSafeArea())
+        .background(LognColors.surface.ignoresSafeArea())
     }
 
     private func option(selected: Bool, title: String, body: String, action: @escaping () -> Void) -> some View {
@@ -60,23 +60,24 @@ struct OnboardingView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(.plexSansSemiBold(15.5))
-                        .foregroundColor(LognDark.textPrimary)
+                        .foregroundColor(LognColors.textPrimary)
                     Text(body)
                         .font(.plexSans(13))
-                        .foregroundColor(LognDark.textSecondary)
+                        .foregroundColor(LognColors.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
                 if selected {
                     Image(systemName: "checkmark")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(LognDark.accentInk)
+                        .foregroundColor(LognColors.accentInk)
                 }
             }
             .padding(14)
-            .background(selected ? LognDark.accentTint : Color.clear)
+            .background(selected ? LognColors.accentTint : Color.clear)
+            // A borda carrega a escolha: em tinta, que no claro passa de 3:1.
             .overlay(RoundedRectangle(cornerRadius: Radius.sm)
-                .stroke(selected ? LognDark.accent : LognDark.line, lineWidth: selected ? 1.5 : 1))
+                .stroke(selected ? LognColors.accentInk : LognColors.line, lineWidth: selected ? 1.5 : 1))
             .cornerRadius(Radius.sm)
         }
         .buttonStyle(.plain)
@@ -104,21 +105,21 @@ struct ExpiredTrackView: View {
             Text(Str.Expired.eyebrow(Int(track.daysSinceContact)))
                 .font(.plexMono(10.5))
                 .tracking(0.12 * 10.5)
-                .foregroundColor(LognDark.wrongInk)
+                .foregroundColor(LognColors.wrongInk)
             Text(Str.Expired.title(track.name))
                 .font(.plexSansSemiBold(24))
                 .tracking(-0.02 * 24)
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
             Text(Str.Expired.body)
                 .font(.plexSans(14))
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 1) {
                 stat(Str.Expired.progress, "\(track.nodesDone)/\(track.nodeCount)")
                 stat(Str.Expired.xp, "\(track.trackXp)")
             }
-            .background(LognDark.line)
-            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+            .background(LognColors.line)
+            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
             .cornerRadius(Radius.sm)
 
             Spacer()
@@ -131,7 +132,7 @@ struct ExpiredTrackView: View {
                     core.dispatch(event: .selectTrack(trackId: free.id))
                 }
                 .font(.plexSans(13.5))
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .frame(maxWidth: .infinity, minHeight: 44)
             }
         }
@@ -145,15 +146,15 @@ struct ExpiredTrackView: View {
             Text(label)
                 .font(.plexMono(10))
                 .tracking(0.12 * 10)
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
             Text(value)
                 .font(.plexMonoSemiBold(17))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(LognDark.surface)
+        .background(LognColors.surface)
     }
 }
 
@@ -169,26 +170,26 @@ struct RestoreResultSheet: View {
                 Text(Str.Restore.title)
                     .font(.plexMono(10.5))
                     .tracking(0.12 * 10.5)
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
                 Spacer()
                 if result.finished && result.total > 0 {
                     Text(Str.Restore.count(Int(result.restored), Int(result.total)))
                         .font(.plexMonoMedium(10.5))
-                        .foregroundColor(result.restored > 0 ? LognDark.correctInk : LognDark.textSecondary)
+                        .foregroundColor(result.restored > 0 ? LognColors.correctInk : LognColors.textSecondary)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
                         .overlay(RoundedRectangle(cornerRadius: Radius.xs)
-                            .stroke(result.restored > 0 ? LognDark.correct : LognDark.lineStrong, lineWidth: 1))
+                            .stroke(result.restored > 0 ? LognColors.correct : LognColors.lineStrong, lineWidth: 1))
                 }
             }
             Text(message)
                 .font(.plexSans(14))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
             if result.otherAccount > 0 {
                 Text(Str.Restore.other(Int(result.otherAccount)))
                     .font(.plexSans(13.5))
-                    .foregroundColor(LognDark.warnInk)
+                    .foregroundColor(LognColors.warnInk)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
@@ -197,7 +198,7 @@ struct RestoreResultSheet: View {
             }, isDisabled: !result.finished)
         }
         .padding(22)
-        .background(LognDark.surface.ignoresSafeArea())
+        .background(LognColors.surface.ignoresSafeArea())
         .presentationDetents([.height(300)])
     }
 

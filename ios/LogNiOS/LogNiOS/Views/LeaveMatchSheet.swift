@@ -25,18 +25,18 @@ struct LeaveMatchSheet: View {
             Text(Str.Leave.eyebrow.uppercased())
                 .font(.plexMono(11))
                 .tracking(0.12 * 11)
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
 
             Text(Str.Leave.solved(solved, total))
                 .font(.plexSansSemiBold(26, relativeTo: .title2))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 10)
 
             Text(Str.Leave.body)
                 .font(.plexSans(16, relativeTo: .body))
                 .lineSpacing(16 * 0.45)
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 14)
 
@@ -45,10 +45,10 @@ struct LeaveMatchSheet: View {
                 HStack(spacing: 10) {
                     ForEach(pendentes, id: \.self) { letra in
                         VStack(spacing: 4) {
-                            BalloonShape(style: .outline(LognDark.lineStrong, 4), width: 14, showString: false)
+                            BalloonShape(style: .outline(LognColors.lineStrong, 4), width: 14, showString: false)
                             Text(String(letra))
                                 .font(.plexMono(9))
-                                .foregroundColor(LognDark.textMuted)
+                                .foregroundColor(LognColors.textMuted)
                         }
                     }
                     Spacer(minLength: 0)
@@ -61,10 +61,10 @@ struct LeaveMatchSheet: View {
             Button(action: onStay) {
                 Text(Str.Leave.stay)
                     .font(.plexSansSemiBold(16, relativeTo: .body))
-                    .foregroundColor(LognDark.onAccent)
+                    .foregroundColor(LognColors.onAccent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(LognDark.accent)
+                    .background(LognColors.accent)
                     .cornerRadius(Radius.sm)
             }
             .padding(.top, 28)
@@ -72,12 +72,12 @@ struct LeaveMatchSheet: View {
             Button(action: onLeave) {
                 Text(Str.Leave.confirm)
                     .font(.plexSansMedium(16, relativeTo: .body))
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .overlay(
                         RoundedRectangle(cornerRadius: Radius.sm)
-                            .stroke(LognDark.lineStrong, lineWidth: 1)
+                            .stroke(LognColors.lineStrong, lineWidth: 1)
                     )
             }
             .padding(.top, 10)
@@ -86,7 +86,7 @@ struct LeaveMatchSheet: View {
         .padding(.top, 44)
         .padding(.bottom, 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(LognDark.surface)
+        .background(LognColors.surface)
     }
 
     /// As letras que ainda não subiram.

@@ -49,12 +49,12 @@ struct MatchView: View {
         Text(mv.currentOrigin.uppercased())
             .font(.plexMono(10))
             .tracking(0.12 * 10)
-            .foregroundColor(tappable ? LognDark.accent : LognDark.textSecondary)
+            .foregroundColor(tappable ? LognColors.accentInk : LognColors.textSecondary)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .overlay(
                 RoundedRectangle(cornerRadius: Radius.sm)
-                    .stroke(tappable ? LognDark.accent.opacity(0.5) : LognDark.lineStrong, lineWidth: 1)
+                    .stroke(tappable ? LognColors.accent.opacity(0.5) : LognColors.lineStrong, lineWidth: 1)
             )
     }
 
@@ -66,7 +66,7 @@ struct MatchView: View {
 
     var body: some View {
         ZStack {
-            LognDark.canvas.ignoresSafeArea()
+            LognColors.canvas.ignoresSafeArea()
 
             if let verdict {
                 MatchVerdictScreen(
@@ -174,7 +174,7 @@ struct MatchView: View {
             .padding(.horizontal, 14)
             .padding(.top, 16)
             .padding(.bottom, 22)
-            .background(LognDark.canvas)
+            .background(LognColors.canvas)
         }
         // Quem manda no cartão é o Core: ele decide se esta leitura para o relógio, e
         // arrastar para fechar precisa avisá-lo para o relógio voltar.
@@ -232,7 +232,7 @@ struct MatchView: View {
                 Text(mv.currentTitle.uppercased())
                     .font(.plexMono(11))
                     .tracking(0.12 * 11)
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
 
                 // Nem todo desafio nasceu aqui. Quando veio de fora, a origem fica na
                 // linha do título — atribuição que ninguém vê não é atribuição. Com a
@@ -256,7 +256,7 @@ struct MatchView: View {
             Text(mv.currentDescription)
                 .font(.plexSansSemiBold(19, relativeTo: .title3))
                 .lineSpacing(19 * 0.3)
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 12)
         }
@@ -272,7 +272,7 @@ struct MatchView: View {
             CodeBlock(
                 lines: mv.currentCodeLines,
                 selectedLine: mv.selectedLine >= 0 ? Int(mv.selectedLine) : nil,
-                highlightColor: LognDark.accent,
+                highlightColor: LognColors.accent,
                 fillsHeight: true,
                 onSelectLine: { core.dispatch(event: .matchSelectLine(line: Int32($0))) }
             )
@@ -293,7 +293,7 @@ struct MatchView: View {
                 Text(Str.Arena.drag_block)
                     .font(.plexMono(11))
                     .tracking(0.12 * 11)
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
 
                 DropZone(
                     value: mv.answerString,
@@ -334,7 +334,7 @@ struct MatchView: View {
 
                 Rectangle()
                     .frame(height: 1)
-                    .foregroundColor(LognDark.line)
+                    .foregroundColor(LognColors.line)
                     .padding(.vertical, 8)
 
                 chipBank(
@@ -370,7 +370,7 @@ struct MatchView: View {
                 Text(Str.Arena.select_up_to(Int(mv.maxSelections)))
                     .font(.plexMono(11))
                     .tracking(0.12 * 11)
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
 
                 FlowLayout(spacing: 8) {
                     ForEach(mv.currentOptions, id: \.self) { option in
@@ -398,7 +398,7 @@ struct MatchView: View {
             Text(label)
                 .font(.plexMono(11))
                 .tracking(0.12 * 11)
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
                 .frame(width: 60, alignment: .leading)
 
             DropZone(value: value, onDrop: onDrop, onRemove: onRemove)
@@ -503,8 +503,6 @@ struct MatchVerdictScreen: View {
     let xpAward: Int
     let onContinue: () -> Void
 
-    private var letterColor: Color { BalloonColor.forLetter(snapshot.letter) }
-
     /// Fecho da partida. Quem subiu todos os balões fechou o nó; quem parou no meio
     /// deixou o nó em aberto — e dizer "em aberto" para quem zerou é mentira.
     private var closingNote: String {
@@ -513,6 +511,15 @@ struct MatchVerdictScreen: View {
             ? Str.Arena.back_to_trail
             : Str.Arena.back_to_trail_open
     }
+
+    /// O apagado que cai na sombra do painel: "0 XP" no palco e o fecho embaixo do botão.
+    /// No claro a sombra escurece o fundo dos dois, e `textMuted` fica abaixo de 4.5:1;
+    /// `textSecondary` passa. No escuro continua `textMuted`.
+    private var shadedMuted: Color {
+        colorScheme == .light ? LognColors.textSecondary : LognColors.textMuted
+    }
+
+    @Environment(\.colorScheme) private var colorScheme
 
     /// O shake mora aqui, no header do veredito — é onde o mock do `3b` o coloca
     /// (`gp-shake 240ms ease-out`), não na tela de questão.
@@ -535,7 +542,7 @@ struct MatchVerdictScreen: View {
             // `reduceMotion`: o shake vira flash de borda.
             .overlay(alignment: .bottom) {
                 if errorFlash {
-                    Rectangle().frame(height: 2).foregroundColor(LognDark.wrong)
+                    Rectangle().frame(height: 2).foregroundColor(LognColors.wrong)
                 }
             }
             .onAppear {
@@ -558,34 +565,34 @@ struct MatchVerdictScreen: View {
 
     private var hitStage: some View {
         VStack(spacing: 8) {
-            BalloonShape(style: .filled(letterColor), width: 52, showString: true)
+            BalloonShape(style: BalloonColor.filled(snapshot.letter), width: 52, showString: true)
 
             Text(verbatim: "AC")
                 .font(.plexMonoSemiBold(54))
                 .tracking(-0.03 * 54)
-                .foregroundColor(LognDark.correctInk)
+                .foregroundColor(LognColors.correctInk)
                 .padding(.top, 10)
 
             Text(Str.Match.balloon_up(String(snapshot.letter)))
                 .font(.plexMono(13))
                 .tracking(0.12 * 13)
-                .foregroundColor(LognDark.correctInk)
+                .foregroundColor(LognColors.correctInk)
 
             if xpAward > 0 {
                 Text(Str.Match.xp_earned(Int(xpAward)))
                     .font(.plexMonoSemiBold(20))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                     .padding(.top, 18)
             } else {
                 Text(Str.Solved.verdict)
                     .font(.plexMono(13))
                     .tracking(0.12 * 13)
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
                     .padding(.top, 18)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(LognDark.tintOk)
+        .background(LognColors.tintOk)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(xpAward > 0
             ? Str.Match.accepted_accessibility(String(snapshot.letter), Int(xpAward))
@@ -599,17 +606,17 @@ struct MatchVerdictScreen: View {
             Text(snapshot.code.rawValue)
                 .font(.plexMonoSemiBold(76))
                 .tracking(-0.03 * 76)
-                .foregroundColor(LognDark.wrongInk)
+                .foregroundColor(LognColors.wrongInk)
 
             Text(snapshot.code.meaning.uppercased())
                 .font(.plexMono(14))
                 .tracking(0.12 * 14)
-                .foregroundColor(LognDark.wrongInk)
+                .foregroundColor(LognColors.wrongInk)
 
             HStack(spacing: 20) {
-                Text(Str.Match.penalty_minutes).foregroundColor(LognDark.textPrimary)
-                Text(Str.Match.lost_life).foregroundColor(LognDark.wrongInk)
-                Text(Str.Match.zero_xp).foregroundColor(LognDark.textMuted)
+                Text(Str.Match.penalty_minutes).foregroundColor(LognColors.textPrimary)
+                Text(Str.Match.lost_life).foregroundColor(LognColors.wrongInk)
+                Text(Str.Match.zero_xp).foregroundColor(shadedMuted)
             }
             .font(.plexMono(12.5))
             .padding(.top, 22)
@@ -617,7 +624,7 @@ struct MatchVerdictScreen: View {
         .padding(.vertical, 16)
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(LognDark.tintErr)
+        .background(LognColors.tintErr)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             Str.Match.failed_accessibility(snapshot.code.rawValue, snapshot.code.meaning)
@@ -651,7 +658,7 @@ struct MatchVerdictScreen: View {
             if matchOver {
                 Text(closingNote)
                     .font(.plexMono(11))
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(shadedMuted)
                     .frame(maxWidth: .infinity)
                     .padding(.top, 10)
             }
@@ -660,13 +667,13 @@ struct MatchVerdictScreen: View {
         .padding(.top, 20)
         .padding(.bottom, 22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(LognDark.surfaceRaised)
+        .background(LognColors.surfaceRaised)
         .overlay(alignment: .top) {
             Rectangle()
                 .frame(height: 1)
-                .foregroundColor(snapshot.isAccepted ? LognDark.lineStrong : LognDark.lineStrong)
+                .foregroundColor(snapshot.isAccepted ? LognColors.lineStrong : LognColors.lineStrong)
         }
-        .shadow(color: .black.opacity(0.65), radius: 48, y: -16)
+        .shadow(color: LognColors.shadowSheet, radius: 48, y: -16)
         // O painel reclama o espaço antes do palco; o palco não encolhe abaixo do
         // próprio conteúdo (`fixedSize` lá dentro), então a sigla nunca some.
         .layoutPriority(1)
@@ -678,13 +685,13 @@ struct MatchVerdictScreen: View {
             Text(trapCategory.uppercased())
                 .font(.plexMono(11))
                 .tracking(0.14 * 11)
-                .foregroundColor(LognDark.wrongInk)
+                .foregroundColor(LognColors.wrongInk)
 
             if !trapTitle.isEmpty {
                 Text(trapTitle)
                     .font(.plexSans(15, relativeTo: .callout))
                     .lineSpacing(23 - 15)
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 10)
             }
@@ -693,7 +700,7 @@ struct MatchVerdictScreen: View {
                 Text(trapExplanation)
                     .font(.plexSans(14, relativeTo: .subheadline))
                     .lineSpacing(22 - 14)
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 10)
             }
@@ -732,7 +739,7 @@ struct MatchReportView: View {
             .padding(.horizontal, Space.screenMargin)
             .padding(.top, Space.md)
             .padding(.bottom, Space.xl)
-            .background(LognDark.canvas)
+            .background(LognColors.canvas)
         }
     }
 
@@ -741,19 +748,19 @@ struct MatchReportView: View {
             Text(Str.Match.contest_over)
                 .font(.plexMono(11))
                 .tracking(0.14 * 11)
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
 
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(verbatim: "\(mv.solvedCount)")
                     .font(.plexSansSemiBold(40))
                     .tracking(-0.03 * 40)
                     .monospacedDigit()
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
 
                 Text(Str.Match.report_stats(Int(mv.totalProblems), Int(mv.penaltyMinutes)))
                     .font(.plexMono(15))
                     .monospacedDigit()
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
             }
             .padding(.top, 8)
 
@@ -766,14 +773,14 @@ struct MatchReportView: View {
                     VStack(spacing: 4) {
                         BalloonShape(
                             style: accepted
-                                ? .filled(BalloonColor.forLetter(letter))
-                                : .outline(LognDark.lineStrong, 4.5),
+                                ? BalloonColor.filled(letter)
+                                : .outline(LognColors.lineStrong, 4.5),
                             width: 20,
                             showString: true
                         )
                         Text(String(letter))
                             .font(.plexMono(8))
-                            .foregroundColor(LognDark.textMuted)
+                            .foregroundColor(LognColors.textMuted)
                     }
                     .opacity(accepted ? 1 : 0.55)
                     .accessibilityElement(children: .ignore)
@@ -789,9 +796,9 @@ struct MatchReportView: View {
         .padding(.horizontal, 20)
         .padding(.top, 22)
         .padding(.bottom, 18)
-        .background(LognDark.canvas)
+        .background(LognColors.canvas)
         .overlay(alignment: .bottom) {
-            Rectangle().frame(height: 1).foregroundColor(LognDark.line)
+            Rectangle().frame(height: 1).foregroundColor(LognColors.line)
         }
     }
 
@@ -807,7 +814,7 @@ struct MatchReportView: View {
         }
         return Text(text)
             .font(.plexMono(11))
-            .foregroundColor(mv.xpEarned > 0 ? LognDark.textSecondary : LognDark.textMuted)
+            .foregroundColor(mv.xpEarned > 0 ? LognColors.textSecondary : LognColors.textMuted)
     }
 
     private var review: some View {
@@ -817,13 +824,13 @@ struct MatchReportView: View {
             Text(errors.isEmpty ? Str.Match.review : Str.Match.review_errors(errors.count))
                 .font(.plexMono(11))
                 .tracking(0.12 * 11)
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
 
             if errors.isEmpty {
                 // Empty state: uma frase, nunca uma ilustração.
                 Text(Str.Match.no_errors)
                     .font(LognFont.bodyMedium)
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
             } else {
                 ForEach(Array(errors.enumerated()), id: \.offset) { _, error in
                     ErrorReviewCard(error: error)
@@ -859,7 +866,7 @@ struct ErrorReviewCard: View {
             HStack(alignment: .top, spacing: 10) {
                 Text(error.title)
                     .font(.plexSansSemiBold(15, relativeTo: .callout))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Spacer(minLength: 0)
@@ -872,7 +879,7 @@ struct ErrorReviewCard: View {
             if !givenAnswer.isEmpty {
                 Text(Str.Match.your_answer(givenAnswer))
                     .font(.plexMono(12))
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
                     .padding(.top, 6)
             }
 
@@ -880,16 +887,16 @@ struct ErrorReviewCard: View {
                 Text(explanation)
                     .font(.plexSans(13, relativeTo: .footnote))
                     .lineSpacing(13 * 0.5)
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 8)
             }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(LognDark.surface)
+        .background(LognColors.surface)
         .cornerRadius(Radius.sm)
-        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
             Str.Match.error_accessibility(error.letter, error.title, verdict.rawValue, verdict.meaning)
@@ -960,7 +967,7 @@ struct TradeoffPanel: View {
 
             Rectangle()
                 .frame(height: 1)
-                .foregroundColor(LognDark.line)
+                .foregroundColor(LognColors.line)
                 .padding(.vertical, 4)
 
             ForEach(rows, id: \.text) { row in
@@ -977,22 +984,22 @@ struct TradeoffPanel: View {
                 Text(label)
                     .font(.plexMonoMedium(11))
                     .tracking(0.14 * 11)
-                    .foregroundColor(isNext ? LognDark.accentInk : LognDark.textSecondary)
+                    .foregroundColor(isNext ? LognColors.accentInk : LognColors.textSecondary)
                 Text(filled ? value : Str.Arena.tap_an_option)
                     .font(.plexSans(15))
-                    .foregroundColor(filled ? LognDark.textPrimary : LognDark.textMuted)
+                    .foregroundColor(filled ? LognColors.textPrimary : LognColors.textMuted)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity, minHeight: Space.matchTouch, alignment: .leading)
-            .background(filled ? LognDark.surfaceRaised : Color.clear)
+            .background(filled ? LognColors.surfaceRaised : Color.clear)
             .cornerRadius(Radius.sm)
             .overlay(
                 RoundedRectangle(cornerRadius: Radius.sm)
                     .stroke(
-                        filled ? LognDark.lineStrong : (isNext ? LognDark.accent : LognDark.lineDim),
+                        filled ? LognColors.lineStrong : (isNext ? LognColors.accentInk : LognColors.lineDim),
                         style: StrokeStyle(lineWidth: 1, dash: filled ? [] : [4, 3])
                     )
             )
@@ -1006,11 +1013,11 @@ struct TradeoffPanel: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(letter)
                     .font(.plexMono(12))
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
                     .frame(width: 18, alignment: .leading)
                 Text(text)
                     .font(.plexSans(15))
-                    .foregroundColor(used ? LognDark.textDim : LognDark.textPrimary)
+                    .foregroundColor(used ? LognColors.textDim : LognColors.textPrimary)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
@@ -1020,11 +1027,11 @@ struct TradeoffPanel: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity, minHeight: Space.matchTouch, alignment: .leading)
-            .background(used ? Color.clear : LognDark.surfaceRaised)
+            .background(used ? Color.clear : LognColors.surfaceRaised)
             .cornerRadius(Radius.sm)
             .overlay(
                 RoundedRectangle(cornerRadius: Radius.sm)
-                    .stroke(used ? LognDark.line : LognDark.lineStrong, lineWidth: 1)
+                    .stroke(used ? LognColors.line : LognColors.lineStrong, lineWidth: 1)
             )
         }
         .buttonStyle(PressSinkStyle())
@@ -1044,16 +1051,17 @@ struct TagChip: View {
         Button(action: action) {
             Text(text)
                 .font(.plexMono(13))
-                .foregroundColor(isSelected ? LognDark.accentInk : LognDark.textSecondary)
+                .foregroundColor(isSelected ? LognColors.accentInk : LognColors.textSecondary)
                 .padding(.horizontal, 13)
                 .padding(.vertical, 11)
                 // Piso de 56pt em partida: um mis-tap custa uma vida.
                 .frame(minHeight: Space.matchTouch)
-                .background(isSelected ? LognDark.accentTint : Color.clear)
+                .background(isSelected ? LognColors.accentTint : Color.clear)
                 .cornerRadius(Radius.xs)
+                // A borda é o que diz "marcada": em tinta, que no claro passa de 3:1.
                 .overlay(
                     RoundedRectangle(cornerRadius: Radius.xs)
-                        .stroke(isSelected ? LognDark.accent : LognDark.lineStrong, lineWidth: 1)
+                        .stroke(isSelected ? LognColors.accentInk : LognColors.lineStrong, lineWidth: 1)
                 )
         }
         .buttonStyle(PressSinkStyle())
@@ -1078,13 +1086,13 @@ struct DraggableChip: View {
     var body: some View {
         Text(text)
             .font(.plexMono(13))
-            .foregroundColor(LognDark.textPrimary)
+            .foregroundColor(LognColors.textPrimary)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .frame(minHeight: Space.matchTouch)
-            .background(LognDark.surfaceRaised)
+            .background(LognColors.surfaceRaised)
             .cornerRadius(Radius.xs)
-            .overlay(RoundedRectangle(cornerRadius: Radius.xs).stroke(LognDark.lineStrong, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: Radius.xs).stroke(LognColors.lineStrong, lineWidth: 1))
             .onDrag { NSItemProvider(object: text as NSString) }
             .accessibilityActions {
                 ForEach(targets.indices, id: \.self) { i in
@@ -1115,7 +1123,7 @@ struct DropZone: View {
 
             Text(isFilled ? value : Str.Arena.drop_here)
                 .font(.plexMono(isFilled ? 14 : 13))
-                .foregroundColor(isFilled ? LognDark.textPrimary : LognDark.textDim)
+                .foregroundColor(isFilled ? LognColors.textPrimary : LognColors.textFaint)
         }
         .frame(height: 46)
         .frame(maxWidth: .infinity)
@@ -1133,13 +1141,13 @@ struct DropZone: View {
     }
 
     private var fillColor: Color {
-        if isTargeted { return LognDark.accentTint }
-        return isFilled ? LognDark.surfaceRaised : LognDark.canvas
+        if isTargeted { return LognColors.accentTint }
+        return isFilled ? LognColors.surfaceRaised : LognColors.canvas
     }
 
     private var strokeColor: Color {
-        if isTargeted { return LognDark.accent }
-        return isFilled ? LognDark.lineStrong : LognDark.lineDim
+        if isTargeted { return LognColors.accentInk }
+        return isFilled ? LognColors.lineStrong : LognColors.lineDim
     }
 }
 

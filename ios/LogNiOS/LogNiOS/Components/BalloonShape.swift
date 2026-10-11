@@ -11,7 +11,9 @@ struct BalloonShape: View {
     enum Style: Equatable {
         /// Problema aceito / nó conquistado — corpo preenchido na cor.
         /// Em nó o brilho é obrigatório (separa de bloqueado); `showHighlight: false` só em problema.
-        case filled(Color)
+        /// Nó e cordinha em `edge`; no claro, ele contorna o corpo também (balão de letra,
+        /// ADR 0030). Sem `edge`, tudo na cor do corpo.
+        case filled(Color, edge: Color? = nil)
         /// Em aberto — contorno na cor, com a espessura dada (unidades de viewBox).
         case outline(Color, CGFloat)
         /// Nó ativo da trilha — contorno accent traço 5 com miolo `accentTint`.
@@ -25,6 +27,8 @@ struct BalloonShape: View {
     let width: CGFloat
     var showString: Bool = false
     var showHighlight: Bool = true
+
+    @Environment(\.colorScheme) private var colorScheme
 
     // MARK: - Paths do Design System
 
@@ -54,24 +58,29 @@ struct BalloonShape: View {
             let knotPath = scaled(D.knot, s)
 
             switch style {
-            case .filled(let color):
+            case .filled(let color, let edge):
                 context.fill(bodyPath, with: .color(color))
+                // O corpo vivo do claro some no branco sem borda; o traço a segura em 3:1.
+                // No escuro corpo e traço são a mesma cor, e o contorno só engordaria o balão.
+                if let edge, colorScheme == .light {
+                    context.stroke(bodyPath, with: .color(edge), lineWidth: 1)
+                }
                 drawShine(context, s, color: .white.opacity(0.72))
-                context.fill(knotPath, with: .color(color))
+                context.fill(knotPath, with: .color(edge ?? color))
 
             case .outline(let color, let lineWidth):
                 context.stroke(bodyPath, with: .color(color), lineWidth: lineWidth * s)
                 context.fill(knotPath, with: .color(color))
 
             case .active:
-                context.fill(bodyPath, with: .color(LognDark.accentTint))
-                context.stroke(bodyPath, with: .color(LognDark.accent), lineWidth: 5 * s)
-                drawShine(context, s, color: LognDark.accent.opacity(0.45))
-                context.fill(knotPath, with: .color(LognDark.accent))
+                context.fill(bodyPath, with: .color(LognColors.accentTint))
+                context.stroke(bodyPath, with: .color(LognColors.accent), lineWidth: 5 * s)
+                drawShine(context, s, color: LognColors.accent.opacity(0.45))
+                context.fill(knotPath, with: .color(LognColors.accent))
 
             case .locked:
-                context.fill(bodyPath, with: .color(LognDark.lineStrong))
-                context.fill(knotPath, with: .color(LognDark.lineStrong))
+                context.fill(bodyPath, with: .color(LognColors.lineStrong))
+                context.fill(knotPath, with: .color(LognColors.lineStrong))
             }
 
             if showString {
@@ -104,10 +113,10 @@ struct BalloonShape: View {
 
     private var stringColor: Color {
         switch style {
-        case .filled(let color):     return color
+        case .filled(let color, let edge): return edge ?? color
         case .outline(let color, _): return color
-        case .active:                return LognDark.accent
-        case .locked:                return LognDark.lineStrong
+        case .active:                return LognColors.accent
+        case .locked:                return LognColors.lineStrong
         }
     }
 }
@@ -119,7 +128,7 @@ struct BalloonShape: View {
 ///
 /// ViewBox `0 0 96 122`. Abaixo de 24px o brilho especular sai.
 struct BrandSymbol: View {
-    var color: Color = LognDark.accent
+    var color: Color = LognColors.accent
     /// Altura do símbolo. A largura sai da proporção da viewBox.
     let height: CGFloat
 
@@ -166,8 +175,8 @@ struct BrandSymbol: View {
 /// Símbolo + `LogN` em Plex Sans SemiBold, tracking −0.035em, gap 14dp.
 struct BrandLockup: View {
     var fontSize: CGFloat = 44
-    var color: Color = LognDark.accent
-    var textColor: Color = LognDark.textPrimary
+    var color: Color = LognColors.accent
+    var textColor: Color = LognColors.textPrimary
 
     /// Proporção medida no lockup do design system: símbolo de 58px ao lado de texto
     /// de 46px. (O README fala em "1,27× a caixa-alta", mas o HTML — que é o que
@@ -193,7 +202,7 @@ struct BalloonMarquee: View {
     var body: some View {
         HStack(spacing: 7) {
             ForEach(BalloonColor.all, id: \.self) { letter in
-                BalloonShape(style: .filled(BalloonColor.forLetter(letter)), width: 13)
+                BalloonShape(style: BalloonColor.filled(letter), width: 13)
             }
         }
         .opacity(0.5)
@@ -204,11 +213,22 @@ struct BalloonMarquee: View {
 // MARK: - Balloon Colors (A—M)
 
 enum BalloonColor {
-    /// Cor da letra do problema. Endereço, nunca estado — acesse sempre por aqui.
+    /// O traço da letra do problema (balão em aberto, contorno, cordinha). Endereço, nunca
+    /// estado — acesse sempre por aqui. Fora de A–M, `textMuted`.
     static func forLetter(_ letter: Character) -> Color {
-        guard let ascii = letter.uppercased().first?.asciiValue,
-              (65...77).contains(ascii) else { return LognDark.textMuted }
-        return Balloon.of(letter)
+        guard isLetter(letter) else { return LognColors.textMuted }
+        return Balloon.edge(letter)
+    }
+
+    /// O balão cheio da letra: corpo vivo e traço de 3:1 no claro, uma cor só no escuro.
+    static func filled(_ letter: Character) -> BalloonShape.Style {
+        guard isLetter(letter) else { return .filled(LognColors.textMuted) }
+        return .filled(Balloon.fill(letter), edge: Balloon.edge(letter))
+    }
+
+    private static func isLetter(_ letter: Character) -> Bool {
+        guard let ascii = letter.uppercased().first?.asciiValue else { return false }
+        return (65...77).contains(ascii)
     }
 
     static let all: [Character] = Array("ABCDEFGHIJKLM")

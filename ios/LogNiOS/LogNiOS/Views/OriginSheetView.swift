@@ -26,10 +26,10 @@ struct OriginSheetView: View {
             Button(action: onClose) {
                 Text(Str.Origin.close)
                     .font(.plexSansSemiBold(16, relativeTo: .body))
-                    .foregroundColor(LognDark.onAccent)
+                    .foregroundColor(LognColors.onAccent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(LognDark.accent)
+                    .background(LognColors.accent)
                     .cornerRadius(Radius.sm)
             }
             .padding(.horizontal, 24)
@@ -37,7 +37,7 @@ struct OriginSheetView: View {
             .padding(.bottom, 24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(LognDark.surface)
+        .background(LognColors.surface)
     }
 
     private var content: some View {
@@ -45,30 +45,30 @@ struct OriginSheetView: View {
             Text(Str.Origin.eyebrow.uppercased())
                 .font(.plexMono(11))
                 .tracking(0.12 * 11)
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
 
             Text(name)
                 .font(.plexSansSemiBold(28, relativeTo: .title))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .padding(.top, 10)
 
             Text(role)
                 .font(.plexMono(12))
                 .tracking(0.08 * 12)
-                .foregroundColor(LognDark.accent)
+                .foregroundColor(LognColors.accentInk)
                 .padding(.top, 4)
 
             // A régua fica entre o nome e o texto: separa a identificação da história
             // sem fechar um bloco, que é o que uma moldura faria.
             Rectangle()
                 .frame(height: 1)
-                .foregroundColor(LognDark.line)
+                .foregroundColor(LognColors.line)
                 .padding(.top, 20)
 
             Text(body_)
                 .font(.plexSans(16, relativeTo: .body))
                 .lineSpacing(16 * 0.45)
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 20)
 
@@ -88,20 +88,20 @@ struct OriginSheetView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "pause.circle")
                 .font(.system(size: 15, weight: .medium))
-                .foregroundColor(LognDark.info)
+                .foregroundColor(LognColors.infoInk)
 
             Text(Str.Origin.pause_notice)
                 .font(.plexMono(12))
                 .lineSpacing(12 * 0.4)
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(LognDark.surfaceRaised)
+        .background(LognColors.surfaceRaised)
         .overlay(
             RoundedRectangle(cornerRadius: Radius.sm)
-                .stroke(LognDark.info.opacity(0.3), lineWidth: 1)
+                .stroke(LognColors.info.opacity(0.3), lineWidth: 1)
         )
         .cornerRadius(Radius.sm)
     }

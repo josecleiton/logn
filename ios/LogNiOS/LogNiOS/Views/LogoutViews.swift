@@ -16,23 +16,23 @@ struct LogoutNoticeView: View {
 
     var body: some View {
         ZStack {
-            LognDark.canvas.ignoresSafeArea()
+            LognColors.canvas.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 VStack(spacing: 16) {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
                         .font(.system(size: 34, weight: .light))
-                        .foregroundColor(LognDark.textMuted)
+                        .foregroundColor(LognColors.textMuted)
 
                     Text(farewell)
                         .font(.plexSansSemiBold(18, relativeTo: .headline))
-                        .foregroundColor(LognDark.textPrimary)
+                        .foregroundColor(LognColors.textPrimary)
                         .multilineTextAlignment(.center)
 
                     Text(Str.Logout.server_safe(Int(vm.globalXp)))
                         .font(.plexSans(14, relativeTo: .subheadline))
                         .lineSpacing(21 - 14)
-                        .foregroundColor(LognDark.textSecondary)
+                        .foregroundColor(LognColors.textSecondary)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -45,9 +45,9 @@ struct LogoutNoticeView: View {
                     } label: {
                         Text(Str.Logout.sign_in_again)
                             .font(.plexSansSemiBold(15, relativeTo: .callout))
-                            .foregroundColor(LognDark.onAccent)
+                            .foregroundColor(LognColors.onAccent)
                             .frame(maxWidth: .infinity, minHeight: 50)
-                            .background(LognDark.accent)
+                            .background(LognColors.accent)
                             .cornerRadius(Radius.sm)
                     }
                     .buttonStyle(PressSinkStyle())
@@ -58,10 +58,10 @@ struct LogoutNoticeView: View {
                         HStack(spacing: 8) {
                             Image(systemName: "arrow.counterclockwise")
                                 .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(LognDark.textMuted)
+                                .foregroundColor(LognColors.textMuted)
                             Text(Str.Logout.undo_logout)
                                 .font(.plexMono(11.5))
-                                .foregroundColor(LognDark.textSecondary)
+                                .foregroundColor(LognColors.textSecondary)
                         }
                         .frame(maxWidth: .infinity, minHeight: 44)
                     }
@@ -96,24 +96,24 @@ struct CriticalLogoutSheet: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            LognDark.surfaceRaised.ignoresSafeArea()
+            LognColors.surfaceRaised.ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
                 Text(Str.Logout.risk_summary(Str.Profile.queued_events(pendingCount), xpAtRisk))
                     .font(.plexMono(10.5))
                     .tracking(0.14 * 10.5)
-                    .foregroundColor(LognDark.warnInk)
+                    .foregroundColor(LognColors.warnInk)
 
                 Text(Str.Logout.save_before)
                     .font(.plexSansSemiBold(18, relativeTo: .headline))
                     .lineSpacing(18 * 0.3)
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                     .padding(.top, 9)
 
                 Text(Str.Logout.save_desc)
                     .font(.plexSans(14, relativeTo: .subheadline))
                     .lineSpacing(21 - 14)
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 9)
 
@@ -121,15 +121,15 @@ struct CriticalLogoutSheet: View {
                     Group {
                         if isSyncing {
                             ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: LognDark.onAccent))
+                                .progressViewStyle(CircularProgressViewStyle(tint: LognColors.onAccent))
                         } else {
                             Text(Str.Logout.sync_and_leave)
                                 .font(.plexSansSemiBold(15, relativeTo: .callout))
                         }
                     }
-                    .foregroundColor(LognDark.onAccent)
+                    .foregroundColor(LognColors.onAccent)
                     .frame(maxWidth: .infinity, minHeight: 50)
-                    .background(LognDark.accent)
+                    .background(LognColors.accent)
                     .cornerRadius(Radius.sm)
                 }
                 .buttonStyle(PressSinkStyle())
@@ -140,9 +140,9 @@ struct CriticalLogoutSheet: View {
                 Button(action: onStay) {
                     Text(Str.Logout.stay_connected)
                         .font(.plexSansMedium(15))
-                        .foregroundColor(LognDark.textPrimary)
+                        .foregroundColor(LognColors.textPrimary)
                         .frame(maxWidth: .infinity, minHeight: 48)
-                        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.lineStrong, lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.lineStrong, lineWidth: 1))
                 }
                 .buttonStyle(PressSinkStyle())
                 .padding(.top, 8)
@@ -151,7 +151,7 @@ struct CriticalLogoutSheet: View {
                 Button(action: onDiscard) {
                     Text(Str.Logout.leave_and_drop(xpAtRisk))
                         .font(.plexSans(13.5, relativeTo: .footnote))
-                        .foregroundColor(LognDark.wrongInk)
+                        .foregroundColor(LognColors.wrongInk)
                         .frame(maxWidth: .infinity, minHeight: 42)
                 }
                 .buttonStyle(.plain)
@@ -164,7 +164,7 @@ struct CriticalLogoutSheet: View {
             .padding(.bottom, 24)
         }
         .overlay(alignment: .top) {
-            Rectangle().frame(height: 1).foregroundColor(LognDark.warn)
+            Rectangle().frame(height: 1).foregroundColor(LognColors.warn)
         }
     }
 }
@@ -181,7 +181,7 @@ struct ManageAccountView: View {
 
     var body: some View {
         ZStack {
-            LognDark.canvas.ignoresSafeArea()
+            LognColors.canvas.ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
                 header
@@ -220,13 +220,13 @@ struct ManageAccountView: View {
             Button { dismiss() } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
             }
             .accessibilityLabel(Str.Logout.back)
 
             Text(Str.Account.manage)
                 .font(.plexSansSemiBold(17))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
 
             Spacer(minLength: 0)
         }
@@ -234,7 +234,7 @@ struct ManageAccountView: View {
         .padding(.top, 18)
         .padding(.bottom, 16)
         .overlay(alignment: .bottom) {
-            Rectangle().frame(height: 1).foregroundColor(LognDark.line)
+            Rectangle().frame(height: 1).foregroundColor(LognColors.line)
         }
     }
 
@@ -243,11 +243,11 @@ struct ManageAccountView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(title)
                     .font(.plexSansMedium(14.5))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                 if let sub {
                     Text(sub)
                         .font(.plexMono(11))
-                        .foregroundColor(LognDark.textMuted)
+                        .foregroundColor(LognColors.textMuted)
                         .lineLimit(1)
                         .padding(.top, 3)
                 }
@@ -255,13 +255,13 @@ struct ManageAccountView: View {
             Spacer(minLength: 0)
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
         }
         .padding(.horizontal, 15)
         .padding(.vertical, 14)
-        .background(LognDark.surface)
+        .background(LognColors.surface)
         .cornerRadius(Radius.sm)
-        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
     }
 
     /// Verde e vermelho só aparecem como veredito ou **ação destrutiva irreversível**,
@@ -271,39 +271,39 @@ struct ManageAccountView: View {
             Text(Str.Logout.grace_period)
                 .font(.plexMono(10.5))
                 .tracking(0.14 * 10.5)
-                .foregroundColor(LognDark.wrongInk)
+                .foregroundColor(LognColors.wrongInk)
 
             Text(Str.Logout.delete_account)
                 .font(.plexSansSemiBold(15, relativeTo: .callout))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .padding(.top, 8)
 
             Text(Str.Logout.delete_desc(Int(core.viewModel.globalXp)))
                 .font(.plexSans(13, relativeTo: .footnote))
                 .lineSpacing(19 - 13)
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 7)
 
             Button(action: { showingDeleteConfirm = true }) {
                 Text(Str.Logout.delete_button)
                     .font(.plexSansSemiBold(14.5))
-                    .foregroundColor(LognDark.wrongInk)
+                    .foregroundColor(LognColors.wrongInk)
                     .frame(maxWidth: .infinity, minHeight: 46)
-                    .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.wrong, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.wrong, lineWidth: 1))
             }
             .padding(.top, 14)
 
             Text(Str.Logout.delete_prompt)
                 .font(.plexMono(10.5))
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
                 .frame(maxWidth: .infinity)
                 .padding(.top, 9)
         }
         .padding(16)
-        .background(LognDark.tintErr)
+        .background(LognColors.tintErr)
         .cornerRadius(Radius.sm)
-        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.wrong, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.wrong, lineWidth: 1))
     }
 }
 
@@ -325,6 +325,7 @@ struct DeleteAccountSheet: View {
     /// que o servidor revoga, e só então pede a exclusão (ADR 0019).
     let onDeleteWithGitHub: (GitHubAuth.Credential) -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var core: CoreWrapper
 
     @State private var password = ""
@@ -335,33 +336,34 @@ struct DeleteAccountSheet: View {
         VStack(alignment: .leading, spacing: 20) {
             Text(Str.Logout.delete_account)
                 .font(.plexSansSemiBold(18))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
 
             Text(Str.Logout.delete_desc(Int(core.viewModel.globalXp)))
                 .font(.plexSans(14))
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 
             Text(Str.Logout.grace_period)
                 .font(.plexSansSemiBold(14))
-                .foregroundColor(LognDark.wrongInk)
+                .foregroundColor(LognColors.wrongInk)
 
             PasswordField(Str.Login.password_prompt, text: $password)
                 .font(.plexMono(14))
                 .padding(.horizontal, 14)
                 .frame(height: 52)
-                .background(LognDark.surface)
+                .background(LognColors.surface)
                 .cornerRadius(Radius.sm)
-                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
-                .foregroundColor(LognDark.textPrimary)
+                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
+                .foregroundColor(LognColors.textPrimary)
 
-            TextField(Str.Logout.delete_confirm_placeholder, text: $confirmation)
+            TextField(Str.Logout.delete_confirm_placeholder, text: $confirmation,
+                      prompt: lightPrompt(Str.Logout.delete_confirm_placeholder, colorScheme))
                 .font(.plexMono(14))
                 .padding(.horizontal, 14)
                 .frame(height: 52)
-                .background(LognDark.surface)
+                .background(LognColors.surface)
                 .cornerRadius(Radius.sm)
-                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
-                .foregroundColor(LognDark.textPrimary)
+                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
+                .foregroundColor(LognColors.textPrimary)
 
             Button(action: {
                 if canDelete {
@@ -371,11 +373,12 @@ struct DeleteAccountSheet: View {
                     dismiss()
                 }
             }) {
+                // A tinta sobre o `wrong` cheio, que escurece no claro.
                 Text(Str.Logout.delete_button)
                     .font(.plexSansSemiBold(15))
-                    .foregroundColor(canDelete ? LognDark.onAccent : LognDark.textDim)
+                    .foregroundColor(canDelete ? LognColors.onStatus : LognColors.textDim)
                     .frame(maxWidth: .infinity, minHeight: 52)
-                    .background(canDelete ? LognDark.wrong : LognDark.buttonDisabled)
+                    .background(canDelete ? LognColors.wrong : LognColors.buttonDisabled)
                     .cornerRadius(Radius.sm)
             }
             .disabled(!canDelete)
@@ -391,8 +394,7 @@ struct DeleteAccountSheet: View {
             }
         }
         .padding(20)
-        .background(LognDark.surfaceRaised)
-        .preferredColorScheme(.dark)
+        .background(LognColors.surfaceRaised)
     }
 
     private var confirmed: Bool { confirmation == "EXCLUIR" }
@@ -406,7 +408,7 @@ struct DeleteAccountSheet: View {
         Button(action: action) {
             Text(title)
                 .font(.plexSans(14))
-                .foregroundColor(confirmed ? LognDark.textSecondary : LognDark.textDim)
+                .foregroundColor(confirmed ? LognColors.textSecondary : LognColors.textDim)
                 .frame(maxWidth: .infinity, minHeight: 44)
         }
         .buttonStyle(.plain)

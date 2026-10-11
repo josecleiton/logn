@@ -36,13 +36,15 @@ struct OTPInputView: View {
                         .frame(width: 44, height: 56)
                         .multilineTextAlignment(.center)
                         .font(.plexMonoSemiBold(24))
-                        .foregroundColor(LognDark.textPrimary)
-                        .background(LognDark.surface)
+                        .foregroundColor(LognColors.textPrimary)
+                        .background(LognColors.surface)
                         .cornerRadius(Radius.sm)
                         .overlay(
                             RoundedRectangle(cornerRadius: Radius.sm)
+                                // O foco só aparece nesta borda: em tinta, que no claro passa
+                                // de 3:1.
                                 .stroke(
-                                    focusedIndex == index ? LognDark.accent : LognDark.line,
+                                    focusedIndex == index ? LognColors.accentInk : LognColors.line,
                                     lineWidth: focusedIndex == index ? 2 : 1
                                 )
                         )
@@ -66,7 +68,7 @@ struct OTPInputView: View {
             Button(action: pasteFromClipboard) {
                 Label(Str.Otp.paste_code, systemImage: "doc.on.clipboard")
                     .lognLabel()
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .frame(minHeight: Space.minTouch)
             }
             .buttonStyle(.plain)
@@ -77,10 +79,10 @@ struct OTPInputView: View {
                      : Str.Otp.verify)
                     .font(.plexSansSemiBold(15))
                     .monospacedDigit()
-                    .foregroundColor(canVerify ? LognDark.onAccent : LognDark.textDim)
+                    .foregroundColor(canVerify ? LognColors.onAccent : LognColors.textDim)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
-                    .background(canVerify ? LognDark.accent : LognDark.buttonDisabled)
+                    .background(canVerify ? LognColors.accent : LognColors.buttonDisabled)
                     .cornerRadius(Radius.sm)
             }
             .disabled(!canVerify || core.viewModel.isAuthenticating)
@@ -93,7 +95,7 @@ struct OTPInputView: View {
                      : Str.Otp.resend_code)
                     .font(.plexSans(13.5))
                     .monospacedDigit()
-                    .foregroundColor(resendLocked ? LognDark.textDim : LognDark.textSecondary)
+                    .foregroundColor(resendLocked ? LognColors.textDim : LognColors.textSecondary)
                     .underline(!resendLocked)
                     .frame(minHeight: Space.minTouch)
             }

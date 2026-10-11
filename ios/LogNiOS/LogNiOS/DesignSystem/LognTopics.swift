@@ -18,17 +18,22 @@ enum LognTopic: CaseIterable {
     enum Family {
         case fundamentos, busca, estruturas, otimizacao, boss
 
-        var color: Color {
+        /// A letra da paleta de balões que dá a cor; o boss usa o acento.
+        private var letter: Character? {
             switch self {
-            case .fundamentos: return Balloon.of("H")   // âmbar
-            case .busca:       return Balloon.of("C")   // azul
-            case .estruturas:  return Balloon.of("E")   // violeta
-            case .otimizacao:  return Balloon.of("M")   // esmeralda
-            case .boss:        return LognDark.accent
+            case .fundamentos: return "H"   // âmbar
+            case .busca:       return "C"   // azul
+            case .estruturas:  return "E"   // violeta
+            case .otimizacao:  return "M"   // esmeralda
+            case .boss:        return nil
             }
         }
 
+        /// O traço da família: aresta, ícone de traço, contorno do balão.
+        var color: Color { letter.map { Balloon.edge($0) } ?? LognColors.accent }
 
+        /// O corpo do balão conquistado da família.
+        var fill: Color { letter.map { Balloon.fill($0) } ?? LognColors.accent }
     }
 
     var family: Family {
@@ -48,7 +53,13 @@ enum LognTopic: CaseIterable {
 
     var color: Color { family.color }
 
+    var fill: Color { family.fill }
 
+    /// O balão do nó conquistado: corpo vivo e, no claro, o contorno no traço. O boss é o
+    /// acento inteiro, sem contorno, como no Android, onde traço igual ao corpo não contorna.
+    var filledBalloon: BalloonShape.Style {
+        family == .boss ? .filled(fill) : .filled(fill, edge: color)
+    }
 
     // MARK: - Ícone · 24×24, traço 2, cap e join redondos
 

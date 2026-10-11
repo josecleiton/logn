@@ -50,14 +50,15 @@ extension LogN.BootLine {
 
     var tone: Color {
         // Termos que mudaram não são erro nem acerto: o design marca com a cor de
-        // informação, e a tela de aceite vem em seguida.
-        if detail == .termsChanged { return LognDark.info }
+        // informação, e a tela de aceite vem em seguida. É o sinal da linha, um glifo:
+        // tinta, nunca a base.
+        if detail == .termsChanged { return LognColors.infoInk }
         switch verdict {
-        case .running: return LognDark.textMuted
-        case .ok:      return LognDark.correct
-        case .warn:    return LognDark.warn
-        case .fail:    return LognDark.wrong
-        case .skipped: return LognDark.textMuted
+        case .running: return LognColors.textMuted
+        case .ok:      return LognColors.correctInk
+        case .warn:    return LognColors.warnInk
+        case .fail:    return LognColors.wrongInk
+        case .skipped: return LognColors.textMuted
         }
     }
 }

@@ -8,7 +8,7 @@ extension TrackView {
     /// A cor do balão da trilha, que chega do servidor como `#RRGGBB`.
     var tint: Color {
         let hex = color.hasPrefix("#") ? String(color.dropFirst()) : color
-        return hex.count == 6 ? Color(hex: hex) : LognDark.accent
+        return hex.count == 6 ? Color(hex: hex) : LognColors.accent
     }
 
     /// "PT EN ES", na ordem do produto, só as línguas publicadas.
@@ -55,25 +55,25 @@ struct TrackChipStyle {
 
     static func of(_ track: TrackView, price: String?) -> TrackChipStyle {
         if track.revoked {
-            return TrackChipStyle(text: Str.Catalog.no_access, ink: LognDark.textSecondary, line: LognDark.lineStrong)
+            return TrackChipStyle(text: Str.Catalog.no_access, ink: LognColors.textSecondary, line: LognColors.lineStrong)
         }
         if track.owned {
             switch track.offline {
             case .soon:
-                return TrackChipStyle(text: Str.Catalog.days(Int(track.offlineDaysLeft)), ink: LognDark.warnInk, line: LognDark.warn)
+                return TrackChipStyle(text: Str.Catalog.days(Int(track.offlineDaysLeft)), ink: LognColors.warnInk, line: LognColors.warn)
             case .today:
-                return TrackChipStyle(text: Str.Catalog.today, ink: LognDark.warnInk, line: LognDark.warn)
+                return TrackChipStyle(text: Str.Catalog.today, ink: LognColors.warnInk, line: LognColors.warn)
             case .expired:
-                return TrackChipStyle(text: Str.Catalog.connect, ink: LognDark.wrongInk, line: LognDark.wrong)
+                return TrackChipStyle(text: Str.Catalog.connect, ink: LognColors.wrongInk, line: LognColors.wrong)
             default:
                 break
             }
             if track.discontinued {
-                return TrackChipStyle(text: Str.Catalog.discontinued, ink: LognDark.textSecondary, line: LognDark.lineStrong)
+                return TrackChipStyle(text: Str.Catalog.discontinued, ink: LognColors.textSecondary, line: LognColors.lineStrong)
             }
-            return TrackChipStyle(text: Str.Catalog.owned, ink: LognDark.correctInk, line: LognDark.correct)
+            return TrackChipStyle(text: Str.Catalog.owned, ink: LognColors.correctInk, line: LognColors.correct)
         }
-        return TrackChipStyle(text: price ?? Str.Catalog.see, ink: LognDark.textPrimary, line: LognDark.lineStrong)
+        return TrackChipStyle(text: price ?? Str.Catalog.see, ink: LognColors.textPrimary, line: LognColors.lineStrong)
     }
 }
 
@@ -99,9 +99,9 @@ struct OfflineDaysBar: View {
         var out: [Color] = []
         for i in 0..<30 {
             if i < usedDays {
-                out.append(i >= 26 ? LognDark.warn : LognDark.lineDim)
+                out.append(i >= 26 ? LognColors.warn : LognColors.lineDim)
             } else {
-                out.append(LognDark.line)
+                out.append(LognColors.line)
             }
         }
         return out

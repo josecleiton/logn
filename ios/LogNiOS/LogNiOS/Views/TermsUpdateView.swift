@@ -20,12 +20,12 @@ struct TermsUpdateView: View {
                     Text(Str.Reaccept.eyebrow)
                         .font(.plexMono(11))
                         .tracking(0.14 * 11)
-                        .foregroundColor(LognDark.infoInk)
+                        .foregroundColor(LognColors.infoInk)
                         .padding(.top, Space.sm)
 
                     Text(headline)
                         .font(.plexSansSemiBold(23, relativeTo: .title2))
-                        .foregroundColor(LognDark.textPrimary)
+                        .foregroundColor(LognColors.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
 
                     versions
@@ -35,7 +35,7 @@ struct TermsUpdateView: View {
                         Text(Str.Reaccept.read_documents)
                             .font(.plexSans(14))
                             .underline()
-                            .foregroundColor(LognDark.textSecondary)
+                            .foregroundColor(LognColors.textSecondary)
                             .frame(minHeight: Space.minTouch)
                     }
                     .buttonStyle(.plain)
@@ -46,7 +46,7 @@ struct TermsUpdateView: View {
 
             footer
         }
-        .background(LognDark.canvas.ignoresSafeArea())
+        .background(LognColors.canvas.ignoresSafeArea())
         .sheet(isPresented: $showsDocuments) {
             // Abre nos termos, com as seções novas marcadas; a troca para a política fica
             // no cabeçalho do documento. O destaque vale só para o primeiro documento, e
@@ -82,28 +82,28 @@ struct TermsUpdateView: View {
                 label: Str.Reaccept.you_accepted,
                 version: update.fromVersion == 0 ? Str.Reaccept.never_accepted : Str.Reaccept.version(Int(update.fromVersion)),
                 date: update.fromDate,
-                labelColor: LognDark.textMuted,
-                valueColor: LognDark.textSecondary
+                labelColor: LognColors.textMuted,
+                valueColor: LognColors.textSecondary
             )
             Image(systemName: "arrow.right")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
                 .frame(width: 20)
                 .accessibilityHidden(true)
             versionCell(
                 label: Str.Reaccept.current,
                 version: Str.Reaccept.version(Int(update.toVersion)),
                 date: update.toDate,
-                labelColor: LognDark.infoInk,
-                valueColor: LognDark.textPrimary
+                labelColor: LognColors.infoInk,
+                valueColor: LognColors.textPrimary
             )
             .overlay(alignment: .leading) {
-                Rectangle().fill(LognDark.line).frame(width: 1)
+                Rectangle().fill(LognColors.line).frame(width: 1)
             }
         }
-        .background(LognDark.surface)
+        .background(LognColors.surface)
         .cornerRadius(Radius.sm)
-        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
     }
 
     private func versionCell(label: String, version: String, date: String, labelColor: Color, valueColor: Color) -> some View {
@@ -117,7 +117,7 @@ struct TermsUpdateView: View {
                 .foregroundColor(valueColor)
             Text(date)
                 .font(.plexMono(10.5))
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
@@ -136,7 +136,7 @@ struct TermsUpdateView: View {
             }
             .font(.plexMono(10))
             .tracking(0.12 * 10)
-            .foregroundColor(LognDark.textMuted)
+            .foregroundColor(LognColors.textMuted)
 
             ForEach(Array(update.changes.enumerated()), id: \.offset) { _, change in
                 TermsChangeRow(change: change)
@@ -151,18 +151,18 @@ struct TermsUpdateView: View {
             Button { checked.toggle() } label: {
                 HStack(alignment: .top, spacing: 10) {
                     RoundedRectangle(cornerRadius: Radius.xs + 1)
-                        .stroke(checked ? LognDark.accent : LognDark.lineDim, lineWidth: 1.5)
-                        .background(RoundedRectangle(cornerRadius: Radius.xs + 1).fill(checked ? LognDark.accent : Color.clear))
+                        .stroke(checked ? LognColors.accent : LognColors.lineDim, lineWidth: 1.5)
+                        .background(RoundedRectangle(cornerRadius: Radius.xs + 1).fill(checked ? LognColors.accent : Color.clear))
                         .frame(width: 20, height: 20)
                         .overlay {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(LognDark.onAccent)
+                                .foregroundColor(LognColors.onAccent)
                                 .opacity(checked ? 1 : 0)
                         }
                     Text(Str.Reaccept.accept_check(Int(update.toVersion)))
                         .font(.plexSans(13))
-                        .foregroundColor(LognDark.textSecondary)
+                        .foregroundColor(LognColors.textSecondary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
@@ -176,9 +176,9 @@ struct TermsUpdateView: View {
             Button { core.dispatch(event: .acceptTerms) } label: {
                 Text(update.accepting ? Str.Reaccept.accepting : Str.Reaccept.accept_button)
                     .font(.plexSansSemiBold(16))
-                    .foregroundColor(canAccept ? LognDark.onAccent : LognDark.textDim)
+                    .foregroundColor(canAccept ? LognColors.onAccent : LognColors.textDim)
                     .frame(maxWidth: .infinity, minHeight: 52)
-                    .background(canAccept ? LognDark.accent : LognDark.buttonDisabled)
+                    .background(canAccept ? LognColors.accent : LognColors.buttonDisabled)
                     .cornerRadius(Radius.sm)
             }
             .disabled(!canAccept)
@@ -186,7 +186,7 @@ struct TermsUpdateView: View {
             Button { showsDecline = true } label: {
                 Text(Str.Reaccept.decline)
                     .font(.plexSans(14))
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .frame(maxWidth: .infinity, minHeight: Space.minTouch)
             }
             .buttonStyle(.plain)
@@ -195,9 +195,9 @@ struct TermsUpdateView: View {
         .padding(.horizontal, 22)
         .padding(.top, 14)
         .padding(.bottom, 12)
-        .background(LognDark.surface.ignoresSafeArea(edges: .bottom))
+        .background(LognColors.surface.ignoresSafeArea(edges: .bottom))
         .overlay(alignment: .top) {
-            Rectangle().fill(LognDark.line).frame(height: 1)
+            Rectangle().fill(LognColors.line).frame(height: 1)
         }
     }
 
@@ -224,10 +224,10 @@ private struct TermsChangeRow: View {
                 Text(place)
                     .font(.plexMono(9.5))
                     .tracking(0.08 * 9.5)
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
                 Text(change.summary)
                     .font(.plexSans(13))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 10)
@@ -235,9 +235,9 @@ private struct TermsChangeRow: View {
             Spacer(minLength: 0)
         }
         .fixedSize(horizontal: false, vertical: true)
-        .background(LognDark.surface)
+        .background(LognColors.surface)
         .cornerRadius(Radius.xs + 1)
-        .overlay(RoundedRectangle(cornerRadius: Radius.xs + 1).stroke(LognDark.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Radius.xs + 1).stroke(LognColors.line, lineWidth: 1))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Str.Reaccept.change_accessibility(signName, place, change.summary))
     }
@@ -263,21 +263,28 @@ private struct TermsChangeRow: View {
         }
     }
 
+    /// O sinal (+, ~, −) é glifo: a tinta. A barra ao lado é traço: a base.
     private var ink: Color {
         switch change.change {
-        case .added: return LognDark.correct
-        case .changed: return LognDark.warn
-        case .removed: return LognDark.wrong
+        case .added: return LognColors.correctInk
+        case .changed: return LognColors.warnInk
+        case .removed: return LognColors.wrongInk
         }
     }
 
-    private var line: Color { ink }
+    private var line: Color {
+        switch change.change {
+        case .added: return LognColors.correct
+        case .changed: return LognColors.warn
+        case .removed: return LognColors.wrong
+        }
+    }
 
     private var tint: Color {
         switch change.change {
-        case .added: return LognDark.tintOk
-        case .changed: return LognDark.tintWarn
-        case .removed: return LognDark.tintErr
+        case .added: return LognColors.tintOk
+        case .changed: return LognColors.tintWarn
+        case .removed: return LognColors.tintErr
         }
     }
 }
@@ -293,11 +300,10 @@ struct TermsDeclineSheet: View {
         // O fundo cobre a folha inteira, como no `CriticalLogoutSheet`: com ele só atrás do
         // conteúdo, sobrava a cor padrão da folha em cima e embaixo.
         ZStack(alignment: .top) {
-            LognDark.surfaceRaised.ignoresSafeArea()
+            LognColors.surfaceRaised.ignoresSafeArea()
             content
         }
         .presentationDetents([.medium])
-        .preferredColorScheme(.dark)
         .sheet(isPresented: $showsDelete) {
             DeleteAccountSheet(
                 onDelete: { password in
@@ -321,10 +327,10 @@ struct TermsDeclineSheet: View {
         VStack(alignment: .leading, spacing: Space.lg) {
             Text(Str.Reaccept.decline_title)
                 .font(.plexSansSemiBold(18))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
             Text(Str.Reaccept.decline_body)
                 .font(.plexSans(14))
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             Button {
@@ -333,23 +339,23 @@ struct TermsDeclineSheet: View {
             } label: {
                 Text(Str.Reaccept.sign_out)
                     .font(.plexSansSemiBold(15))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                     .frame(maxWidth: .infinity, minHeight: 50)
-                    .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
             }
 
             Button { showsDelete = true } label: {
                 Text(Str.Reaccept.delete_account)
                     .font(.plexSansSemiBold(15))
-                    .foregroundColor(LognDark.wrongInk)
+                    .foregroundColor(LognColors.wrongInk)
                     .frame(maxWidth: .infinity, minHeight: 50)
-                    .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.wrong, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.wrong, lineWidth: 1))
             }
 
             Button { dismiss() } label: {
                 Text(Str.Reaccept.back)
                     .font(.plexSans(14))
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .frame(maxWidth: .infinity, minHeight: Space.minTouch)
             }
             .buttonStyle(.plain)
@@ -369,30 +375,30 @@ struct TermsNoticeBanner: View {
         HStack(alignment: .center, spacing: Space.md) {
             Text(Str.Reaccept.notice)
                 .font(.plexSans(13))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.vertical, 12)
             Spacer(minLength: 0)
             Button { showsDocument = true } label: {
                 Text(Str.Reaccept.notice_open)
                     .font(.plexSansMedium(13))
-                    .foregroundColor(LognDark.infoInk)
+                    .foregroundColor(LognColors.infoInk)
                     .frame(minWidth: Space.minTouch, minHeight: Space.minTouch)
             }
             .buttonStyle(.plain)
             Button { core.dispatch(event: .dismissTermsNotice) } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
                     .frame(width: Space.minTouch, height: Space.minTouch)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Str.Reaccept.notice_close)
         }
         .padding(.leading, 14)
-        .background(LognDark.tintInfo)
+        .background(LognColors.tintInfo)
         .cornerRadius(Radius.sm)
-        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.info, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.info, lineWidth: 1))
         .padding(.horizontal, Space.screenMargin)
         .sheet(isPresented: $showsDocument) {
             LegalDocumentView(kind: .terms)

@@ -314,6 +314,11 @@ version-check:
     fi
     echo "✓ iOS e Android em $name ($build)"
 
+# Cor que não troca com o tema numa tela do iOS (ADR 0031): `LognDark` ou `LognLight` direto,
+# ou hex literal fora do design system. A cor da trilha, que vem do servidor, passa.
+ios-tokens-gate:
+    ! grep -rnE 'LognDark\.|LognLight\.|Color\(hex: *"' ios/LogNiOS/LogNiOS --include=*.swift | grep -v '/DesignSystem/LognDesignSystem.swift'
+
 # Abre o projeto no Xcode
 open-ios: xcode
     open ios/LogNiOS/LogNiOS.xcodeproj

@@ -8,6 +8,7 @@ import App
 /// "Continuar"; em uso e reservado, só depois de "Confirmar", e a folha volta ao campo.
 struct NicknameSheet: View {
     @EnvironmentObject var core: CoreWrapper
+    @Environment(\.colorScheme) private var colorScheme
     let onClose: () -> Void
 
     @State private var text = ""
@@ -29,7 +30,7 @@ struct NicknameSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Capsule()
-                .fill(LognDark.lineStrong)
+                .fill(LognColors.lineStrong)
                 .frame(width: 36, height: 4)
                 .frame(maxWidth: .infinity)
             step
@@ -43,7 +44,7 @@ struct NicknameSheet: View {
             }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(LognDark.surface.ignoresSafeArea())
+        .background(LognColors.surface.ignoresSafeArea())
         .onPreferenceChange(ContentHeightKey.self) { height in
             if height > 0 { contentHeight = height }
         }
@@ -75,14 +76,14 @@ struct NicknameSheet: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(Str.Nickname.title)
                 .font(.plexSansSemiBold(20))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
             bodyText(Str.Nickname.body(anon))
         }
         VStack(alignment: .leading, spacing: 8) {
             Text(Str.Nickname.label)
                 .font(.plexMono(11))
                 .tracking(0.1 * 11)
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
             field
             HStack(alignment: .top, spacing: 12) {
                 HStack(alignment: .top, spacing: 6) {
@@ -95,11 +96,11 @@ struct NicknameSheet: View {
                         .font(.plexSans(13))
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .foregroundColor(hasError ? LognDark.warnInk : LognDark.textMuted)
+                .foregroundColor(hasError ? LognColors.warnInk : LognColors.textMuted)
                 Spacer(minLength: 0)
                 Text(Str.Nickname.counter(text.trimmingCharacters(in: .whitespaces).count, Self.maxLength))
                     .font(.plexMono(12))
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
             }
         }
         sheetButton(Str.Nickname.continue_action, filled: true) {
@@ -107,10 +108,14 @@ struct NicknameSheet: View {
         }
     }
 
+    /// O exemplo dos outros campos é `textFaint`; este escrevia em `lineDim`, que no claro
+    /// cai a 2:1. O escuro fica como estava (ADR 0031).
+    private var placeholderColor: Color { colorScheme == .light ? LognColors.textFaint : LognColors.lineDim }
+
     private var field: some View {
-        TextField("", text: $text, prompt: Text(Str.Nickname.placeholder).foregroundColor(LognDark.lineDim))
+        TextField("", text: $text, prompt: Text(Str.Nickname.placeholder).foregroundColor(placeholderColor))
             .font(.plexMono(16))
-            .foregroundColor(LognDark.textPrimary)
+            .foregroundColor(LognColors.textPrimary)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .keyboardType(.asciiCapable)
@@ -120,11 +125,11 @@ struct NicknameSheet: View {
             }
             .padding(.horizontal, 14)
             .frame(height: 48)
-            .background(LognDark.canvas)
+            .background(LognColors.canvas)
             .cornerRadius(Radius.sm)
             .overlay(
                 RoundedRectangle(cornerRadius: Radius.sm)
-                    .stroke(hasError ? LognDark.warn : LognDark.lineStrong, lineWidth: 1)
+                    .stroke(hasError ? LognColors.warn : LognColors.lineStrong, lineWidth: 1)
             )
             .accessibilityLabel(Str.Nickname.field_accessibility)
     }
@@ -136,22 +141,22 @@ struct NicknameSheet: View {
         Text(Str.Nickname.confirm_eyebrow)
             .font(.plexMono(11))
             .tracking(0.1 * 11)
-            .foregroundColor(LognDark.accentInk)
+            .foregroundColor(LognColors.accentInk)
         VStack(alignment: .leading, spacing: 6) {
             Text(flow.draft)
                 .font(.plexSansSemiBold(24))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
             Text(Str.Nickname.confirm_sub(anon))
                 .font(.plexMono(12))
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
         .padding(.vertical, 18)
-        .background(LognDark.accentTint)
+        .background(LognColors.accentTint)
         .cornerRadius(Radius.sm)
-        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.accent, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.accent, lineWidth: 1))
         bodyText(Str.Nickname.confirm_body)
         VStack(spacing: 10) {
             sheetButton(Str.Nickname.confirm(flow.draft), filled: true, enabled: !flow.submitting) {
@@ -170,7 +175,7 @@ struct NicknameSheet: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(Str.Nickname.success(flow.draft))
                 .font(.plexSansSemiBold(20))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
             bodyText(Str.Nickname.success_body)
         }
         sheetButton(Str.Nickname.close, filled: false, action: onClose)
@@ -182,7 +187,7 @@ struct NicknameSheet: View {
         Text(value)
             .font(.plexSans(14))
             .lineSpacing(bodyLineSpacing)
-            .foregroundColor(LognDark.textSecondary)
+            .foregroundColor(LognColors.textSecondary)
             .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -192,11 +197,11 @@ struct NicknameSheet: View {
                 .font(filled ? .plexSansSemiBold(15) : .plexSansMedium(15))
                 .foregroundColor(buttonInk(filled: filled, enabled: enabled))
                 .frame(maxWidth: .infinity, minHeight: 48)
-                .background(filled ? (enabled ? LognDark.accent : LognDark.buttonDisabled) : Color.clear)
+                .background(filled ? (enabled ? LognColors.accent : LognColors.buttonDisabled) : Color.clear)
                 .cornerRadius(Radius.sm)
                 .overlay(
                     RoundedRectangle(cornerRadius: Radius.sm)
-                        .stroke(filled ? Color.clear : LognDark.lineStrong, lineWidth: 1)
+                        .stroke(filled ? Color.clear : LognColors.lineStrong, lineWidth: 1)
                 )
         }
         .buttonStyle(.plain)
@@ -204,7 +209,7 @@ struct NicknameSheet: View {
     }
 
     private func buttonInk(filled: Bool, enabled: Bool) -> Color {
-        if !enabled { return LognDark.textDim }
-        return filled ? LognDark.onAccent : LognDark.textPrimary
+        if !enabled { return LognColors.textDim }
+        return filled ? LognColors.onAccent : LognColors.textPrimary
     }
 }

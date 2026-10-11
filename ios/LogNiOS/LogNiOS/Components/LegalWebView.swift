@@ -98,8 +98,8 @@ struct LegalWebView: UIViewRepresentable {
         webView.navigationDelegate = context.coordinator
         // Sem isto a página pisca branco antes do CSS escuro chegar.
         webView.isOpaque = false
-        webView.backgroundColor = UIColor(LognDark.surfaceRaised)
-        webView.scrollView.backgroundColor = UIColor(LognDark.surfaceRaised)
+        webView.backgroundColor = UIColor(LognColors.surfaceRaised)
+        webView.scrollView.backgroundColor = UIColor(LognColors.surfaceRaised)
         webView.allowsLinkPreview = false
         webView.allowsBackForwardNavigationGestures = false
         webView.pageZoom = Self.textZoom

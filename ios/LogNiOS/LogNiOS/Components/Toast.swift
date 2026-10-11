@@ -20,9 +20,9 @@ enum ToastVariant {
 
     var tint: Color {
         switch self {
-        case .attention: return LognDark.warn
-        case .error: return LognDark.wrong
-        case .success: return LognDark.correct
+        case .attention: return LognColors.warn
+        case .error: return LognColors.wrong
+        case .success: return LognColors.correct
         }
     }
 
@@ -162,6 +162,7 @@ final class ToastCenter: ObservableObject {
 struct ToastHost: View {
     @ObservedObject var center = ToastCenter.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var dragY: CGFloat = 0
     @State private var pulsing = false
@@ -192,7 +193,7 @@ struct ToastHost: View {
                 .foregroundColor(message.variant.tint)
             Text(message.text)
                 .font(.plexSansMedium(15, relativeTo: .callout))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 // Sem reticências: texto que não cabe em duas linhas se reescreve.
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -200,15 +201,17 @@ struct ToastHost: View {
         .padding(.trailing, Space.lg)
         .padding(.vertical, Space.md)
         .frame(minHeight: 48)
-        .background(LognDark.surfaceRaised)
+        .background(LognColors.surfaceRaised)
         // O raio foge da régua `Radius` de propósito: é a forma dos avisos do sistema
         // que faz a pílula ser reconhecida. Com raio 8 ela pareceria um card.
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(LognDark.lineStrong, lineWidth: 1)
+                .stroke(LognColors.lineStrong, lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.55), radius: 15, y: 10)
+        // No claro a sombra vira um halo cinza em volta da pílula, e o DS só põe sombra em
+        // folha; a borda `lineStrong` já a separa do fundo. No escuro fica como estava.
+        .shadow(color: colorScheme == .dark ? .black.opacity(0.55) : .clear, radius: 15, y: 10)
     }
 
     private var transition: AnyTransition {

@@ -5,6 +5,7 @@ import App
 struct ResetPasswordView: View {
     @EnvironmentObject var core: CoreWrapper
     @Environment(\.dismiss) var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     
     let email: String
     /// O código que veio no link do e-mail. Vazio quando a tela abre pelo "Esqueci a
@@ -21,22 +22,24 @@ struct ResetPasswordView: View {
     
     var body: some View {
         ZStack {
-            LognDark.canvas.ignoresSafeArea()
+            LognColors.canvas.ignoresSafeArea()
             
             VStack(spacing: Space.xl) {
                 // Header
                 Image(systemName: "key.fill")
                     .font(.system(size: 48))
-                    // Azul é informação; o que a tela pede é ação, e ação é o acento.
-                    .foregroundColor(LognDark.accentInk)
+                    // Azul é informação; o que a tela pede é ação, e ação é o acento. A chave
+                    // é forma cheia, então é a base que preenche, como o balão do logo, e não
+                    // a tinta.
+                    .foregroundColor(LognColors.accent)
                 
                 Text(Str.Reset.title)
                     .font(LognFont.headlineMedium)
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                 
                 Text(asksForCode ? Str.Reset.subtitle_with_code(email) : Str.Reset.subtitle(email))
                     .font(LognFont.bodyLarge)
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .multilineTextAlignment(.center)
 
                 VStack(spacing: Space.md) {
@@ -47,25 +50,25 @@ struct ResetPasswordView: View {
                     PasswordField(Str.Reset.password_prompt, text: $password)
                         .textContentType(.newPassword)
                         .font(LognFont.bodyLarge)
-                        .foregroundColor(LognDark.textPrimary)
+                        .foregroundColor(LognColors.textPrimary)
                         .padding()
-                        .background(LognDark.surface)
+                        .background(LognColors.surface)
                         .cornerRadius(Radius.sm)
                         .overlay(
                             RoundedRectangle(cornerRadius: Radius.sm)
-                                .stroke(LognDark.lineDim, lineWidth: 1)
+                                .stroke(LognColors.lineDim, lineWidth: 1)
                         )
                     
                     PasswordField(Str.Reset.confirm_prompt, text: $confirmPassword)
                         .textContentType(.newPassword)
                         .font(LognFont.bodyLarge)
-                        .foregroundColor(LognDark.textPrimary)
+                        .foregroundColor(LognColors.textPrimary)
                         .padding()
-                        .background(LognDark.surface)
+                        .background(LognColors.surface)
                         .cornerRadius(Radius.sm)
                         .overlay(
                             RoundedRectangle(cornerRadius: Radius.sm)
-                                .stroke(passwordsMatch ? LognDark.lineDim : LognDark.warn, lineWidth: 1)
+                                .stroke(passwordsMatch ? LognColors.lineDim : LognColors.warn, lineWidth: 1)
                         )
                     
                     Button(action: {
@@ -79,8 +82,8 @@ struct ResetPasswordView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, Space.md)
                             // Verde é veredito do juiz, não confirmação de formulário.
-                            .background(canSubmit ? LognDark.accent : LognDark.buttonDisabled)
-                            .foregroundColor(canSubmit ? LognDark.onAccent : LognDark.textDim)
+                            .background(canSubmit ? LognColors.accent : LognColors.buttonDisabled)
+                            .foregroundColor(canSubmit ? LognColors.onAccent : LognColors.textDim)
                             .cornerRadius(Radius.sm)
                     }
                     .disabled(!canSubmit || core.viewModel.isAuthenticating)
@@ -104,17 +107,17 @@ struct ResetPasswordView: View {
     /// no servidor ao completar, e aqui quem o consome é a própria troca de senha.
     @ViewBuilder
     private var codeField: some View {
-        TextField(Str.Reset.code_prompt, text: $typedCode)
+        TextField(Str.Reset.code_prompt, text: $typedCode, prompt: lightPrompt(Str.Reset.code_prompt, colorScheme))
             .textContentType(.oneTimeCode)
             .keyboardType(.numberPad)
             .font(.plexMonoSemiBold(20))
-            .foregroundColor(LognDark.textPrimary)
+            .foregroundColor(LognColors.textPrimary)
             .padding()
-            .background(LognDark.surface)
+            .background(LognColors.surface)
             .cornerRadius(Radius.sm)
             .overlay(
                 RoundedRectangle(cornerRadius: Radius.sm)
-                    .stroke(LognDark.lineDim, lineWidth: 1)
+                    .stroke(LognColors.lineDim, lineWidth: 1)
             )
             .onChange(of: typedCode) { newValue in
                 let digits = String(newValue.filter(\.isNumber).prefix(6))
@@ -129,7 +132,7 @@ struct ResetPasswordView: View {
                  : Str.Otp.resend_code)
                 .font(.plexSans(13.5))
                 .monospacedDigit()
-                .foregroundColor(resendLocked ? LognDark.textDim : LognDark.textSecondary)
+                .foregroundColor(resendLocked ? LognColors.textDim : LognColors.textSecondary)
                 .underline(!resendLocked)
                 .frame(minHeight: Space.minTouch)
         }

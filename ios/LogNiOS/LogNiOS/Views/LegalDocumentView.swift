@@ -48,8 +48,9 @@ struct LegalDocumentView: View {
                 footer(onAccept)
             }
         }
-        .background(LognDark.surfaceRaised.ignoresSafeArea())
-        .preferredColorScheme(.dark)
+        // O documento segue o tema do app: o WebView passa o traço ao `prefers-color-scheme`,
+        // e o `embed.css` tem os dois (ADR 0008).
+        .background(LognColors.surfaceRaised.ignoresSafeArea())
     }
 
     // MARK: Cabeçalho
@@ -59,7 +60,7 @@ struct LegalDocumentView: View {
             Button { dismiss() } label: {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
                     .frame(width: 44, height: 44)
             }
             .accessibilityLabel(Str.Logout.back)
@@ -68,7 +69,7 @@ struct LegalDocumentView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(kind.title)
                     .font(.plexSansSemiBold(17, relativeTo: .headline))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                 metaLine
             }
 
@@ -78,7 +79,7 @@ struct LegalDocumentView: View {
         .padding(.top, 10)
         .padding(.bottom, 12)
         .overlay(alignment: .bottom) {
-            Rectangle().frame(height: 1).foregroundColor(LognDark.line)
+            Rectangle().frame(height: 1).foregroundColor(LognColors.line)
         }
     }
 
@@ -94,12 +95,12 @@ struct LegalDocumentView: View {
                 }
             }
             .font(.plexMono(11, relativeTo: .caption))
-            .foregroundColor(LognDark.textMuted)
+            .foregroundColor(LognColors.textMuted)
             .fixedSize(horizontal: false, vertical: true)
         } else {
             // Esqueleto do tamanho da linha: o título não pula quando ela chega.
             RoundedRectangle(cornerRadius: Radius.xs)
-                .fill(LognDark.line)
+                .fill(LognColors.line)
                 .frame(width: 180, height: 10)
                 .padding(.vertical, 3)
                 .accessibilityHidden(true)
@@ -125,7 +126,7 @@ struct LegalDocumentView: View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(0..<9, id: \.self) { i in
                 RoundedRectangle(cornerRadius: Radius.xs)
-                    .fill(LognDark.line)
+                    .fill(LognColors.line)
                     .frame(height: i % 4 == 0 ? 14 : 10)
                     .frame(maxWidth: i % 4 == 3 ? 200 : .infinity, alignment: .leading)
                     .padding(.top, i % 4 == 0 && i > 0 ? 16 : 0)
@@ -134,7 +135,7 @@ struct LegalDocumentView: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(LognDark.surfaceRaised)
+        .background(LognColors.surfaceRaised)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Str.Legal.loading_accessibility)
     }
@@ -143,35 +144,35 @@ struct LegalDocumentView: View {
         VStack(spacing: 16) {
             Text(Str.Legal.unavailable)
                 .font(.plexSans(15, relativeTo: .body))
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .multilineTextAlignment(.center)
             Button {
                 reloadToken += 1
             } label: {
                 Text(Str.Dashboard.try_again)
                     .font(.plexSansMedium(15))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                     .frame(minWidth: 160, minHeight: 48)
-                    .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.lineStrong, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.lineStrong, lineWidth: 1))
             }
             .buttonStyle(PressSinkStyle())
         }
         .padding(.horizontal, 32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(LognDark.surfaceRaised)
+        .background(LognColors.surfaceRaised)
     }
 
     // MARK: Rodapé
 
     private func footer(_ onAccept: @escaping () -> Void) -> some View {
         VStack(spacing: 0) {
-            Rectangle().frame(height: 1).foregroundColor(LognDark.line)
+            Rectangle().frame(height: 1).foregroundColor(LognColors.line)
             Button(action: onAccept) {
                 Text(Str.Legal.accept)
                     .font(.plexSansSemiBold(15))
-                    .foregroundColor(canAccept ? LognDark.onAccent : LognDark.textDim)
+                    .foregroundColor(canAccept ? LognColors.onAccent : LognColors.textDim)
                     .frame(maxWidth: .infinity, minHeight: 52)
-                    .background(canAccept ? LognDark.accent : LognDark.buttonDisabled)
+                    .background(canAccept ? LognColors.accent : LognColors.buttonDisabled)
                     .cornerRadius(Radius.sm)
             }
             .buttonStyle(PressSinkStyle())
@@ -180,7 +181,7 @@ struct LegalDocumentView: View {
             .padding(.top, 16)
             .padding(.bottom, 12)
         }
-        .background(LognDark.surfaceRaised)
+        .background(LognColors.surfaceRaised)
     }
 
     /// Só se aceita o que está na tela. Rascunho não se aceita, nem de cópia offline
@@ -199,7 +200,7 @@ struct LegalLinksRow: View {
             link(.terms)
             Text("·")
                 .font(.plexSans(13))
-                .foregroundColor(LognDark.textDim)
+                .foregroundColor(LognColors.textDim)
                 .accessibilityHidden(true)
             link(.privacy)
         }
@@ -210,7 +211,7 @@ struct LegalLinksRow: View {
         Button { presented = kind } label: {
             Text(kind.title)
                 .font(.plexSans(13, relativeTo: .footnote))
-                .foregroundColor(LognDark.textSecondary)
+                .foregroundColor(LognColors.textSecondary)
                 .underline()
                 .frame(minHeight: 44)
                 .padding(.horizontal, 6)

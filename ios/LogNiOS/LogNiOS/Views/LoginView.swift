@@ -13,6 +13,12 @@ struct LoginView: View {
     @State private var githubEnabled = false
     @State private var googleEnabled = false
     @State private var appleEnabled = false
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// O botão da Apple: branco sobre o escuro, preto sobre o claro, como a diretriz da Apple
+    /// pede para cada fundo (ADR 0031).
+    private var appleFill: Color { colorScheme == .dark ? .white : .black }
+    private var appleInk: Color { colorScheme == .dark ? .black : .white }
     @State private var legalSheet: LegalKind? = LegalKind.launchOverride
     /// Só em DEBUG: `-LogNStartScreen cadastro` abre o cadastro direto. O toque
     /// sintético no link depende da janela do Simulator estar acessível, e nem sempre está.
@@ -32,7 +38,7 @@ struct LoginView: View {
 
     private var content: some View {
         ZStack {
-            LognDark.canvas.ignoresSafeArea()
+            LognColors.canvas.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 BalloonMarquee()
@@ -47,27 +53,27 @@ struct LoginView: View {
                     Text(Str.Login.slogan)
                         .font(.plexMono(11))
                         .tracking(0.16 * 11) // letter-spacing: 0.16em
-                        .foregroundColor(LognDark.textSecondary)
+                        .foregroundColor(LognColors.textSecondary)
                 }
                 
                 Spacer().frame(height: 40)
                 
                 // Content
                 VStack(spacing: Space.sm) {
-                    // O botão branco é da diretriz da Apple; o design system o mantém assim.
+                    // As cores do botão são da diretriz da Apple; o design system as mantém.
                     if appleEnabled {
                         Button(action: signInWithApple) {
                             HStack(spacing: 12) {
                                 Image(systemName: "applelogo")
                                     .font(.system(size: 20))
-                                    .foregroundColor(.black)
+                                    .foregroundColor(appleInk)
                                 Text(Str.Login.sign_in_apple)
                                     .font(.plexSansMedium(15))
-                                    .foregroundColor(.black)
+                                    .foregroundColor(appleInk)
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 52)
-                            .background(Color.white)
+                            .background(appleFill)
                             .cornerRadius(Radius.sm)
                             .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(Color.clear, lineWidth: 1))
                         }
@@ -82,20 +88,22 @@ struct LoginView: View {
                     if githubEnabled {
                         Button(action: signInWithGitHub) {
                             HStack(spacing: 12) {
+                                // O símbolo é molde: pinta com a cor do texto, nos dois temas.
                                 Image("GitHubIcon")
-                                    .renderingMode(.original)
+                                    .renderingMode(.template)
                                     .resizable()
                                     .scaledToFit()
                                     .frame(width: 20, height: 20)
+                                    .foregroundColor(LognColors.textPrimary)
                                 Text(Str.Login.sign_in_github)
                                     .font(.plexSansMedium(15))
-                                    .foregroundColor(LognDark.textPrimary)
+                                    .foregroundColor(LognColors.textPrimary)
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 52)
-                            .background(LognDark.surface)
+                            .background(LognColors.surface)
                             .cornerRadius(Radius.sm)
-                            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+                            .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
                         }
                         .disabled(core.viewModel.isAuthenticating || signInLocked)
                     }
@@ -103,12 +111,12 @@ struct LoginView: View {
                     if githubEnabled || googleEnabled || appleEnabled {
                         // Divider
                         HStack(spacing: 12) {
-                            Rectangle().fill(LognDark.line).frame(height: 1)
+                            Rectangle().fill(LognColors.line).frame(height: 1)
                             Text(Str.Login.or_email)
                                 .font(.plexMono(10))
                                 .tracking(0.14 * 10)
-                                .foregroundColor(LognDark.textMuted)
-                            Rectangle().fill(LognDark.line).frame(height: 1)
+                                .foregroundColor(LognColors.textMuted)
+                            Rectangle().fill(LognColors.line).frame(height: 1)
                         }
                         .padding(.vertical, 8)
                         
@@ -116,27 +124,27 @@ struct LoginView: View {
                 }
                 
                 // E-mail field
-                    TextField("", text: $email, prompt: Text(Str.Login.email_prompt).foregroundColor(LognDark.textDim))
+                    TextField("", text: $email, prompt: Text(Str.Login.email_prompt).foregroundColor(LognColors.textFaint))
                         .font(.plexMono(14))
                         .padding(.horizontal, 14)
                         .frame(height: 52)
-                        .background(LognDark.surface)
+                        .background(LognColors.surface)
                         .cornerRadius(Radius.sm)
-                        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
-                        .foregroundColor(LognDark.textPrimary)
+                        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
+                        .foregroundColor(LognColors.textPrimary)
                         .autocapitalization(.none)
                         .keyboardType(.emailAddress)
                         .focused($emailFocused)
 
                     // Password field
-                    PasswordField("", text: $password, prompt: Text(Str.Login.password_prompt).foregroundColor(LognDark.textDim))
+                    PasswordField("", text: $password, prompt: Text(Str.Login.password_prompt).foregroundColor(LognColors.textFaint))
                         .font(.plexMono(14))
                         .padding(.horizontal, 14)
                         .frame(height: 52)
-                        .background(LognDark.surface)
+                        .background(LognColors.surface)
                         .cornerRadius(Radius.sm)
-                        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
-                        .foregroundColor(LognDark.textPrimary)
+                        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
+                        .foregroundColor(LognColors.textPrimary)
                     
                     // Submit button
                     Button(action: {
@@ -146,10 +154,10 @@ struct LoginView: View {
                     }) {
                         Text(signInLabel)
                             .font(.plexSansSemiBold(15))
-                            .foregroundColor(canSignIn ? LognDark.onAccent : LognDark.textDim)
+                            .foregroundColor(canSignIn ? LognColors.onAccent : LognColors.textDim)
                             .frame(maxWidth: .infinity)
                             .frame(height: 52)
-                            .background(canSignIn ? LognDark.accent : LognDark.buttonDisabled)
+                            .background(canSignIn ? LognColors.accent : LognColors.buttonDisabled)
                             .cornerRadius(Radius.sm)
                     }
                     .disabled(!canSignIn || core.viewModel.isAuthenticating)
@@ -160,7 +168,7 @@ struct LoginView: View {
                         NavigationLink(destination: RegisterView().environmentObject(core)) {
                             Text(Str.Login.create_account)
                                 .font(.plexSans(13.5))
-                                .foregroundColor(LognDark.textSecondary)
+                                .foregroundColor(LognColors.textSecondary)
                         }
                         Spacer()
                         Button(action: requestReset) {
@@ -169,7 +177,7 @@ struct LoginView: View {
                                  : Str.Login.forgot_password)
                                 .font(.plexSans(13.5))
                                 .monospacedDigit()
-                                .foregroundColor(canRequestReset ? LognDark.textSecondary : LognDark.textDim)
+                                .foregroundColor(canRequestReset ? LognColors.textSecondary : LognColors.textDim)
                         }
                         .disabled(!canRequestReset)
                     }
@@ -184,7 +192,7 @@ struct LoginView: View {
                 
                 // Guest Button & Core Status
                 VStack(spacing: Space.md) {
-                    Rectangle().fill(LognDark.line).frame(height: 1)
+                    Rectangle().fill(LognColors.line).frame(height: 1)
                     
                     Button(action: {
                         core.dispatch(event: .continueAsGuest)
@@ -192,18 +200,18 @@ struct LoginView: View {
                         VStack(spacing: 2) {
                             Text(Str.Login.guest_mode)
                                 .font(.plexSansSemiBold(14))
-                                .foregroundColor(LognDark.textPrimary)
+                                .foregroundColor(LognColors.textPrimary)
                             Text(Str.Login.without_saving)
                                 .font(.plexMono(10.5))
-                                .foregroundColor(LognDark.textMuted)
+                                .foregroundColor(LognColors.textMuted)
                         }
                         .frame(height: 46)
                         .frame(maxWidth: .infinity)
-                        .background(LognDark.canvas)
+                        .background(LognColors.canvas)
                         .cornerRadius(Radius.sm)
                         .overlay(
                             RoundedRectangle(cornerRadius: Radius.sm)
-                                .stroke(LognDark.line, style: StrokeStyle(lineWidth: 1, dash: [4]))
+                                .stroke(LognColors.line, style: StrokeStyle(lineWidth: 1, dash: [4]))
                         )
                     }
                     
@@ -212,12 +220,12 @@ struct LoginView: View {
                     // Core Status
                     HStack(spacing: 7) {
                         Circle()
-                            .fill(LognDark.correct) // 3DD68C
+                            .fill(LognColors.correct) // 3DD68C
                             .frame(width: 6, height: 6)
                         Text(Str.Login.core_ready)
                             .font(.plexMono(10))
                             .tracking(0.1 * 10)
-                            .foregroundColor(LognDark.textMuted)
+                            .foregroundColor(LognColors.textMuted)
                     }
                     .padding(.top, 4)
                 }

@@ -41,7 +41,7 @@ struct NodeSheetView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            LognDark.surfaceRaised.ignoresSafeArea()
+            LognColors.surfaceRaised.ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
                 handle
@@ -60,7 +60,7 @@ struct NodeSheetView: View {
         .overlay(alignment: .top) {
             Rectangle()
                 .frame(height: 1)
-                .foregroundColor(LognDark.lineStrong)
+                .foregroundColor(LognColors.lineStrong)
         }
     }
 
@@ -68,7 +68,7 @@ struct NodeSheetView: View {
 
     private var handle: some View {
         Capsule()
-            .fill(LognDark.lineStrong)
+            .fill(LognColors.lineStrong)
             .frame(width: 36, height: 3)
             .frame(maxWidth: .infinity)
             .padding(.bottom, 18)
@@ -88,7 +88,7 @@ struct NodeSheetView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(node.name)
                     .font(.plexSansSemiBold(19, relativeTo: .title3))
-                    .foregroundColor(LognDark.textPrimary)
+                    .foregroundColor(LognColors.textPrimary)
                 Text(stateLabel)
                     .font(.plexMono(11))
                     .tracking(0.1 * 11)
@@ -100,7 +100,7 @@ struct NodeSheetView: View {
 
     private var balloonStyle: BalloonShape.Style {
         switch node.status {
-        case .completed: return .filled(topic.color)
+        case .completed: return topic.filledBalloon
         case .active:    return .active
         case .locked, .paywallLocked: return .locked
         }
@@ -108,9 +108,9 @@ struct NodeSheetView: View {
 
     private var iconColor: Color {
         switch node.status {
-        case .completed: return LognDark.onAccent
-        case .active:    return LognDark.accentInk
-        case .locked, .paywallLocked: return LognDark.textSecondary
+        case .completed: return LognColors.onAccent
+        case .active:    return LognColors.accentInk
+        case .locked, .paywallLocked: return LognColors.textSecondary
         }
     }
 
@@ -126,9 +126,9 @@ struct NodeSheetView: View {
     /// a paleta é certificada para 3:1 como forma, não 4.5:1 como glifo.
     private var stateColor: Color {
         switch node.status {
-        case .completed: return LognDark.textSecondary
-        case .active:    return LognDark.accentInk
-        case .locked, .paywallLocked: return LognDark.textMuted
+        case .completed: return LognColors.textSecondary
+        case .active:    return LognColors.accentInk
+        case .locked, .paywallLocked: return LognColors.textMuted
         }
     }
 
@@ -146,26 +146,26 @@ struct NodeSheetView: View {
             Text(title)
                 .font(.plexMono(10))
                 .tracking(0.14 * 10)
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
 
             if nodes.isEmpty {
                 // Vazio nunca é ilustração: uma frase e pronto.
                 // `textDim` é só forma e placeholder — isto é texto lido.
                 Text(isUpstream ? Str.Node.start_point : Str.Node.end_point)
                     .font(.plexSans(13.5, relativeTo: .footnote))
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
                     .padding(.top, 10)
             } else {
                 ForEach(Array(nodes.prefix(2).enumerated()), id: \.element.id) { index, neighbour in
                     HStack(spacing: 9) {
                         TopicIcon(
                             topic: LognTopic.of(node: neighbour),
-                            color: isUpstream ? LognTopic.of(node: neighbour).color : LognDark.textMuted,
+                            color: isUpstream ? LognTopic.of(node: neighbour).color : LognColors.textMuted,
                             size: 17
                         )
                         Text(neighbour.name)
                             .font(.plexSans(13.5, relativeTo: .footnote))
-                            .foregroundColor(isUpstream ? LognDark.textPrimary : LognDark.textSecondary)
+                            .foregroundColor(isUpstream ? LognColors.textPrimary : LognColors.textSecondary)
                             .lineLimit(1)
                     }
                     .padding(.top, index == 0 ? 10 : 7)
@@ -186,11 +186,11 @@ struct NodeSheetView: View {
                 Text(Str.Solved.problems)
                     .font(.plexMono(10))
                     .tracking(0.14 * 10)
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
                 Spacer(minLength: 0)
                 Text(Str.Solved.count(solvedCount, node.problemsSolved.count))
                     .font(.plexMono(11))
-                    .foregroundColor(LognDark.textSecondary)
+                    .foregroundColor(LognColors.textSecondary)
             }
 
             HStack(spacing: 10) {
@@ -200,7 +200,7 @@ struct NodeSheetView: View {
                         ZStack {
                             BalloonShape(
                                 style: solved
-                                    ? .filled(BalloonColor.forLetter(letter))
+                                    ? BalloonColor.filled(letter)
                                     : .outline(BalloonColor.forLetter(letter), 6),
                                 width: 36,
                                 showHighlight: false
@@ -208,7 +208,7 @@ struct NodeSheetView: View {
                             Text(String(letter))
                                 .font(.plexMono(12))
                                 .fontWeight(.semibold)
-                                .foregroundColor(solved ? LognDark.onAccent : LognDark.textSecondary)
+                                .foregroundColor(solved ? LognColors.onAccent : LognColors.textSecondary)
                                 .position(x: 18, y: 36 * 0.42)
                         }
                         .frame(width: 36, height: 36 * 95 / 96)
@@ -216,7 +216,7 @@ struct NodeSheetView: View {
                         Text(solved ? Str.Solved.done : Str.Solved.worth(XPPerAccepted))
                             .font(.plexMono(9))
                             .tracking(0.08 * 9)
-                            .foregroundColor(solved ? LognDark.textMuted : LognDark.textPrimary)
+                            .foregroundColor(solved ? LognColors.textMuted : LognColors.textPrimary)
                     }
                     .frame(width: 44)
                     .accessibilityElement(children: .ignore)
@@ -245,9 +245,9 @@ struct NodeSheetView: View {
             }
             statCell(Str.Node.unlocks, "\(unlocks.count)")
         }
-        .background(LognDark.line)
+        .background(LognColors.line)
         .cornerRadius(Radius.sm)
-        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.line, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.line, lineWidth: 1))
     }
 
     private func statCell(_ label: String, _ value: String) -> some View {
@@ -255,16 +255,16 @@ struct NodeSheetView: View {
             Text(label)
                 .font(.plexMono(10))
                 .tracking(0.12 * 10)
-                .foregroundColor(LognDark.textMuted)
+                .foregroundColor(LognColors.textMuted)
             Text(value)
                 .font(.plexMono(16))
                 .monospacedDigit()
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(LognDark.surface)
+        .background(LognColors.surface)
     }
 
     // MARK: CTA
@@ -289,7 +289,7 @@ struct NodeSheetView: View {
 
                 Text(Str.Node.no_problems_desc)
                     .font(.plexMono(11))
-                    .foregroundColor(LognDark.textMuted)
+                    .foregroundColor(LognColors.textMuted)
                     .frame(maxWidth: .infinity)
             }
         } else {

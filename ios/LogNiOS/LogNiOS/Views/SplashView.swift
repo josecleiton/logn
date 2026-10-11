@@ -20,18 +20,18 @@ struct SplashView: View {
 
     var body: some View {
         ZStack {
-            LognDark.canvas.ignoresSafeArea()
+            LognColors.canvas.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 Spacer()
 
                 VStack(spacing: Space.md) {
-                    BrandSymbol(color: LognDark.accent, height: 72)
+                    BrandSymbol(color: LognColors.accent, height: 72)
                         .offset(y: risen ? 0 : 28)
                     Text("LogN")
                         .font(.plexSansSemiBold(28))
                         .tracking(-0.035 * 28)
-                        .foregroundColor(LognDark.textPrimary)
+                        .foregroundColor(LognColors.textPrimary)
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Str.Boot.opening_accessibility)
@@ -72,10 +72,10 @@ struct SplashView: View {
                         .foregroundColor(line.tone)
                         .frame(width: 12, alignment: .leading)
                     Text(line.checkLabel)
-                        .foregroundColor(LognDark.textPrimary)
+                        .foregroundColor(LognColors.textPrimary)
                     Spacer(minLength: Space.sm)
                     Text(line.detailLabel)
-                        .foregroundColor(LognDark.textMuted)
+                        .foregroundColor(LognColors.textMuted)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
@@ -90,9 +90,9 @@ struct SplashView: View {
     private var progressBar: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Rectangle().fill(LognDark.line)
+                Rectangle().fill(LognColors.line)
                 Rectangle()
-                    .fill(LognDark.accent)
+                    .fill(LognColors.accent)
                     .frame(width: geo.size.width * CGFloat(boot.progress) / 100)
                     .animation(reduceMotion ? nil : .easeOut(duration: 0.3), value: boot.progress)
             }
@@ -105,12 +105,12 @@ struct SplashView: View {
         VStack(spacing: Space.md) {
             Text(Str.Boot.offline_notice)
                 .font(.plexSans(13, relativeTo: .footnote))
-                .foregroundColor(LognDark.textPrimary)
+                .foregroundColor(LognColors.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(Space.md)
-                .background(LognDark.tintWarn)
-                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognDark.warn, lineWidth: 1))
+                .background(LognColors.tintWarn)
+                .overlay(RoundedRectangle(cornerRadius: Radius.sm).stroke(LognColors.warn, lineWidth: 1))
                 .cornerRadius(Radius.sm)
 
             HStack(spacing: Space.sm) {
