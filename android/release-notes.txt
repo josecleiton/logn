@@ -1,12 +1,18 @@
 <pt-BR>
-• O app abre mais rápido e gasta menos dados: a trilha só é baixada de novo quando muda.
-• O app não desconecta mais a sua conta quando o servidor está ocupado.
+• O app agora segue o tema do aparelho, claro ou escuro.
+• O app não fecha mais sozinho num caso raro ao abrir.
+• O aviso de exclusão cancelada não cobre mais as abas.
+• Com conta, o leitor de tela chama o botão do perfil de "Perfil", não mais de modo visitante.
 </pt-BR>
 <en-US>
-• The app opens faster and uses less data: the trail is only downloaded again when it changes.
-• The app no longer signs you out when the server is busy.
+• The app now follows your device theme, light or dark.
+• The app no longer closes on its own in a rare case at launch.
+• The "Deletion cancelled" notice no longer covers the tabs.
+• With an account, the screen reader calls the profile button "Profile", no longer guest mode.
 </en-US>
 <es-419>
-• La app abre más rápido y gasta menos datos: la ruta solo se descarga de nuevo cuando cambia.
-• La app ya no cierra tu sesión cuando el servidor está ocupado.
+• La app ahora sigue el tema del dispositivo, claro u oscuro.
+• La app ya no se cierra sola en un caso raro al abrirla.
+• El aviso de eliminación cancelada ya no tapa las pestañas.
+• Con una cuenta, el lector de pantalla llama al botón del perfil "Perfil", ya no modo invitado.
 </es-419>
