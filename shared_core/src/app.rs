@@ -6188,7 +6188,7 @@ mod tests {
         let app = LogNApp::default();
         let mut model = Model::default();
         let queue = vec![GameEvent::new("match_1".into(), "MATCH_ANSWER".into(),
-            r#"{"is_correct":true,"template_type":"SPOT_THE_BUG","challenge_id":"ch_001"}"#.into(),
+            r#"{"is_correct":true,"template_type":"SPOT_THE_BUG","challenge_id":"ch_t07"}"#.into(),
             1, "0".repeat(64))];
 
         let _ = app.update(
@@ -6205,7 +6205,7 @@ mod tests {
 
         assert_eq!(model.global_xp, 50);
         assert_eq!(model.bugs_found, 1);
-        assert_eq!(model.paid_challenges, vec!["ch_001".to_string()]);
+        assert_eq!(model.paid_challenges, vec!["ch_t07".to_string()]);
     }
 
     /// Uma semente mínima, na forma que `just seed-bundle` gera.
@@ -6327,7 +6327,7 @@ mod tests {
     fn snapshot_in(locale: Option<&str>) -> Vec<u8> {
         let mut snap = serde_json::json!({
             "global_xp": 340, "bugs_found": 2, "dry_runs_completed": 1,
-            "paid_challenge_ids": ["ch_001"],
+            "paid_challenge_ids": ["ch_t07"],
             "nodes": [{
                 "id": "20000000-0000-0000-0000-000000000002",
                 "name": "2. Estruturas Básicas", "description": "Do servidor.",
@@ -6362,7 +6362,7 @@ mod tests {
 
         restore(&app, &mut model, snapshot_in(Some("pt-BR")));
         assert_eq!(model.global_xp, 340);
-        assert_eq!(model.paid_challenges, vec!["ch_001".to_string()]);
+        assert_eq!(model.paid_challenges, vec!["ch_t07".to_string()]);
         assert_eq!(model.nodes[0].name, "1. Fundamentos y Notación", "fica a semente em espanhol");
         assert_eq!(model.content_locale, "es");
         assert!(model.trail_from_bundle);
@@ -6514,7 +6514,7 @@ mod tests {
 
         fn one_challenge() -> Vec<crate::domain::Challenge> {
             vec![seeded_challenge(
-                "ch_004", "COMPLEXITY_MATCH",
+                "ch_t08", "COMPLEXITY_MATCH",
                 vec!["O(n)".into(), "O(1)".into()],
                 vec!["O(n)".into(), "O(1)".into()],
                 "Irrelevante para este teste.",
@@ -6562,7 +6562,7 @@ mod tests {
         let app = LogNApp::default();
         let node = "10000000-0000-0000-0000-000000000001";
         let challenge = || vec![seeded_challenge(
-            "ch_004", "COMPLEXITY_MATCH",
+            "ch_t08", "COMPLEXITY_MATCH",
             vec!["O(n)".into(), "O(1)".into()],
             vec!["O(n)".into(), "O(1)".into()],
             "Irrelevante para este teste.",
@@ -6690,7 +6690,7 @@ mod tests {
         let mut model = Model::default();
 
         let mut ch = seeded_challenge(
-            "ch_004",
+            "ch_t08",
             "COMPLEXITY_MATCH",
             vec!["O(n)".into(), "O(1)".into()],
             vec!["O(n)".into(), "O(1)".into()],
@@ -6754,7 +6754,7 @@ mod tests {
         model.origins_seen = vec!["FARIAS".into()];
 
         let mut ch = seeded_challenge(
-            "ch_004",
+            "ch_t08",
             "COMPLEXITY_MATCH",
             vec!["O(n)".into(), "O(1)".into()],
             vec!["O(n)".into(), "O(1)".into()],
@@ -6789,7 +6789,7 @@ mod tests {
         let mut model = Model::default();
 
         let mut ch = seeded_challenge(
-            "ch_004",
+            "ch_t08",
             "COMPLEXITY_MATCH",
             vec!["O(n)".into(), "O(1)".into()],
             vec!["O(n)".into(), "O(1)".into()],
@@ -6816,7 +6816,7 @@ mod tests {
         let app = LogNApp::default();
         let mut model = Model::default();
         model.challenges = vec![seeded_challenge(
-            "ch_004",
+            "ch_t08",
             "COMPLEXITY_MATCH",
             vec!["O(n)".into(), "O(1)".into()],
             vec!["O(n)".into(), "O(1)".into()],
