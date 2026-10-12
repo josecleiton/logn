@@ -219,8 +219,8 @@ fica: guarda o texto do apelido moderado, sem ligação com a conta.
 - Saem do `ViewModel`:
   - `standings_global`, `standings_home`, `user_standing` e `standings_are_sample`;
   - `scoreboard` e `contest_name` da tela.
-- Os tipos e o mock do telão ficam em `domain.rs` e `mock_data.rs`, sem uso, para o
-  contest.
+- Os tipos do telão ficam em `domain.rs`, sem uso, para o contest. O mock dele
+  (`mock_data.rs`) saiu depois, sem uso e com texto de tela fixo; o histórico do git o tem.
 - Entra `leaderboard: LeaderboardView`, com `#[derive(Facet)]` e o namespace `LogN`:
 
 | Campo | Conteúdo |

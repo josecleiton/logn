@@ -5249,7 +5249,7 @@ Event::FetchChallenges => {
                         };
                         // Só enche o que está vazio: o que veio do servidor ou do retrato
                         // é mais novo que a semente e manda.
-                        let encheu = model.nodes.is_empty() || model.challenges.is_empty();
+                        let filled = model.nodes.is_empty() || model.challenges.is_empty();
                         if model.nodes.is_empty() {
                             model.nodes = trail.nodes;
                         }
@@ -5261,7 +5261,7 @@ Event::FetchChallenges => {
                         }
                         // Só marca quando a semente de fato entrou. Se o retrato já
                         // tinha enchido tudo, o jogador não está vendo conteúdo velho.
-                        if encheu {
+                        if filled {
                             model.trail_from_bundle = true;
                             model.content_locale = used;
                         }
@@ -5283,12 +5283,12 @@ Event::FetchChallenges => {
             // quando não há o que perguntar ensina a dispensá-la sem ler, e aí ela
             // também não funciona quando importa.
             Event::LeaveMatch => {
-                let tem_o_que_perder = match model.match_state.as_ref() {
+                let has_something_to_lose = match model.match_state.as_ref() {
                     Some(ms) => ms.solved_count() > 0 || ms.lives < ms.max_lives,
                     None => false,
                 };
 
-                if !tem_o_que_perder {
+                if !has_something_to_lose {
                     return self.update(Event::ConfirmLeaveMatch, model);
                 }
 
@@ -5375,10 +5375,10 @@ Event::FetchChallenges => {
                     return render::render();
                 }
 
-                let primeira_vez = !model.origins_seen.iter().any(|o| o == &origin);
+                let first_time = !model.origins_seen.iter().any(|o| o == &origin);
                 model.origin_sheet = origin.clone();
 
-                if !primeira_vez {
+                if !first_time {
                     return render::render();
                 }
 
@@ -6398,12 +6398,12 @@ mod tests {
         let mut cmd = app.update(Event::SetLocale("es-MX".into()), &mut model);
         assert_eq!(model.nodes[0].name, "1. Fundamentos y Notación");
         assert_eq!(model.content_locale, "es");
-        let pediu = cmd.effects().any(|e| matches!(
+        let requested = cmd.effects().any(|e| matches!(
             e,
             Effect::Http(ref r) if r.operation.url == "/api/v1/nodes"
                 && r.operation.headers.iter().any(|h| h.name == "Accept-Language" && h.value.starts_with("es"))
         ));
-        assert!(pediu, "e busca os nós na língua nova");
+        assert!(requested, "e busca os nós na língua nova");
 
         // Mesma língua em outra região: nada muda, nada se busca.
         let mut cmd = app.update(Event::SetLocale("es-AR".into()), &mut model);
@@ -6471,11 +6471,11 @@ mod tests {
             "a primeira questão abre com o tempo do template dela"
         );
 
-        let soma = match_engine::seconds_for_template("DRY_RUN")
+        let total = match_engine::seconds_for_template("DRY_RUN")
             + match_engine::seconds_for_template("TAG_THE_PATTERN");
         assert_eq!(
             ms.contest_seconds_remaining,
-            soma + soma / 5,
+            total + total / 5,
             "a sessão vale a soma dos problemas mais a folga, não um número fixo"
         );
     }
@@ -6512,7 +6512,7 @@ mod tests {
         let app = LogNApp::default();
         let node = "10000000-0000-0000-0000-000000000001";
 
-        fn um_desafio() -> Vec<crate::domain::Challenge> {
+        fn one_challenge() -> Vec<crate::domain::Challenge> {
             vec![seeded_challenge(
                 "ch_004", "COMPLEXITY_MATCH",
                 vec!["O(n)".into(), "O(1)".into()],
@@ -6523,14 +6523,14 @@ mod tests {
 
         // Partida intacta: três vidas, nada resolvido. Sai direto.
         let mut model = Model::default();
-        model.challenges = um_desafio();
+        model.challenges = one_challenge();
         let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
         let _ = app.update(Event::LeaveMatch, &mut model);
         assert!(model.match_state.is_none(), "sem nada a perder, o X sai direto");
 
         // Uma vida gasta: aí pergunta.
         let mut model = Model::default();
-        model.challenges = um_desafio();
+        model.challenges = one_challenge();
         let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
         let _ = app.update(Event::MatchSetDropTime { value: "O(1)".into() }, &mut model);
         let _ = app.update(Event::MatchSetDropSpace { value: "O(n)".into() }, &mut model);
@@ -6561,7 +6561,7 @@ mod tests {
     fn test_leaving_a_played_match_closes_it_as_abandoned() {
         let app = LogNApp::default();
         let node = "10000000-0000-0000-0000-000000000001";
-        let desafio = || vec![seeded_challenge(
+        let challenge = || vec![seeded_challenge(
             "ch_004", "COMPLEXITY_MATCH",
             vec!["O(n)".into(), "O(1)".into()],
             vec!["O(n)".into(), "O(1)".into()],
@@ -6570,7 +6570,7 @@ mod tests {
 
         // Entrou e saiu: nada na fila.
         let mut model = Model::default();
-        model.challenges = desafio();
+        model.challenges = challenge();
         let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
         let mut cmd = app.update(Event::ConfirmLeaveMatch, &mut model);
         assert!(model.pending_events.is_empty(), "nó aberto por engano não é partida");
@@ -6578,7 +6578,7 @@ mod tests {
 
         // Respondeu errado e saiu: a resposta e o fim vão para a fila, encadeados.
         let mut model = Model::default();
-        model.challenges = desafio();
+        model.challenges = challenge();
         let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
         let _ = app.update(Event::MatchSetDropTime { value: "O(1)".into() }, &mut model);
         let _ = app.update(Event::MatchSetDropSpace { value: "O(n)".into() }, &mut model);
@@ -6667,11 +6667,11 @@ mod tests {
         let app = LogNApp::default();
         let mut model = Model::default();
 
-        let futura = seed_json().replace(
+        let future_seed = seed_json().replace(
             &format!("\"version\":{}", crate::domain::TRAIL_SEED_VERSION),
             "\"version\":999",
         );
-        let _ = app.update(Event::BundledTrailLoaded { json: futura }, &mut model);
+        let _ = app.update(Event::BundledTrailLoaded { json: future_seed }, &mut model);
         assert!(model.nodes.is_empty(), "versão que o app não conhece não entra");
 
         // E lixo no lugar da semente também não derruba nada.
@@ -6713,14 +6713,14 @@ mod tests {
         assert_eq!(model.origin_sheet, "FARIAS");
         assert!(model.match_state.as_ref().unwrap().is_paused, "a primeira leitura para o relógio");
         assert_eq!(model.origins_seen, vec!["FARIAS".to_string()]);
-        let cartao = app.view(&model).match_view.origin_sheet.expect("cartão achado por id");
-        assert_eq!(cartao.name, "Nome de teste", "o ViewModel carrega o cartão, não só o id");
+        let card = app.view(&model).match_view.origin_sheet.expect("cartão achado por id");
+        assert_eq!(card.name, "Nome de teste", "o ViewModel carrega o cartão, não só o id");
 
-        let antes = model.match_state.as_ref().unwrap().question_seconds_remaining;
+        let before = model.match_state.as_ref().unwrap().question_seconds_remaining;
         let _ = app.update(Event::MatchTimerTick, &mut model);
         assert_eq!(
             model.match_state.as_ref().unwrap().question_seconds_remaining,
-            antes,
+            before,
             "o relógio não anda com o cartão aberto"
         );
 
@@ -6731,7 +6731,7 @@ mod tests {
         let _ = app.update(Event::MatchTimerTick, &mut model);
         assert_eq!(
             model.match_state.as_ref().unwrap().question_seconds_remaining,
-            antes - 1,
+            before - 1,
             "fechado, o relógio volta a andar"
         );
 
@@ -6804,10 +6804,10 @@ mod tests {
         let _ = app.update(Event::StartMatch { node_id: node.into() }, &mut model);
         let _ = app.update(Event::OpenOriginSheet, &mut model);
 
-        let cartao = app.view(&model).match_view.origin_sheet.expect("abre mesmo sem cartão conhecido");
-        assert_eq!(cartao.name, "DESCONHECIDA", "sem texto conhecido, o id vira o nome");
-        assert!(cartao.role.is_empty());
-        assert!(cartao.body.is_empty());
+        let card = app.view(&model).match_view.origin_sheet.expect("abre mesmo sem cartão conhecido");
+        assert_eq!(card.name, "DESCONHECIDA", "sem texto conhecido, o id vira o nome");
+        assert!(card.role.is_empty());
+        assert!(card.body.is_empty());
     }
 
     /// Desafio sem origem não tem selo, e tocar em nada não pode abrir cartão vazio.

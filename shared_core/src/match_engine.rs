@@ -288,8 +288,8 @@ impl MatchState {
         let attempts: HashMap<char, i32> = letters.iter().map(|&l| (l, 0)).collect();
 
         // Os dois relógios saem daqui, antes de `problems` mudar de dono.
-        let soma_segundos: i32 = problems.iter().map(|p| p.seconds).sum();
-        let primeira_questao = problems.first().map_or(60, |p| p.seconds);
+        let total_seconds: i32 = problems.iter().map(|p| p.seconds).sum();
+        let first_question_seconds = problems.first().map_or(60, |p| p.seconds);
 
         MatchState {
             is_active: true,
@@ -309,8 +309,8 @@ impl MatchState {
             // problemas davam 30 segundos por problema em média, então ninguém
             // conseguia gastar o minuto em mais de três. Agora um nó com DRY_RUN
             // naturalmente dura mais que um sem, que é o que ele custa.
-            contest_seconds_remaining: soma_segundos + soma_segundos / 5,
-            question_seconds_remaining: primeira_questao,
+            contest_seconds_remaining: total_seconds + total_seconds / 5,
+            question_seconds_remaining: first_question_seconds,
             is_frozen: false,
             trap: None,
             selection: MatchSelection::default(),
