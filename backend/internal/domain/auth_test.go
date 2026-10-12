@@ -133,7 +133,7 @@ func TestUserIDFromAccessToken(t *testing.T) {
 		t.Fatalf("token válido: got %q err %v, want %q", got, err, userID)
 	}
 
-	t.Run("assinado com outro segredo", func(t *testing.T) {
+	t.Run("signed with another secret", func(t *testing.T) {
 		forged := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"user_id": "00000000-0000-0000-0000-00000000dead",
 			"exp":     time.Now().Add(time.Hour).Unix(),
@@ -144,7 +144,7 @@ func TestUserIDFromAccessToken(t *testing.T) {
 		}
 	})
 
-	t.Run("expirado", func(t *testing.T) {
+	t.Run("expired", func(t *testing.T) {
 		expired := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"user_id": userID,
 			"exp":     time.Now().Add(-time.Minute).Unix(),
@@ -166,7 +166,7 @@ func TestUserIDFromAccessToken(t *testing.T) {
 		}
 	})
 
-	t.Run("sem user_id", func(t *testing.T) {
+	t.Run("no user_id", func(t *testing.T) {
 		empty := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"exp": time.Now().Add(time.Hour).Unix(),
 		})
@@ -176,7 +176,7 @@ func TestUserIDFromAccessToken(t *testing.T) {
 		}
 	})
 
-	t.Run("lixo", func(t *testing.T) {
+	t.Run("garbage", func(t *testing.T) {
 		if _, err := UserIDFromAccessToken("não é um token"); err == nil {
 			t.Fatal("aceitou texto qualquer")
 		}

@@ -86,10 +86,10 @@ func TestNewRefusesMissingOriginConfig(t *testing.T) {
 	cases := []struct {
 		name, kService, cidrs, secret string
 	}{
-		{"Cloud Run sem nada", "logn", "", ""},
-		{"Cloud Run sem segredo", "logn", "173.245.48.0/20", ""},
-		{"local só com segredo", "", "", "s3cr3t"},
-		{"local só com CIDR", "", "173.245.48.0/20", ""},
+		{"Cloud Run with nothing", "logn", "", ""},
+		{"Cloud Run without the secret", "logn", "173.245.48.0/20", ""},
+		{"local with only the secret", "", "", "s3cr3t"},
+		{"local with only the CIDR", "", "173.245.48.0/20", ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

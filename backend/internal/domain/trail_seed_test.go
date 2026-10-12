@@ -42,20 +42,20 @@ type seedTrailJSON struct {
 const trailSeedVersion = 3
 
 func TestTrailSeedMatchesTheDatabase(t *testing.T) {
-	caminho := filepath.Join("..", "..", "..", "ios", "LogNiOS", "LogNiOS", "Resources", "trail-seed.json")
+	path := filepath.Join("..", "..", "..", "ios", "LogNiOS", "LogNiOS", "Resources", "trail-seed.json")
 
-	bytes, err := os.ReadFile(caminho)
+	bytes, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("não achei a trilha empacotada em %s: %v\nrode `just seed-bundle`", caminho, err)
+		t.Fatalf("não achei a trilha empacotada em %s: %v\nrode `just seed-bundle`", path, err)
 	}
 
-	var semente trailSeed
-	if err := json.Unmarshal(bytes, &semente); err != nil {
+	var seed trailSeed
+	if err := json.Unmarshal(bytes, &seed); err != nil {
 		t.Fatalf("a trilha empacotada não é JSON válido: %v", err)
 	}
-	if semente.Version != trailSeedVersion {
+	if seed.Version != trailSeedVersion {
 		t.Fatalf("a trilha empacotada é da versão %d, o app lê a %d\nrode `just seed-bundle`",
-			semente.Version, trailSeedVersion)
+			seed.Version, trailSeedVersion)
 	}
 
 	conn := setupTestDB(t)
@@ -64,127 +64,127 @@ func TestTrailSeedMatchesTheDatabase(t *testing.T) {
 	ctx := context.Background()
 
 	for _, l := range locale.Supported {
-		nos, err := repo.GetSkillNodes(ctx, l, "")
+		nodes, err := repo.GetSkillNodes(ctx, l, "")
 		if err != nil {
 			t.Fatalf("lendo nós em %s: %v", l, err)
 		}
-		desafios, err := repo.GetChallenges(ctx, l, "")
+		challenges, err := repo.GetChallenges(ctx, l, "")
 		if err != nil {
 			t.Fatalf("lendo desafios em %s: %v", l, err)
 		}
-		origens, err := repo.GetOriginCards(ctx, l)
+		origins, err := repo.GetOriginCards(ctx, l)
 		if err != nil {
 			t.Fatalf("lendo origens em %s: %v", l, err)
 		}
 
-		trilha, veio := semente.Locales[l]
-		if !veio {
+		trail, found := seed.Locales[l]
+		if !found {
 			// Língua sem nada publicado fica de fora da semente, e o app cai em
 			// português. Se o banco já publica algo nela, a semente ficou para trás.
-			if len(nos) > 0 {
-				t.Errorf("%s já tem %d nó(s) publicados e não viaja no app\nrode `just seed-bundle`", l, len(nos))
+			if len(nodes) > 0 {
+				t.Errorf("%s já tem %d nó(s) publicados e não viaja no app\nrode `just seed-bundle`", l, len(nodes))
 			}
 			continue
 		}
 
 		// A impressão é o JSON inteiro que a API mandaria: um UPDATE que troca só o texto
 		// de uma tradução não muda nenhum id, e sem isto passaria batido.
-		noBanco := map[string]string{}
-		for _, n := range nos {
-			noBanco[n.ID] = hashValue(t, n)
+		inDB := map[string]string{}
+		for _, n := range nodes {
+			inDB[n.ID] = hashValue(t, n)
 		}
-		compararImpressoes(t, l+" · nós", impressoes(t, trilha.Nodes), noBanco)
+		compareFingerprints(t, l+" · nós", fingerprints(t, trail.Nodes), inDB)
 
-		noBanco = map[string]string{}
-		for _, c := range desafios {
-			noBanco[c.ID] = hashValue(t, c)
+		inDB = map[string]string{}
+		for _, c := range challenges {
+			inDB[c.ID] = hashValue(t, c)
 		}
-		compararImpressoes(t, l+" · desafios", impressoes(t, trilha.Challenges), noBanco)
+		compareFingerprints(t, l+" · desafios", fingerprints(t, trail.Challenges), inDB)
 
-		noBanco = map[string]string{}
-		for _, o := range origens {
-			noBanco[o.ID] = hashValue(t, o)
+		inDB = map[string]string{}
+		for _, o := range origins {
+			inDB[o.ID] = hashValue(t, o)
 		}
-		compararImpressoes(t, l+" · origens", impressoes(t, trilha.Origins), noBanco)
+		compareFingerprints(t, l+" · origens", fingerprints(t, trail.Origins), inDB)
 	}
 
-	if _, temPortugues := semente.Locales[locale.PtBR]; !temPortugues {
+	if _, hasPortuguese := seed.Locales[locale.PtBR]; !hasPortuguese {
 		t.Errorf("a semente não tem português, que é para onde o app cai quando falta a língua dele")
 	}
 }
 
-// impressoes indexa por id a impressão de cada item da semente.
-func impressoes(t *testing.T, itens []json.RawMessage) map[string]string {
+// fingerprints indexa por id a impressão de cada item da semente.
+func fingerprints(t *testing.T, items []json.RawMessage) map[string]string {
 	t.Helper()
 	out := map[string]string{}
-	for _, bruto := range itens {
-		var comId struct {
+	for _, raw := range items {
+		var withID struct {
 			ID string `json:"id"`
 		}
-		if err := json.Unmarshal(bruto, &comId); err != nil {
+		if err := json.Unmarshal(raw, &withID); err != nil {
 			t.Fatalf("item da semente sem id legível: %v", err)
 		}
-		out[comId.ID] = hashJSON(t, bruto)
+		out[withID.ID] = hashJSON(t, raw)
 	}
 	return out
 }
 
-func compararImpressoes(t *testing.T, oQue string, naSemente, noBanco map[string]string) {
+func compareFingerprints(t *testing.T, label string, inSeed, inDB map[string]string) {
 	t.Helper()
 
-	var faltando, sobrando, mudaram []string
-	for id, h := range noBanco {
-		s, existe := naSemente[id]
+	var missing, extra, changed []string
+	for id, h := range inDB {
+		s, ok := inSeed[id]
 		switch {
-		case !existe:
-			faltando = append(faltando, id)
+		case !ok:
+			missing = append(missing, id)
 		case s != h:
-			mudaram = append(mudaram, id)
+			changed = append(changed, id)
 		}
 	}
-	for id := range naSemente {
-		if _, existe := noBanco[id]; !existe {
-			sobrando = append(sobrando, id)
+	for id := range inSeed {
+		if _, ok := inDB[id]; !ok {
+			extra = append(extra, id)
 		}
 	}
-	sort.Strings(faltando)
-	sort.Strings(sobrando)
-	sort.Strings(mudaram)
+	sort.Strings(missing)
+	sort.Strings(extra)
+	sort.Strings(changed)
 
-	if len(faltando) > 0 {
-		t.Errorf("%s no banco que não viajam no app: %v\nrode `just seed-bundle`", oQue, faltando)
+	if len(missing) > 0 {
+		t.Errorf("%s no banco que não viajam no app: %v\nrode `just seed-bundle`", label, missing)
 	}
-	if len(sobrando) > 0 {
-		t.Errorf("%s que viajam no app e não existem mais no banco: %v\nrode `just seed-bundle`", oQue, sobrando)
+	if len(extra) > 0 {
+		t.Errorf("%s que viajam no app e não existem mais no banco: %v\nrode `just seed-bundle`", label, extra)
 	}
-	if len(mudaram) > 0 {
-		t.Errorf("%s que mudaram desde que a trilha foi empacotada: %v\nrode `just seed-bundle`", oQue, mudaram)
+	if len(changed) > 0 {
+		t.Errorf("%s que mudaram desde que a trilha foi empacotada: %v\nrode `just seed-bundle`", label, changed)
 	}
 }
 
 // hashValue tira a impressão de um valor como a API o serializaria.
 func hashValue(t *testing.T, v any) string {
 	t.Helper()
-	bruto, err := json.Marshal(v)
+	raw, err := json.Marshal(v)
 	if err != nil {
 		t.Fatalf("serializando: %v", err)
 	}
-	return hashJSON(t, bruto)
+	return hashJSON(t, raw)
 }
 
 // Impressão do JSON com as chaves em ordem, para diferença de formatação não virar
 // falso positivo.
-func hashJSON(t *testing.T, bruto []byte) string {
+func hashJSON(t *testing.T, raw []byte) string {
 	t.Helper()
 
 	var v any
-	if err := json.Unmarshal(bruto, &v); err != nil {
+	if err := json.Unmarshal(raw, &v); err != nil {
 		t.Fatalf("JSON inválido: %v", err)
 	}
-	normalizado, err := json.Marshal(v)
+	normalized, err := json.Marshal(v)
 	if err != nil {
 		t.Fatalf("renormalizando: %v", err)
 	}
-	soma := sha256.Sum256(normalizado)
-	return fmt.Sprintf("%s", hex.EncodeToString(soma[:8]))
+	sum := sha256.Sum256(normalized)
+	return fmt.Sprintf("%s", hex.EncodeToString(sum[:8]))
 }

@@ -95,21 +95,21 @@ func TestVerifyRefuses(t *testing.T) {
 		token   string
 		nonce   string
 	}{
-		{"validação falhou (assinatura, aud ou exp)", nil, errors.New("idtoken: token expired"), fakeToken("RS256"), nonceA},
-		{"algoritmo ES256", goodPayload(nonceA), nil, fakeToken("ES256"), nonceA},
-		{"algoritmo none", goodPayload(nonceA), nil, fakeToken("none"), nonceA},
-		{"sem cabeçalho", goodPayload(nonceA), nil, "lixo", nonceA},
-		{"emissor de outro serviço", wrongIssuer, nil, fakeToken("RS256"), nonceA},
-		{"sem sub", noSub, nil, fakeToken("RS256"), nonceA},
-		{"pedido por outro client", otherClient, nil, fakeToken("RS256"), nonceA},
-		{"emitido no futuro", future, nil, fakeToken("RS256"), nonceA},
-		{"nonce de outro login", goodPayload(nonceA), nil, fakeToken("RS256"), nonceB},
-		{"token sem nonce", noNonce, nil, fakeToken("RS256"), nonceA},
-		{"hash mandado como nonce", goodPayload(nonceA), nil, fakeToken("RS256"), hashNonce(nonceA)},
-		{"nonce cru dentro do token", rawInToken, nil, fakeToken("RS256"), nonceA},
-		{"nonce vazio", goodPayload(""), nil, fakeToken("RS256"), ""},
-		{"nonce curto", goodPayload("x"), nil, fakeToken("RS256"), "x"},
-		{"token grande demais", goodPayload(nonceA), nil, fakeToken("RS256") + strings.Repeat("a", maxIDTokenLen), nonceA},
+		{"validation failed (signature, aud or exp)", nil, errors.New("idtoken: token expired"), fakeToken("RS256"), nonceA},
+		{"ES256 algorithm", goodPayload(nonceA), nil, fakeToken("ES256"), nonceA},
+		{"none algorithm", goodPayload(nonceA), nil, fakeToken("none"), nonceA},
+		{"no header", goodPayload(nonceA), nil, "lixo", nonceA},
+		{"issuer from another service", wrongIssuer, nil, fakeToken("RS256"), nonceA},
+		{"no sub", noSub, nil, fakeToken("RS256"), nonceA},
+		{"requested by another client", otherClient, nil, fakeToken("RS256"), nonceA},
+		{"issued in the future", future, nil, fakeToken("RS256"), nonceA},
+		{"nonce from another login", goodPayload(nonceA), nil, fakeToken("RS256"), nonceB},
+		{"token without a nonce", noNonce, nil, fakeToken("RS256"), nonceA},
+		{"hash sent as the nonce", goodPayload(nonceA), nil, fakeToken("RS256"), hashNonce(nonceA)},
+		{"raw nonce inside the token", rawInToken, nil, fakeToken("RS256"), nonceA},
+		{"empty nonce", goodPayload(""), nil, fakeToken("RS256"), ""},
+		{"short nonce", goodPayload("x"), nil, fakeToken("RS256"), "x"},
+		{"token too large", goodPayload(nonceA), nil, fakeToken("RS256") + strings.Repeat("a", maxIDTokenLen), nonceA},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 )
 
 // Sync sem teto enchia o banco e derrubava a instância com uma conta grátis.
-func TestCheckSyncShapeRecusaOQuePassaDoTeto(t *testing.T) {
+func TestCheckSyncShapeRejectsOverCap(t *testing.T) {
 	ok := GameEvent{ID: "match_1", EventType: "MATCH_ANSWER", PayloadJSON: `{"is_correct":true}`}
 
 	if err := CheckSyncShape(SyncPayload{Events: []GameEvent{ok, {ID: "match_1_end", EventType: "MATCH_END", PayloadJSON: `{"solved":1}`}}}); err != nil {

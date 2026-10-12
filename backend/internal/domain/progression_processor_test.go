@@ -122,7 +122,7 @@ func TestProcessEventsXPInABatchMatchesOneByOne(t *testing.T) {
 // Cada resposta aceita somava 50, e dava para abrir o nó 7 repetindo o nó 1. O servidor
 // é quem manda no XP — o snapshot dele sobrescreve o do aparelho no login —, então a
 // regra tem de valer aqui, não só na tela.
-func TestProcessEventsXPPagaUmaVezPorDesafio(t *testing.T) {
+func TestProcessEventsPaysXPOncePerChallenge(t *testing.T) {
 	conn := setupTestDB(t)
 	defer conn.Close()
 	repo := NewRepository(conn)

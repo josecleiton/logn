@@ -47,7 +47,7 @@ func bigJSON(status int) (http.HandlerFunc, string) {
 	}, payload
 }
 
-func TestGzipComprimeRespostaGrandeQuandoPedido(t *testing.T) {
+func TestGzipCompressesLargeResponseWhenAsked(t *testing.T) {
 	handler, payload := bigJSON(http.StatusOK)
 	rec := serveGzip(t, handler, "gzip, deflate, br")
 
@@ -65,7 +65,7 @@ func TestGzipComprimeRespostaGrandeQuandoPedido(t *testing.T) {
 	}
 }
 
-func TestGzipPreservaStatusDeErro(t *testing.T) {
+func TestGzipPreservesErrorStatus(t *testing.T) {
 	handler, _ := bigJSON(http.StatusInternalServerError)
 	rec := serveGzip(t, handler, "gzip")
 
@@ -74,7 +74,7 @@ func TestGzipPreservaStatusDeErro(t *testing.T) {
 	}
 }
 
-func TestGzipNaoComprimeSemAcceptEncoding(t *testing.T) {
+func TestGzipDoesNotCompressWithoutAcceptEncoding(t *testing.T) {
 	handler, payload := bigJSON(http.StatusOK)
 	rec := serveGzip(t, handler, "")
 
@@ -86,7 +86,7 @@ func TestGzipNaoComprimeSemAcceptEncoding(t *testing.T) {
 	}
 }
 
-func TestGzipRespeitaRecusaExplicita(t *testing.T) {
+func TestGzipHonorsExplicitRefusal(t *testing.T) {
 	handler, _ := bigJSON(http.StatusOK)
 	rec := serveGzip(t, handler, "gzip;q=0, identity")
 
@@ -95,7 +95,7 @@ func TestGzipRespeitaRecusaExplicita(t *testing.T) {
 	}
 }
 
-func TestGzipDeixaRespostaPequenaCrua(t *testing.T) {
+func TestGzipLeavesSmallResponseRaw(t *testing.T) {
 	rec := serveGzip(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte("Database not ready"))
@@ -109,7 +109,7 @@ func TestGzipDeixaRespostaPequenaCrua(t *testing.T) {
 	}
 }
 
-func TestGzipDeixaBinarioCifradoCru(t *testing.T) {
+func TestGzipLeavesEncryptedBinaryRaw(t *testing.T) {
 	body := strings.Repeat("\x8f\x02", gzipMinBytes)
 	rec := serveGzip(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
@@ -125,7 +125,7 @@ func TestGzipDeixaBinarioCifradoCru(t *testing.T) {
 }
 
 // O compressor volta ao pool entre respostas: a segunda não pode levar resto da primeira.
-func TestGzipReaproveitaCompressorSemMisturarRespostas(t *testing.T) {
+func TestGzipReusesCompressorWithoutMixingResponses(t *testing.T) {
 	for i := range 3 {
 		handler, payload := bigJSON(http.StatusOK)
 		payload = strings.Repeat(strconv.Itoa(i), i+1) + payload
@@ -140,7 +140,7 @@ func TestGzipReaproveitaCompressorSemMisturarRespostas(t *testing.T) {
 	}
 }
 
-func TestGzipNaoRecomprimeCorpoJaCodificado(t *testing.T) {
+func TestGzipDoesNotRecompressEncodedBody(t *testing.T) {
 	body := strings.Repeat("x", 2*gzipMinBytes)
 	rec := serveGzip(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Encoding", "br")

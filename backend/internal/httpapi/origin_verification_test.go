@@ -63,14 +63,14 @@ func TestRateLimitKeysOnVerifiedClientIP(t *testing.T) {
 		hits []hit
 	}{
 		{
-			name: "dois jogadores no mesmo nó da borda têm baldes separados",
+			name: "two players on the same edge node get separate buckets",
 			hits: []hit{
 				{path: "/api/v1/auth/login", secret: "s3cr3t", playerIP: "198.51.100.7", want: http.StatusOK},
 				{path: "/api/v1/auth/login", secret: "s3cr3t", playerIP: "198.51.100.8", want: http.StatusOK},
 			},
 		},
 		{
-			name: "o mesmo jogador estoura o próprio balde",
+			name: "the same player overflows their own bucket",
 			hits: []hit{
 				{path: "/api/v1/auth/login", secret: "s3cr3t", playerIP: "198.51.100.7", want: http.StatusOK},
 				{path: "/api/v1/auth/login", secret: "s3cr3t", playerIP: "198.51.100.7", want: http.StatusTooManyRequests},
@@ -79,14 +79,14 @@ func TestRateLimitKeysOnVerifiedClientIP(t *testing.T) {
 		{
 			// Rota isenta aceita pedido sem segredo; trocar o header a cada pedido não
 			// pode render balde novo.
-			name: "sem segredo, CF-Connecting-IP forjado é ignorado",
+			name: "without the secret, a forged CF-Connecting-IP is ignored",
 			hits: []hit{
 				{path: "/api/v1/internal/purge", playerIP: "203.0.113.1", want: http.StatusOK},
 				{path: "/api/v1/internal/purge", playerIP: "203.0.113.2", want: http.StatusTooManyRequests},
 			},
 		},
 		{
-			name: "IP inválido do proxy cai no nó da borda",
+			name: "invalid IP from the proxy falls back to the edge node",
 			hits: []hit{
 				{path: "/api/v1/auth/login", secret: "s3cr3t", playerIP: "não-é-ip", want: http.StatusOK},
 				{path: "/api/v1/auth/login", secret: "s3cr3t", playerIP: "também-não", want: http.StatusTooManyRequests},

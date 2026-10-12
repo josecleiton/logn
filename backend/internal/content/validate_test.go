@@ -109,79 +109,79 @@ func TestEachRuleIsCaught(t *testing.T) {
 		want    string
 		pending bool
 	}{
-		{"texto de payload no arquivo neutro", func(f map[string]any) {
+		{"payload text in the neutral file", func(f map[string]any) {
 			dig(f["trilhas/free/desafios/ch_1.json"], "payload", "content")["title"] = "Soma"
 		}, "content.title é texto", false},
-		{"expected_string com dois tokens", func(f map[string]any) {
+		{"expected_string with two tokens", func(f map[string]any) {
 			dig(f["trilhas/free/desafios/ch_1.json"], "payload", "validation")["expected_string"] = "6 7"
 		}, "mais de um token", false},
-		{"variável de watch fora do código", func(f map[string]any) {
+		{"watch variable not in the code", func(f map[string]any) {
 			dig(f["trilhas/free/desafios/ch_1.json"], "payload", "content")["watch_variables"] =
 				[]any{map[string]any{"name": "total", "value": "0"}}
 		}, `"total" não aparece no código`, false},
-		{"watch sem nota", func(f map[string]any) {
+		{"watch without a note", func(f map[string]any) {
 			delete(f["trilhas/free/desafios/ch_1.en.json"].(map[string]any), "watch_note")
 		}, "watch_note vazio", false},
-		{"trace_cells fora da faixa", func(f map[string]any) {
+		{"trace_cells out of range", func(f map[string]any) {
 			dig(f["trilhas/free/desafios/ch_1.json"], "payload", "validation")["trace_cells"] = 5
 		}, "trace_cells entre 1 e 4", false},
-		{"markdown no texto", func(f map[string]any) {
+		{"markdown in the text", func(f map[string]any) {
 			f["trilhas/free/desafios/ch_1.es.json"].(map[string]any)["explanation"] = "Usa `sum`."
 		}, "que o app mostra cru", false},
-		{"marcador de rascunho", func(f map[string]any) {
+		{"draft marker", func(f map[string]any) {
 			f["trilhas/free/desafios/ch_1.en.json"].(map[string]any)["title"] = "[TO CONFIRM] Sum"
 		}, "que o app mostra cru", false},
-		{"opção de TAG fora do glossário", func(f map[string]any) {
+		{"TAG option not in the glossary", func(f map[string]any) {
 			dig(f["trilhas/free/desafios/ch_2.json"], "payload", "content")["options"] = []any{"queue", "heap"}
 		}, `"heap" não está no glossário`, false},
-		{"resposta fora das opções", func(f map[string]any) {
+		{"answer not among the options", func(f map[string]any) {
 			dig(f["trilhas/free/desafios/ch_2.json"], "payload", "content")["correct_options"] = []any{"bfs"}
 		}, "fora das opções", false},
-		{"rótulo repetido na mesma língua", func(f map[string]any) {
+		{"label repeated in the same language", func(f map[string]any) {
 			dig(f["glossario/tags.json"], "stack")["es"] = "cola"
 		}, "repete o de queue", false},
-		{"posição repetida no nó", func(f map[string]any) {
+		{"position repeated in the node", func(f map[string]any) {
 			f["trilhas/free/desafios/ch_2.json"].(map[string]any)["position_idx"] = 1
 		}, "position_idx 1 repete", false},
-		{"id diferente do arquivo", func(f map[string]any) {
+		{"id differs from the file name", func(f map[string]any) {
 			f["trilhas/free/desafios/ch_2.json"].(map[string]any)["id"] = "ch_9"
 		}, "não bate com o nome do arquivo", false},
-		{"falta português", func(f map[string]any) {
+		{"Portuguese missing", func(f map[string]any) {
 			f["trilhas/free/desafios/ch_1.pt-BR.json"] = nil
 		}, "falta o desafio em português", false},
-		{"texto órfão", func(f map[string]any) {
+		{"orphan text", func(f map[string]any) {
 			f["trilhas/free/desafios/ch_7.en.json"] = map[string]any{"title": "x", "description": "x", "explanation": "x"}
 		}, "texto de um desafio que não existe", false},
-		{"campo desconhecido", func(f map[string]any) {
+		{"unknown field", func(f map[string]any) {
 			f["trilhas/free/desafios/ch_2.en.json"].(map[string]any)["tittle"] = "x"
 		}, "unknown field", false},
-		{"falta espanhol", func(f map[string]any) {
+		{"Spanish missing", func(f map[string]any) {
 			f["trilhas/free/desafios/ch_2.es.json"] = nil
 		}, "falta o desafio em es", true},
-		{"rótulo sem inglês", func(f map[string]any) {
+		{"label without English", func(f map[string]any) {
 			dig(f["glossario/tags.json"], "stack")["en"] = ""
 		}, "falta o rótulo em en", true},
-		{"identificador em português", func(f map[string]any) {
+		{"identifier in Portuguese", func(f map[string]any) {
 			dig(f["trilhas/free/desafios/ch_1.json"], "payload", "content")["code_lines"] =
 				[]any{"int sum = 0;", "int melhorSoma = sum;"}
 		}, "identificadores em português: melhorSoma", true},
-		{"código fora de ASCII", func(f map[string]any) {
+		{"code outside ASCII", func(f map[string]any) {
 			dig(f["trilhas/free/desafios/ch_1.json"], "payload", "content")["code_lines"] =
 				[]any{"int sum = 0; // soma é zero"}
 		}, "linha 1 fora de ASCII", true},
-		{"trade-off sem texto de uma opção", func(f map[string]any) {
+		{"trade-off missing the text of an option", func(f map[string]any) {
 			delete(dig(f["trilhas/free/desafios/ch_3.en.json"], "option_labels"), "simple")
 		}, `falta o texto da opção "simple"`, false},
-		{"trade-off com duas opções de mesmo texto", func(f map[string]any) {
+		{"trade-off with two options of the same text", func(f map[string]any) {
 			dig(f["trilhas/free/desafios/ch_3.es.json"], "option_labels")["simple"] = "barato"
 		}, "têm o mesmo texto", false},
-		{"trade-off com rótulo que não é opção", func(f map[string]any) {
+		{"trade-off with a label that is not an option", func(f map[string]any) {
 			dig(f["trilhas/free/desafios/ch_3.pt-BR.json"], "option_labels")["slow"] = "Lento"
 		}, `tem "slow", que não é opção`, false},
-		{"trade-off com a mesma resposta duas vezes", func(f map[string]any) {
+		{"trade-off with the same answer twice", func(f map[string]any) {
 			dig(f["trilhas/free/desafios/ch_3.json"], "payload", "content")["correct_options"] = []any{"fast", "fast"}
 		}, "par benefício e desvantagem, diferentes", false},
-		{"trade-off com frase no lugar do identificador", func(f map[string]any) {
+		{"trade-off with a sentence instead of an identifier", func(f map[string]any) {
 			dig(f["trilhas/free/desafios/ch_3.json"], "payload", "content")["options"] = []any{"fast", "cheap", "Mais simples"}
 			dig(f["trilhas/free/desafios/ch_3.pt-BR.json"], "option_labels")["Mais simples"] = "Simples"
 			delete(dig(f["trilhas/free/desafios/ch_3.pt-BR.json"], "option_labels"), "simple")
@@ -190,10 +190,10 @@ func TestEachRuleIsCaught(t *testing.T) {
 			dig(f["trilhas/free/desafios/ch_3.es.json"], "option_labels")["Mais simples"] = "Sencillo"
 			delete(dig(f["trilhas/free/desafios/ch_3.es.json"], "option_labels"), "simple")
 		}, "é identificador, o texto vai em option_labels", false},
-		{"option_labels fora do trade-off", func(f map[string]any) {
+		{"option_labels outside a trade-off", func(f map[string]any) {
 			f["trilhas/free/desafios/ch_1.en.json"].(map[string]any)["option_labels"] = map[string]any{"x": "y"}
 		}, "option_labels só vale no TRADEOFF_MATCH", false},
-		{"nó sem topic", func(f map[string]any) {
+		{"node without a topic", func(f map[string]any) {
 			f["trilhas/free/nos.json"].([]any)[0].(map[string]any)["topic"] = ""
 		}, "sem topic", true},
 	}
@@ -264,33 +264,33 @@ func TestTracksArePassedOneByOne(t *testing.T) {
 		want  string
 	}{
 		// O gerador faz upsert por id: o repetido sobrescrevia a gratuita no banco.
-		{"nó com o id de outra trilha", func(f map[string]any) {
+		{"node with the id of another track", func(f map[string]any) {
 			f["trilhas/paga/nos.json"].([]any)[0].(map[string]any)["id"] = nodeID
 			for _, l := range []string{"pt-BR", "en", "es"} {
 				f["trilhas/paga/nos."+l+".json"] = map[string]any{nodeID: map[string]any{"name": "Nó A", "description": ""}}
 			}
 			f["trilhas/paga/desafios/ch_t01.json"].(map[string]any)["node_id"] = nodeID
 		}, "repete o de um nó de trilhas/free"},
-		{"desafio com o id de outra trilha", func(f map[string]any) {
+		{"challenge with the id of another track", func(f map[string]any) {
 			for _, suffix := range []string{"", ".pt-BR", ".en", ".es"} {
 				f["trilhas/paga/desafios/ch_1"+suffix+".json"] = f["trilhas/paga/desafios/ch_t01"+suffix+".json"]
 				f["trilhas/paga/desafios/ch_t01"+suffix+".json"] = nil
 			}
 			f["trilhas/paga/desafios/ch_1.json"].(map[string]any)["id"] = "ch_1"
 		}, "repete o de um desafio de trilhas/free"},
-		{"gratuita fora da vitrine", func(f map[string]any) {
+		{"free track hidden from the catalog", func(f map[string]any) {
 			f["trilhas/tracks.json"].([]any)[0].(map[string]any)["available"] = false
 		}, "a gratuita não sai da vitrine"},
-		{"paga sem produto", func(f map[string]any) {
+		{"paid track without a product", func(f map[string]any) {
 			f["trilhas/tracks.json"].([]any)[1].(map[string]any)["store_product_id"] = nil
 		}, "trilha paga sem store_product_id"},
-		{"produto que o Play recusa", func(f map[string]any) {
+		{"product id that Play rejects", func(f map[string]any) {
 			f["trilhas/tracks.json"].([]any)[1].(map[string]any)["store_product_id"] = "Com.Example-Track"
 		}, "não vale no Google Play"},
-		{"trilha sem nome em português", func(f map[string]any) {
+		{"track without a Portuguese name", func(f map[string]any) {
 			delete(f["trilhas/tracks.pt-BR.json"].(map[string]any), paidTrackID)
 		}, "falta a trilha em português"},
-		{"trilha sem pasta", func(f map[string]any) {
+		{"track without a folder", func(f map[string]any) {
 			f["trilhas/tracks.json"].([]any)[1].(map[string]any)["slug"] = "outra"
 		}, "sem a pasta trilhas/outra"},
 	}

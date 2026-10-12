@@ -30,8 +30,8 @@ func TestLeaderboardRouteNeedsTokenAndIsLimited(t *testing.T) {
 	}
 }
 
-// placarUser cria uma conta de teste sem XP e devolve o id e o número.
-func placarUser(t *testing.T, conn *pgxpool.Pool) (string, int) {
+// leaderboardUser cria uma conta de teste sem XP e devolve o id e o número.
+func leaderboardUser(t *testing.T, conn *pgxpool.Pool) (string, int) {
 	t.Helper()
 	ctx := context.Background()
 	uid, anon := newTestUUID(t), testAnonNumber(t)
@@ -58,7 +58,7 @@ func TestNicknameRouteAnswersWithCodes(t *testing.T) {
 	conn := setupTestDB(t)
 	t.Cleanup(conn.Close)
 	s := &Server{repo: domain.NewRepository(conn)}
-	uid, anon := placarUser(t, conn)
+	uid, anon := leaderboardUser(t, conn)
 
 	expect(t, putNickname(t, s, "", `{"nickname":"ana_dev"}`), http.StatusUnauthorized, codeUnauthenticated)
 	expect(t, putNickname(t, s, uid, `{"nickname":"`+strings.Repeat("a", nicknameBodyLimit)+`"}`),
@@ -78,7 +78,7 @@ func TestNicknameRouteAnswersWithCodes(t *testing.T) {
 	}
 	expect(t, putNickname(t, s, uid, `{"nickname":"outro_nome"}`), http.StatusConflict, codeNicknameLocked)
 
-	other, _ := placarUser(t, conn)
+	other, _ := leaderboardUser(t, conn)
 	expect(t, putNickname(t, s, other, `{"nickname":"`+nick+`"}`), http.StatusConflict, codeNicknameTaken)
 
 	// O Perfil lê o nome pelo /progress.
@@ -103,7 +103,7 @@ func TestNicknameRouteLimitsEachAccount(t *testing.T) {
 	conn := setupTestDB(t)
 	t.Cleanup(conn.Close)
 	s := &Server{repo: domain.NewRepository(conn), nicknameUserLimiter: newRateLimiter(10, time.Minute)}
-	uid, _ := placarUser(t, conn)
+	uid, _ := leaderboardUser(t, conn)
 
 	for i := 0; i < 10; i++ {
 		expect(t, putNickname(t, s, uid, `{"nickname":"ab"}`), http.StatusBadRequest, codeNicknameInvalid)
@@ -127,7 +127,7 @@ func TestOnlyTheAdminAccountModeratesTheLeaderboard(t *testing.T) {
 	t.Cleanup(conn.Close)
 	s := &Server{repo: domain.NewRepository(conn), cloudValidator: &mockCloudValidator{}}
 	internalEnv(t, testAudience, testSchedulerAccount, testAdminAccount)
-	uid, anon := placarUser(t, conn)
+	uid, anon := leaderboardUser(t, conn)
 	body := `{"user_id":"` + uid + `","action":"hide","reason":"objeção por e-mail"}`
 
 	for name, caller := range map[string]string{

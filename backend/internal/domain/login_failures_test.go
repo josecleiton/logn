@@ -20,7 +20,7 @@ func clearLoginAttempts(t *testing.T, repo *Repository, emails ...string) {
 // Do mesmo IP, passadas LoginMaxAttemptsPerSource tentativas na janela, a seguinte é
 // recusada antes do Argon2. De outro IP a conta continua entrando: travar a conta de
 // alguém daqui não trava a pessoa.
-func TestLoginTravaPorIPSemTravarOsOutros(t *testing.T) {
+func TestLoginLocksByIPWithoutLockingOthers(t *testing.T) {
 	ctx := context.Background()
 	repo, conn := otpTestRepo(t)
 	email := "test_login_lockout@example.com"
@@ -55,7 +55,7 @@ func TestLoginTravaPorIPSemTravarOsOutros(t *testing.T) {
 
 // Somando todos os IPs, passadas LoginMaxAttempts tentativas, nenhum IP passa: é o que
 // segura o chute distribuído.
-func TestLoginTravaOChuteDistribuido(t *testing.T) {
+func TestLoginLocksDistributedGuessing(t *testing.T) {
 	ctx := context.Background()
 	repo, _ := otpTestRepo(t)
 	email := "test_login_distributed@example.com"
@@ -81,7 +81,7 @@ func TestLoginTravaOChuteDistribuido(t *testing.T) {
 
 // A tentativa que o balde do IP recusou não conta na soma: senão um IP sozinho levava a
 // soma ao teto e travava a conta para todo IP.
-func TestLoginRecusadaPeloIPNaoContaNaSoma(t *testing.T) {
+func TestLoginRefusedByIPDoesNotCountInTotal(t *testing.T) {
 	ctx := context.Background()
 	repo, conn := otpTestRepo(t)
 	email := "test_login_one_source@example.com"
@@ -101,7 +101,7 @@ func TestLoginRecusadaPeloIPNaoContaNaSoma(t *testing.T) {
 }
 
 // A purga diária leva as contagens de janela vencida e deixa as vivas.
-func TestPurgeLoginAttemptsLevaSoAsVencidas(t *testing.T) {
+func TestPurgeLoginAttemptsRemovesOnlyExpired(t *testing.T) {
 	ctx := context.Background()
 	repo, conn := otpTestRepo(t)
 	old, live := "test_login_purge_old@example.com", "test_login_purge_live@example.com"

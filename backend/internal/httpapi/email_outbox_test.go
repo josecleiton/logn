@@ -221,12 +221,12 @@ func TestEmailSendHandlerAuthorization(t *testing.T) {
 		fail    bool
 		want    int
 	}{
-		{"sem conta configurada", "", "Bearer " + testTasksAccount, false, http.StatusForbidden},
-		{"sem cabeçalho", testTasksAccount, "", false, http.StatusUnauthorized},
-		{"token inválido", testTasksAccount, "Bearer " + testTasksAccount, true, http.StatusUnauthorized},
-		{"conta da purga", testTasksAccount, "Bearer " + testSchedulerAccount, false, http.StatusForbidden},
-		{"conta de administração", testTasksAccount, "Bearer " + testAdminAccount, false, http.StatusForbidden},
-		{"conta de outro projeto", testTasksAccount, "Bearer attacker@other-project.iam.gserviceaccount.com", false, http.StatusForbidden},
+		{"no account configured", "", "Bearer " + testTasksAccount, false, http.StatusForbidden},
+		{"no header", testTasksAccount, "", false, http.StatusUnauthorized},
+		{"invalid token", testTasksAccount, "Bearer " + testTasksAccount, true, http.StatusUnauthorized},
+		{"purge account", testTasksAccount, "Bearer " + testSchedulerAccount, false, http.StatusForbidden},
+		{"admin account", testTasksAccount, "Bearer " + testAdminAccount, false, http.StatusForbidden},
+		{"account from another project", testTasksAccount, "Bearer attacker@other-project.iam.gserviceaccount.com", false, http.StatusForbidden},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv(envTasksAccount, tc.account)

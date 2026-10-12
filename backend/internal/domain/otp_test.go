@@ -91,7 +91,7 @@ func TestOTPRepository(t *testing.T) {
 
 // Sem limite de tentativas, seis dígitos se varriam pelo verify-otp dentro do prazo e
 // davam a troca de senha de qualquer conta.
-func TestOTPMorreDepoisDeTentativasErradas(t *testing.T) {
+func TestOTPDiesAfterWrongAttempts(t *testing.T) {
 	ctx := context.Background()
 	repo, conn := otpTestRepo(t)
 
@@ -131,7 +131,7 @@ func TestOTPMorreDepoisDeTentativasErradas(t *testing.T) {
 // Cada reenvio zera as tentativas do código, e um código por minuto dava 7.200 palpites
 // por dia contra a mesma conta. As falhas somam através dos reenvios: estourada a
 // janela, nenhum código novo sai e nem o certo passa.
-func TestOTPFalhasSomamEntreReenvios(t *testing.T) {
+func TestOTPFailuresAddUpAcrossResends(t *testing.T) {
 	ctx := context.Background()
 	repo, conn := otpTestRepo(t)
 
@@ -203,7 +203,7 @@ func TestOTPFalhasSomamEntreReenvios(t *testing.T) {
 
 // O limite por IP some trocando de IP, e o intervalo por endereço some trocando de
 // endereço. Sem teto global, a rota mandava e-mail a quem quisesse.
-func TestOTPTetoGlobalPorHora(t *testing.T) {
+func TestOTPGlobalHourlyCap(t *testing.T) {
 	ctx := context.Background()
 	repo, conn := otpTestRepo(t)
 

@@ -74,7 +74,7 @@ type challenge struct {
 	Origin       string `json:"origin"`
 	// De onde o desafio partiu, para quem escreve. Fica no repositório de conteúdo e
 	// não vai para o banco.
-	Fonte   string          `json:"fonte"`
+	Source  string          `json:"fonte"`
 	Payload json.RawMessage `json:"payload"`
 }
 
@@ -193,23 +193,23 @@ func readJSON(path string, v any) error {
 //
 // Sem `trilhas/tracks.json`, confere só `trilhas/free`, a gratuita.
 func Validate(root string) []Finding {
-	trilhas := filepath.Join(root, "trilhas")
+	tracksDir := filepath.Join(root, "trilhas")
 	c := &checker{
 		nodeOwner:      map[string]string{},
 		challengeOwner: map[string]string{},
-		originsDir:     filepath.Join(trilhas, "free"),
+		originsDir:     filepath.Join(tracksDir, "free"),
 	}
 
 	slugs := []string{"free"}
 	var tracks []track
-	err := readJSON(filepath.Join(trilhas, "tracks.json"), &tracks)
+	err := readJSON(filepath.Join(tracksDir, "tracks.json"), &tracks)
 	switch {
 	case os.IsNotExist(err):
 	case err != nil:
 		c.fail("trilhas/tracks.json", "%v", err)
 		return c.findings
 	default:
-		slugs = c.checkTracks(trilhas, tracks)
+		slugs = c.checkTracks(tracksDir, tracks)
 	}
 
 	glossary := map[string]map[string]string{}
@@ -219,7 +219,7 @@ func Validate(root string) []Finding {
 	c.checkGlossary(glossary)
 
 	for _, slug := range slugs {
-		dir := filepath.Join(trilhas, slug)
+		dir := filepath.Join(tracksDir, slug)
 		label := "trilhas/" + slug
 		var nodes []node
 		if err := readJSON(filepath.Join(dir, "nos.json"), &nodes); err != nil {
@@ -235,7 +235,7 @@ func Validate(root string) []Finding {
 
 // checkTracks confere `tracks.json` e o nome de cada trilha nas línguas, e devolve as
 // pastas a conferir. Há uma gratuita só, e é ela que o app abre: não sai da vitrine.
-func (c *checker) checkTracks(trilhas string, tracks []track) []string {
+func (c *checker) checkTracks(tracksDir string, tracks []track) []string {
 	var slugs []string
 	ids := map[string]bool{}
 	seenSlug := map[string]bool{}
@@ -287,7 +287,7 @@ func (c *checker) checkTracks(trilhas string, tracks []track) []string {
 		default:
 			c.fail(where, "kind %q fora de free e paid", t.Kind)
 		}
-		if info, err := os.Stat(filepath.Join(trilhas, t.Slug)); err != nil || !info.IsDir() {
+		if info, err := os.Stat(filepath.Join(tracksDir, t.Slug)); err != nil || !info.IsDir() {
 			c.fail(where, "sem a pasta trilhas/%s", t.Slug)
 			continue
 		}
@@ -300,7 +300,7 @@ func (c *checker) checkTracks(trilhas string, tracks []track) []string {
 	for _, l := range locale.Supported {
 		name := "tracks." + l + ".json"
 		texts := map[string]trackText{}
-		err := readJSON(filepath.Join(trilhas, name), &texts)
+		err := readJSON(filepath.Join(tracksDir, name), &texts)
 		if os.IsNotExist(err) {
 			c.missingLocale("trilhas/"+name, l, "os nomes das trilhas")
 			continue
@@ -419,8 +419,8 @@ func (c *checker) checkGlossary(glossary map[string]map[string]string) {
 	}
 }
 
-func (c *checker) checkChallenges(trilha, label string, nodeIDs map[string]bool, glossary map[string]map[string]string) {
-	dir := filepath.Join(trilha, "desafios")
+func (c *checker) checkChallenges(trackDir, label string, nodeIDs map[string]bool, glossary map[string]map[string]string) {
+	dir := filepath.Join(trackDir, "desafios")
 	label += "/desafios/"
 	entries, err := os.ReadDir(dir)
 	if err != nil {

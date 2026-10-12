@@ -46,17 +46,17 @@ func TestValidatePassword(t *testing.T) {
 
 // O hash antigo, de 64 MiB, continua verificando e é marcado para refazer. O novo não.
 func TestNeedsRehash(t *testing.T) {
-	legado := "$argon2id$v=19$m=65536,t=1,p=4$+WHflVRpX7CuqjkDl22cPw$63wNww35x7RbA11BqOCScXPk3AbIRru3IuzuOJ1vimA"
-	if !NeedsRehash(legado) {
+	legacy := "$argon2id$v=19$m=65536,t=1,p=4$+WHflVRpX7CuqjkDl22cPw$63wNww35x7RbA11BqOCScXPk3AbIRru3IuzuOJ1vimA"
+	if !NeedsRehash(legacy) {
 		t.Error("hash com parâmetros antigos devia pedir rehash")
 	}
 
-	atual, err := HashPassword(context.Background(), "uma senha qualquer")
+	current, err := HashPassword(context.Background(), "uma senha qualquer")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if NeedsRehash(atual) {
-		t.Errorf("hash recém-feito não devia pedir rehash: %s", atual)
+	if NeedsRehash(current) {
+		t.Errorf("hash recém-feito não devia pedir rehash: %s", current)
 	}
 
 	if !strings.HasPrefix(DummyHash(), "$argon2id$") || NeedsRehash(DummyHash()) {
