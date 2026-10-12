@@ -16,12 +16,12 @@ enum LegalKind: String, Identifiable {
         }
     }
 
-    /// Só em DEBUG: `-LogNStartScreen termos` ou `privacidade` abre o documento direto,
+    /// Só em DEBUG: `-LogNStartScreen terms` ou `privacy` abre o documento direto,
     /// para o roteiro do simulador conferir a tela sem tocar em nada.
     static var launchOverride: LegalKind? {
         switch LognTab.launchScreen {
-        case "termos": return .terms
-        case "privacidade": return .privacy
+        case "terms": return .terms
+        case "privacy": return .privacy
         default: return nil
         }
     }

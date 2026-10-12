@@ -20,9 +20,9 @@ struct LoginView: View {
     private var appleFill: Color { colorScheme == .dark ? .white : .black }
     private var appleInk: Color { colorScheme == .dark ? .black : .white }
     @State private var legalSheet: LegalKind? = LegalKind.launchOverride
-    /// Só em DEBUG: `-LogNStartScreen cadastro` abre o cadastro direto. O toque
+    /// Só em DEBUG: `-LogNStartScreen register` abre o cadastro direto. O toque
     /// sintético no link depende da janela do Simulator estar acessível, e nem sempre está.
-    @State private var showsRegisterOnLaunch = LognTab.launchScreen == "cadastro"
+    @State private var showsRegisterOnLaunch = LognTab.launchScreen == "register"
     /// "Esqueci a senha" pede o código e já abre a tela onde ele é digitado. Antes só
     /// pedia: o e-mail chegava e o app não tinha onde usar o código.
     @State private var showsReset = false

@@ -358,7 +358,7 @@ de instituição, pelo caminho de telemetria que já existe (ADR 0001, PostHog).
 - **Altura do sheet:** `ProfileHubView` usa `.presentationDetents([.height(contentHeight)])`
   sem ScrollView. Conferir no iPhone menor e, se passar da tela, pôr o conteúdo num
   `ScrollView` com detent máximo.
-- **DEBUG:** `-LogNStartScreen instituicao` abre o perfil já na tela de escolha.
+- **DEBUG:** `-LogNStartScreen institution` abre o perfil já na tela de escolha.
 
 ## 8. i18n
 
@@ -589,7 +589,7 @@ esta entrega fixou só o que o texto afirma (seção 8).
 - `InstitutionPickerView.swift`, `InstitutionVerifyView.swift`,
   `InstitutionRequestView.swift` (novos), o passo do cadastro, e o fecho `onSubmit` em
   `OTPInputView`.
-- `ios/LogNiOS/LogNiOS/Views/ContentView.swift`: `-LogNStartScreen instituicao`, e o
+- `ios/LogNiOS/LogNiOS/Views/ContentView.swift`: `-LogNStartScreen institution`, e o
   deep link `verify_institution` em `handleIncomingURL`.
 - `just i18n-check`, depois `just xcode`.
 

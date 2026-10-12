@@ -16,16 +16,16 @@ enum LognTopic: CaseIterable {
 
     /// Família do assunto. Dá a cor e agrupa a legenda.
     enum Family {
-        case fundamentos, busca, estruturas, otimizacao, boss
+        case fundamentals, search, structures, optimization, boss
 
         /// A letra da paleta de balões que dá a cor; o boss usa o acento.
         private var letter: Character? {
             switch self {
-            case .fundamentos: return "H"   // âmbar
-            case .busca:       return "C"   // azul
-            case .estruturas:  return "E"   // violeta
-            case .otimizacao:  return "M"   // esmeralda
-            case .boss:        return nil
+            case .fundamentals: return "H"   // âmbar
+            case .search:       return "C"   // azul
+            case .structures:   return "E"   // violeta
+            case .optimization: return "M"   // esmeralda
+            case .boss:         return nil
             }
         }
 
@@ -39,13 +39,13 @@ enum LognTopic: CaseIterable {
     var family: Family {
         switch self {
         case .adHoc, .arrays, .strings:
-            return .fundamentos
+            return .fundamentals
         case .twoPointers, .binarySearch, .slidingWindow, .sorting:
-            return .busca
+            return .search
         case .trees, .graphs:
-            return .estruturas
+            return .structures
         case .dp, .greedy:
-            return .otimizacao
+            return .optimization
         case .challenge:
             return .boss
         }

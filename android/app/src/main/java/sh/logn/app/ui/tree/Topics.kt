@@ -38,10 +38,10 @@ enum class TopicFamily(
     /** O balão que dá a cor; o boss, sem letra, é o acento. */
     private val letter: Char?,
 ) {
-    Fundamentos('H'),
-    Busca('C'),
-    Estruturas('E'),
-    Otimizacao('M'),
+    Fundamentals('H'),
+    Search('C'),
+    Structures('E'),
+    Optimization('M'),
     Boss(null),
     ;
 
@@ -60,18 +60,18 @@ enum class LognTopic(
     val family: TopicFamily,
     val parts: List<TopicPart>,
 ) {
-    AdHoc(TopicFamily.Fundamentos, listOf(TopicPart.Path("M12 3v18M4.5 7.5l15 9M19.5 7.5l-15 9"))),
-    Arrays(TopicFamily.Fundamentos, listOf(TopicPart.Path("M2 9h20v6H2zM8 9v6M14 9v6"))),
-    Strings(TopicFamily.Fundamentos, listOf(TopicPart.Path("M3 7h18v10H3zM7 11h3M13 11h4M7 14h6"))),
-    TwoPointers(TopicFamily.Busca, listOf(TopicPart.Path("M2 12h20M7 8l-4 4 4 4M17 8l4 4-4 4"))),
-    BinarySearch(TopicFamily.Busca, listOf(TopicPart.Path("M2 10h20v4H2zM12 3v18M12 6l-3 3M12 6l3 3"))),
+    AdHoc(TopicFamily.Fundamentals, listOf(TopicPart.Path("M12 3v18M4.5 7.5l15 9M19.5 7.5l-15 9"))),
+    Arrays(TopicFamily.Fundamentals, listOf(TopicPart.Path("M2 9h20v6H2zM8 9v6M14 9v6"))),
+    Strings(TopicFamily.Fundamentals, listOf(TopicPart.Path("M3 7h18v10H3zM7 11h3M13 11h4M7 14h6"))),
+    TwoPointers(TopicFamily.Search, listOf(TopicPart.Path("M2 12h20M7 8l-4 4 4 4M17 8l4 4-4 4"))),
+    BinarySearch(TopicFamily.Search, listOf(TopicPart.Path("M2 10h20v4H2zM12 3v18M12 6l-3 3M12 6l3 3"))),
     SlidingWindow(
-        TopicFamily.Busca,
+        TopicFamily.Search,
         listOf(TopicPart.Path("M2 10h20v4H2z"), TopicPart.Path("M7 6h8v12H7z"), TopicPart.Path("M18 8l3 4-3 4")),
     ),
-    Sorting(TopicFamily.Busca, listOf(TopicPart.Path("M4 20v-4M9.33 20v-8M14.66 20v-12M20 20v-16"))),
+    Sorting(TopicFamily.Search, listOf(TopicPart.Path("M4 20v-4M9.33 20v-8M14.66 20v-12M20 20v-16"))),
     Trees(
-        TopicFamily.Estruturas,
+        TopicFamily.Structures,
         listOf(
             TopicPart.Circle(12f, 5f, 2.5f),
             TopicPart.Circle(6f, 19f, 2.5f),
@@ -80,7 +80,7 @@ enum class LognTopic(
         ),
     ),
     Graphs(
-        TopicFamily.Estruturas,
+        TopicFamily.Structures,
         listOf(
             TopicPart.Circle(5f, 6f, 2.5f),
             TopicPart.Circle(19f, 9f, 2.5f),
@@ -89,10 +89,10 @@ enum class LognTopic(
         ),
     ),
     Dp(
-        TopicFamily.Otimizacao,
+        TopicFamily.Optimization,
         listOf(TopicPart.Path("M3 4h18v16H3zM3 10h18M3 15h18M9 4v16M15 4v16"), TopicPart.Path("M3 4l6 6M9 10l6 5")),
     ),
-    Greedy(TopicFamily.Otimizacao, listOf(TopicPart.Path("M4 20v-5M10 20v-9M16 20v-14M22 20v-7"), TopicPart.Path("M13 3l3-2 3 2"))),
+    Greedy(TopicFamily.Optimization, listOf(TopicPart.Path("M4 20v-5M10 20v-9M16 20v-14M22 20v-7"), TopicPart.Path("M13 3l3-2 3 2"))),
     Challenge(TopicFamily.Boss, listOf(TopicPart.Path("M6 21V3M6 4h12l-3 4.5L18 13H6"))),
     ;
 

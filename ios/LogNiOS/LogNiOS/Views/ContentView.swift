@@ -112,24 +112,24 @@ enum LognTab: CaseIterable {
     }
 
     /// Aba inicial forçada por argumento de lançamento, só em DEBUG:
-    /// `simctl launch … -LogNStartTab placar`. Serve para conferir tela contra o
+    /// `simctl launch … -LogNStartTab standings`. Serve para conferir tela contra o
     /// design system sem depender de automação de toque.
     static var launchOverride: LognTab? {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: "-LogNStartTab"), i + 1 < args.count else { return nil }
         switch args[i + 1] {
-        case "trilhas": return .trails
-        case "arena":   return .arena
-        case "placar":  return .standings
-        default:        return nil
+        case "trails":    return .trails
+        case "arena":     return .arena
+        case "standings": return .standings
+        default:          return nil
         }
         #else
         return nil
         #endif
     }
 
-    /// Tela empilhada a abrir no lançamento, só em DEBUG: `-LogNStartScreen apelido`.
+    /// Tela empilhada a abrir no lançamento, só em DEBUG: `-LogNStartScreen nickname`.
     static var launchScreen: String? {
         #if DEBUG
         let args = ProcessInfo.processInfo.arguments
@@ -230,8 +230,8 @@ struct SkillTreeHostView: View {
     @Binding var tab: LognTab
     /// O onboarding pediu o catálogo ("Já sei o básico").
     @Binding var catalogRequested: Bool
-    @State private var showsProfile = LognTab.launchScreen == "perfil" || LognTab.launchScreen == "apelido"
-    @State private var showsCatalog = LognTab.launchScreen == "catalogo"
+    @State private var showsProfile = LognTab.launchScreen == "profile" || LognTab.launchScreen == "nickname"
+    @State private var showsCatalog = LognTab.launchScreen == "catalog"
 
     /// "N balões no ar" — o contador é de nós conquistados, não de problemas aceitos.
     private var balloonsUp: Int {

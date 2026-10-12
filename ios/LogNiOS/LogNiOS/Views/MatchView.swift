@@ -103,8 +103,8 @@ struct MatchView: View {
         }
         // Quem decide que a partida acabou é o Core; empilhar ou desempilhar tela é do
         // shell. Ele diz que a saída foi por vontade do jogador, e a tela volta.
-        .onChange(of: core.viewModel.matchLeft) { saiu in
-            if saiu { dismiss() }
+        .onChange(of: core.viewModel.matchLeft) { didLeave in
+            if didLeave { dismiss() }
         }
         .onChange(of: mv.currentLetter) { _ in
             if !mv.hasTrap && verdict == nil { playingLetter = currentLetter }
@@ -180,7 +180,7 @@ struct MatchView: View {
         // arrastar para fechar precisa avisá-lo para o relógio voltar.
         .sheet(isPresented: Binding(
             get: { mv.originSheet != nil },
-            set: { aberto in if !aberto { core.dispatch(event: .closeOriginSheet) } }
+            set: { isPresented in if !isPresented { core.dispatch(event: .closeOriginSheet) } }
         )) {
             if let card = mv.originSheet {
                 OriginSheetView(
@@ -196,7 +196,7 @@ struct MatchView: View {
         // está voltando para a partida, e o relógio tem de voltar junto.
         .sheet(isPresented: Binding(
             get: { mv.leavePending },
-            set: { aberto in if !aberto { core.dispatch(event: .cancelLeaveMatch) } }
+            set: { isPresented in if !isPresented { core.dispatch(event: .cancelLeaveMatch) } }
         )) {
             LeaveMatchSheet(
                 solved: Int(mv.solvedSoFar),

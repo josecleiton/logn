@@ -16,7 +16,7 @@ struct ProfileHubView: View {
     @State private var showsManageAccount = false
     @State private var showsStorage = false
     @State private var legalSheet: LegalKind?
-    @State private var showsNickname = LognTab.launchScreen == "apelido"
+    @State private var showsNickname = LognTab.launchScreen == "nickname"
 
     /// Altura de partida do sheet, só até a primeira medição chegar.
     static let preferredHeight: CGFloat = 560

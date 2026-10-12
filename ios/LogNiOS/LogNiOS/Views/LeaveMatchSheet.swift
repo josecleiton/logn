@@ -41,12 +41,12 @@ struct LeaveMatchSheet: View {
                 .padding(.top, 14)
 
             // O que fica para trás, desenhado: perda concreta em vez de adjetivo.
-            if !pendentes.isEmpty {
+            if !pendingLetters.isEmpty {
                 HStack(spacing: 10) {
-                    ForEach(pendentes, id: \.self) { letra in
+                    ForEach(pendingLetters, id: \.self) { letter in
                         VStack(spacing: 4) {
                             BalloonShape(style: .outline(LognColors.lineStrong, 4), width: 14, showString: false)
-                            Text(String(letra))
+                            Text(String(letter))
                                 .font(.plexMono(9))
                                 .foregroundColor(LognColors.textMuted)
                         }
@@ -90,7 +90,7 @@ struct LeaveMatchSheet: View {
     }
 
     /// As letras que ainda não subiram.
-    private var pendentes: [Character] {
+    private var pendingLetters: [Character] {
         balloonStates.filter { !$0.1 }.map { $0.0 }
     }
 }

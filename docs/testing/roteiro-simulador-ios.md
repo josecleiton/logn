@@ -253,19 +253,19 @@ inteira. Só em Debug, não mudam nada em Release.
 
 ```bash
 xcrun simctl launch booted sh.logn.LogNiOS -LogNStartAsGuest 1      # entra como visitante
-xcrun simctl launch booted sh.logn.LogNiOS -LogNStartTab placar     # trilhas | arena | placar
-xcrun simctl launch booted sh.logn.LogNiOS -LogNStartScreen perfil  # perfil | apelido
+xcrun simctl launch booted sh.logn.LogNiOS -LogNStartTab standings   # trails | arena | standings
+xcrun simctl launch booted sh.logn.LogNiOS -LogNStartScreen profile  # profile | nickname | catalog
 ```
 
-`-LogNStartScreen perfil` é a forma confiável de abrir o hub de perfil sem depender
+`-LogNStartScreen profile` é a forma confiável de abrir o hub de perfil sem depender
 do toque no avatar.
 
 Do login, com o app deslogado (instalação limpa: `xcrun simctl uninstall` antes):
 
 ```bash
-xcrun simctl launch booted sh.logn.LogNiOS -LogNStartScreen cadastro     # tela de cadastro
-xcrun simctl launch booted sh.logn.LogNiOS -LogNStartScreen termos       # termos de uso
-xcrun simctl launch booted sh.logn.LogNiOS -LogNStartScreen privacidade  # política
+xcrun simctl launch booted sh.logn.LogNiOS -LogNStartScreen register  # tela de cadastro
+xcrun simctl launch booted sh.logn.LogNiOS -LogNStartScreen terms     # termos de uso
+xcrun simctl launch booted sh.logn.LogNiOS -LogNStartScreen privacy   # política
 ```
 
 Somando `-AppleLanguages '(es)'` (ou `(en)`), a interface e o documento vêm nessa língua.
@@ -456,7 +456,7 @@ não foi chamado ou não voltou.
 ### 4.9 Perfil — sincronizado e com fila
 
 ```bash
-xcrun simctl launch booted sh.logn.LogNiOS -LogNStartScreen perfil
+xcrun simctl launch booted sh.logn.LogNiOS -LogNStartScreen profile
 # ou AXPress no avatar (seção 2)
 ```
 
@@ -530,7 +530,7 @@ falar com o backend local em vez da produção, passe a URL no build:
 
 ```bash
 xcrun simctl uninstall booted sh.logn.LogNiOS; xcrun simctl install booted "$APP"
-xcrun simctl launch booted sh.logn.LogNiOS -LogNStartScreen termos -AppleLanguages '(pt-BR)'
+xcrun simctl launch booted sh.logn.LogNiOS -LogNStartScreen terms -AppleLanguages '(pt-BR)'
 sleep 10   # o processo do WebKit leva uns segundos na primeira abertura
 xcrun simctl io booted screenshot "$SP/13-termos.png"
 ```
@@ -552,7 +552,7 @@ xcrun simctl io booted screenshot "$SP/13-termos.png"
 ### 4.14 Análise de uso e exclusão com carência
 
 ```bash
-xcrun simctl launch booted sh.logn.LogNiOS -LogNStartAsGuest 1 -LogNStartScreen perfil
+xcrun simctl launch booted sh.logn.LogNiOS -LogNStartAsGuest 1 -LogNStartScreen profile
 ```
 
 **Conferir:**
@@ -611,8 +611,8 @@ produção: para o backend local, passe `'API_BASE_URL=http:/$()/localhost:8080'
 roteiro do Android (seção 9), no banco local.
 
 ```bash
-xcrun simctl launch booted sh.logn.LogNiOS -AppleLanguages '(pt-BR)' -LogNStartTab placar
-xcrun simctl launch booted sh.logn.LogNiOS -AppleLanguages '(pt-BR)' -LogNStartScreen apelido
+xcrun simctl launch booted sh.logn.LogNiOS -AppleLanguages '(pt-BR)' -LogNStartTab standings
+xcrun simctl launch booted sh.logn.LogNiOS -AppleLanguages '(pt-BR)' -LogNStartScreen nickname
 ```
 
 - Os mesmos estados do Android, lado a lado: aberto, linha fixa, fechado, sem XP, oculto,
