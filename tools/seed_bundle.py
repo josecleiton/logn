@@ -31,10 +31,10 @@ import urllib.request
 # cartões de origem passaram a viajar dentro da semente.
 VERSION = 3
 
-LINGUAS = ["pt-BR", "en", "es"]
+LANGUAGES = ["pt-BR", "en", "es"]
 
 BASE = os.environ.get("SEED_BUNDLE_BASE_URL", "http://localhost:8080")
-DESTINO = os.environ.get(
+OUTPUT_PATH = os.environ.get(
     "SEED_BUNDLE_OUT",
     "ios/LogNiOS/LogNiOS/Resources/trail-seed.json",
 )
@@ -42,16 +42,16 @@ DESTINO = os.environ.get(
 USER_AGENT = "logn-seed-bundle/1"
 
 
-def buscar(caminho: str, lingua: str):
-    url = f"{BASE}{caminho}?lang={lingua}"
+def fetch(path: str, lang: str):
+    url = f"{BASE}{path}?lang={lang}"
     try:
-        pedido = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-        with urllib.request.urlopen(pedido, timeout=10) as r:
+        request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(request, timeout=10) as r:
             if r.status != 200:
                 sys.exit(f"{url} respondeu {r.status}")
-            servida = r.headers.get("Content-Language", "")
-            if servida != lingua:
-                sys.exit(f"{url} respondeu em {servida or '(sem Content-Language)'}, não em {lingua}")
+            served = r.headers.get("Content-Language", "")
+            if served != lang:
+                sys.exit(f"{url} respondeu em {served or '(sem Content-Language)'}, não em {lang}")
             return json.loads(r.read())
     except urllib.error.URLError as e:
         sys.exit(
@@ -60,64 +60,64 @@ def buscar(caminho: str, lingua: str):
         )
 
 
-def ids(itens) -> set[str]:
-    return {i["id"] for i in itens}
+def ids(items) -> set[str]:
+    return {i["id"] for i in items}
 
 
 def main() -> None:
     release = "--release" in sys.argv[1:]
 
-    linguas = {}
-    for lingua in LINGUAS:
-        resposta_nodes = buscar("/api/v1/nodes", lingua)
-        nodes = resposta_nodes["nodes"]
-        origins = resposta_nodes.get("origins", [])
-        challenges = buscar("/api/v1/challenges", lingua)
+    by_lang = {}
+    for lang in LANGUAGES:
+        nodes_response = fetch("/api/v1/nodes", lang)
+        nodes = nodes_response["nodes"]
+        origins = nodes_response.get("origins", [])
+        challenges = fetch("/api/v1/challenges", lang)
         if nodes:
-            linguas[lingua] = {"nodes": nodes, "challenges": challenges, "origins": origins}
+            by_lang[lang] = {"nodes": nodes, "challenges": challenges, "origins": origins}
 
-    if "pt-BR" not in linguas:
+    if "pt-BR" not in by_lang:
         sys.exit("a API devolveu zero nós em português; não vou empacotar uma trilha vazia")
 
-    base = linguas["pt-BR"]
-    diferentes = [
-        l for l in LINGUAS
-        if l not in linguas
-        or ids(linguas[l]["nodes"]) != ids(base["nodes"])
-        or ids(linguas[l]["challenges"]) != ids(base["challenges"])
+    base = by_lang["pt-BR"]
+    mismatched = [
+        l for l in LANGUAGES
+        if l not in by_lang
+        or ids(by_lang[l]["nodes"]) != ids(base["nodes"])
+        or ids(by_lang[l]["challenges"]) != ids(base["challenges"])
     ]
-    if release and diferentes:
+    if release and mismatched:
         sys.exit(
-            f"--release: {', '.join(diferentes)} não traz(em) a mesma trilha que o português; "
+            f"--release: {', '.join(mismatched)} não traz(em) a mesma trilha que o português; "
             "termine a tradução ou gere sem --release"
         )
 
-    semente = {
+    seed = {
         "version": VERSION,
         "generated_at": datetime.datetime.now(datetime.timezone.utc)
         .replace(microsecond=0)
         .isoformat(),
-        "locales": linguas,
+        "locales": by_lang,
     }
 
-    os.makedirs(os.path.dirname(DESTINO), exist_ok=True)
-    with open(DESTINO, "w", encoding="utf-8") as f:
-        json.dump(semente, f, ensure_ascii=False, indent=2)
+    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
+    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+        json.dump(seed, f, ensure_ascii=False, indent=2)
         f.write("\n")
 
-    print(f"{DESTINO}")
+    print(f"{OUTPUT_PATH}")
     print(f"  versão {VERSION}")
-    for lingua in LINGUAS:
-        if lingua not in linguas:
-            print(f"  {lingua}: nada publicado; o app cai em português")
+    for lang in LANGUAGES:
+        if lang not in by_lang:
+            print(f"  {lang}: nada publicado; o app cai em português")
             continue
-        trilha = linguas[lingua]
-        com_desafio = {c["node_id"] for c in trilha["challenges"]}
-        vazios = sum(1 for n in trilha["nodes"] if n["id"] not in com_desafio)
-        linha = f"  {lingua}: {len(trilha['nodes'])} nós · {len(trilha['challenges'])} desafios"
-        if vazios:
-            linha += f" · {vazios} nó(s) ainda sem desafio"
-        print(linha)
+        trail = by_lang[lang]
+        with_challenges = {c["node_id"] for c in trail["challenges"]}
+        empty = sum(1 for n in trail["nodes"] if n["id"] not in with_challenges)
+        line = f"  {lang}: {len(trail['nodes'])} nós · {len(trail['challenges'])} desafios"
+        if empty:
+            line += f" · {empty} nó(s) ainda sem desafio"
+        print(line)
 
 
 if __name__ == "__main__":
