@@ -15,8 +15,9 @@ var (
 
 // NormalizeEmail põe o e-mail na forma em que ele é guardado e procurado.
 //
-// Sem isto `A@x.com` e `a@x.com` eram duas contas, cada uma com seu OTP. Recusa o que
-// não é um endereço simples: nome de exibição, quebra de linha, mais de 254 bytes.
+// Sem isto `A@example.com` e `a@example.com` eram duas contas, cada uma com seu OTP.
+// Recusa o que não é um endereço simples: nome de exibição, quebra de linha, mais de
+// 254 bytes.
 func NormalizeEmail(raw string) (string, error) {
 	email := strings.ToLower(strings.TrimSpace(raw))
 	if email == "" || len(email) > 254 {

@@ -81,14 +81,14 @@ func TestHandlersAnswerWithCodes(t *testing.T) {
 		code    string
 	}{
 		{"login com JSON quebrado", s.loginHandler, `{`, 400, codeInvalidRequest},
-		{"login com senha gigante", s.loginHandler, `{"email":"a@x.com","password":"` + string(bytes.Repeat([]byte("a"), 600)) + `"}`, 401, codeInvalidCredentials},
+		{"login com senha gigante", s.loginHandler, `{"email":"a@example.com","password":"` + string(bytes.Repeat([]byte("a"), 600)) + `"}`, 401, codeInvalidCredentials},
 		{"cadastro com e-mail inválido", s.registerHandler, `{"email":"nao-e-email"}`, 400, codeInvalidEmail},
-		{"cadastro com senha curta", s.registerHandler, `{"email":"a@x.com","password":"123"}`, 400, codePasswordTooShort},
-		{"cadastro com país inválido", s.registerHandler, `{"email":"a@x.com","password":"senha-forte","country":"XYZ"}`, 400, codeInvalidCountry},
-		{"cadastro sem idade", s.registerHandler, `{"email":"a@x.com","password":"senha-forte","country":"BR"}`, 400, codeAgeNotConfirmed},
+		{"cadastro com senha curta", s.registerHandler, `{"email":"a@example.com","password":"123"}`, 400, codePasswordTooShort},
+		{"cadastro com país inválido", s.registerHandler, `{"email":"a@example.com","password":"senha-forte","country":"XYZ"}`, 400, codeInvalidCountry},
+		{"cadastro sem idade", s.registerHandler, `{"email":"a@example.com","password":"senha-forte","country":"BR"}`, 400, codeAgeNotConfirmed},
 		{"código com e-mail inválido", s.requestOTPHandler, `{"email":"x"}`, 400, codeInvalidEmail},
 		{"verificação com e-mail inválido", s.verifyOTPHandler, `{"email":"x","code":"1"}`, 401, codeOTPInvalid},
-		{"troca de senha com senha longa", s.resetPasswordHandler, `{"email":"a@x.com","password":"` + string(bytes.Repeat([]byte("a"), 200)) + `"}`, 400, codePasswordTooLong},
+		{"troca de senha com senha longa", s.resetPasswordHandler, `{"email":"a@example.com","password":"` + string(bytes.Repeat([]byte("a"), 200)) + `"}`, 400, codePasswordTooLong},
 		{"sync sem token", s.syncHandler, `{}`, 401, codeUnauthenticated},
 	}
 	for _, c := range cases {

@@ -8,8 +8,8 @@ import (
 
 func TestNormalizeEmail(t *testing.T) {
 	cases := map[string]string{
-		"a@x.com":             "a@x.com",
-		"  A@X.Com ":          "a@x.com",
+		"a@example.com":       "a@example.com",
+		"  A@Example.Com ":    "a@example.com",
 		"Jogador@Example.Com": "jogador@example.com",
 	}
 	for in, want := range cases {
@@ -22,9 +22,9 @@ func TestNormalizeEmail(t *testing.T) {
 	for _, in := range []string{
 		"",
 		"sem-arroba",
-		"Nome <a@x.com>",
-		"a@x.com\r\nBcc: b@y.com",
-		strings.Repeat("a", 250) + "@x.com",
+		"Nome <a@example.com>",
+		"a@example.com\r\nBcc: b@example.com",
+		strings.Repeat("a", 244) + "@example.com",
 	} {
 		if _, err := NormalizeEmail(in); err == nil {
 			t.Errorf("NormalizeEmail(%q) devia recusar", in)

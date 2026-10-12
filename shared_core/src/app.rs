@@ -7225,9 +7225,9 @@ mod tests {
     fn test_display_name_takes_the_first_name_from_the_email() {
         assert_eq!(display_name_from_email("jogador@example.com"), "Jogador");
         assert_eq!(display_name_from_email("jogador.exemplo@example.com"), "Jogador");
-        assert_eq!(display_name_from_email("JOSE_CLEITON@x.com"), "Jose");
+        assert_eq!(display_name_from_email("JOSE_CLEITON@example.com"), "Jose");
         assert_eq!(display_name_from_email(""), "", "sem e-mail, sem nome inventado");
-        assert_eq!(display_name_from_email("@x.com"), "");
+        assert_eq!(display_name_from_email("@example.com"), "");
     }
 
     #[test]
@@ -7308,7 +7308,7 @@ mod tests {
         let app = LogNApp::default();
         let mut model = Model::default();
 
-        let mut cmd = app.update(Event::Login { email: "test@x.com".into(), password: "senha".into() }, &mut model);
+        let mut cmd = app.update(Event::Login { email: "test@example.com".into(), password: "senha".into() }, &mut model);
         assert!(model.is_authenticating);
 
         // Sem o render junto do request, o botão "Entrar" não mostra que está esperando.
@@ -7344,7 +7344,7 @@ mod tests {
 
         // Entrar por senha também identifica a sessão: o e-mail vai para o cofre
         // junto do refresh token, e é ele que o perfil mostra na volta.
-        assert_eq!(model.account_email, "test@x.com");
+        assert_eq!(model.account_email, "test@example.com");
         // E o id vem do servidor — sem ele o sync subia com "user_1" e o banco recusava.
         assert_eq!(model.user_id, "66b670a2-41d2-4ba2-b863-78735b69ec7c");
 
@@ -7355,7 +7355,7 @@ mod tests {
         if let Effect::SecureStore(r) = kv_req {
             if let KeyValueOperation::Set { key, value } = r.operation {
                 assert_eq!(key, "account_email");
-                assert_eq!(String::from_utf8(value).unwrap(), "test@x.com");
+                assert_eq!(String::from_utf8(value).unwrap(), "test@example.com");
             } else {
                 panic!("Expected Set operation");
             }
@@ -8129,7 +8129,7 @@ mod tests {
         model.pending_events = vec![answer("a1", GameEvent::GENESIS)];
         model.last_hash = model.pending_events[0].current_hash.clone();
 
-        let _ = app.update(Event::Login { email: "b@x.com".into(), password: "senha".into() }, &mut model);
+        let _ = app.update(Event::Login { email: "b@example.com".into(), password: "senha".into() }, &mut model);
         let _ = app.update(
             Event::LoginCompleted(http(200, serde_json::json!({
                 "access_token": "acc_b", "refresh_token": "ref_b", "user_id": USER_B,
@@ -8245,7 +8245,7 @@ mod tests {
         let mut model = Model::default();
         model.queue_owner = USER_A.into();
         model.queue_loaded = true;
-        model.resume_email = "a@x.com".into();
+        model.resume_email = "a@example.com".into();
         let mut cmd = app.update(Event::Logout, &mut model);
         let deleted: Vec<String> = kv_ops(&mut cmd).into_iter().filter_map(|op| match op {
             KeyValueOperation::Delete { key } => Some(key),
@@ -8437,14 +8437,14 @@ mod tests {
 
         // Com o envio travado, o toque não sai para o servidor.
         let mut cmd = app.update(
-            Event::RequestOTP { email: "a@x.com".into(), purpose: "verify_email".into() },
+            Event::RequestOTP { email: "a@example.com".into(), purpose: "verify_email".into() },
             &mut model,
         );
         assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))));
 
         // Mas verificar o código que já chegou continua valendo.
         let mut cmd = app.update(
-            Event::VerifyOTP { email: "a@x.com".into(), code: "123456".into(), purpose: "verify_email".into() },
+            Event::VerifyOTP { email: "a@example.com".into(), code: "123456".into(), purpose: "verify_email".into() },
             &mut model,
         );
         assert!(cmd.effects().any(|e| matches!(e, Effect::Http(_))));
@@ -8479,11 +8479,11 @@ mod tests {
         assert!(!model.is_authenticating);
 
         for event in [
-            Event::Login { email: "a@x.com".into(), password: "senha-forte".into() },
-            Event::RequestOTP { email: "a@x.com".into(), purpose: "verify_email".into() },
-            Event::VerifyOTP { email: "a@x.com".into(), code: "123456".into(), purpose: "verify_email".into() },
-            Event::Register { email: "a@x.com".into(), password: "senha-forte".into(), otp: "123456".into(), age_confirmed: true, legal_accepted: true },
-            Event::ResetPassword { email: "a@x.com".into(), new_password: "senha-forte".into(), otp: "123456".into() },
+            Event::Login { email: "a@example.com".into(), password: "senha-forte".into() },
+            Event::RequestOTP { email: "a@example.com".into(), purpose: "verify_email".into() },
+            Event::VerifyOTP { email: "a@example.com".into(), code: "123456".into(), purpose: "verify_email".into() },
+            Event::Register { email: "a@example.com".into(), password: "senha-forte".into(), otp: "123456".into(), age_confirmed: true, legal_accepted: true },
+            Event::ResetPassword { email: "a@example.com".into(), new_password: "senha-forte".into(), otp: "123456".into() },
         ] {
             let mut cmd = app.update(event, &mut model);
             assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))), "nada sai durante o bloqueio");
@@ -8701,7 +8701,7 @@ mod tests {
 
         let _ = app.update(Event::SetLocale("es-MX".into()), &mut model);
         let mut cmd = app.update(Event::Register {
-            email: "a@x.com".into(), password: "senha-forte".into(), otp: "123456".into(),
+            email: "a@example.com".into(), password: "senha-forte".into(), otp: "123456".into(),
             age_confirmed: true, legal_accepted: true,
         }, &mut model);
         let body = register_body(&mut cmd);
@@ -8722,7 +8722,7 @@ mod tests {
         model.legal_versions = vec![("terms".into(), 1), ("privacy".into(), 1)];
 
         let mut cmd = app.update(Event::Register {
-            email: "a@x.com".into(), password: "senha-forte".into(), otp: "123456".into(),
+            email: "a@example.com".into(), password: "senha-forte".into(), otp: "123456".into(),
             age_confirmed: true, legal_accepted: false,
         }, &mut model);
         assert_eq!(register_body(&mut cmd)["legal_acceptances"], serde_json::json!([]));
@@ -8904,7 +8904,7 @@ mod tests {
         let mut model = Model::default();
         model.access_token = Some("tok".into());
         model.user_id = "66b670a2-41d2-4ba2-b863-78735b69ec7c".into();
-        model.account_email = "a@x.com".into();
+        model.account_email = "a@example.com".into();
         model.queue_owner = model.user_id.clone();
         model.queue_loaded = true;
         model.pending_events = vec![GameEvent::new(
