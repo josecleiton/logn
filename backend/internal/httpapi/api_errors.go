@@ -34,11 +34,11 @@ const (
 	codeLoginLocked = "login_locked"
 	// Código errado demais para o e-mail e propósito na janela
 	// (domain.OTPMaxFailuresPerWindow): nenhum código novo sai até ela vencer.
-	codeOTPLocked = "otp_locked"
-	codeOTPResendTooSoon        = "otp_resend_too_soon"
-	codeRateLimited             = "rate_limited"
-	codeOriginNotVerified       = "origin_not_verified"
-	codeInternal                = "internal"
+	codeOTPLocked         = "otp_locked"
+	codeOTPResendTooSoon  = "otp_resend_too_soon"
+	codeRateLimited       = "rate_limited"
+	codeOriginNotVerified = "origin_not_verified"
+	codeInternal          = "internal"
 
 	// Login por provedor externo (ADR 0016).
 	codeProviderDisabled      = "provider_disabled"
