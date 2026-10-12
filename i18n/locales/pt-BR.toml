@@ -157,7 +157,6 @@ tle_context = "No contest o tempo conta como resposta errada: o problema fica em
 generic_wrong_answer = "A escolha não cobre todos os casos de entrada. Vale reler o enunciado olhando para os limites: o primeiro índice, o último, e o array vazio."
 line_number = "linha %{line}"
 blank_accessibility = "lacuna a preencher"
-clock_critical = "RELÓGIO DA QUESTÃO · CRÍTICO"
 problem_letter = "PROBLEM %{letter}"
 time_remaining = "tempo restante %{seconds} segundos"
 

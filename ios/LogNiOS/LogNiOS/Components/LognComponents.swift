@@ -191,53 +191,9 @@ struct LifeBar: View {
 
 // MARK: - ContestClock
 
-/// Relógio do contest. Plex Mono, tabular-nums obrigatório.
-/// Três estados: normal, congelado (última hora) e questão crítica (<15s).
-struct ContestClock: View {
-    let remainingSeconds: Int
-    let isFrozen: Bool
-
-    var body: some View {
-        if isCritical {
-            HStack(alignment: .lastTextBaseline, spacing: 10) {
-                Text(formattedTime)
-                    .font(.plexMonoSemiBold(28))
-                    .monospacedDigit()
-                    .foregroundColor(LognColors.wrongInk)
-
-                Text(Str.Match.clock_critical)
-                    .font(.plexMono(11))
-                    .tracking(0.1 * 11)
-                    .foregroundColor(LognColors.wrongInk)
-            }
-        } else {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(isFrozen ? "PLACAR CONGELADO" : "TEMPO RESTANTE")
-                    .font(.plexMono(10.5))
-                    .tracking(0.16 * 10.5)
-                    .foregroundColor(isFrozen ? LognColors.warnInk : LognColors.textMuted)
-
-                Text(formattedTime)
-                    .font(.plexMonoMedium(38))
-                    .tracking(-0.01 * 38)
-                    .monospacedDigit()
-                    .foregroundColor(isFrozen ? LognColors.warnInk : LognColors.textPrimary)
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 16)
-            .background(isFrozen ? LognColors.tintWarn : LognColors.canvas)
-            .cornerRadius(Radius.sm)
-            .overlay(
-                RoundedRectangle(cornerRadius: Radius.sm)
-                    .stroke(isFrozen ? LognColors.warn : LognColors.line, lineWidth: 1)
-            )
-        }
-    }
-
-    private var isCritical: Bool { remainingSeconds <= 15 && !isFrozen }
-
-    private var formattedTime: String { ContestClock.format(remainingSeconds) }
-
+/// O formato do relógio da partida: `mm:ss`, e `hh:mm:ss` a partir de uma hora. A tela do
+/// relógio de contest que morava aqui nunca entrou no app, e saiu com o texto fixo dela.
+enum ContestClock {
     static func format(_ seconds: Int) -> String {
         if seconds >= 3600 {
             return String(format: "%02d:%02d:%02d", seconds / 3600, (seconds % 3600) / 60, seconds % 60)

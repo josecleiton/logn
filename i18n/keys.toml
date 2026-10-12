@@ -179,7 +179,6 @@ tle_context = {}
 generic_wrong_answer = {}
 line_number = { placeholders = [{ name = "line", type = "int" }] }
 blank_accessibility = {}
-clock_critical = {}
 problem_letter = { placeholders = [{ name = "letter", type = "text" }] }
 time_remaining = { placeholders = [{ name = "seconds", type = "int" }] }
 

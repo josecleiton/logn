@@ -157,7 +157,6 @@ tle_context = "In a contest, time counts as a wrong answer: the problem stays op
 generic_wrong_answer = "The choice doesn't cover every input case. Reread the statement looking at the limits: the first index, the last one, and the empty array."
 line_number = "line %{line}"
 blank_accessibility = "blank to fill"
-clock_critical = "PROBLEM CLOCK · CRITICAL"
 problem_letter = "PROBLEM %{letter}"
 time_remaining = "time remaining %{seconds} seconds"
 
