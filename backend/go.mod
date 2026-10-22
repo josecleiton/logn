@@ -2,12 +2,14 @@ module github.com/josecleiton/logn/backend
 
 go 1.27.0
 
+toolchain go1.27.3
+
 require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/wneessen/go-mail v0.8.1
 	golang.org/x/crypto v0.57.0
-	golang.org/x/net v0.59.0
+	golang.org/x/net v0.60.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/text v0.42.0
 	google.golang.org/api v0.299.0
